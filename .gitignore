@@ -1,0 +1,12 @@
+node_modules
+.env
+.env.*
+!.env.example
+*service-account*.json
+*-credentials.json
+uploads/
+data/photos/
+.vercel
+.DS_Store
+__pycache__
+.venv
