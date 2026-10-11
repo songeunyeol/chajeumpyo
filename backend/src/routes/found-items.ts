@@ -1,11 +1,19 @@
-import { MAX_IMAGE_MB, RegisterFoundItemFields, RegisterFoundItemResponse } from "@chajeumpyo/shared";
+import {
+  FoundItemDetailResponse,
+  FoundItemIdParams,
+  MAX_IMAGE_MB,
+  RegisterFoundItemFields,
+  RegisterFoundItemResponse,
+} from "@chajeumpyo/shared";
 import { type RequestHandler, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { AppError } from "../lib/errors";
+import { getAuth, requireMember } from "../middlewares/auth";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import { registerFoundItem, uploaderFingerprint } from "../services/found-items";
+import { revealFoundItem } from "../services/reveal";
 
 registry.registerPath({
   method: "post",
@@ -43,6 +51,23 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: "get",
+  path: "/found-items/{id}/detail",
+  tags: ["습득물"],
+  security: [{ bearerAuth: [] }],
+  summary: "사진·보관 위치 공개 (F-10)",
+  description:
+    "이 계정이 일치 판정(또는 확인 질문)을 통과한 물건만. 볼 때마다 열람 기록이 남는다. 사진 링크는 10분 뒤 만료.",
+  request: { params: FoundItemIdParams },
+  responses: {
+    200: { description: "상세", content: { "application/json": { schema: FoundItemDetailResponse } } },
+    401: errorResponse("UNAUTHORIZED"),
+    403: errorResponse("FORBIDDEN: 통과하지 않음"),
+    404: errorResponse("NOT_FOUND"),
+  },
+});
+
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_IMAGE_MB * 1024 * 1024, files: 1 } });
 
 /** 사진 1장을 받고, multer 오류를 명세의 에러 코드로 바꾼다 */
@@ -73,6 +98,12 @@ export function createFoundItemsRouter() {
       fingerprint: uploaderFingerprint(req.ip ?? "", req.get("user-agent") ?? ""),
     });
     res.status(201).json(result);
+  });
+
+  router.get("/found-items/:id/detail", requireMember(), validate("params", FoundItemIdParams), async (_req, res) => {
+    const { userId, role } = getAuth(res);
+    const result: FoundItemDetailResponse = await revealFoundItem({ userId, role }, res.locals.params.id);
+    res.json(result);
   });
 
   return router;
