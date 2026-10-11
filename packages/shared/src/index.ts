@@ -4,6 +4,7 @@ export * from "./api/buildings";
 export * from "./api/claims";
 export * from "./api/found-items";
 export * from "./api/lost-reports";
+export * from "./api/pickups";
 export * from "./api/storage-places";
 export * from "./enums";
 export * from "./errors";
