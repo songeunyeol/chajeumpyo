@@ -240,15 +240,17 @@
 - 후보는 서버가 점수로 고른 **최대 5개**이고, **`foundAt` 최신순**으로 내려준다. 배열 순서는 점수와 관계없다.
 - 체험 계정은 시드 습득물만, 일반 계정은 시드가 아닌 습득물만 후보로 받는다. (초안)
 - 설명 추출에 실패하면 저장하지 않고 `502 AI_UNAVAILABLE`.
+- 설명은 5~500자. `lostFrom` ≤ `lostTo`이고 미래 시각은 안 된다. (초안)
+- 후보 점수 = 0.4×속성(종류·색·브랜드) + 0.3×장소 + 0.2×시간 + 0.1×설명 유사도. 값은 `backend/src/matching/policy.ts`에 모여 있다. (초안, 회의)
 
 #### `GET /lost-reports` · 회원
 내 신고 목록.
 ```json
-{ "reports": [ { "id": "r_...", "category": "EARPHONE", "status": "OPEN", "candidateCount": 2, "createdAt": "..." } ] }
+{ "reports": [ { "id": "r_...", "category": "EARPHONE", "status": "OPEN", "description": "...", "lostFrom": "...", "lostTo": "...", "building": { "id": 1, "name": "혜인관" }, "candidateCount": 2, "createdAt": "..." } ] }
 ```
 
 #### `GET /lost-reports/:id/candidates` · 회원
-`POST` 응답의 `candidates`와 같은 형식. 새 습득물이 등록되면 늘어난다.
+`{ "candidates": [...] }`. `POST` 응답의 `candidates`와 같은 형식. 새 습득물이 등록되면 늘어난다. 닫힌 신고는 빈 목록. 남의 신고면 `404`.
 
 #### `PATCH /lost-reports/:id` · 회원
 ```json
@@ -260,6 +262,7 @@
 { "id": "r_...", "status": "OPEN", "candidates": [ ... ] }
 ```
 - 설명 추출에 실패하면 수정하지 않고 `502 AI_UNAVAILABLE`.
+- 공백만 다른 설명은 바뀌지 않은 것으로 본다(다시 분석하지 않음). 닫힌 신고는 고칠 수 없다(`400`).
 
 ### 일치 판정
 
