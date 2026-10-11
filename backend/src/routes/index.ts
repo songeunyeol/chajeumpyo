@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createAuthRouter } from "./auth";
 import { createBuildingsRouter } from "./buildings";
+import { createClaimsRouter } from "./claims";
 import { createFoundItemsRouter } from "./found-items";
 import { createLostReportsRouter } from "./lost-reports";
 
@@ -11,5 +12,6 @@ export function createApiRouter() {
   router.use(createBuildingsRouter());
   router.use(createFoundItemsRouter());
   router.use(createLostReportsRouter());
+  router.use(createClaimsRouter());
   return router;
 }

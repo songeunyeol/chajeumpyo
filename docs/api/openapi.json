@@ -1489,6 +1489,778 @@
         }
       }
     },
+    "/lost-reports/{id}/claims": {
+      "post": {
+        "tags": [
+          "일치 판정"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "내 물건인지 확인 (F-08)",
+        "description": "이 신고의 현재 후보에만 시도할 수 있다. 통과: 특징 일치 1개 이상·모순 0 / 경계: 일치와 모순이 함께 있으면 확인 질문 / 실패: 일치 0. 설명이 그대로면 이전 결과를 reused=true로 돌려주고 횟수를 쓰지 않는다. 맞은 항목은 통과했을 때만 준다.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "foundItemId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "foundItemId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "판정 결과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "attemptId": {
+                          "type": "string"
+                        },
+                        "reused": {
+                          "type": "boolean"
+                        },
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "PASS"
+                          ]
+                        },
+                        "matchedFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "foundItemId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "attemptId",
+                        "reused",
+                        "result",
+                        "matchedFields",
+                        "foundItemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "attemptId": {
+                          "type": "string"
+                        },
+                        "reused": {
+                          "type": "boolean"
+                        },
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "BORDERLINE"
+                          ]
+                        },
+                        "question": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "attemptId",
+                        "reused",
+                        "result",
+                        "question"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "attemptId": {
+                          "type": "string"
+                        },
+                        "reused": {
+                          "type": "boolean"
+                        },
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "FAIL"
+                          ]
+                        },
+                        "attemptsLeft": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "attemptId",
+                        "reused",
+                        "result",
+                        "attemptsLeft"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: 닫힌 신고 등",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: 후보가 아닌 물건",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: 없거나 남의 신고",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MATCH_LOCKED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "AI_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/claims/{attemptId}/answer": {
+      "post": {
+        "tags": [
+          "일치 판정"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "확인 질문 답하기 (F-09)",
+        "description": "질문 하나당 한 번만. 질문에 나온 낱말은 답에서 빼고 판정한다. 틀리면 실패 횟수가 1 늘어난다.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "attemptId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answer": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50
+                  }
+                },
+                "required": [
+                  "answer"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "답 판정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "PASS"
+                          ]
+                        },
+                        "foundItemId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "result",
+                        "foundItemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "FAIL"
+                          ]
+                        },
+                        "attemptsLeft": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "result",
+                        "attemptsLeft"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: 질문이 없는 시도",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ALREADY_ANSWERED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/found-items": {
       "post": {
         "tags": [
