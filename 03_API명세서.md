@@ -428,13 +428,16 @@
 ```
 
 #### `GET /admin/found-items?status=REVIEW&page=1` · 관리자
-습득물 목록. P0에서는 `REVIEW`(검토 대기) 확인용으로 쓴다.
+습득물 목록. P0에서는 `REVIEW`(검토 대기) 확인용으로 쓴다. 20개씩 습득 시각 최신순, `total`과 상태별 개수(`counts`)를 함께 준다.
+- 관리 범위(open-issues #18 추천안): 경비실 관리자는 자기 보관처 물건만, 종합서비스센터 관리자와 보관처가 없는 관리자는 전체. 범위 밖 물건의 상세·수정은 `403`.
 
 #### `GET /admin/found-items/:id` · 관리자
-공개·비공개 정보와 원본 사진, 열람·수령 기록 전체.
+공개·비공개 정보와 원본·공개본 사진 링크(10분), 시도·열람·수령 기록 전체. 기록의 이메일은 가린다(`st****@skuniv.ac.kr`).
 
 #### `PATCH /admin/found-items/:id` · 관리자
-검토 대기 습득물의 속성을 직접 고치고 `REGISTERED`로 바꾼다.
+검토 대기 습득물의 속성을 직접 고치고 `REGISTERED`로 바꾼다. 등록된 물건의 속성 수정에도 쓴다(상태는 그대로).
+- `status: "REGISTERED"`는 검토 대기 물건에만, 종류·설명이 있어야 한다. 등록하면 새 후보 알림을 보낸다.
+- 설명이 바뀌거나 등록하면 임베딩을 다시 만든다. 실패하면 아무것도 바꾸지 않고 `502 AI_UNAVAILABLE`.
 ```json
 { "category": "UMBRELLA", "color": "검정", "features": ["손잡이 금이 감"], "status": "REGISTERED" }
 ```
