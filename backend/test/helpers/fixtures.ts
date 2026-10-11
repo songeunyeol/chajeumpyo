@@ -55,3 +55,40 @@ export async function createFoundItem(o: FoundOpts) {
 }
 
 export const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000);
+
+/** 판정 API를 거치지 않고 시도 기록을 바로 만든다 (신고도 함께) */
+export async function createAttempt(
+  userId: string,
+  foundItemId: string,
+  data: { result: "PASS" | "BORDERLINE" | "FAIL"; answerCorrect?: boolean | null },
+) {
+  const report = await prisma.lostReport.create({
+    data: {
+      userId,
+      category: "EARPHONE",
+      lostFrom: hoursAgo(5),
+      lostTo: hoursAgo(4),
+      description: "테스트 신고",
+      descriptionHash: "h",
+    },
+  });
+  return prisma.matchAttempt.create({
+    data: {
+      userId,
+      lostReportId: report.id,
+      foundItemId,
+      descriptionHash: "h",
+      score: 0.5,
+      scoreBreakdown: {},
+      matchedFields: {},
+      result: data.result,
+      answerCorrect: data.answerCorrect ?? null,
+      question: data.result === "BORDERLINE" ? "질문" : null,
+      questionFeatureKey: data.result === "BORDERLINE" ? "sticker" : null,
+    },
+  });
+}
+
+export async function createStoragePlace(name: string, buildingId: number, org: "CENTER" | "GUARD" = "GUARD") {
+  return prisma.storagePlace.create({ data: { name, buildingId, guideText: `${name} 안내`, org } });
+}
