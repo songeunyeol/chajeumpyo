@@ -347,4 +347,4 @@
 | LCE000 | 기타 |  |
 | LCG000 | 전남광주통합특별시 | 미확인: LOST112 화면 캡처(2026-01-04)에는 없음. 제3자 문서 LOST_QUEST에만 "실제 API 응답에 있음"으로 기재 |
 
-출처: LOST112 지역 셀렉트 `https://www.lost112.go.kr/ajaxCodeSelect.do?ajaxParam1=LC0` (공통코드 그룹 LC0 "지역구분", 웹 아카이브 2025-02-05 캡처, 2026-01-04 캡처까지 내[+394 bytes at .content[1].resource.text]
+출처: LOST112 지역 셀렉트 `https://www.lost112.go.kr/ajaxCodeSelect.do?ajaxParam1=LC0` (공통코드 그룹 LC0 "지역구분", 웹 아카이브 2025-02-05 캡처, 2026-01-04 캡처까지 내용 동일). 시·도 19개. **서울특별시 = LCA000** (공식 활용가이드 샘플값과 일치). 시·군·구 하위 코드(예: LCA001 강남구)도 있으나 LOST_QUEST 문서에 따르면 하위 코드로 검색하면 0건이라 시·도 코드만 사용. 일부 GitHub 코드(finditem/FI-FE)는 LCB000=부산 같은 다른 매핑을 쓰지만 공식 화면과 맞지 않아 제외.
