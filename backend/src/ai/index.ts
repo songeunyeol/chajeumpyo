@@ -33,4 +33,6 @@ export const ai: AiClient = {
   extractFoundItem: (...args) => current.extractFoundItem(...args),
   extractLostReport: (...args) => current.extractLostReport(...args),
   embed: (...args) => current.embed(...args),
+  compareFeatures: (...args) => current.compareFeatures(...args),
+  judgeAnswer: (...args) => current.judgeAnswer(...args),
 };
