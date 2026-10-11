@@ -1,0 +1,291 @@
+// 기준: 02_ERD.md. 테이블·컬럼 이름은 DB에서 snake_case로 쓴다(raw SQL 작성 편의).
+// 바뀐 점과 미결 사항은 docs/open-issues.md 참고.
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions", "partialIndexes"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+enum Role {
+  USER
+  ADMIN
+  DEMO
+}
+
+enum StorageOrg {
+  CENTER
+  GUARD
+}
+
+enum Category {
+  EARPHONE
+  CHARGER
+  UMBRELLA
+  CARD
+  WALLET
+  TUMBLER
+  PENCIL_CASE
+  LAPTOP_TABLET
+  CLOTHING_BAG
+  ETC
+}
+
+enum StorageType {
+  IN_PLACE
+  HANDED_OVER
+}
+
+enum FoundStatus {
+  ANALYZING
+  REVIEW
+  REGISTERED
+  REVEALED
+  CLAIMED
+  EXPIRED
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  CLOSED
+}
+
+enum MatchResult {
+  PASS
+  BORDERLINE
+  FAIL
+}
+
+enum PickupMethod {
+  CENTER_QR
+  SELF_REPORT
+  DEMO
+}
+
+enum PickupStatus {
+  ISSUED
+  COMPLETED
+  EXPIRED
+}
+
+enum NotificationType {
+  NEW_CANDIDATE
+  MULTI_REVEAL
+  SYSTEM
+}
+
+model User {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String         @unique
+  passwordHash   String         @map("password_hash")
+  role           Role           @default(USER)
+  /// 관리자만. 자기 보관처의 물건만 수령 처리한다.
+  storagePlace   StoragePlace?  @relation(fields: [storagePlaceId], references: [id])
+  storagePlaceId Int?           @map("storage_place_id")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  lostReports    LostReport[]
+  attempts       MatchAttempt[]
+  reveals        RevealLog[]
+  pickups        Pickup[]       @relation("PickupUser")
+  processed      Pickup[]       @relation("PickupAdmin")
+  notifications  Notification[]
+
+  @@map("user")
+}
+
+model EmailVerification {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email      String
+  codeHash   String    @map("code_hash")
+  failCount  Int       @default(0) @map("fail_count")
+  expiresAt  DateTime  @map("expires_at")
+  verifiedAt DateTime? @map("verified_at")
+  /// 가입에 쓰면 채운다. 같은 가입용 토큰 재사용 방지.
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([email])
+  @@map("email_verification")
+}
+
+model Building {
+  id            Int            @id @default(autoincrement())
+  name          String         @unique
+  lat           Float
+  lng           Float
+  sortOrder     Int            @default(0) @map("sort_order")
+  foundItems    FoundItem[]
+  lostReports   LostReport[]
+  storagePlaces StoragePlace[]
+
+  @@map("building")
+}
+
+/// 보관처: 종합서비스센터, 건물별 경비실 등
+model StoragePlace {
+  id         Int         @id @default(autoincrement())
+  name       String      @unique
+  building   Building    @relation(fields: [buildingId], references: [id])
+  buildingId Int         @map("building_id")
+  guideText  String      @map("guide_text")
+  org        StorageOrg
+  isActive   Boolean     @default(true) @map("is_active")
+  foundItems FoundItem[]
+  admins     User[]
+
+  @@map("storage_place")
+}
+
+/// 습득물의 공개 정보만 둔다. 후보 목록·알림은 이 테이블만 읽는다.
+model FoundItem {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  building            Building         @relation(fields: [buildingId], references: [id])
+  buildingId          Int              @map("building_id")
+  category            Category?
+  /// 2순위 종류. 후보 검색에만 쓰고 응답에 넣지 않는다.
+  categoryAlt         Category?        @map("category_alt")
+  storageType         StorageType      @map("storage_type")
+  /// storage_type = HANDED_OVER면 필수 (마이그레이션 SQL의 CHECK 제약)
+  storagePlace        StoragePlace?    @relation(fields: [storagePlaceId], references: [id])
+  storagePlaceId      Int?             @map("storage_place_id")
+  status              FoundStatus      @default(ANALYZING)
+  isSeed              Boolean          @default(false) @map("is_seed")
+  uploaderFingerprint String?          @map("uploader_fingerprint")
+  foundAt             DateTime         @default(now()) @map("found_at")
+  expiresAt           DateTime?        @map("expires_at")
+  detail              FoundItemDetail?
+  attempts            MatchAttempt[]
+  reveals             RevealLog[]
+  pickups             Pickup[]
+  notifications       Notification[]
+
+  @@index([category, status, foundAt])
+  @@index([categoryAlt])
+  @@map("found_item")
+}
+
+/// 습득물의 비공개 정보. 일치 판정 통과자와 관리자만 접근한다.
+model FoundItemDetail {
+  foundItem        FoundItem                    @relation(fields: [foundItemId], references: [id], onDelete: Cascade)
+  foundItemId      String                       @id @map("found_item_id") @db.Uuid
+  imageOriginalKey String                       @map("image_original_key")
+  imagePublicKey   String                       @map("image_public_key")
+  isSensitive      Boolean                      @default(false) @map("is_sensitive")
+  color            String?
+  brand            String?
+  features         Json?
+  description      String?
+  /// 차원(1536)은 임베딩 모델 확정 후 맞춘다. 읽기·쓰기는 src/repositories/embedding.ts의 raw SQL로만.
+  embedding        Unsupported("vector(1536)")?
+  rawAiResponse    Json?                        @map("raw_ai_response")
+
+  @@map("found_item_detail")
+}
+
+model LostReport {
+  id                  String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user                User                         @relation(fields: [userId], references: [id])
+  userId              String                       @map("user_id") @db.Uuid
+  category            Category
+  lostFrom            DateTime                     @map("lost_from")
+  lostTo              DateTime                     @map("lost_to")
+  building            Building?                    @relation(fields: [buildingId], references: [id])
+  buildingId          Int?                         @map("building_id")
+  description         String
+  /// 설명이 바뀌었는지 판단 (같으면 재판정 때 시도 횟수를 쓰지 않는다)
+  descriptionHash     String                       @map("description_hash")
+  extractedAttributes Json?                        @map("extracted_attributes")
+  embedding           Unsupported("vector(1536)")?
+  status              ReportStatus                 @default(OPEN)
+  createdAt           DateTime                     @default(now()) @map("created_at")
+  updatedAt           DateTime                     @updatedAt @map("updated_at")
+  attempts            MatchAttempt[]
+  notifications       Notification[]
+
+  @@map("lost_report")
+}
+
+model MatchAttempt {
+  id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user               User        @relation(fields: [userId], references: [id])
+  userId             String      @map("user_id") @db.Uuid
+  lostReport         LostReport  @relation(fields: [lostReportId], references: [id])
+  lostReportId       String      @map("lost_report_id") @db.Uuid
+  foundItem          FoundItem   @relation(fields: [foundItemId], references: [id])
+  foundItemId        String      @map("found_item_id") @db.Uuid
+  /// 시도 당시 신고 설명의 해시
+  descriptionHash    String      @map("description_hash")
+  score              Float
+  scoreBreakdown     Json        @map("score_breakdown")
+  matchedFields      Json        @map("matched_fields")
+  result             MatchResult
+  question           String?
+  questionFeatureKey String?     @map("question_feature_key")
+  answerCorrect      Boolean?    @map("answer_correct")
+  answeredAt         DateTime?   @map("answered_at")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  reveal             RevealLog?
+
+  @@index([userId, foundItemId])
+  @@map("match_attempt")
+}
+
+model RevealLog {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user           User          @relation(fields: [userId], references: [id])
+  userId         String        @map("user_id") @db.Uuid
+  foundItem      FoundItem     @relation(fields: [foundItemId], references: [id])
+  foundItemId    String        @map("found_item_id") @db.Uuid
+  matchAttempt   MatchAttempt? @relation(fields: [matchAttemptId], references: [id])
+  matchAttemptId String?       @unique @map("match_attempt_id") @db.Uuid
+  revealedAt     DateTime      @default(now()) @map("revealed_at")
+
+  @@index([foundItemId])
+  @@map("reveal_log")
+}
+
+/// 물건당 여러 건 가능(QR 재발급). 완료는 물건당 1건 (체험 수령 DEMO 제외).
+model Pickup {
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  foundItem          FoundItem    @relation(fields: [foundItemId], references: [id])
+  foundItemId        String       @map("found_item_id") @db.Uuid
+  user               User         @relation("PickupUser", fields: [userId], references: [id])
+  userId             String       @map("user_id") @db.Uuid
+  method             PickupMethod
+  status             PickupStatus @default(ISSUED)
+  qrTokenHash        String?      @map("qr_token_hash")
+  qrExpiresAt        DateTime?    @map("qr_expires_at")
+  processedBy        User?        @relation("PickupAdmin", fields: [processedByAdminId], references: [id])
+  processedByAdminId String?      @map("processed_by_admin_id") @db.Uuid
+  createdAt          DateTime     @default(now()) @map("created_at")
+  completedAt        DateTime?    @map("completed_at")
+  purgeAfter         DateTime?    @map("purge_after")
+
+  @@unique([foundItemId], map: "pickup_one_completed_per_item", where: raw("status = 'COMPLETED' AND method <> 'DEMO'"))
+  @@index([foundItemId])
+  @@index([userId, status])
+  @@map("pickup")
+}
+
+model Notification {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user         User             @relation(fields: [userId], references: [id])
+  userId       String           @map("user_id") @db.Uuid
+  type         NotificationType
+  foundItem    FoundItem?       @relation(fields: [foundItemId], references: [id])
+  foundItemId  String?          @map("found_item_id") @db.Uuid
+  lostReport   LostReport?      @relation(fields: [lostReportId], references: [id])
+  lostReportId String?          @map("lost_report_id") @db.Uuid
+  message      String
+  readAt       DateTime?        @map("read_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  @@index([userId, readAt])
+  @@map("notification")
+}

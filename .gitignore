@@ -10,3 +10,7 @@ data/photos/
 .DS_Store
 __pycache__
 .venv
+
+# 백엔드
+dist/
+backend/src/generated/

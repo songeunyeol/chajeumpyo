@@ -1,0 +1,15 @@
+# 로컬 개발용 PostgreSQL + pgvector
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: chajeumpyo
+      POSTGRES_PASSWORD: chajeumpyo
+      POSTGRES_DB: chajeumpyo
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:

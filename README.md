@@ -22,19 +22,59 @@
 
 자세한 결정 배경과 비용, 평가 방법은 [docs/ai-stack.md](docs/ai-stack.md) 참고.
 
+## 문서
+
+| 문서 | 내용 |
+| --- | --- |
+| [01_기능명세서.md](01_기능명세서.md) | 기능과 정책 |
+| [02_ERD.md](02_ERD.md) | 데이터 구조와 DB 규칙 |
+| [03_API명세서.md](03_API명세서.md) | API (실행 중 `/api/docs`에서 OpenAPI로도 확인) |
+| [docs/open-issues.md](docs/open-issues.md) | 명세 검토 이슈와 결정 이력 |
+| [docs/tech-stack.md](docs/tech-stack.md) | 기술 스택 |
+| [docs/결과보고서.md](docs/결과보고서.md) | 제출용 결과보고서 원본 |
+
 ## 폴더 구조
 
 ```
 .
-├── frontend/        # 웹 프론트엔드
-├── backend/         # API 서버, AI 연동, 매칭 로직
-├── docs/
-│   ├── ai-stack.md  # AI 스택 결정 문서
-│   ├── api/         # API 명세
-│   └── design/      # 디자인 산출물
-├── qa/              # 테스트 데이터·평가 스크립트
-└── .env.example     # 환경 변수 템플릿 (실제 값은 .env에만, 커밋 금지)
+├── backend/            # Express API 서버 (Prisma, AI 연동, 매칭 로직)
+│   ├── prisma/         # 스키마, 마이그레이션, 시드 데이터
+│   └── src/            # routes → services → repositories, ai/
+├── packages/shared/    # 프론트·백엔드가 같이 쓰는 zod 스키마와 타입 (API 계약)
+├── frontend/           # 웹 프론트엔드 (예정)
+├── docs/               # 조사·설계 문서, docs/api/openapi.json
+├── qa/                 # 테스트 데이터·평가 스크립트
+└── .env.example        # 환경 변수 템플릿 (실제 값은 .env에만, 커밋 금지)
 ```
+
+## 로컬 실행 (백엔드)
+
+필요한 것: Node.js 22.12 이상, Docker
+
+```bash
+npm install                    # 워크스페이스 전체 설치 + Prisma 클라이언트 생성
+cp .env.example .env           # 기본값 그대로 로컬에서 동작 (AI_MODE=mock)
+npm run db:up                  # PostgreSQL + pgvector (Docker)
+npm run db:deploy -w backend   # 마이그레이션 적용
+npm run db:seed -w backend     # 건물·보관처 (backend/prisma/seed-data)
+npm run dev                    # http://localhost:4000, API 문서 /api/docs
+```
+
+| 명령 | 설명 |
+| --- | --- |
+| `npm test` | 백엔드 테스트 |
+| `npm run typecheck` | 타입 검사 |
+| `npm run lint` / `npm run format` | Biome 검사 / 자동 수정 |
+| `npm run openapi -w backend` | `docs/api/openapi.json` 다시 만들기 |
+| `npm run db:migrate -w backend` | 스키마를 바꾼 뒤 새 마이그레이션 만들기 |
+
+`AI_MODE=mock`이면 Gemini 키 없이 고정된 가짜 응답으로 동작한다.
+
+## 프론트엔드가 붙을 때
+
+- API 요청·응답 타입은 `@chajeumpyo/shared`에서 바로 import한다. 백엔드와 같은 zod 스키마라 폼 검증에도 그대로 쓸 수 있다.
+- 에러는 항상 `{ "error": { "code", "message", "details?" } }` 형식이다. `code` 목록은 `packages/shared/src/errors.ts`.
+- 백엔드가 아직 없는 API는 `docs/api/openapi.json`이나 `03_API명세서.md` 예시로 목업을 만든다.
 
 ## 환경 변수
 
