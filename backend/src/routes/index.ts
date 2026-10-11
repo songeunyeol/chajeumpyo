@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { createAdminRouter } from "./admin";
 import { createAuthRouter } from "./auth";
 import { createBuildingsRouter } from "./buildings";
 import { createClaimsRouter } from "./claims";
@@ -17,5 +18,6 @@ export function createApiRouter() {
   router.use(createClaimsRouter());
   router.use(createPickupsRouter());
   router.use(createNotificationsRouter());
+  router.use(createAdminRouter());
   return router;
 }
