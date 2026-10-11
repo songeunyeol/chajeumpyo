@@ -355,10 +355,11 @@
 #### `POST /found-items/:id/pickup-qr` · 회원
 `storageType`이 `HANDED_OVER`일 때만. 아니면 `409 INVALID_STORAGE_TYPE`. 이미 수령 완료된 물건이면 `409 ALREADY_CLAIMED`.
 ```json
-{ "pickupId": "p_...", "qrToken": "pk_...", "expiresAt": "2026-10-14T14:00:00+09:00" }
+{ "method": "CENTER_QR", "pickupId": "p_...", "qrToken": "pk_...", "status": "ISSUED", "expiresAt": "2026-10-14T14:00:00+09:00" }
 ```
 - 프론트가 `qrToken`을 QR 이미지로 그린다. 서버에는 해시만 저장한다.
 - 같은 계정이 다시 발급받으면 이전 `ISSUED` QR은 `EXPIRED`가 된다.
+- 응답에 `method`가 있다: 일반 계정 `CENTER_QR`(QR 발급), 체험 계정 `DEMO`(바로 완료).
 - **체험 계정**은 QR 없이 바로 완료된다. 프론트는 "시연: 보관처에서 수령 처리됨" 화면을 보여준다.
 ```json
 { "pickupId": "p_...", "method": "DEMO", "status": "COMPLETED", "completedAt": "..." }
@@ -408,10 +409,12 @@
 ```
 - 만료면 `410 QR_EXPIRED`, 이미 처리됐으면 `409 ALREADY_CLAIMED`.
 - 물건의 보관처가 관리자의 소속 보관처(`user.storage_place_id`)와 다르면 `403 FORBIDDEN`.
+- 없는 QR은 `404`. 같은 사람이 새 QR을 받아 만료된 이전 QR도 `410 QR_EXPIRED`.
 
 #### `POST /admin/pickups/:id/complete` · 관리자
 상태를 `COMPLETED`, 습득물을 `CLAIMED`로 바꾸고 처리 관리자를 기록한다. `purge_after`를 30일 뒤로 설정한다. (초안)
 - 한 트랜잭션 안에서 물건 상태까지 확인한다. 다른 사람의 수령이 먼저 완료됐으면 `409 ALREADY_CLAIMED`. 다른 보관처 물건이면 `403 FORBIDDEN`.
+- 완료되면 수령한 계정의 신고를 `RESOLVED`로 바꾸고, 같은 물건의 다른 사람 QR은 `EXPIRED`로 바꾼다.
 ```json
 { "pickupId": "p_...", "status": "COMPLETED", "completedAt": "..." }
 ```
