@@ -30,7 +30,7 @@
 | 11 | 민감 정보가 없는 사진의 `image_public_key`가 원본 축소본인지 명시 필요 | F-03 | 열림 |
 | 12 | 수령되지 않고 만료된 물건의 기록, 분실 신고, 회원 탈퇴 시 데이터 삭제 정책 없음 | F-12, F-18 | 열림 |
 | 13 | 관리자는 `GET /notifications`(회원 전용)를 못 써서 `MULTI_REVEAL` 알림을 받을 경로가 없음 | F-10, F-13 | 열림 |
-| 14 | JWT 만료 시간, 로그아웃 미정 | F-04 | 열림 |
+| 14 | JWT 만료 시간, 로그아웃 미정 | F-04 | 초안 적용(10/11): 7일(`ACCESS_TOKEN_TTL_HOURS`), 체험 24시간, 로그아웃은 프론트에서 토큰 삭제. 확정 필요 |
 | 15 | 옛 문서 `docs/erd-v1.md`, `docs/matching-weights.md`, `docs/ai-stack.md`(평가 방법)가 새 명세와 충돌 | - | 열림 |
 | 16 | Prisma 7부터 스키마의 `datasource.url` 미지원 → `prisma.config.ts`로 이동. ERD 6장 스키마 초안 갱신 필요 | ERD | 반영됨(백엔드 세팅): `backend/prisma.config.ts`, ERD 6장은 실제 스키마 파일로 대체 |
 

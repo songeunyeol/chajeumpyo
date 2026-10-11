@@ -1,7 +1,7 @@
 import { Category, FoundItemExtraction, relatedCategories } from "@chajeumpyo/shared";
 import { describe, expect, it } from "vitest";
-import { mockAiClient } from "../src/ai/mock";
-import { EMBEDDING_DIM } from "../src/ai/types";
+import { mockAiClient } from "../../src/ai/mock";
+import { EMBEDDING_DIM } from "../../src/ai/types";
 
 describe("relatedCategories", () => {
   it("자기 자신, 연관 종류, ETC를 포함한다", () => {

@@ -149,6 +149,10 @@
 { "email": "student@skuniv.ac.kr" }
 // 응답 204
 ```
+- 이메일은 앞뒤 공백을 지우고 소문자로 바꿔 처리한다.
+- 학교 도메인이 아니면 `400 INVALID_EMAIL_DOMAIN`, 이미 가입된 이메일이면 `409 EMAIL_TAKEN`.
+- 같은 이메일은 1분에 한 번, 같은 IP는 10분에 10번까지. 넘으면 `429 RATE_LIMITED`.
+- 코드는 6자리 숫자, 10분 유효. 새 코드를 받으면 이전 코드는 무효. 5번 틀리면 다시 받아야 한다.
 
 #### `POST /auth/email/verify` · 공개
 ```json
@@ -165,25 +169,29 @@
 // 요청
 { "verificationToken": "eyJ...", "password": "********" }
 // 응답 201
-{ "accessToken": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
+{ "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
 ```
+- 비밀번호는 8~64자. (초안)
 
 #### `POST /auth/login` · 공개
 ```json
 // 요청
 { "email": "student@skuniv.ac.kr", "password": "********" }
 // 응답 200
-{ "accessToken": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
+{ "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
 ```
+- 분실자(`USER`) 계정만. 틀린 비밀번호와 없는 이메일은 같은 `401 UNAUTHORIZED` 메시지로 응답한다.
+- 토큰 유효 기간은 7일(초안, open-issues #14). 로그아웃은 프론트가 토큰을 지운다. 만료되면 다시 로그인한다.
 
 #### `POST /auth/demo` · 공개
 호출할 때마다 **새 체험 계정**을 만들어 로그인시킨다. 체험 계정은 시드 습득물만 후보로 보고, 판정·열람·수령해도 시드 상태가 바뀌지 않는다. 24시간 뒤 삭제된다.
 - 같은 IP에서 과도하게 만들면 `429 RATE_LIMITED`. (초안: 10분에 5개)
 ```json
-{ "accessToken": "...", "user": { "id": "u_...", "email": "demo-7f3a@demo.local", "role": "DEMO" }, "expiresAt": "2026-10-14T14:00:00+09:00" }
+{ "accessToken": "...", "expiresAt": "2026-10-14T14:00:00+09:00", "user": { "id": "u_...", "email": "demo-7f3a@demo.local", "role": "DEMO" } }
 ```
 
 #### `GET /me` · 회원
+- 토큰이 없거나 만료·위조됐거나, 계정이 삭제됐으면 `401`. 관리자 토큰이면 `403`.
 ```json
 { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" }
 ```
@@ -354,7 +362,11 @@
 ### 관리자
 
 #### `POST /admin/auth/login` · 공개
-`/auth/login`과 같은 형식. `role`이 `ADMIN`인 계정만 성공한다.
+`/auth/login`과 같은 형식. `role`이 `ADMIN`인 계정만 성공한다. 응답에 소속 보관처를 함께 준다.
+```json
+{ "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "guard@skuniv.ac.kr", "role": "ADMIN" }, "storagePlace": { "id": 3, "name": "혜인관 경비실" } }
+```
+- 관리자 계정은 `npm run admin:create -w backend`로 직접 만든다.
 
 #### `POST /admin/pickups/scan` · 관리자
 ```json

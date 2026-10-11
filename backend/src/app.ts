@@ -7,7 +7,7 @@ import { corsOrigins, env } from "./config/env";
 import { logger } from "./lib/logger";
 import { errorHandler, notFound } from "./middlewares/error";
 import { buildOpenApiDocument } from "./openapi/document";
-import { apiRouter } from "./routes";
+import { createApiRouter } from "./routes";
 
 export function createApp() {
   const app = express();
@@ -28,7 +28,7 @@ export function createApp() {
   });
   app.use("/api/docs", helmet({ contentSecurityPolicy: false }), swaggerUi.serve, swaggerUi.setup(openapi));
 
-  app.use("/api/v1", apiRouter);
+  app.use("/api/v1", createApiRouter());
 
   app.use(notFound);
   app.use(errorHandler);
