@@ -1,0 +1,430 @@
+# API 명세서
+
+> 상태: 초안 (2026-10-11, 검토 반영 2026-10-11). 기준 스택: TypeScript + Express.
+> 연관 문서: [기능 명세서](./01_기능명세서.md) · [ERD](./02_ERD.md) · [검토 이력](./docs/open-issues.md)
+> 요청·응답 스키마의 코드 기준은 `packages/shared`(zod)이고, 서버 실행 중 `/api/docs`에서 OpenAPI 문서를 볼 수 있다.
+
+## 1. 공통
+
+- **Base URL**: `/api/v1`
+- **인증**: `Authorization: Bearer <accessToken>` (JWT). 습득물 등록과 건물 조회는 인증이 필요 없다.
+- **권한 표기**: `공개` 누구나 · `회원` 분실자·체험 계정 · `관리자` 관리자 계정
+- **시간**: ISO 8601, 한국 시간 기준으로 표시는 프론트에서 처리
+- **이미지 URL**: 비공개 사진은 만료 시간이 있는 서명 URL로 내려준다. (초안: 10분)
+
+### 에러 응답 형식
+
+```json
+{
+  "error": {
+    "code": "MATCH_LOCKED",
+    "message": "이 물건은 확인 시도 횟수를 모두 사용했어요."
+  }
+}
+```
+
+### 에러 코드
+
+| HTTP | code | 상황 |
+| --- | --- | --- |
+| 400 | `VALIDATION_ERROR` | 입력 형식 오류 |
+| 400 | `INVALID_EMAIL_DOMAIN` | 학교 이메일이 아님 |
+| 400 | `INVALID_CODE` | 인증 코드 불일치·만료 |
+| 401 | `UNAUTHORIZED` | 토큰 없음·만료 |
+| 403 | `FORBIDDEN` | 권한 없음 (일치 판정을 통과하지 않은 습득물 상세 조회, 후보가 아닌 습득물에 판정 시도, 다른 보관처 물건 수령 처리 등) |
+| 404 | `NOT_FOUND` | 대상 없음 |
+| 409 | `EMAIL_TAKEN` | 이미 가입된 이메일 |
+| 409 | `MATCH_LOCKED` | 시도 횟수 초과로 잠김 |
+| 409 | `ALREADY_CLAIMED` | 이미 수령 완료된 물건 |
+| 409 | `ALREADY_ANSWERED` | 이미 답한 확인 질문 |
+| 409 | `INVALID_STORAGE_TYPE` | 보관 위치와 맞지 않는 수령 방식 |
+| 410 | `QR_EXPIRED` | 수령 QR 만료 |
+| 413 | `IMAGE_TOO_LARGE` | 사진 용량 초과 |
+| 422 | `NO_OBJECT_DETECTED` | 사진에서 물건을 찾지 못함 |
+| 429 | `RATE_LIMITED` | 등록·요청 과다 |
+| 500 | `INTERNAL_ERROR` | 서버 오류 |
+| 502 | `AI_UNAVAILABLE` | AI 호출 실패로 저장하지 못함 (분실 신고 추출 실패 등). 습득물 등록은 실패해도 `201 REVIEW`로 응답한다 |
+
+---
+
+## 2. 엔드포인트 목록
+
+| 메서드 | 경로 | 권한 | 기능 ID |
+| --- | --- | --- | --- |
+| GET | `/buildings` | 공개 | F-01 |
+| GET | `/buildings/nearest` | 공개 | F-01 |
+| GET | `/storage-places` | 공개 | F-01 |
+| POST | `/found-items` | 공개 | F-01, F-02, F-03 |
+| POST | `/auth/email/code` | 공개 | F-04 |
+| POST | `/auth/email/verify` | 공개 | F-04 |
+| POST | `/auth/signup` | 공개 | F-04 |
+| POST | `/auth/login` | 공개 | F-04 |
+| POST | `/auth/demo` | 공개 | F-05 |
+| GET | `/me` | 회원 | F-04 |
+| POST | `/lost-reports` | 회원 | F-06, F-07 |
+| GET | `/lost-reports` | 회원 | F-06 |
+| GET | `/lost-reports/:id/candidates` | 회원 | F-07 |
+| PATCH | `/lost-reports/:id` | 회원 | F-06 |
+| POST | `/lost-reports/:id/claims` | 회원 | F-08 |
+| POST | `/claims/:attemptId/answer` | 회원 | F-09 |
+| GET | `/found-items/:id/detail` | 회원 | F-10, F-12 |
+| POST | `/found-items/:id/pickup-qr` | 회원 | F-11 |
+| POST | `/found-items/:id/self-pickup` | 회원 | F-11 |
+| GET | `/notifications` | 회원 | F-13 |
+| PATCH | `/notifications/:id/read` | 회원 | F-13 |
+| POST | `/admin/auth/login` | 공개 | F-14 |
+| POST | `/admin/pickups/scan` | 관리자 | F-11, F-14 |
+| POST | `/admin/pickups/:id/complete` | 관리자 | F-11, F-14 |
+| GET | `/admin/found-items` | 관리자 | F-14 |
+| GET | `/admin/found-items/:id` | 관리자 | F-14 |
+| PATCH | `/admin/found-items/:id` | 관리자 | F-14 |
+| GET | `/admin/stats/hotspots` | 관리자 | F-15 |
+
+---
+
+## 3. 상세
+
+### 건물
+
+#### `GET /buildings` · 공개
+건물 목록. 위치 권한이 없을 때 선택지로 쓴다.
+
+```json
+{ "buildings": [ { "id": 1, "name": "혜인관" }, { "id": 2, "name": "청운관" } ] }
+```
+
+#### `GET /buildings/nearest?lat=37.615&lng=127.013` · 공개
+가장 가까운 건물. 거리가 기준보다 멀면 `building`이 `null`이다.
+
+```json
+{ "building": { "id": 1, "name": "혜인관" }, "distanceM": 42 }
+```
+
+#### `GET /storage-places?buildingId=1` · 공개
+활성 보관처 목록. `buildingId`를 주면 그 건물 보관처가 앞에 온다(`sameBuilding: true`).
+
+```json
+{
+  "storagePlaces": [
+    { "id": 3, "name": "혜인관 경비실", "building": { "id": 1, "name": "혜인관" }, "org": "GUARD", "guideText": "혜인관 1층 정문 옆 경비실", "sameBuilding": true },
+    { "id": 1, "name": "종합서비스센터", "building": { "id": 2, "name": "청운관" }, "org": "CENTER", "guideText": "청운관 1층 종합서비스센터", "sameBuilding": false }
+  ]
+}
+```
+
+### 습득물 등록
+
+#### `POST /found-items` · 공개 · `multipart/form-data`
+| 필드 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| `image` | file | O | 사진 1장 |
+| `buildingId` | number | O | 건물 |
+| `storageType` | `IN_PLACE` \| `HANDED_OVER` | O | 보관 위치 (그 자리에 둠 / 보관처에 맡김) |
+| `storagePlaceId` | number | `HANDED_OVER`면 O | 보관처 |
+
+**처리**: 지문(기기·IP 해시)으로 등록 제한 확인 → 이미지 저장 → AI 속성 추출·민감 정보 판단 → 블러본 저장 → 임베딩 저장 → 열린 신고와 비교해 알림 생성.
+
+**201 응답** (AI 처리를 응답 안에서 끝내는 방식, 10초 목표)
+```json
+{
+  "id": "6a1f...",
+  "status": "REGISTERED",
+  "category": "EARPHONE",
+  "building": { "id": 1, "name": "혜인관" },
+  "storageType": "HANDED_OVER",
+  "storagePlace": { "id": 3, "name": "혜인관 경비실", "guideText": "혜인관 1층 정문 옆 경비실" },
+  "message": null
+}
+```
+- 응답에는 공개 정보만 담는다. 색·특징·`categoryAlt`는 습득자에게도 돌려주지 않는다.
+- **AI 실패 시에도 `201`**로 응답한다. `"status": "REVIEW"`, `"category": null`, `"message": "분석이 늦어져서 관리자가 확인한 뒤 등록돼요."`
+- 물건이 없는 사진이면 `422 NO_OBJECT_DETECTED`, 저장하지 않는다.
+- `HANDED_OVER`인데 `storagePlaceId`가 없거나 비활성 보관처면 `400 VALIDATION_ERROR`.
+
+### 인증
+
+#### `POST /auth/email/code` · 공개
+```json
+// 요청
+{ "email": "student@skuniv.ac.kr" }
+// 응답 204
+```
+
+#### `POST /auth/email/verify` · 공개
+```json
+// 요청
+{ "email": "student@skuniv.ac.kr", "code": "482913" }
+// 응답 200
+{ "verificationToken": "eyJ...", "expiresAt": "2026-10-13T14:10:00+09:00" }
+```
+- `verificationToken`은 10분 만료 JWT. 내용: `{ email, purpose: "signup", verificationId }`
+
+#### `POST /auth/signup` · 공개
+- 토큰이 만료됐거나 이미 가입에 쓴 토큰(`email_verification.consumed_at`이 있음)이면 `400 INVALID_CODE`.
+```json
+// 요청
+{ "verificationToken": "eyJ...", "password": "********" }
+// 응답 201
+{ "accessToken": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
+```
+
+#### `POST /auth/login` · 공개
+```json
+// 요청
+{ "email": "student@skuniv.ac.kr", "password": "********" }
+// 응답 200
+{ "accessToken": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
+```
+
+#### `POST /auth/demo` · 공개
+호출할 때마다 **새 체험 계정**을 만들어 로그인시킨다. 체험 계정은 시드 습득물만 후보로 보고, 판정·열람·수령해도 시드 상태가 바뀌지 않는다. 24시간 뒤 삭제된다.
+- 같은 IP에서 과도하게 만들면 `429 RATE_LIMITED`. (초안: 10분에 5개)
+```json
+{ "accessToken": "...", "user": { "id": "u_...", "email": "demo-7f3a@demo.local", "role": "DEMO" }, "expiresAt": "2026-10-14T14:00:00+09:00" }
+```
+
+#### `GET /me` · 회원
+```json
+{ "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" }
+```
+
+### 분실 신고와 후보
+
+#### `POST /lost-reports` · 회원
+```json
+// 요청
+{
+  "category": "EARPHONE",
+  "lostFrom": "2026-10-13T13:00:00+09:00",
+  "lostTo": "2026-10-13T15:00:00+09:00",
+  "buildingId": 1,
+  "description": "흰색 에어팟 프로, 케이스에 곰돌이 스티커, 오른쪽 아래 긁힌 자국"
+}
+// 응답 201
+{
+  "id": "r_...",
+  "status": "OPEN",
+  "candidates": [
+    {
+      "foundItemId": "6a1f...",
+      "category": "EARPHONE",
+      "foundAt": "2026-10-13T14:20:00+09:00",
+      "building": { "id": 1, "name": "혜인관" },
+      "attemptsLeft": 3,
+      "locked": false,
+      "isSeed": false
+    }
+  ]
+}
+```
+- `buildingId`는 선택. 모르면 생략한다.
+- 후보에는 **공개 정보만** 담는다. 사진, 색, 특징, 점수는 넣지 않는다.
+- 후보는 서버가 점수로 고른 **최대 5개**이고, **`foundAt` 최신순**으로 내려준다. 배열 순서는 점수와 관계없다.
+- 체험 계정은 시드 습득물만, 일반 계정은 시드가 아닌 습득물만 후보로 받는다. (초안)
+- 설명 추출에 실패하면 저장하지 않고 `502 AI_UNAVAILABLE`.
+
+#### `GET /lost-reports` · 회원
+내 신고 목록.
+```json
+{ "reports": [ { "id": "r_...", "category": "EARPHONE", "status": "OPEN", "candidateCount": 2, "createdAt": "..." } ] }
+```
+
+#### `GET /lost-reports/:id/candidates` · 회원
+`POST` 응답의 `candidates`와 같은 형식. 새 습득물이 등록되면 늘어난다.
+
+#### `PATCH /lost-reports/:id` · 회원
+```json
+// 요청: 신고 닫기
+{ "status": "CLOSED" }
+// 요청: 설명 고치기 (다시 추출·임베딩하고 후보를 다시 고른다)
+{ "description": "흰색 에어팟 프로, 케이스에 곰돌이 스티커" }
+// 응답 200: GET /lost-reports/:id/candidates와 같은 형식에 신고 상태를 더한 것
+{ "id": "r_...", "status": "OPEN", "candidates": [ ... ] }
+```
+- 설명 추출에 실패하면 수정하지 않고 `502 AI_UNAVAILABLE`.
+
+### 일치 판정
+
+#### `POST /lost-reports/:id/claims` · 회원
+```json
+// 요청
+{ "foundItemId": "6a1f..." }
+```
+
+- 이 신고의 현재 후보(`GET /lost-reports/:id/candidates`)에 없는 습득물이면 `403 FORBIDDEN`.
+- 판정 기준: 특징 일치 1개 이상·모순 0개면 통과, 일치 1개 이상·모순 1개 이상이면 경계, 일치 0개면 실패. 상세는 기능 명세서 F-08.
+- 이 습득물에 대한 마지막 시도 이후 신고 설명이 바뀌지 않았으면 **새 시도를 만들지 않고 이전 결과를 그대로** 돌려준다(`"reused": true`). 시도 횟수를 쓰지 않는다.
+
+**통과**
+```json
+{
+  "attemptId": "m_...",
+  "result": "PASS",
+  "reused": false,
+  "matchedFields": ["feature:sticker", "place"],
+  "foundItemId": "6a1f..."
+}
+```
+→ 프론트는 `GET /found-items/:id/detail`로 이동한다.
+
+**경계 (확인 질문)**
+```json
+{
+  "attemptId": "m_...",
+  "result": "BORDERLINE",
+  "reused": false,
+  "question": "케이스에 붙은 스티커는 어떤 그림인가요?"
+}
+```
+- 질문은 분실자가 신고에 적지 않은 특징으로 만든다. 이미 답한 경계 시도를 `reused`로 돌려줄 때는 질문 대신 답변 결과(`PASS`/`FAIL`)를 돌려준다.
+
+**실패**
+```json
+{ "attemptId": "m_...", "result": "FAIL", "reused": false, "attemptsLeft": 2 }
+```
+
+- 점수 숫자는 응답에 넣지 않는다. 맞은 항목(`matchedFields`)은 **통과했을 때만** 보여준다. 실패·경계 응답에는 어떤 항목이 맞았는지 넣지 않는다.
+- 계정·습득물별 실패 3회면 `409 MATCH_LOCKED`. (초안)
+- 체험 계정이 시드가 아닌 습득물에 시도하면 `403 FORBIDDEN`.
+
+#### `POST /claims/:attemptId/answer` · 회원
+```json
+// 요청
+{ "answer": "곰돌이" }
+// 응답 200 (통과)
+{ "result": "PASS", "foundItemId": "6a1f..." }
+// 응답 200 (실패)
+{ "result": "FAIL", "attemptsLeft": 1 }
+```
+- 질문 하나당 답변은 한 번만 받는다. 이미 답한 시도면 `409 ALREADY_ANSWERED`.
+- 정답 판정: 공백·조사·문장부호를 정리하고 질문에 나온 단어를 뺀 답변이 2글자 이상이며 저장 값에 포함되면 정답. 아니면 LLM이 `MATCH`/`NO_MATCH`로 판정한다(온도 0).
+
+### 습득물 상세와 수령
+
+#### `GET /found-items/:id/detail` · 회원
+이 계정이 해당 습득물에 `PASS`를 받은 경우에만 응답한다. 아니면 `403 FORBIDDEN`. **호출할 때마다 `reveal_log`에 기록한다.**
+
+```json
+{
+  "id": "6a1f...",
+  "category": "EARPHONE",
+  "color": "흰색",
+  "imageUrl": "https://...signed... (블러본, 10분 만료)",
+  "building": { "id": 1, "name": "혜인관" },
+  "storageType": "HANDED_OVER",
+  "storagePlace": { "id": 3, "name": "혜인관 경비실", "guideText": "혜인관 1층 정문 옆 경비실" },
+  "status": "REVEALED"
+}
+```
+- 체험 계정이 열람해도 시드 습득물의 `status`는 바뀌지 않는다.
+
+#### `POST /found-items/:id/pickup-qr` · 회원
+`storageType`이 `HANDED_OVER`일 때만. 아니면 `409 INVALID_STORAGE_TYPE`. 이미 수령 완료된 물건이면 `409 ALREADY_CLAIMED`.
+```json
+{ "pickupId": "p_...", "qrToken": "pk_...", "expiresAt": "2026-10-14T14:00:00+09:00" }
+```
+- 프론트가 `qrToken`을 QR 이미지로 그린다. 서버에는 해시만 저장한다.
+- 같은 계정이 다시 발급받으면 이전 `ISSUED` QR은 `EXPIRED`가 된다.
+- **체험 계정**은 QR 없이 바로 완료된다. 프론트는 "시연: 보관처에서 수령 처리됨" 화면을 보여준다.
+```json
+{ "pickupId": "p_...", "method": "DEMO", "status": "COMPLETED", "completedAt": "..." }
+```
+
+#### `POST /found-items/:id/self-pickup` · 회원
+`storageType`이 `IN_PLACE`일 때만. 상태를 `CLAIMED`로 바꾸고 본인 신고로 기록한다. 이미 수령 완료된 물건이면 `409 ALREADY_CLAIMED`. 체험 계정은 기록만 남기고 시드 상태를 바꾸지 않는다(`method: "DEMO"`).
+```json
+{ "pickupId": "p_...", "method": "SELF_REPORT", "status": "COMPLETED" }
+```
+
+### 알림
+
+#### `GET /notifications` · 회원
+```json
+{
+  "notifications": [
+    { "id": "n_...", "type": "NEW_CANDIDATE", "message": "혜인관에서 이어폰이 새로 등록됐어요.", "lostReportId": "r_...", "readAt": null, "createdAt": "..." }
+  ],
+  "unreadCount": 1
+}
+```
+
+#### `PATCH /notifications/:id/read` · 회원
+응답 204.
+
+### 관리자
+
+#### `POST /admin/auth/login` · 공개
+`/auth/login`과 같은 형식. `role`이 `ADMIN`인 계정만 성공한다.
+
+#### `POST /admin/pickups/scan` · 관리자
+```json
+// 요청
+{ "qrToken": "pk_..." }
+// 응답 200
+{
+  "pickupId": "p_...",
+  "foundItem": { "id": "6a1f...", "category": "EARPHONE", "building": "혜인관", "imageUrl": "...(원본)" },
+  "claimant": { "emailMasked": "st****@skuniv.ac.kr" },
+  "expiresAt": "..."
+}
+```
+- 만료면 `410 QR_EXPIRED`, 이미 처리됐으면 `409 ALREADY_CLAIMED`.
+- 물건의 보관처가 관리자의 소속 보관처(`user.storage_place_id`)와 다르면 `403 FORBIDDEN`.
+
+#### `POST /admin/pickups/:id/complete` · 관리자
+상태를 `COMPLETED`, 습득물을 `CLAIMED`로 바꾸고 처리 관리자를 기록한다. `purge_after`를 30일 뒤로 설정한다. (초안)
+- 한 트랜잭션 안에서 물건 상태까지 확인한다. 다른 사람의 수령이 먼저 완료됐으면 `409 ALREADY_CLAIMED`. 다른 보관처 물건이면 `403 FORBIDDEN`.
+```json
+{ "pickupId": "p_...", "status": "COMPLETED", "completedAt": "..." }
+```
+
+#### `GET /admin/found-items?status=REVIEW&page=1` · 관리자
+습득물 목록. P0에서는 `REVIEW`(검토 대기) 확인용으로 쓴다.
+
+#### `GET /admin/found-items/:id` · 관리자
+공개·비공개 정보와 원본 사진, 열람·수령 기록 전체.
+
+#### `PATCH /admin/found-items/:id` · 관리자
+검토 대기 습득물의 속성을 직접 고치고 `REGISTERED`로 바꾼다.
+```json
+{ "category": "UMBRELLA", "color": "검정", "features": ["손잡이 금이 감"], "status": "REGISTERED" }
+```
+
+#### `GET /admin/stats/hotspots?from=2026-10-01&to=2026-10-31` · 관리자
+```json
+{
+  "isSeedData": true,
+  "byBuilding": [ { "building": "학술정보관", "count": 12 } ],
+  "byHour": [ { "hour": 13, "count": 7 } ],
+  "byCategory": [ { "category": "CHARGER", "count": 9 } ],
+  "topInsight": "학술정보관에서 오후 1~3시에 충전기 분실이 가장 많아요."
+}
+```
+- 시드 데이터가 섞이면 `isSeedData: true`, 화면에 "시드 집계"를 표시한다.
+
+---
+
+## 4. AI 응답 형식 (내부, 고정 계약)
+
+모델이 바뀌어도 백엔드는 이 형식만 받는다. 모델 선정 전에는 이 형식의 가짜 응답으로 개발한다.
+
+```json
+{
+  "hasObject": true,
+  "category": "EARPHONE",
+  "categoryAlt": "CHARGER",
+  "color": "흰색",
+  "brand": "Apple",
+  "features": [
+    { "key": "sticker", "value": "곰돌이 스티커" },
+    { "key": "scratch", "value": "오른쪽 아래 긁힘" }
+  ],
+  "description": "흰색 애플 무선 이어폰 케이스, 곰돌이 스티커와 오른쪽 아래 긁힘이 있다.",
+  "isSensitive": false
+}
+```
+
+- `categoryAlt`: 2순위 종류. 확신이 높으면 `null`. 후보 검색에만 쓴다.
+- 코드 기준: `packages/shared/src/ai.ts`
+
+분실 신고 설명도 같은 형식으로 추출한다(`hasObject`, `isSensitive`, `categoryAlt` 제외).
