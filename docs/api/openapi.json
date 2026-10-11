@@ -4162,6 +4162,276 @@
         }
       }
     },
+    "/notifications": {
+      "get": {
+        "tags": [
+          "알림"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "내 알림 (F-13)",
+        "description": "최신순 최대 50개. 분실자·체험 계정·관리자 모두 자기 알림만 본다.",
+        "responses": {
+          "200": {
+            "description": "알림",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "notifications": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "NEW_CANDIDATE",
+                              "MULTI_REVEAL",
+                              "SYSTEM"
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "foundItemId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "lostReportId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "readAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "type",
+                          "message",
+                          "foundItemId",
+                          "lostReportId",
+                          "readAt",
+                          "createdAt"
+                        ]
+                      }
+                    },
+                    "unreadCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "notifications",
+                    "unreadCount"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "tags": [
+          "알림"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "알림 읽음",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "읽음"
+          },
+          "404": {
+            "description": "NOT_FOUND: 없거나 남의 알림",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "tags": [
+          "알림"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "알림 모두 읽음",
+        "responses": {
+          "204": {
+            "description": "모두 읽음"
+          }
+        }
+      }
+    },
     "/found-items/{id}/pickup-qr": {
       "post": {
         "tags": [
