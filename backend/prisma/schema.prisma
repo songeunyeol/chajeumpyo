@@ -238,7 +238,7 @@ model MatchAttempt {
   answerCorrect      Boolean?    @map("answer_correct")
   answeredAt         DateTime?   @map("answered_at")
   createdAt          DateTime    @default(now()) @map("created_at")
-  reveal             RevealLog?
+  reveals            RevealLog[]
 
   @@index([userId, foundItemId])
   @@map("match_attempt")
@@ -251,10 +251,12 @@ model RevealLog {
   foundItem      FoundItem     @relation(fields: [foundItemId], references: [id])
   foundItemId    String        @map("found_item_id") @db.Uuid
   matchAttempt   MatchAttempt? @relation(fields: [matchAttemptId], references: [id])
-  matchAttemptId String?       @unique @map("match_attempt_id") @db.Uuid
+  /// 열람할 때마다 한 줄씩 남기므로 같은 시도로 여러 줄이 생길 수 있다
+  matchAttemptId String?       @map("match_attempt_id") @db.Uuid
   revealedAt     DateTime      @default(now()) @map("revealed_at")
 
   @@index([foundItemId])
+  @@index([userId, foundItemId])
   @@map("reveal_log")
 }
 

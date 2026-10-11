@@ -29,7 +29,7 @@ erDiagram
     FOUND_ITEM ||--|| FOUND_ITEM_DETAIL : "비공개 정보"
     FOUND_ITEM ||--o{ MATCH_ATTEMPT : "대상"
     LOST_REPORT ||--o{ MATCH_ATTEMPT : "근거"
-    MATCH_ATTEMPT ||--o| REVEAL_LOG : "통과 시"
+    MATCH_ATTEMPT ||--o{ REVEAL_LOG : "통과 시"
     FOUND_ITEM ||--o{ REVEAL_LOG : "열람됨"
     FOUND_ITEM ||--o{ PICKUP : "수령"
 
@@ -168,7 +168,7 @@ erDiagram
 | `found_item_detail` | 습득물의 **비공개 정보** | 일치 판정 통과자, 관리자만 접근 |
 | `lost_report` | 분실 신고 | 신고 설명도 같은 속성 체계로 추출·임베딩. 설명을 고치면 `description_hash`가 바뀐다 |
 | `match_attempt` | 일치 판정 시도 | 계정·습득물별 실패 횟수로 잠금 판단. 경계 판정이면 확인 질문을 여기 저장 |
-| `reveal_log` | 위치 열람 기록 | 상세 조회할 때마다 한 줄씩 |
+| `reveal_log` | 위치 열람 기록 | 상세 조회할 때마다 한 줄씩. 같은 시도로 여러 줄이 생기므로 `match_attempt_id`는 UNIQUE가 아니다 |
 | `pickup` | 수령 처리 | 물건당 여러 건 가능(QR 재발급). **완료는 물건당 1건** |
 | `notification` | 앱 내 알림 | 공개 정보만 담는다 |
 
