@@ -50,3 +50,22 @@ export const RegisterFoundItemResponse = z.object({
   message: z.string().nullable(),
 });
 export type RegisterFoundItemResponse = z.infer<typeof RegisterFoundItemResponse>;
+
+export const FoundItemIdParams = z.object({ id: z.uuid() });
+
+/** GET /found-items/:id/detail: 일치 판정을 통과한 계정에게만 (F-10) */
+export const FoundItemDetailResponse = z.object({
+  id: z.string(),
+  category: Category,
+  color: z.string().nullable(),
+  /** 공개본(민감하면 블러) 서명 URL. 10분 뒤 만료 */
+  imageUrl: z.string(),
+  imageUrlExpiresAt: z.iso.datetime(),
+  building: BuildingSummary,
+  storageType: StorageType,
+  storagePlace: StoragePlaceSummary.nullable(),
+  status: FoundStatus,
+  foundAt: z.iso.datetime(),
+  isSeed: z.boolean(),
+});
+export type FoundItemDetailResponse = z.infer<typeof FoundItemDetailResponse>;
