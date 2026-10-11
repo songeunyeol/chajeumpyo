@@ -7,6 +7,7 @@ export * from "./api/found-items";
 export * from "./api/lost-reports";
 export * from "./api/notifications";
 export * from "./api/pickups";
+export * from "./api/stats";
 export * from "./api/storage-places";
 export * from "./enums";
 export * from "./errors";
