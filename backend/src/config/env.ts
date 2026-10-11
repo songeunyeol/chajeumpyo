@@ -37,6 +37,17 @@ const Env = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default("찾음표 <no-reply@chajeumpyo.local>"),
+
+  /** 사진 저장소. local: 서버 디스크(개발). 클라우드 저장소는 배포 결정 후 추가 */
+  STORAGE_DRIVER: z.enum(["local"]).default("local"),
+  /** local 저장 위치 (backend 폴더 기준) */
+  STORAGE_LOCAL_DIR: z.string().default("uploads"),
+  /** 서명 URL에 쓰는 이 서버의 외부 주소 */
+  PUBLIC_BASE_URL: z.string().default("http://localhost:4000"),
+  /** 습득물 보관 기한(일). 지나면 기한 만료 (초안, F-18) */
+  FOUND_ITEM_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+  /** AI 호출 한 번의 제한 시간 */
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
 });
 
 /** 테스트에서 설정 규칙을 확인할 수 있게 내보낸다 */

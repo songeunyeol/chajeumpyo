@@ -11,4 +11,20 @@ function createAiClient(): AiClient {
   throw new Error("AI_MODE=gemini는 아직 구현되지 않았어요. AI_MODE=mock으로 실행하세요.");
 }
 
-export const ai = createAiClient();
+let current: AiClient = createAiClient();
+
+/** 테스트에서 AI 동작(실패, 물건 없음, 민감 정보 등)을 바꿔 끼울 때 쓴다. */
+export function setAiClient(client: AiClient) {
+  current = client;
+}
+
+export function resetAiClient() {
+  current = createAiClient();
+}
+
+/** 서비스 코드는 이 객체로 AI를 부른다. */
+export const ai: AiClient = {
+  extractFoundItem: (...args) => current.extractFoundItem(...args),
+  extractLostReport: (...args) => current.extractLostReport(...args),
+  embed: (...args) => current.embed(...args),
+};

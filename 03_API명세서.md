@@ -54,6 +54,7 @@
 | GET | `/buildings` | 공개 | F-01 |
 | GET | `/buildings/nearest` | 공개 | F-01 |
 | GET | `/storage-places` | 공개 | F-01 |
+| GET | `/files/*` | 서명 URL | F-10, F-14 |
 | POST | `/found-items` | 공개 | F-01, F-02, F-03 |
 | POST | `/auth/email/code` | 공개 | F-04 |
 | POST | `/auth/email/verify` | 공개 | F-04 |
@@ -140,6 +141,10 @@
 - **AI 실패 시에도 `201`**로 응답한다. `"status": "REVIEW"`, `"category": null`, `"message": "분석이 늦어져서 관리자가 확인한 뒤 등록돼요."`
 - 물건이 없는 사진이면 `422 NO_OBJECT_DETECTED`, 저장하지 않는다.
 - `HANDED_OVER`인데 `storagePlaceId`가 없거나 비활성 보관처면 `400 VALIDATION_ERROR`.
+- `IN_PLACE`인데 `storagePlaceId`를 보내면 `400 VALIDATION_ERROR`.
+- 사진은 JPG·PNG·WEBP·HEIC, 10MB 이하. 아니면 `400` / `413 IMAGE_TOO_LARGE`. 서버는 회전을 적용하고 위치(GPS)를 포함한 EXIF를 모두 지운 뒤 긴 변 1600px로 저장한다. 공개본은 1024px, 민감하면 전체 블러.
+- 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안)
+- AI 분석은 호출마다 제한 시간(기본 8초)이 있고 실패하면 한 번 재시도한다. AI 실패로 민감 여부를 모르면 공개본은 블러 처리한다.
 
 ### 인증
 

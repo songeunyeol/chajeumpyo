@@ -1488,6 +1488,424 @@
           }
         }
       }
+    },
+    "/found-items": {
+      "post": {
+        "tags": [
+          "습득물"
+        ],
+        "summary": "습득물 등록 (F-01, F-02, F-03)",
+        "description": "로그인 없이 등록한다. 응답에는 공개 정보만 담는다. AI 분석이 실패해도 201로 응답하고 status가 REVIEW다. 사진은 10MB 이하 JPG·PNG·WEBP·HEIC. 같은 기기·IP는 10분에 5건까지.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "사진 1장"
+                  },
+                  "buildingId": {
+                    "type": "integer"
+                  },
+                  "storageType": {
+                    "type": "string",
+                    "enum": [
+                      "IN_PLACE",
+                      "HANDED_OVER"
+                    ]
+                  },
+                  "storagePlaceId": {
+                    "type": "integer",
+                    "description": "HANDED_OVER면 필수"
+                  }
+                },
+                "required": [
+                  "image",
+                  "buildingId",
+                  "storageType"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "등록됨 (REGISTERED 또는 REVIEW)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ANALYZING",
+                        "REVIEW",
+                        "REGISTERED",
+                        "REVEALED",
+                        "CLAIMED",
+                        "EXPIRED"
+                      ]
+                    },
+                    "category": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "EARPHONE",
+                        "CHARGER",
+                        "UMBRELLA",
+                        "CARD",
+                        "WALLET",
+                        "TUMBLER",
+                        "PENCIL_CASE",
+                        "LAPTOP_TABLET",
+                        "CLOTHING_BAG",
+                        "ETC",
+                        null
+                      ]
+                    },
+                    "building": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ]
+                    },
+                    "storageType": {
+                      "type": "string",
+                      "enum": [
+                        "IN_PLACE",
+                        "HANDED_OVER"
+                      ]
+                    },
+                    "storagePlace": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "guideText": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "guideText"
+                      ]
+                    },
+                    "message": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "category",
+                    "building",
+                    "storageType",
+                    "storagePlace",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "IMAGE_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "NO_OBJECT_DETECTED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "webhooks": {}
