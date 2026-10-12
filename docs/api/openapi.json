@@ -498,10 +498,16 @@
                       "type": "boolean"
                     },
                     "originalImageUrl": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "publicImageUrl": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "thumbnailUrl": {
                       "type": [
@@ -1102,10 +1108,16 @@
                       "type": "boolean"
                     },
                     "originalImageUrl": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "publicImageUrl": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "thumbnailUrl": {
                       "type": [
@@ -2864,6 +2876,7 @@
           "건물"
         ],
         "summary": "건물 목록 (F-01)",
+        "description": "건물 중심 좌표를 함께 준다. 가장 가까운 건물은 프론트가 브라우저 안에서 고르고(packages/shared nearestBuilding), 사용자 좌표는 서버로 보내지 않는다.",
         "responses": {
           "200": {
             "description": "건물 목록",
@@ -2882,163 +2895,25 @@
                           },
                           "name": {
                             "type": "string"
+                          },
+                          "lat": {
+                            "type": "number"
+                          },
+                          "lng": {
+                            "type": "number"
                           }
                         },
                         "required": [
                           "id",
-                          "name"
+                          "name",
+                          "lat",
+                          "lng"
                         ]
                       }
                     }
                   },
                   "required": [
                     "buildings"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/buildings/nearest": {
-      "get": {
-        "tags": [
-          "건물"
-        ],
-        "summary": "가장 가까운 건물 (F-01)",
-        "description": "기준 거리(초안 300m)보다 멀면 building이 null이다.",
-        "parameters": [
-          {
-            "schema": {
-              "type": [
-                "number",
-                "null"
-              ],
-              "minimum": -90,
-              "maximum": 90
-            },
-            "required": false,
-            "name": "lat",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": [
-                "number",
-                "null"
-              ],
-              "minimum": -180,
-              "maximum": 180
-            },
-            "required": false,
-            "name": "lng",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "가장 가까운 건물",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "building": {
-                      "type": [
-                        "object",
-                        "null"
-                      ],
-                      "properties": {
-                        "id": {
-                          "type": "integer"
-                        },
-                        "name": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "name"
-                      ]
-                    },
-                    "distanceM": {
-                      "type": [
-                        "number",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "building",
-                    "distanceM"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "좌표 형식 오류",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "VALIDATION_ERROR",
-                            "INVALID_EMAIL_DOMAIN",
-                            "INVALID_CODE",
-                            "UNAUTHORIZED",
-                            "FORBIDDEN",
-                            "NOT_FOUND",
-                            "EMAIL_TAKEN",
-                            "MATCH_LOCKED",
-                            "ALREADY_CLAIMED",
-                            "ALREADY_ANSWERED",
-                            "INVALID_STORAGE_TYPE",
-                            "QR_EXPIRED",
-                            "IMAGE_TOO_LARGE",
-                            "NO_OBJECT_DETECTED",
-                            "RATE_LIMITED",
-                            "INTERNAL_ERROR",
-                            "AI_UNAVAILABLE"
-                          ]
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "path": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "path",
-                              "message"
-                            ]
-                          }
-                        }
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error"
                   ]
                 }
               }
@@ -6715,7 +6590,10 @@
                           "type": "string"
                         },
                         "imageUrl": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [

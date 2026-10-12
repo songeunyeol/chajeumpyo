@@ -52,7 +52,6 @@
 | 메서드 | 경로 | 권한 | 기능 ID |
 | --- | --- | --- | --- |
 | GET | `/buildings` | 공개 | F-01 |
-| GET | `/buildings/nearest` | 공개 | F-01 |
 | GET | `/storage-places` | 공개 | F-01 |
 | GET | `/files/*` | 서명 URL | F-10, F-14 |
 | POST | `/found-items` | 공개 | F-01, F-02, F-03 |
@@ -89,18 +88,13 @@
 ### 건물
 
 #### `GET /buildings` · 공개
-건물 목록. 위치 권한이 없을 때 선택지로 쓴다.
+건물 목록과 건물 중심 좌표(공개 정보).
 
 ```json
-{ "buildings": [ { "id": 1, "name": "혜인관" }, { "id": 2, "name": "청운관" } ] }
+{ "buildings": [ { "id": 1, "name": "혜인관", "lat": 37.615, "lng": 127.013 }, { "id": 2, "name": "청운관", "lat": 37.616, "lng": 127.012 } ] }
 ```
-
-#### `GET /buildings/nearest?lat=37.615&lng=127.013` · 공개
-가장 가까운 건물. 거리가 기준보다 멀면 `building`이 `null`이다.
-
-```json
-{ "building": { "id": 1, "name": "혜인관" }, "distanceM": 42 }
-```
+- **사용자 좌표는 서버로 보내지 않는다** (open-issues #34, QA B14). 프론트가 사진 GPS(EXIF) → 브라우저 위치 순으로 좌표를 얻어 `packages/shared`의 `nearestBuilding()`으로 브라우저 안에서 건물을 고르고(300m 넘으면 목록에서 고름), 좌표는 버린다. 업로드 전 canvas로 다시 인코딩해 EXIF를 지운다.
+- 예전 `GET /buildings/nearest`는 없앴다.
 
 #### `GET /storage-places?buildingId=1` · 공개
 활성 보관처 목록. `buildingId`를 주면 그 건물 보관처가 앞에 온다(`sameBuilding: true`).
@@ -420,7 +414,7 @@
 - 없는 QR은 `404`. 같은 사람이 새 QR을 받아 만료된 이전 QR도 `410 QR_EXPIRED`.
 
 #### `POST /admin/pickups/:id/complete` · 관리자
-상태를 `COMPLETED`, 습득물을 `CLAIMED`로 바꾸고 처리 관리자를 기록한다. `purge_after`를 30일 뒤로 설정한다. (초안)
+상태를 `COMPLETED`, 습득물을 `CLAIMED`로 바꾸고 처리 관리자를 기록한다. `purge_after`를 30일 뒤로 설정한다. 완료 직후 사진(원본·공개본·후보용 블러본)과 비공개 정보·임베딩을 지운다(open-issues #33). 삭제가 실패해도 수령은 완료되고 정기 작업이 다시 지운다.
 - 한 트랜잭션 안에서 물건 상태까지 확인한다. 다른 사람의 수령이 먼저 완료됐으면 `409 ALREADY_CLAIMED`. 다른 보관처 물건이면 `403 FORBIDDEN`.
 - 완료되면 수령한 계정의 신고를 `RESOLVED`로 바꾸고, 같은 물건의 다른 사람 QR은 `EXPIRED`로 바꾼다.
 ```json
@@ -432,7 +426,7 @@
 - 관리 범위(open-issues #18 추천안): 경비실 관리자는 자기 보관처 물건만, 종합서비스센터 관리자와 보관처가 없는 관리자는 전체. 범위 밖 물건의 상세·수정은 `403`.
 
 #### `GET /admin/found-items/:id` · 관리자
-공개·비공개 정보와 원본·공개본·후보용 블러본 사진 링크(10분), 시도·열람·수령 기록 전체. 기록의 이메일은 가린다(`st****@skuniv.ac.kr`).
+공개·비공개 정보와 원본·공개본·후보용 블러본 사진 링크(10분), 시도·열람·수령 기록 전체. 수령·기한 만료로 지운 물건은 사진 링크가 `null`이다. 기록의 이메일은 가린다(`st****@skuniv.ac.kr`).
 
 #### `PATCH /admin/found-items/:id` · 관리자
 검토 대기 습득물의 속성을 직접 고치고 `REGISTERED`로 바꾼다. 등록된 물건의 속성 수정에도 쓴다(상태는 그대로).
