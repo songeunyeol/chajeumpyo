@@ -246,6 +246,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -671,6 +672,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -738,6 +740,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1281,6 +1284,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1348,6 +1352,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1415,6 +1420,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1482,6 +1488,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1692,6 +1699,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1775,7 +1783,7 @@
             "description": "발송함 (가입 여부와 관계없이 같은 응답)"
           },
           "400": {
-            "description": "VALIDATION_ERROR, INVALID_EMAIL_DOMAIN",
+            "description": "VALIDATION_ERROR, INVALID_EMAIL_DOMAIN, CAPTCHA_FAILED",
             "content": {
               "application/json": {
                 "schema": {
@@ -1790,6 +1798,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1857,6 +1866,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1980,6 +1990,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2055,11 +2066,44 @@
                     "type": "string",
                     "minLength": 8,
                     "maxLength": 64
+                  },
+                  "consent": {
+                    "type": "object",
+                    "properties": {
+                      "version": {
+                        "type": "string",
+                        "enum": [
+                          "2026-10-12"
+                        ]
+                      },
+                      "email": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      },
+                      "externalAi": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      },
+                      "location": {
+                        "type": "boolean",
+                        "default": false
+                      }
+                    },
+                    "required": [
+                      "version",
+                      "email",
+                      "externalAi"
+                    ]
                   }
                 },
                 "required": [
                   "verificationToken",
-                  "password"
+                  "password",
+                  "consent"
                 ]
               }
             }
@@ -2130,6 +2174,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2197,6 +2242,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2264,6 +2310,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2411,6 +2458,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2471,7 +2519,46 @@
           "인증"
         ],
         "summary": "체험 로그인 (F-05)",
-        "description": "호출할 때마다 새 체험 계정. 24시간 뒤 삭제. 같은 IP에서 10분에 5개까지.",
+        "description": "호출할 때마다 새 체험 계정. 24시간 뒤 삭제. 같은 IP에서 10분에 5개까지. 동의(외부 AI 처리)와 캡차(X-Captcha-Token) 필요.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "consent": {
+                    "type": "object",
+                    "properties": {
+                      "version": {
+                        "type": "string",
+                        "enum": [
+                          "2026-10-12"
+                        ]
+                      },
+                      "externalAi": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      },
+                      "location": {
+                        "type": "boolean",
+                        "default": false
+                      }
+                    },
+                    "required": [
+                      "version",
+                      "externalAi"
+                    ]
+                  }
+                },
+                "required": [
+                  "consent"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "체험 계정",
@@ -2521,6 +2608,74 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR, CAPTCHA_FAILED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "429": {
             "description": "RATE_LIMITED",
             "content": {
@@ -2537,6 +2692,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2650,6 +2806,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2816,6 +2973,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3022,6 +3180,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3231,6 +3390,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3298,6 +3458,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3365,6 +3526,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3432,6 +3594,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3499,6 +3662,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3660,6 +3824,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3727,6 +3892,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3794,6 +3960,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3854,7 +4021,7 @@
           "습득물"
         ],
         "summary": "습득물 등록 (F-01, F-02, F-03)",
-        "description": "로그인 없이 등록한다. 응답에는 공개 정보만 담는다. AI 분석이 실패해도 201로 응답하고 status가 REVIEW다. 사진은 10MB 이하 JPG·PNG·WEBP·HEIC. 같은 기기·IP는 10분에 5건까지.",
+        "description": "로그인 없이 등록한다. 응답에는 공개 정보만 담는다. AI 분석이 실패해도 201로 응답하고 status가 REVIEW다. 사진은 10MB 이하 JPG·PNG·WEBP·HEIC. 같은 기기·IP는 10분에 5건까지. 동의(외부 AI 처리)와 캡차(X-Captcha-Token 헤더)가 필요하다. 고가품을 그 자리에 두면 handOverAdvice로 보관처를 안내한다.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -3879,12 +4046,37 @@
                   "storagePlaceId": {
                     "type": "integer",
                     "description": "HANDED_OVER면 필수"
+                  },
+                  "floor": {
+                    "type": "integer",
+                    "description": "습득 층, 지하는 음수"
+                  },
+                  "consentVersion": {
+                    "type": "string",
+                    "description": "동의 화면 버전 (CONSENT_VERSION)"
+                  },
+                  "consentExternalAi": {
+                    "type": "string",
+                    "enum": [
+                      "true"
+                    ],
+                    "description": "사진의 외부 AI 처리 동의 (필수)"
+                  },
+                  "consentLocation": {
+                    "type": "string",
+                    "enum": [
+                      "true",
+                      "false"
+                    ],
+                    "description": "위치 사용 동의"
                   }
                 },
                 "required": [
                   "image",
                   "buildingId",
-                  "storageType"
+                  "storageType",
+                  "consentVersion",
+                  "consentExternalAi"
                 ]
               }
             }
@@ -3986,6 +4178,63 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "handOverAdvice": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        },
+                        "storagePlaces": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "guideText": {
+                                "type": "string"
+                              },
+                              "building": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name"
+                                ]
+                              },
+                              "sameBuilding": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "guideText",
+                              "building",
+                              "sameBuilding"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "message",
+                        "storagePlaces"
+                      ]
                     }
                   },
                   "required": [
@@ -3996,14 +4245,15 @@
                     "floor",
                     "storageType",
                     "storagePlace",
-                    "message"
+                    "message",
+                    "handOverAdvice"
                   ]
                 }
               }
             }
           },
           "400": {
-            "description": "VALIDATION_ERROR",
+            "description": "VALIDATION_ERROR, CAPTCHA_FAILED",
             "content": {
               "application/json": {
                 "schema": {
@@ -4018,6 +4268,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4085,6 +4336,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4152,6 +4404,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4219,6 +4472,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4396,6 +4650,12 @@
                     },
                     "isSeed": {
                       "type": "boolean"
+                    },
+                    "pickupNotice": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
@@ -4409,7 +4669,8 @@
                     "storagePlace",
                     "status",
                     "foundAt",
-                    "isSeed"
+                    "isSeed",
+                    "pickupNotice"
                   ]
                 }
               }
@@ -4431,6 +4692,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4498,6 +4760,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4565,6 +4828,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4816,6 +5080,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4883,6 +5148,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4950,6 +5216,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5126,6 +5393,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5326,6 +5594,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5561,6 +5830,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5628,6 +5898,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5695,6 +5966,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5851,6 +6123,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5947,6 +6220,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6134,6 +6408,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6201,6 +6476,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6268,6 +6544,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6402,6 +6679,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6469,6 +6747,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6645,6 +6924,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6712,6 +6992,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6779,6 +7060,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6846,6 +7128,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6970,6 +7253,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -7037,6 +7321,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -7104,6 +7389,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -7171,6 +7457,7 @@
                             "VALIDATION_ERROR",
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
+                            "CAPTCHA_FAILED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",

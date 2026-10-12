@@ -1,4 +1,5 @@
 // F-13 앱 내 알림: 이슈의 완료 기준 10개
+import { CONSENT_VERSION } from "@chajeumpyo/shared";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetAiClient, setAiClient } from "../../src/ai";
@@ -24,6 +25,8 @@ async function registerItem(ua = `ua-${Math.random()}`) {
     .set("User-Agent", ua)
     .field("buildingId", String(A))
     .field("storageType", "IN_PLACE")
+    .field("consentVersion", CONSENT_VERSION)
+    .field("consentExternalAi", "true")
     .attach("image", image, "p.jpg");
   expect(res.status).toBe(201);
   return res.body.id as string;
