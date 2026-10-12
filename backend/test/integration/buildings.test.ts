@@ -23,21 +23,22 @@ describe("건물·보관처", () => {
     expect((await request(app).get("/health")).body).toEqual({ ok: true });
   });
 
-  it("건물 목록은 표시 순서대로", async () => {
+  it("건물 목록은 표시 순서대로, 건물 중심 좌표 포함", async () => {
     const res = await request(app).get("/api/v1/buildings");
     expect(res.body.buildings.map((b: { name: string }) => b.name)).toEqual(["A관", "B관"]);
+    expect(res.body.buildings[0]).toEqual({
+      id: expect.any(Number),
+      name: "A관",
+      lat: expect.any(Number),
+      lng: expect.any(Number),
+    });
   });
 
-  it("가장 가까운 건물", async () => {
-    const res = await request(app).get("/api/v1/buildings/nearest?lat=37.6009&lng=127.0");
-    expect(res.body.building.name).toBe("B관");
-  });
-
-  it("좌표 검증 실패는 명세의 에러 형식", async () => {
-    const res = await request(app).get("/api/v1/buildings/nearest?lat=abc&lng=127");
+  it("쿼리 검증 실패는 명세의 에러 형식", async () => {
+    const res = await request(app).get("/api/v1/storage-places?buildingId=abc");
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
-    expect(res.body.error.details[0].path).toBe("lat");
+    expect(res.body.error.details[0].path).toBe("buildingId");
   });
 
   it("보관처: 비활성 제외, 같은 건물 먼저", async () => {
