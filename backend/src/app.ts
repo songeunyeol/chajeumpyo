@@ -4,7 +4,7 @@ import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import swaggerUi from "swagger-ui-express";
 import { corsOrigins, env } from "./config/env";
-import { logger } from "./lib/logger";
+import { logger, requestLogSerializers } from "./lib/logger";
 import { errorHandler, notFound } from "./middlewares/error";
 import { buildOpenApiDocument } from "./openapi/document";
 import { createApiRouter } from "./routes";
@@ -17,7 +17,7 @@ export function createApp() {
   app.use(helmet());
   app.use(cors({ origin: corsOrigins }));
   app.use(express.json({ limit: "100kb" }));
-  if (env.NODE_ENV !== "test") app.use(pinoHttp({ logger }));
+  if (env.NODE_ENV !== "test") app.use(pinoHttp({ logger, serializers: requestLogSerializers }));
 
   app.get("/health", (_req, res) => {
     res.json({ ok: true });

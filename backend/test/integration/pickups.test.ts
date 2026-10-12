@@ -234,13 +234,15 @@ describe("기준 10. 수령 후 30일이 지나면 시도·열람 기록을 지�
     await prisma.pickup.updateMany({ where: { foundItemId: old.id }, data: { purgeAfter: hoursAgo(1) } });
 
     const result = await purgeExpiredRecords();
-    expect(result).toEqual({ items: 1, reveals: 1, attempts: 1 });
+    expect(result).toEqual({ items: 1, reveals: 1, attempts: 1, pickups: 1 });
     expect(await prisma.matchAttempt.count({ where: { foundItemId: old.id } })).toBe(0);
     expect(await prisma.revealLog.count({ where: { foundItemId: old.id } })).toBe(0);
     for (const it of [recent, open]) {
       expect(await prisma.matchAttempt.count({ where: { foundItemId: it.id } })).toBe(1);
       expect(await prisma.revealLog.count({ where: { foundItemId: it.id } })).toBe(1);
     }
-    expect(await prisma.pickup.count({ where: { foundItemId: old.id } })).toBe(1);
+    // 찾아간 사람 기록도 30일 뒤 지운다 (QA B13, open-issues #26·#33)
+    expect(await prisma.pickup.count({ where: { foundItemId: old.id } })).toBe(0);
+    expect(await prisma.pickup.count({ where: { foundItemId: recent.id } })).toBe(1);
   });
 });

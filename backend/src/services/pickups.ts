@@ -11,6 +11,7 @@ import { AppError } from "../lib/errors";
 import { hmac } from "../lib/hash";
 import { prisma } from "../lib/prisma";
 import { storage } from "../storage";
+import { purgeAfterClaimSafely } from "./data-purge";
 
 /** 수령 QR 유효 시간 (초안) */
 export const QR_TTL_HOURS = 24;
@@ -111,7 +112,7 @@ export async function issuePickupQr(viewer: Viewer, foundItemId: string): Promis
 
 /** POST /found-items/:id/self-pickup: 그 자리에 둔 물건을 본인이 찾았다고 알림 (F-11) */
 export async function selfPickup(viewer: Viewer, foundItemId: string): Promise<SelfPickupResponse> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await lockItem(tx, foundItemId);
     const item = await loadItem(tx, foundItemId);
     const attempt = await passedAttempt(tx, viewer.userId, foundItemId);
@@ -135,6 +136,9 @@ export async function selfPickup(viewer: Viewer, foundItemId: string): Promise<S
     if (!isDemo) await markClaimed(tx, foundItemId, attempt.lostReportId, p.id);
     return { pickupId: p.id, method: p.method, status: p.status, completedAt: now.toISOString() };
   });
+  // 수령이 끝났으니 사진과 비공개 정보를 지운다 (#33). 체험 수령은 시드를 지우지 않는다.
+  if (result.method !== "DEMO") await purgeAfterClaimSafely(foundItemId);
+  return result;
 }
 
 /** 이메일 가리기: st****@skuniv.ac.kr */
@@ -174,7 +178,9 @@ export async function scanPickup(admin: Admin, qrToken: string): Promise<PickupS
       id: item.id,
       category: item.category,
       building: item.building.name,
-      imageUrl: await storage.signedUrl(item.detail.imageOriginalKey, ADMIN_IMAGE_TTL_SECONDS),
+      imageUrl: item.detail.imageOriginalKey
+        ? await storage.signedUrl(item.detail.imageOriginalKey, ADMIN_IMAGE_TTL_SECONDS)
+        : null,
     },
     claimant: { emailMasked: maskEmail(p.user.email) },
     expiresAt: (p.qrExpiresAt as Date).toISOString(),
@@ -183,7 +189,8 @@ export async function scanPickup(admin: Admin, qrToken: string): Promise<PickupS
 
 /** POST /admin/pickups/:id/complete (F-11, F-14). 먼저 완료된 쪽만 인정한다. */
 export async function completePickup(admin: Admin, pickupId: string): Promise<PickupCompleteResponse> {
-  return prisma.$transaction(async (tx) => {
+  let foundItemId = "";
+  const result = await prisma.$transaction(async (tx) => {
     const found = await tx.pickup.findUnique({ where: { id: pickupId }, select: { foundItemId: true } });
     if (!found) throw new AppError("NOT_FOUND", "수령 건을 찾을 수 없어요.");
     await lockItem(tx, found.foundItemId);
@@ -196,6 +203,9 @@ export async function completePickup(admin: Admin, pickupId: string): Promise<Pi
       data: { status: "COMPLETED", completedAt: now, processedByAdminId: admin.userId, purgeAfter: purgeAfter(now) },
     });
     await markClaimed(tx, p.foundItemId, attempt.lostReportId, p.id);
-    return { pickupId: p.id, status: "COMPLETED", completedAt: now.toISOString() };
+    foundItemId = p.foundItemId;
+    return { pickupId: p.id, status: "COMPLETED" as const, completedAt: now.toISOString() };
   });
+  await purgeAfterClaimSafely(foundItemId);
+  return result;
 }
