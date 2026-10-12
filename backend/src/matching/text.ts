@@ -48,3 +48,29 @@ export function looselyContains(a: string, b: string): boolean {
   const y = compact(b);
   return x.length > 0 && y.length > 0 && (x.includes(y) || y.includes(x));
 }
+
+/** 문장부호·공백으로만 나눈 낱말 (조사를 떼지 않음) */
+export function rawWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[\s.,!?~'"“”‘’·()[\]{}:;-]+/)
+    .filter(Boolean);
+}
+
+/**
+ * 낱말 하나가 될 수 있는 모든 형태: 그대로, 그리고 끝의 조사·어미를 하나씩 뗀 것.
+ * "곰돌이요" → {곰돌이요, 곰돌이, 곰돌}. 어느 조사를 떼야 맞는지 모르므로 다 만들어 비교한다.
+ */
+export function wordForms(word: string): Set<string> {
+  const w = compact(word);
+  const forms = new Set([w]);
+  for (const t of TRAILING) if (w.length > t.length + 1 && w.endsWith(t)) forms.add(w.slice(0, -t.length));
+  return forms;
+}
+
+/** 두 낱말이 조사 차이만 있고 같은 낱말이면 그 형태를, 아니면 null */
+export function sameWord(a: string, b: string): string | null {
+  const fb = wordForms(b);
+  for (const f of wordForms(a)) if (fb.has(f)) return f;
+  return null;
+}
