@@ -22,11 +22,14 @@ export function createApp() {
     res.json({ ok: true });
   });
 
-  const openapi = buildOpenApiDocument();
-  app.get("/api/openapi.json", (_req, res) => {
-    res.json(openapi);
-  });
-  app.use("/api/docs", helmet({ contentSecurityPolicy: false }), swaggerUi.serve, swaggerUi.setup(openapi));
+  // API 문서는 개발용. production에서는 API_DOCS_ENABLED=true일 때만 연다.
+  if (env.NODE_ENV !== "production" || env.API_DOCS_ENABLED) {
+    const openapi = buildOpenApiDocument();
+    app.get("/api/openapi.json", (_req, res) => {
+      res.json(openapi);
+    });
+    app.use("/api/docs", helmet({ contentSecurityPolicy: false }), swaggerUi.serve, swaggerUi.setup(openapi));
+  }
 
   app.use("/api/v1", createApiRouter());
 

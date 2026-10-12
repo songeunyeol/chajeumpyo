@@ -53,7 +53,7 @@
 
 ```bash
 npm install                    # 워크스페이스 전체 설치 + Prisma 클라이언트 생성
-cp .env.example .env           # 기본값 그대로 로컬에서 동작 (AI_MODE=mock)
+cp .env.example .env           # POSTGRES_PASSWORD·DATABASE_URL 비밀번호, JWT_SECRET(32자 이상)을 채운다 (AI_MODE=mock)
 npm run db:up                  # PostgreSQL + pgvector (Docker)
 npm run db:deploy -w backend   # 마이그레이션 적용
 npm run db:seed -w backend     # 건물·보관처 (backend/prisma/seed-data)

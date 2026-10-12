@@ -25,12 +25,13 @@ registry.registerPath({
   path: "/auth/email/code",
   tags: ["인증"],
   summary: "가입 인증 코드 메일 발송 (F-04)",
-  description: "학교 이메일만. 같은 이메일은 1분에 한 번. 코드는 10분 유효.",
+  description:
+    "학교 이메일만. 코드는 6자리, 5분 유효, 1회용. 같은 이메일은 1분에 한 번·하루 10번, 같은 IP는 10분에 10번·하루 50번. " +
+    "가입 여부를 드러내지 않도록 이미 가입된 이메일도 204를 주고, 그 경우 코드 대신 로그인 안내 메일을 보낸다.",
   request: { body: json(EmailCodeRequest) },
   responses: {
-    204: { description: "발송함" },
+    204: { description: "발송함 (가입 여부와 관계없이 같은 응답)" },
     400: errorResponse("VALIDATION_ERROR, INVALID_EMAIL_DOMAIN"),
-    409: errorResponse("EMAIL_TAKEN"),
     429: errorResponse("RATE_LIMITED"),
   },
 });
@@ -39,7 +40,8 @@ registry.registerPath({
   path: "/auth/email/verify",
   tags: ["인증"],
   summary: "인증 코드 확인 (F-04)",
-  description: "가장 최근에 받은 코드만 유효. 5번 틀리면 다시 받아야 한다. 성공하면 10분짜리 가입용 토큰.",
+  description:
+    "가장 최근에 받은 코드만, 한 번만 확인할 수 있다. 5번 틀리면 코드를 버린다. 성공하면 10분짜리 가입용 토큰.",
   request: { body: json(EmailVerifyRequest) },
   responses: { 200: { description: "확인됨", ...json(EmailVerifyResponse) }, 400: errorResponse("INVALID_CODE") },
 });
@@ -48,12 +50,13 @@ registry.registerPath({
   path: "/auth/signup",
   tags: ["인증"],
   summary: "회원가입 (F-04)",
-  description: "가입용 토큰은 한 번만 쓸 수 있다.",
+  description: "가입용 토큰은 한 번만 쓸 수 있다. 같은 IP에서 10분에 10번까지.",
   request: { body: json(SignupRequest) },
   responses: {
     201: { description: "가입됨", ...json(AuthResponse) },
     400: errorResponse("VALIDATION_ERROR, INVALID_CODE"),
     409: errorResponse("EMAIL_TAKEN"),
+    429: errorResponse("RATE_LIMITED"),
   },
 });
 registry.registerPath({
@@ -96,6 +99,16 @@ export function createAuthRouter() {
     limit: 10,
     message: "인증 코드 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
+  const codeDailyLimit = ipRateLimit({
+    windowMinutes: 24 * 60,
+    limit: 50,
+    message: "오늘 이 네트워크에서 받을 수 있는 인증 코드를 모두 받았어요. 내일 다시 시도해 주세요.",
+  });
+  const signupLimit = ipRateLimit({
+    windowMinutes: 10,
+    limit: 10,
+    message: "가입 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
+  });
   const loginLimit = ipRateLimit({
     windowMinutes: 10,
     limit: 20,
@@ -107,7 +120,7 @@ export function createAuthRouter() {
     message: "체험 계정을 너무 많이 만들었어요. 잠시 후 다시 시도해 주세요.",
   });
 
-  router.post("/auth/email/code", codeLimit, validate("body", EmailCodeRequest), async (_req, res) => {
+  router.post("/auth/email/code", codeLimit, codeDailyLimit, validate("body", EmailCodeRequest), async (_req, res) => {
     const body: EmailCodeRequest = res.locals.body;
     await auth.sendSignupCode(body.email);
     res.status(204).end();
@@ -119,7 +132,7 @@ export function createAuthRouter() {
     res.json(result);
   });
 
-  router.post("/auth/signup", validate("body", SignupRequest), async (_req, res) => {
+  router.post("/auth/signup", signupLimit, validate("body", SignupRequest), async (_req, res) => {
     const body: SignupRequest = res.locals.body;
     const result: AuthResponse = await auth.signup(body.verificationToken, body.password);
     res.status(201).json(result);

@@ -4,7 +4,8 @@ const Env = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1),
-  JWT_SECRET: z.string().min(16),
+  /** HS256 서명 키. 짧으면 무차별 대입에 약하므로 32자 이상 */
+  JWT_SECRET: z.string().min(32, "JWT_SECRET은 32자 이상이어야 해요."),
   /** 쉼표로 여러 개 */
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
   /** mock이면 Gemini를 호출하지 않고 고정 계약 형식의 가짜 응답을 쓴다 */
@@ -12,8 +13,15 @@ const Env = z.object({
   GEMINI_API_KEY: z.string().optional(),
   DATA_GO_KR_SERVICE_KEY: z.string().optional(),
 
-  /** 가입을 허용하는 이메일 도메인. 쉼표로 여러 개 */
-  ALLOWED_EMAIL_DOMAINS: z.string().default("skuniv.ac.kr"),
+  /** 가입을 허용하는 이메일 도메인. 쉼표로 여러 개. 기본값을 두지 않아 설정을 빠뜨리면 서버가 뜨지 않는다 */
+  ALLOWED_EMAIL_DOMAINS: z.string().min(1),
+  /** 하루에 보내는 인증 메일 전체 상한 (메일 계정 발송 한도·비용 보호) */
+  MAIL_DAILY_LIMIT: z.coerce.number().int().positive().default(300),
+  /** true면 production에서도 /api/docs, /api/openapi.json을 연다 */
+  API_DOCS_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v === "true"),
   /** 로그인 토큰 유효 기간 (초안, open-issues #14) */
   ACCESS_TOKEN_TTL_HOURS: z.coerce
     .number()
@@ -30,6 +38,9 @@ const Env = z.object({
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default("찾음표 <no-reply@chajeumpyo.local>"),
 });
+
+/** 테스트에서 설정 규칙을 확인할 수 있게 내보낸다 */
+export const EnvSchema = Env;
 
 const parsed = Env.safeParse(process.env);
 if (!parsed.success) {

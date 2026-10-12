@@ -1,7 +1,8 @@
 // F-04 회원가입·로그인, F-05 체험 로그인: 이슈의 완료 기준 10개
 import request from "supertest";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app";
+import { EnvSchema } from "../../src/config/env";
 import { cleanupExpiredDemoAccounts } from "../../src/jobs/demo-cleanup";
 import { sentMails } from "../../src/lib/mailer";
 import { signSignupToken } from "../../src/lib/tokens";
@@ -22,7 +23,7 @@ beforeEach(async () => {
   app = createApp(); // 요청 제한 카운터 초기화
 });
 
-describe("기준 1. 학교 이메일만 받고, 이메일은 정규화한다", () => {
+describe("기준 1. 학교 이메일만 받고, 도메인은 소문자로 바꿔 전체가 정확히 같아야 한다", () => {
   it("다른 도메인은 400 INVALID_EMAIL_DOMAIN", async () => {
     const res = await sendCode("someone@gmail.com");
     expect(res.status).toBe(400);
@@ -33,6 +34,14 @@ describe("기준 1. 학교 이메일만 받고, 이메일은 정규화한다", (
   it("비슷한 도메인(서브도메인·접미어)도 거부", async () => {
     expect((await sendCode("a@evil.skuniv.ac.kr")).status).toBe(400);
     expect((await sendCode("a@skuniv.ac.kr.evil.com")).status).toBe(400);
+    expect((await sendCode("x@evil-skuniv.ac.kr")).status).toBe(400);
+    expect((await sendCode("x@skuniv.ac.kr@evil.com")).status).toBe(400);
+    expect(sentMails).toHaveLength(0);
+  });
+
+  it("대문자 학교 메일은 통과", async () => {
+    await sendCode("STUDENT@SKUNIV.AC.KR").expect(204);
+    expect(sentMails[0]?.to).toBe(EMAIL);
   });
 
   it("대소문자·공백을 정리해서 같은 이메일로 본다", async () => {
@@ -56,7 +65,7 @@ describe("기준 2. 코드는 메일로만 가고 DB에는 해시만 남는다",
   });
 });
 
-describe("기준 3. 재발송 제한과 중복 가입 방지", () => {
+describe("기준 3. 재발송 대기·하루 상한, 가입 여부를 드러내지 않는다", () => {
   it("같은 이메일 1분 안에 다시 요청하면 429", async () => {
     await sendCode(EMAIL).expect(204);
     const res = await sendCode(EMAIL);
@@ -70,15 +79,56 @@ describe("기준 3. 재발송 제한과 중복 가입 방지", () => {
     await sendCode(EMAIL).expect(204);
   });
 
-  it("이미 가입한 이메일은 409 EMAIL_TAKEN", async () => {
+  it("이미 가입한 이메일도 같은 204, 코드 대신 로그인 안내 메일", async () => {
     await signupUser(app, EMAIL);
+    await ageVerification(2);
+    sentMails.length = 0;
+    const taken = await sendCode(EMAIL);
+    const fresh = await sendCode("new@skuniv.ac.kr");
+    expect(taken.status).toBe(204);
+    expect(taken.body).toEqual(fresh.body);
+    const mail = sentMails.find((m) => m.to === EMAIL);
+    expect(mail?.subject).toContain("이미 가입");
+    expect(mail?.text).not.toMatch(/\d{6}/);
+  });
+
+  it("이미 가입한 이메일에도 재발송 대기가 똑같이 걸린다", async () => {
+    await signupUser(app, EMAIL);
+    expect((await sendCode(EMAIL)).status).toBe(429);
+  });
+
+  it("같은 이메일은 하루 10번까지", async () => {
+    const createdAt = new Date(Date.now() - 2 * 3600_000);
+    await prisma.emailVerification.createMany({
+      data: Array.from({ length: 10 }, () => ({ email: EMAIL, codeHash: "x", expiresAt: createdAt, createdAt })),
+    });
     const res = await sendCode(EMAIL);
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("EMAIL_TAKEN");
+    expect(res.status).toBe(429);
+    expect(res.body.error.message).toContain("내일");
+    expect(sentMails).toHaveLength(0);
+  });
+
+  it("하루 전체 발송 상한(MAIL_DAILY_LIMIT)을 넘으면 429", async () => {
+    const createdAt = new Date(Date.now() - 2 * 3600_000);
+    await prisma.emailVerification.createMany({
+      data: Array.from({ length: 300 }, (_, i) => ({
+        email: `u${i}@skuniv.ac.kr`,
+        codeHash: "x",
+        expiresAt: createdAt,
+        createdAt,
+      })),
+    });
+    expect((await sendCode(EMAIL)).status).toBe(429);
+    expect(sentMails).toHaveLength(0);
+  });
+
+  it("같은 IP는 10분에 10번까지 (다른 이메일이어도)", async () => {
+    for (let i = 0; i < 10; i++) await sendCode(`s${i}@skuniv.ac.kr`).expect(204);
+    expect((await sendCode("s10@skuniv.ac.kr")).status).toBe(429);
   });
 });
 
-describe("기준 4. 틀린 코드와 5회 실패 잠금", () => {
+describe("기준 4. 틀린 코드와 5회 실패 시 코드 폐기", () => {
   it("틀리면 400 INVALID_CODE, 5번 틀리면 맞는 코드도 거부", async () => {
     await sendCode(EMAIL).expect(204);
     const code = lastCodeFor(EMAIL);
@@ -101,8 +151,16 @@ describe("기준 4. 틀린 코드와 5회 실패 잠금", () => {
   });
 });
 
-describe("기준 5. 만료된 코드와 이전 코드는 쓸 수 없다", () => {
-  it("10분이 지나면 거부", async () => {
+describe("기준 5. 코드는 5분 유효, 1회용, 이전 코드는 무효", () => {
+  it("유효 시간은 5분", async () => {
+    await sendCode(EMAIL).expect(204);
+    const v = await prisma.emailVerification.findFirstOrThrow({ where: { email: EMAIL } });
+    const minutes = (v.expiresAt.getTime() - v.createdAt.getTime()) / 60_000;
+    expect(minutes).toBeGreaterThan(4.9);
+    expect(minutes).toBeLessThan(5.1);
+  });
+
+  it("만료되면 거부", async () => {
     await sendCode(EMAIL).expect(204);
     await prisma.emailVerification.updateMany({ data: { expiresAt: new Date(Date.now() - 1000) } });
     const res = await verifyCode(EMAIL, lastCodeFor(EMAIL));
@@ -118,6 +176,22 @@ describe("기준 5. 만료된 코드와 이전 코드는 쓸 수 없다", () => 
     const second = lastCodeFor(EMAIL);
     if (first !== second) expect((await verifyCode(EMAIL, first)).status).toBe(400);
     await verifyCode(EMAIL, second).expect(200);
+  });
+
+  it("한 번 확인한 코드는 다시 확인할 수 없다", async () => {
+    await sendCode(EMAIL).expect(204);
+    const code = lastCodeFor(EMAIL);
+    await verifyCode(EMAIL, code).expect(200);
+    const again = await verifyCode(EMAIL, code);
+    expect(again.status).toBe(400);
+    expect(again.body.error.message).toContain("이미 확인");
+  });
+
+  it("같은 코드를 동시에 확인해도 토큰은 하나만 나온다", async () => {
+    await sendCode(EMAIL).expect(204);
+    const code = lastCodeFor(EMAIL);
+    const results = await Promise.all(Array.from({ length: 5 }, () => verifyCode(EMAIL, code)));
+    expect(results.filter((r) => r.status === 200)).toHaveLength(1);
   });
 });
 
@@ -186,6 +260,14 @@ describe("기준 7. 가입용 토큰은 한 번만, 위조·만료 토큰 거부
     expect(res.body.error.code).toBe("INVALID_CODE");
   });
 
+  it("가입 요청은 같은 IP에서 10분에 10번까지", async () => {
+    for (let i = 0; i < 10; i++) {
+      await request(app).post(api("/auth/signup")).send({ verificationToken: "x", password: "password123" });
+    }
+    const res = await request(app).post(api("/auth/signup")).send({ verificationToken: "x", password: "password123" });
+    expect(res.status).toBe(429);
+  });
+
   it("엉터리 토큰은 400 INVALID_CODE", async () => {
     const res = await request(app)
       .post(api("/auth/signup"))
@@ -233,7 +315,29 @@ describe("기준 8. 로그인과 역할 분리", () => {
   });
 });
 
-describe("기준 9. 인증 미들웨어와 민감 정보", () => {
+describe("기준 9. 인증 미들웨어, 민감 정보, 운영 설정", () => {
+  it("JWT_SECRET은 32자 이상, ALLOWED_EMAIL_DOMAINS는 기본값 없이 필수", () => {
+    const base = { DATABASE_URL: "postgresql://x", JWT_SECRET: "a".repeat(32), ALLOWED_EMAIL_DOMAINS: "skuniv.ac.kr" };
+    expect(EnvSchema.safeParse(base).success).toBe(true);
+    expect(EnvSchema.safeParse({ ...base, JWT_SECRET: "a".repeat(31) }).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...base, ALLOWED_EMAIL_DOMAINS: undefined }).success).toBe(false);
+  });
+
+  it("production에서는 API 문서를 닫는다", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.resetModules();
+    try {
+      const { createApp: createProdApp } = await import("../../src/app");
+      const prod = createProdApp();
+      expect((await request(prod).get("/api/docs/")).status).toBe(404);
+      expect((await request(prod).get("/api/openapi.json")).status).toBe(404);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+    expect((await request(app).get("/api/openapi.json")).status).toBe(200);
+  });
+
   it("토큰 없음·엉터리·다른 용도 토큰은 401", async () => {
     expect((await request(app).get(api("/me"))).status).toBe(401);
     expect((await request(app).get(api("/me")).set("Authorization", "Bearer nope")).status).toBe(401);
