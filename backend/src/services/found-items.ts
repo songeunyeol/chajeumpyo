@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { FoundItemExtraction, type RegisterFoundItemFields, type RegisterFoundItemResponse } from "@chajeumpyo/shared";
+import {
+  type Category,
+  FoundItemExtraction,
+  type RegisterFoundItemFields,
+  type RegisterFoundItemResponse,
+  VALUABLE_CATEGORIES,
+} from "@chajeumpyo/shared";
 import { ai, EMBEDDING_DIM } from "../ai";
 import { env } from "../config/env";
 import { retryOnce, withTimeout } from "../lib/async";
@@ -10,12 +16,35 @@ import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
 import { setFoundItemEmbedding } from "../repositories/embedding";
 import { storage } from "../storage";
+import { listStoragePlaces } from "./buildings";
 import { alertNewCandidateSafely } from "./candidate-alerts";
 
 /** 비회원 등록 제한: 같은 지문으로 10분에 5건 (초안, F-01) */
 export const REGISTER_LIMIT = { windowMinutes: 10, count: 5 };
 
 export const REVIEW_MESSAGE = "분석이 늦어져서 관리자가 확인한 뒤 등록돼요.";
+export const HAND_OVER_MESSAGE = "귀중품이에요. 잃어버린 사람이 안전하게 찾을 수 있게 가까운 보관처에 맡겨 주세요.";
+/** 고가품 안내에 보여 줄 보관처 수 */
+const HAND_OVER_SUGGESTIONS = 3;
+
+/**
+ * 고가품을 그 자리에 두면 보관처에 맡겨 달라고 안내한다 (open-issues #32 P0 단계, QA B11).
+ * 등록 전에는 종류를 몰라 막을 수 없으므로 완료 응답에서 안내하고, 등록 단계 차단은 P1(두 단계 등록)에서 한다.
+ */
+async function handOverAdvice(category: Category | null, storageType: string, buildingId: number) {
+  if (!category || storageType !== "IN_PLACE" || !VALUABLE_CATEGORIES.includes(category)) return null;
+  const places = await listStoragePlaces(buildingId);
+  return {
+    message: HAND_OVER_MESSAGE,
+    storagePlaces: places.slice(0, HAND_OVER_SUGGESTIONS).map((p) => ({
+      id: p.id,
+      name: p.name,
+      guideText: p.guideText,
+      building: p.building,
+      sameBuilding: p.sameBuilding,
+    })),
+  };
+}
 
 /** 습득자 기기·IP 지문. 원문은 저장하지 않고 서버 키로 HMAC한 값만 남긴다. */
 export function uploaderFingerprint(ip: string, userAgent: string): string {
@@ -126,6 +155,8 @@ export async function registerFoundItem(input: {
           storageType: fields.storageType,
           storagePlaceId: place?.id ?? null,
           floor: fields.floor ?? null,
+          consentVersion: fields.consentVersion,
+          locationConsent: fields.consentLocation,
           status,
           uploaderFingerprint: fingerprint,
           foundAt,
@@ -164,5 +195,6 @@ export async function registerFoundItem(input: {
     storageType: fields.storageType,
     storagePlace: place,
     message: analysis ? null : REVIEW_MESSAGE,
+    handOverAdvice: await handOverAdvice(ex?.category ?? null, fields.storageType, building.id),
   };
 }
