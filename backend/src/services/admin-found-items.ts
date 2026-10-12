@@ -43,12 +43,18 @@ const summarySelect = {
   storageType: true,
   foundAt: true,
   isSeed: true,
+  floor: true,
   building: { select: { id: true, name: true } },
   storagePlace: { select: { id: true, name: true, guideText: true } },
+  detail: { select: { title: true } },
 } satisfies Prisma.FoundItemSelect;
 
 type Summary = Prisma.FoundItemGetPayload<{ select: typeof summarySelect }>;
-const toSummary = (i: Summary) => ({ ...i, foundAt: i.foundAt.toISOString() });
+const toSummary = ({ detail, ...i }: Summary) => ({
+  ...i,
+  title: detail?.title ?? null,
+  foundAt: i.foundAt.toISOString(),
+});
 
 /** GET /admin/found-items (F-14) */
 export async function listFoundItems(
@@ -113,6 +119,7 @@ export async function getFoundItem(admin: Admin, id: string): Promise<AdminFound
     isSensitive: d.isSensitive,
     originalImageUrl: await storage.signedUrl(d.imageOriginalKey, ADMIN_IMAGE_TTL_SECONDS),
     publicImageUrl: await storage.signedUrl(d.imagePublicKey, ADMIN_IMAGE_TTL_SECONDS),
+    thumbnailUrl: d.imageThumbKey ? await storage.signedUrl(d.imageThumbKey, ADMIN_IMAGE_TTL_SECONDS) : null,
     expiresAt: item.expiresAt?.toISOString() ?? null,
     attempts: item.attempts.map((a) => ({
       emailMasked: maskEmail(a.user.email),
@@ -188,6 +195,7 @@ export async function updateFoundItem(
             ...(input.brand !== undefined ? { brand: input.brand } : {}),
             ...(input.features !== undefined ? { features: input.features } : {}),
             ...(input.description !== undefined ? { description: input.description } : {}),
+            ...(input.title !== undefined ? { title: input.title } : {}),
           },
         },
       },
