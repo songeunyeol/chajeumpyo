@@ -1,4 +1,10 @@
-import type { AiFeature, FeatureComparison, FeatureVerdict } from "@chajeumpyo/shared";
+import {
+  type AiFeature,
+  areNeighborColors,
+  Color,
+  type FeatureComparison,
+  type FeatureVerdict,
+} from "@chajeumpyo/shared";
 import type { ComparableAttributes } from "../ai/types";
 import { compact, looselyContains, words } from "./text";
 
@@ -38,35 +44,22 @@ const GENERIC_WORDS = new Set(
   ].map(compact),
 );
 
-/** 비슷해서 모순으로 보지 않는 색 묶음 (open-issues #24) */
-const SIMILAR_COLORS: string[][] = [
-  ["흰", "화이트", "하양", "아이보리", "크림", "white", "ivory"],
-  ["검정", "검은", "블랙", "black", "남색", "네이비", "진회색"],
-  ["회색", "그레이", "실버", "은색", "gray", "grey", "silver"],
-  ["빨강", "빨간", "레드", "red", "분홍", "핑크", "pink", "자주"],
-  ["파랑", "파란", "블루", "blue", "하늘", "남색", "네이비"],
-  ["노랑", "노란", "옐로", "yellow", "금색", "골드", "베이지"],
-  ["초록", "녹색", "그린", "green", "민트", "카키"],
-  ["갈색", "브라운", "brown", "베이지", "카키"],
-];
-
 /** 값에 일반 낱말 말고 실제 내용이 있는지 */
 function hasSpecificValue(feature: AiFeature): boolean {
   return words(feature.value).some((w) => !GENERIC_WORDS.has(compact(w)) && compact(w).length > 0);
 }
 
-function colorGroup(color: string): number[] {
-  const c = compact(color);
-  return SIMILAR_COLORS.flatMap((group, i) => (group.some((g) => c.includes(compact(g))) ? [i] : []));
-}
-
+/**
+ * 색은 기본 12색 키로 비교한다. 같으면 일치, 이웃 색(흰색↔회색 등)이면 확인 불가, 그 밖은 모순 (open-issues #24).
+ * 12색 키가 아닌 값(옛 데이터 등)은 확인 불가로 본다.
+ */
 export function compareColor(reported: string | null, stored: string | null): FeatureVerdict {
-  if (!reported || !stored) return "UNKNOWN";
-  if (looselyContains(reported, stored)) return "MATCH";
-  const a = colorGroup(reported);
-  const b = colorGroup(stored);
-  if (a.length === 0 || b.length === 0) return "UNKNOWN";
-  return a.some((g) => b.includes(g)) ? "UNKNOWN" : "CONTRADICT";
+  const a = Color.safeParse(reported);
+  const b = Color.safeParse(stored);
+  if (!a.success || !b.success) return "UNKNOWN";
+  if (a.data === b.data) return "MATCH";
+  if (a.data === "OTHER" || b.data === "OTHER" || areNeighborColors(a.data, b.data)) return "UNKNOWN";
+  return "CONTRADICT";
 }
 
 export function compareBrand(reported: string | null, stored: string | null): FeatureVerdict {
