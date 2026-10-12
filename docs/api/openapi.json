@@ -108,6 +108,12 @@
                               null
                             ]
                           },
+                          "title": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "building": {
                             "type": "object",
                             "properties": {
@@ -121,6 +127,12 @@
                             "required": [
                               "id",
                               "name"
+                            ]
+                          },
+                          "floor": {
+                            "type": [
+                              "integer",
+                              "null"
                             ]
                           },
                           "storageType": {
@@ -164,7 +176,9 @@
                           "id",
                           "status",
                           "category",
+                          "title",
                           "building",
+                          "floor",
                           "storageType",
                           "storagePlace",
                           "foundAt",
@@ -350,6 +364,12 @@
                         null
                       ]
                     },
+                    "title": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "building": {
                       "type": "object",
                       "properties": {
@@ -363,6 +383,12 @@
                       "required": [
                         "id",
                         "name"
+                      ]
+                    },
+                    "floor": {
+                      "type": [
+                        "integer",
+                        "null"
                       ]
                     },
                     "storageType": {
@@ -439,11 +465,21 @@
                         "properties": {
                           "key": {
                             "type": "string",
-                            "minLength": 1
+                            "enum": [
+                              "sticker",
+                              "scratch",
+                              "case",
+                              "keyring",
+                              "contents",
+                              "text",
+                              "pattern",
+                              "other"
+                            ]
                           },
                           "value": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "maxLength": 40
                           }
                         },
                         "required": [
@@ -466,6 +502,12 @@
                     },
                     "publicImageUrl": {
                       "type": "string"
+                    },
+                    "thumbnailUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "expiresAt": {
                       "type": [
@@ -582,7 +624,9 @@
                     "id",
                     "status",
                     "category",
+                    "title",
                     "building",
+                    "floor",
                     "storageType",
                     "storagePlace",
                     "foundAt",
@@ -595,6 +639,7 @@
                     "isSensitive",
                     "originalImageUrl",
                     "publicImageUrl",
+                    "thumbnailUrl",
                     "expiresAt",
                     "attempts",
                     "reveals",
@@ -807,14 +852,28 @@
                       "string",
                       "null"
                     ],
-                    "maxLength": 30
+                    "enum": [
+                      "WHITE",
+                      "BLACK",
+                      "GRAY_SILVER",
+                      "RED",
+                      "ORANGE_CORAL",
+                      "YELLOW",
+                      "GREEN",
+                      "BLUE_TEAL",
+                      "PURPLE",
+                      "PINK_MAGENTA",
+                      "BROWN",
+                      "OTHER",
+                      null
+                    ]
                   },
                   "brand": {
                     "type": [
                       "string",
                       "null"
                     ],
-                    "maxLength": 50
+                    "maxLength": 40
                   },
                   "features": {
                     "type": "array",
@@ -823,11 +882,21 @@
                       "properties": {
                         "key": {
                           "type": "string",
-                          "minLength": 1
+                          "enum": [
+                            "sticker",
+                            "scratch",
+                            "case",
+                            "keyring",
+                            "contents",
+                            "text",
+                            "pattern",
+                            "other"
+                          ]
                         },
                         "value": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "maxLength": 40
                         }
                       },
                       "required": [
@@ -835,7 +904,12 @@
                         "value"
                       ]
                     },
-                    "maxItems": 10
+                    "maxItems": 4
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
                   },
                   "description": {
                     "type": "string",
@@ -894,6 +968,12 @@
                         null
                       ]
                     },
+                    "title": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "building": {
                       "type": "object",
                       "properties": {
@@ -907,6 +987,12 @@
                       "required": [
                         "id",
                         "name"
+                      ]
+                    },
+                    "floor": {
+                      "type": [
+                        "integer",
+                        "null"
                       ]
                     },
                     "storageType": {
@@ -983,11 +1069,21 @@
                         "properties": {
                           "key": {
                             "type": "string",
-                            "minLength": 1
+                            "enum": [
+                              "sticker",
+                              "scratch",
+                              "case",
+                              "keyring",
+                              "contents",
+                              "text",
+                              "pattern",
+                              "other"
+                            ]
                           },
                           "value": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "maxLength": 40
                           }
                         },
                         "required": [
@@ -1010,6 +1106,12 @@
                     },
                     "publicImageUrl": {
                       "type": "string"
+                    },
+                    "thumbnailUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "expiresAt": {
                       "type": [
@@ -1126,7 +1228,9 @@
                     "id",
                     "status",
                     "category",
+                    "title",
                     "building",
+                    "floor",
                     "storageType",
                     "storagePlace",
                     "foundAt",
@@ -1139,6 +1243,7 @@
                     "isSensitive",
                     "originalImageUrl",
                     "publicImageUrl",
+                    "thumbnailUrl",
                     "expiresAt",
                     "attempts",
                     "reveals",
