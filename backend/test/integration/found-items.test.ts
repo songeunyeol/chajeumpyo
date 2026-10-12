@@ -9,6 +9,7 @@ import { EMBEDDING_DIM } from "../../src/ai/types";
 import { createApp } from "../../src/app";
 import { storage } from "../../src/storage";
 import { readLocalFile } from "../../src/storage/local";
+import { finderConsentFields } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
 import { jpegWithGpsAndRotation, noisyJpeg, sharpness, stripedJpeg } from "../helpers/images";
 
@@ -36,7 +37,7 @@ function useExtraction(result: FoundItemExtraction | (() => Promise<FoundItemExt
 
 async function register(fields: Record<string, string | number>, image?: Buffer, ua = "test-agent") {
   let req = request(app).post("/api/v1/found-items").set("User-Agent", ua);
-  for (const [k, v] of Object.entries(fields)) req = req.field(k, String(v));
+  for (const [k, v] of Object.entries({ ...finderConsentFields(), ...fields })) req = req.field(k, String(v));
   if (image) req = req.attach("image", image, "photo.jpg");
   return req;
 }
@@ -76,6 +77,7 @@ describe("기준 1. 정상 등록은 201, 응답에는 공개 정보만", () => 
       storageType: "HANDED_OVER",
       storagePlace: { id: placeId, name: "혜인관 경비실", guideText: "1층 정문 옆" },
       message: null,
+      handOverAdvice: null,
     });
     const text = JSON.stringify(res.body);
     for (const secret of ["WHITE", "Apple", "곰돌이", "CHARGER", "found/"]) expect(text).not.toContain(secret);

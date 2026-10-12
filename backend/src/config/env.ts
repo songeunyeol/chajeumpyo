@@ -22,6 +22,9 @@ const Env = z.object({
   ALLOWED_EMAIL_DOMAINS: z.string().min(1),
   /** 하루에 보내는 인증 메일 전체 상한 (메일 계정 발송 한도·비용 보호) */
   MAIL_DAILY_LIMIT: z.coerce.number().int().positive().default(300),
+  /** turnstile: 등록·체험·인증 코드 요청에 Cloudflare Turnstile 캡차. off는 개발용 (production에서는 금지) */
+  CAPTCHA_MODE: z.enum(["off", "turnstile"]).default("off"),
+  TURNSTILE_SECRET_KEY: z.string().optional(),
   /** true면 production에서도 /api/docs, /api/openapi.json을 연다 */
   API_DOCS_ENABLED: z
     .enum(["true", "false"])
@@ -55,21 +58,24 @@ const Env = z.object({
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
 });
 
-/** 테스트에서 설정 규칙을 확인할 수 있게 내보낸다 */
-export const EnvSchema = Env;
+/** 칸끼리 맞물리는 규칙. 테스트에서 설정 규칙을 확인할 수 있게 내보낸다 */
+export const EnvSchema = Env.superRefine((v, ctx) => {
+  const fail = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
+  if (v.AI_MODE === "gemini" && !v.GEMINI_API_KEY) fail("GEMINI_API_KEY", "AI_MODE=gemini이면 필요합니다.");
+  if (v.CAPTCHA_MODE === "turnstile" && !v.TURNSTILE_SECRET_KEY) {
+    fail("TURNSTILE_SECRET_KEY", "CAPTCHA_MODE=turnstile이면 필요합니다.");
+  }
+  if (v.NODE_ENV === "production" && v.CAPTCHA_MODE === "off") {
+    fail("CAPTCHA_MODE", "production에서는 캡차를 끌 수 없어요. turnstile과 TURNSTILE_SECRET_KEY를 넣어 주세요.");
+  }
+  if (v.MAIL_MODE === "smtp" && !(v.SMTP_HOST && v.SMTP_USER && v.SMTP_PASS)) {
+    fail("MAIL_MODE", "MAIL_MODE=smtp이면 SMTP_HOST, SMTP_USER, SMTP_PASS가 필요합니다.");
+  }
+});
 
-const parsed = Env.safeParse(process.env);
+const parsed = EnvSchema.safeParse(process.env);
 if (!parsed.success) {
   console.error("환경 변수 오류:", z.treeifyError(parsed.error));
-  process.exit(1);
-}
-if (parsed.data.AI_MODE === "gemini" && !parsed.data.GEMINI_API_KEY) {
-  console.error("AI_MODE=gemini이면 GEMINI_API_KEY가 필요합니다.");
-  process.exit(1);
-}
-
-if (parsed.data.MAIL_MODE === "smtp" && !(parsed.data.SMTP_HOST && parsed.data.SMTP_USER && parsed.data.SMTP_PASS)) {
-  console.error("MAIL_MODE=smtp이면 SMTP_HOST, SMTP_USER, SMTP_PASS가 필요합니다.");
   process.exit(1);
 }
 

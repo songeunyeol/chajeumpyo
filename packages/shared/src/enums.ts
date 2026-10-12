@@ -236,6 +236,12 @@ export const FEATURE_KEY_LABELS: Record<FeatureKey, string> = {
 /** 습득물 하나에 저장하는 숨은 특징 최대 개수 */
 export const MAX_FEATURES = 4;
 
+/**
+ * 고가품 (open-issues #32, QA B11). 그 자리에 두면 보관처에 맡겨 달라고 안내하고, 공개 화면에 대면 수령 안내를 붙인다.
+ * 분류가 LOST112 기반으로 바뀌면(휴대폰·스마트워치·귀금속 등) 여기에 더한다.
+ */
+export const VALUABLE_CATEGORIES: readonly Category[] = ["WALLET", "CARD", "LAPTOP_TABLET", "EARPHONE"];
+
 export const Role = z.enum(["USER", "ADMIN", "DEMO"]);
 export type Role = z.infer<typeof Role>;
 

@@ -1,3 +1,4 @@
+import { CONSENT_VERSION } from "@chajeumpyo/shared";
 import request from "supertest";
 import type { App } from "supertest/types";
 import { hashPassword } from "../../src/lib/hash";
@@ -21,7 +22,7 @@ export async function signupUser(app: App, email = "student@skuniv.ac.kr", passw
     .expect(200);
   const res = await request(app)
     .post("/api/v1/auth/signup")
-    .send({ verificationToken: verify.body.verificationToken, password })
+    .send({ verificationToken: verify.body.verificationToken, password, consent: memberConsent() })
     .expect(201);
   return res.body as { accessToken: string; user: { id: string; email: string; role: string } };
 }
@@ -33,6 +34,16 @@ export async function createAdmin(email: string, password: string, storagePlaceI
 }
 
 export async function demoLogin(app: App) {
-  const res = await request(app).post("/api/v1/auth/demo").expect(201);
+  const res = await request(app).post("/api/v1/auth/demo").send({ consent: demoConsent() }).expect(201);
   return res.body as { accessToken: string; user: { id: string; email: string; role: string } };
 }
+
+/** 동의 화면에서 모두 동의한 값 */
+export const memberConsent = () => ({ version: CONSENT_VERSION, email: true, externalAi: true, location: true });
+export const demoConsent = () => ({ version: CONSENT_VERSION, externalAi: true, location: false });
+/** 습득물 등록 multipart 필드용 동의 */
+export const finderConsentFields = () => ({
+  consentVersion: CONSENT_VERSION,
+  consentExternalAi: "true",
+  consentLocation: "true",
+});
