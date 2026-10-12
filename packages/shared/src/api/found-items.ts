@@ -11,6 +11,8 @@ export const RegisterFoundItemFields = z
     buildingId: z.coerce.number<number>().int().positive(),
     storageType: StorageType,
     storagePlaceId: z.coerce.number<number>().int().positive().optional(),
+    /** 습득 층. 지하는 음수(B1 = -1), 모르면 비움 */
+    floor: z.coerce.number<number>().int().min(-10).max(30).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.storageType === "HANDED_OVER" && v.storagePlaceId === undefined) {
@@ -41,6 +43,7 @@ export const RegisterFoundItemResponse = z.object({
   /** REVIEW면 null */
   category: Category.nullable(),
   building: BuildingSummary,
+  floor: z.number().int().nullable(),
   storageType: StorageType,
   storagePlace: StoragePlaceSummary.nullable(),
   /** REVIEW일 때 안내 문구 */

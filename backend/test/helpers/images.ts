@@ -31,3 +31,14 @@ export function jpegWithGpsAndRotation() {
       .withMetadata({ orientation: 6 }),
   );
 }
+
+/** 굵은 세로 줄무늬 사진. 줄여도 무늬가 남아서, 축소가 아닌 블러를 확인할 때 쓴다. */
+export async function stripedJpeg(width = 800, height = 600, stripe = 16) {
+  const raw = Buffer.alloc(width * height * 3);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++)
+      raw.fill(Math.floor(x / stripe) % 2 ? 230 : 20, (y * width + x) * 3, (y * width + x) * 3 + 3);
+  return sharp(raw, { raw: { width, height, channels: 3 } })
+    .jpeg()
+    .toBuffer();
+}

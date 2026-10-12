@@ -154,6 +154,8 @@ model FoundItem {
   /// storage_type = HANDED_OVER면 필수 (마이그레이션 SQL의 CHECK 제약)
   storagePlace        StoragePlace?    @relation(fields: [storagePlaceId], references: [id])
   storagePlaceId      Int?             @map("storage_place_id")
+  /// 습득 층. 지하는 음수, 모르면 null (공개 정보)
+  floor               Int?
   status              FoundStatus      @default(ANALYZING)
   isSeed              Boolean          @default(false) @map("is_seed")
   uploaderFingerprint String?          @map("uploader_fingerprint")
@@ -175,12 +177,18 @@ model FoundItemDetail {
   foundItem        FoundItem                    @relation(fields: [foundItemId], references: [id], onDelete: Cascade)
   foundItemId      String                       @id @map("found_item_id") @db.Uuid
   imageOriginalKey String                       @map("image_original_key")
+  /// 판정 통과 후 공개본: 개인정보 영역만 가린 선명본(1024px)
   imagePublicKey   String                       @map("image_public_key")
+  /// 후보 카드용 강한 블러본. 숨은 특징을 알아볼 수 없을 정도
+  imageThumbKey    String?                      @map("image_thumb_key")
   isSensitive      Boolean                      @default(false) @map("is_sensitive")
+  /// 기본 12색 키 (packages/shared Color). 값 검증은 zod에서
   color            String?
   brand            String?
   features         Json?
   description      String?
+  /// 관리자 목록용 제목 (비공개 정보 포함)
+  title            String?
   /// 차원(1536)은 임베딩 모델 확정 후 맞춘다. 읽기·쓰기는 src/repositories/embedding.ts의 raw SQL로만.
   embedding        Unsupported("vector(1536)")?
   rawAiResponse    Json?                        @map("raw_ai_response")

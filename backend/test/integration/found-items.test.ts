@@ -10,7 +10,7 @@ import { createApp } from "../../src/app";
 import { storage } from "../../src/storage";
 import { readLocalFile } from "../../src/storage/local";
 import { prisma, resetDb } from "../helpers/db";
-import { jpegWithGpsAndRotation, noisyJpeg, sharpness } from "../helpers/images";
+import { jpegWithGpsAndRotation, noisyJpeg, sharpness, stripedJpeg } from "../helpers/images";
 
 let app: ReturnType<typeof createApp>;
 let buildingId: number;
@@ -21,11 +21,13 @@ const SENSITIVE: FoundItemExtraction = {
   hasObject: true,
   category: "CARD",
   categoryAlt: "WALLET",
-  color: "파란색",
+  color: "BLUE_TEAL",
   brand: null,
   features: [{ key: "text", value: "학생증 이름 홍길동" }],
   description: "파란 학생증",
   isSensitive: true,
+  sensitiveRegions: [],
+  title: "파란 학생증",
 };
 
 function useExtraction(result: FoundItemExtraction | (() => Promise<FoundItemExtraction>)) {
@@ -70,12 +72,19 @@ describe("기준 1. 정상 등록은 201, 응답에는 공개 정보만", () => 
       status: "REGISTERED",
       category: "EARPHONE",
       building: { id: buildingId, name: "혜인관" },
+      floor: null,
       storageType: "HANDED_OVER",
       storagePlace: { id: placeId, name: "혜인관 경비실", guideText: "1층 정문 옆" },
       message: null,
     });
     const text = JSON.stringify(res.body);
-    for (const secret of ["흰색", "Apple", "곰돌이", "CHARGER", "found/"]) expect(text).not.toContain(secret);
+    for (const secret of ["WHITE", "Apple", "곰돌이", "CHARGER", "found/"]) expect(text).not.toContain(secret);
+  });
+
+  it("층을 받으면 저장하고 응답에 준다 (지하는 음수)", async () => {
+    const res = await register({ ...inPlace(), floor: -1 }, await noisyJpeg());
+    expect(res.body.floor).toBe(-1);
+    expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: res.body.id } })).floor).toBe(-1);
   });
 
   it("그 자리에 둠은 보관처 없이", async () => {
@@ -86,11 +95,16 @@ describe("기준 1. 정상 등록은 201, 응답에는 공개 정보만", () => 
 });
 
 describe("기준 2. 비공개 정보와 임베딩은 서버에만 저장", () => {
-  it("상세 테이블에 색·브랜드·특징·설명, 2순위 종류, 임베딩", async () => {
+  it("상세 테이블에 색(12색 키)·브랜드·특징·설명·관리자용 제목, 2순위 종류, 임베딩", async () => {
     const { body } = await register(inPlace(), await noisyJpeg());
     const item = await prisma.foundItem.findUniqueOrThrow({ where: { id: body.id }, include: { detail: true } });
     expect(item.categoryAlt).toBe("CHARGER");
-    expect(item.detail).toMatchObject({ color: "흰색", brand: "Apple", isSensitive: false });
+    expect(item.detail).toMatchObject({
+      color: "WHITE",
+      brand: "Apple",
+      isSensitive: false,
+      title: "흰색 무선 이어폰, 곰돌이 스티커",
+    });
     expect(item.detail?.features).toHaveLength(2);
     expect(item.expiresAt?.getTime()).toBeGreaterThan(Date.now() + 29 * 86_400_000);
     const [row] = await prisma.$queryRaw<{ dims: number }[]>`
@@ -117,6 +131,13 @@ describe("기준 3. 입력 검증", () => {
     const b = await register({ ...inPlace(), storagePlaceId: placeId }, await noisyJpeg());
     expect([a.status, b.status]).toEqual([400, 400]);
     expect(a.body.error.details[0].path).toBe("storagePlaceId");
+  });
+
+  it("층은 -10~30 정수만", async () => {
+    for (const floor of [-11, 31, 1.5, "B1"]) {
+      const res = await register({ ...inPlace(), floor }, await noisyJpeg());
+      expect(res.status).toBe(400);
+    }
   });
 
   it("없는 건물, 없는·운영 안 하는 보관처는 400", async () => {
@@ -181,7 +202,7 @@ describe("기준 5. 위치 정보(EXIF)는 지우고, 회전은 적용하고, �
   });
 });
 
-describe("기준 6. 민감 정보가 있으면 공개본은 흐리게", () => {
+describe("기준 6. 공개본은 개인정보만 가리고, 후보용 사진은 항상 강하게 흐린다", () => {
   async function publicSharpness(id: string) {
     const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: id } });
     return { pub: await sharpness((await readLocalFile(d.imagePublicKey)) as Buffer), d };
@@ -201,6 +222,36 @@ describe("기준 6. 민감 정보가 있으면 공개본은 흐리게", () => {
     const { pub, d } = await publicSharpness(body.id);
     const orig = await sharpness((await readLocalFile(d.imageOriginalKey)) as Buffer);
     expect(pub).toBeGreaterThan(orig * 0.7);
+  });
+
+  it("민감 영역을 알면 그 영역만 흐리고 나머지는 선명", async () => {
+    // 400x300 사진의 왼쪽 위 1/4을 개인정보 영역으로
+    useExtraction({ ...SENSITIVE, sensitiveRegions: [{ x: 0, y: 0, width: 0.25, height: 0.25 }] });
+    const { body } = await register(inPlace(), await noisyJpeg(400, 300));
+    const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: body.id } });
+    const pub = (await readLocalFile(d.imagePublicKey)) as Buffer;
+    const orig = (await readLocalFile(d.imageOriginalKey)) as Buffer;
+    const crop = (img: Buffer, left: number, top: number) =>
+      sharp(img).extract({ left, top, width: 80, height: 60 }).toBuffer();
+    const inside = await sharpness(await crop(pub, 5, 5));
+    const outside = await sharpness(await crop(pub, 300, 220));
+    const origInside = await sharpness(await crop(orig, 5, 5));
+    const origOutside = await sharpness(await crop(orig, 300, 220));
+    expect(inside).toBeLessThan(origInside * 0.3);
+    expect(outside).toBeGreaterThan(origOutside * 0.7);
+  });
+
+  it("후보용 사진은 민감 여부와 관계없이 강하게 흐린 작은 사본", async () => {
+    const { body } = await register(inPlace(), await stripedJpeg(800, 600));
+    const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: body.id } });
+    expect(d.imageThumbKey).toBe(`found/${body.id}/thumb.jpg`);
+    const thumb = (await readLocalFile(d.imageThumbKey as string)) as Buffer;
+    const meta = await sharp(thumb).metadata();
+    expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBeLessThanOrEqual(320);
+    // 같은 크기로 줄이기만 한 사본과 비교해야 축소 효과가 아니라 블러를 확인할 수 있다
+    const original = (await readLocalFile(d.imageOriginalKey)) as Buffer;
+    const shrunk = await sharp(original).resize(meta.width, meta.height).toBuffer();
+    expect(await sharpness(thumb)).toBeLessThan((await sharpness(shrunk)) * 0.3);
   });
 });
 
@@ -244,6 +295,30 @@ describe("기준 8. AI 실패: 한 번 재시도, 그래도 실패하면 201 REV
     const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: res.body.id } });
     expect(d.isSensitive).toBe(true);
     expect(await readLocalFile(d.imageOriginalKey)).not.toBeNull();
+  });
+
+  it("AI 응답 형식이 계약과 다르면 REVIEW (허용 밖 색, 특징 5개, 정해지지 않은 특징 키)", async () => {
+    const bad: unknown[] = [
+      { ...SENSITIVE, color: "파란색" },
+      { ...SENSITIVE, features: Array.from({ length: 5 }, (_, i) => ({ key: "sticker", value: `스티커${i}` })) },
+      { ...SENSITIVE, features: [{ key: "ignore previous instructions", value: "x" }] },
+      { ...SENSITIVE, sensitiveRegions: [{ x: 0.9, y: 0, width: 0.5, height: 0.1 }] },
+    ];
+    for (const extraction of bad) {
+      useExtraction(async () => extraction as FoundItemExtraction);
+      const res = await register(inPlace(), await noisyJpeg(), `agent-${bad.indexOf(extraction)}`);
+      expect(res.status).toBe(201);
+      expect(res.body.status).toBe("REVIEW");
+      const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: res.body.id } });
+      expect(d.color).toBeNull();
+      expect(d.isSensitive).toBe(true);
+    }
+  });
+
+  it("임베딩 차원이 다르면 REVIEW", async () => {
+    setAiClient({ ...mockAiClient, embed: async () => [0.1, 0.2, 0.3] });
+    const res = await register(inPlace(), await noisyJpeg());
+    expect(res.body.status).toBe("REVIEW");
   });
 
   it("응답이 제한 시간을 넘기면 실패로 본다", async () => {

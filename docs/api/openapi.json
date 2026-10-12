@@ -1587,6 +1587,12 @@
                         "name"
                       ]
                     },
+                    "floor": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
                     "storageType": {
                       "type": "string",
                       "enum": [
@@ -1628,6 +1634,7 @@
                     "status",
                     "category",
                     "building",
+                    "floor",
                     "storageType",
                     "storagePlace",
                     "message"

@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { FoundItemExtraction, RegisterFoundItemFields, RegisterFoundItemResponse } from "@chajeumpyo/shared";
-import { ai } from "../ai";
+import { FoundItemExtraction, type RegisterFoundItemFields, type RegisterFoundItemResponse } from "@chajeumpyo/shared";
+import { ai, EMBEDDING_DIM } from "../ai";
 import { env } from "../config/env";
 import { retryOnce, withTimeout } from "../lib/async";
 import { AppError } from "../lib/errors";
 import { hmac } from "../lib/hash";
-import { makePublicImage, normalizeImage } from "../lib/image";
+import { makePublicImage, makeThumbImage, normalizeImage } from "../lib/image";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
 import { setFoundItemEmbedding } from "../repositories/embedding";
@@ -23,14 +23,33 @@ export function uploaderFingerprint(ip: string, userAgent: string): string {
 
 type Analysis = { extraction: FoundItemExtraction; embedding: number[] };
 
-/** AI 속성 추출 + 설명 임베딩. 각각 시간 제한을 두고 실패하면 한 번 재시도한다. 끝내 실패하면 null. */
+/** 임베딩은 정해진 차원의 유한한 숫자여야 한다 */
+export function isValidEmbedding(v: unknown): v is number[] {
+  return Array.isArray(v) && v.length === EMBEDDING_DIM && v.every((x) => typeof x === "number" && Number.isFinite(x));
+}
+
+/**
+ * AI 속성 추출 + 설명 임베딩. 각각 시간 제한을 두고 실패하면 한 번 재시도한다.
+ * AI 응답은 고정 계약(zod)으로 다시 검증한다. 형식이 틀리면(허용값 밖 색·종류, 특징 5개 이상 등) 실패로 보고 검토 대기로 저장한다.
+ * 끝내 실패하면 null.
+ */
 async function analyze(image: Buffer): Promise<Analysis | null> {
   try {
-    const extraction = await retryOnce(() =>
+    const raw = await retryOnce(() =>
       withTimeout(ai.extractFoundItem(image, "image/jpeg"), env.AI_TIMEOUT_MS, "속성 추출"),
     );
+    const parsed = FoundItemExtraction.safeParse(raw);
+    if (!parsed.success) {
+      logger.warn({ issues: parsed.error.issues }, "습득물 AI 응답 형식 오류 → 검토 대기로 저장");
+      return null;
+    }
+    const extraction = parsed.data;
     if (!extraction.hasObject) return { extraction, embedding: [] };
     const embedding = await retryOnce(() => withTimeout(ai.embed(extraction.description), env.AI_TIMEOUT_MS, "임베딩"));
+    if (!isValidEmbedding(embedding as unknown)) {
+      logger.warn({ length: (embedding as unknown[]).length }, "임베딩 형식 오류 → 검토 대기로 저장");
+      return null;
+    }
     return { extraction, embedding };
   } catch (err) {
     logger.warn({ err }, "습득물 AI 분석 실패 → 검토 대기로 저장");
@@ -78,11 +97,20 @@ export async function registerFoundItem(input: {
 
   const ex = analysis?.extraction;
   // AI가 실패해 민감 여부를 모르면 흐리게 처리하는 쪽이 기본 (F-03)
-  const blur = ex ? ex.isSensitive : true;
+  const sensitive = ex ? ex.isSensitive : true;
   const id = randomUUID();
-  const keys = { original: `found/${id}/original.jpg`, public: `found/${id}/public.jpg` };
+  const keys = {
+    original: `found/${id}/original.jpg`,
+    public: `found/${id}/public.jpg`,
+    thumb: `found/${id}/thumb.jpg`,
+  };
+  const [publicImage, thumbImage] = await Promise.all([
+    makePublicImage(original, { sensitive, regions: ex?.sensitiveRegions ?? [] }),
+    makeThumbImage(original),
+  ]);
   await storage.put(keys.original, original, "image/jpeg");
-  await storage.put(keys.public, await makePublicImage(original, blur), "image/jpeg");
+  await storage.put(keys.public, publicImage, "image/jpeg");
+  await storage.put(keys.thumb, thumbImage, "image/jpeg");
 
   const foundAt = new Date();
   const status = analysis ? "REGISTERED" : "REVIEW";
@@ -96,6 +124,7 @@ export async function registerFoundItem(input: {
           categoryAlt: ex?.categoryAlt && ex.categoryAlt !== ex.category ? ex.categoryAlt : null,
           storageType: fields.storageType,
           storagePlaceId: place?.id ?? null,
+          floor: fields.floor ?? null,
           status,
           uploaderFingerprint: fingerprint,
           foundAt,
@@ -104,11 +133,13 @@ export async function registerFoundItem(input: {
             create: {
               imageOriginalKey: keys.original,
               imagePublicKey: keys.public,
-              isSensitive: blur,
+              imageThumbKey: keys.thumb,
+              isSensitive: sensitive,
               color: ex?.color ?? null,
               brand: ex?.brand ?? null,
               features: ex?.features ?? [],
               description: ex?.description ?? null,
+              title: ex?.title ?? null,
               rawAiResponse: ex ?? undefined,
             },
           },
@@ -117,7 +148,7 @@ export async function registerFoundItem(input: {
       if (analysis) await setFoundItemEmbedding(id, analysis.embedding, tx);
     });
   } catch (err) {
-    await Promise.all([storage.delete(keys.original), storage.delete(keys.public)]);
+    await Promise.all([storage.delete(keys.original), storage.delete(keys.public), storage.delete(keys.thumb)]);
     throw err;
   }
 
@@ -128,6 +159,7 @@ export async function registerFoundItem(input: {
     status,
     category: ex?.category ?? null,
     building,
+    floor: fields.floor ?? null,
     storageType: fields.storageType,
     storagePlace: place,
     message: analysis ? null : REVIEW_MESSAGE,
