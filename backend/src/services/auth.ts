@@ -1,5 +1,5 @@
 import { randomInt, randomUUID } from "node:crypto";
-import type { AdminAuthResponse, AuthResponse, AuthUser, Role } from "@chajeumpyo/shared";
+import type { AdminAuthResponse, AuthResponse, AuthUser, DemoConsent, MemberConsent, Role } from "@chajeumpyo/shared";
 import { allowedEmailDomains, env } from "../config/env";
 import { Prisma } from "../generated/prisma/client";
 import { AppError } from "../lib/errors";
@@ -118,7 +118,11 @@ export async function verifySignupCode(email: string, code: string) {
 }
 
 /** POST /auth/signup. 가입용 토큰은 consumed_at으로 한 번만 쓸 수 있다. */
-export async function signup(verificationToken: string, password: string): Promise<AuthResponse> {
+export async function signup(
+  verificationToken: string,
+  password: string,
+  consent: MemberConsent,
+): Promise<AuthResponse> {
   const { email, verificationId } = verifySignupToken(verificationToken);
   const passwordHash = await hashPassword(password);
 
@@ -131,7 +135,16 @@ export async function signup(verificationToken: string, password: string): Promi
       if (consumed.count !== 1) {
         throw new AppError("INVALID_CODE", "이미 사용한 인증이에요. 이메일 인증을 다시 해주세요.");
       }
-      return tx.user.create({ data: { email, passwordHash, role: "USER" } });
+      return tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          role: "USER",
+          consentVersion: consent.version,
+          consentedAt: new Date(),
+          locationConsent: consent.location,
+        },
+      });
     });
     return issueAuth(user);
   } catch (err) {
@@ -172,9 +185,16 @@ export async function adminLogin(email: string, password: string): Promise<Admin
 }
 
 /** POST /auth/demo: 누를 때마다 새 체험 계정 (open-issues #1) */
-export async function createDemoAccount(): Promise<AuthResponse> {
+export async function createDemoAccount(consent: DemoConsent): Promise<AuthResponse> {
   const user = await prisma.user.create({
-    data: { email: `demo-${randomUUID().slice(0, 8)}@demo.local`, passwordHash: UNUSABLE_PASSWORD, role: "DEMO" },
+    data: {
+      email: `demo-${randomUUID().slice(0, 8)}@demo.local`,
+      passwordHash: UNUSABLE_PASSWORD,
+      role: "DEMO",
+      consentVersion: consent.version,
+      consentedAt: new Date(),
+      locationConsent: consent.location,
+    },
   });
   return issueAuth(user);
 }

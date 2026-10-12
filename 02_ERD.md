@@ -39,6 +39,9 @@ erDiagram
         string password_hash
         enum role "USER | ADMIN | DEMO"
         int storage_place_id FK "관리자만"
+        string consent_version "동의 화면 버전"
+        datetime consented_at
+        boolean location_consent
         datetime created_at
     }
     EMAIL_VERIFICATION {
@@ -79,6 +82,8 @@ erDiagram
         datetime found_at
         datetime expires_at
         datetime data_purged_at "수령·만료로 사진·비공개 정보를 지운 시각"
+        string consent_version "습득자 동의 화면 버전"
+        boolean location_consent
     }
     FOUND_ITEM_DETAIL {
         uuid found_item_id PK, FK
