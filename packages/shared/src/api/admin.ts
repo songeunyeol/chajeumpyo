@@ -56,8 +56,9 @@ export const AdminFoundItemDetailResponse = AdminFoundItemSummary.extend({
   features: z.array(AiFeature),
   description: z.string().nullable(),
   isSensitive: z.boolean(),
-  originalImageUrl: z.string(),
-  publicImageUrl: z.string(),
+  /** 수령·기한 만료로 지웠으면 null */
+  originalImageUrl: z.string().nullable(),
+  publicImageUrl: z.string().nullable(),
   /** 후보 카드에 보이는 강한 블러본 */
   thumbnailUrl: z.string().nullable(),
   expiresAt: z.iso.datetime().nullable(),

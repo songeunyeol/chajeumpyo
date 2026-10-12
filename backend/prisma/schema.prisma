@@ -161,6 +161,8 @@ model FoundItem {
   uploaderFingerprint String?          @map("uploader_fingerprint")
   foundAt             DateTime         @default(now()) @map("found_at")
   expiresAt           DateTime?        @map("expires_at")
+  /// 수령·기한 만료로 사진과 비공개 정보를 지운 시각 (open-issues #33)
+  dataPurgedAt        DateTime?        @map("data_purged_at")
   detail              FoundItemDetail?
   attempts            MatchAttempt[]
   reveals             RevealLog[]
@@ -176,9 +178,10 @@ model FoundItem {
 model FoundItemDetail {
   foundItem        FoundItem                    @relation(fields: [foundItemId], references: [id], onDelete: Cascade)
   foundItemId      String                       @id @map("found_item_id") @db.Uuid
-  imageOriginalKey String                       @map("image_original_key")
+  /// 수령·만료로 지우면 null
+  imageOriginalKey String?                      @map("image_original_key")
   /// 판정 통과 후 공개본: 개인정보 영역만 가린 선명본(1024px)
-  imagePublicKey   String                       @map("image_public_key")
+  imagePublicKey   String?                      @map("image_public_key")
   /// 후보 카드용 강한 블러본. 숨은 특징을 알아볼 수 없을 정도
   imageThumbKey    String?                      @map("image_thumb_key")
   isSensitive      Boolean                      @default(false) @map("is_sensitive")

@@ -25,6 +25,12 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
     },
   });
   if (!item?.detail || !item.category) throw new AppError("NOT_FOUND", "물건을 찾을 수 없어요.");
+  // 수령·기한 만료로 사진과 비공개 정보를 지운 물건 (#33)
+  const publicKey = item.detail.imagePublicKey;
+  if (item.dataPurgedAt || !publicKey) {
+    if (item.status === "CLAIMED") throw new AppError("ALREADY_CLAIMED", "이미 수령된 물건이에요.");
+    throw new AppError("NOT_FOUND", "보관 기간이 지나 정보가 지워졌어요. 보관처에 문의해 주세요.");
+  }
 
   const passed = await prisma.matchAttempt.findFirst({
     where: { userId: viewer.userId, foundItemId, OR: [{ result: "PASS" }, { answerCorrect: true }] },
@@ -69,7 +75,7 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
     id: item.id,
     category: item.category,
     color: item.detail.color,
-    imageUrl: await storage.signedUrl(item.detail.imagePublicKey, DETAIL_IMAGE_TTL_SECONDS),
+    imageUrl: await storage.signedUrl(publicKey, DETAIL_IMAGE_TTL_SECONDS),
     imageUrlExpiresAt: imageUrlExpiresAt.toISOString(),
     building: item.building,
     storageType: item.storageType,

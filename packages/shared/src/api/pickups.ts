@@ -40,7 +40,7 @@ export const PickupScanResponse = z.object({
     category: Category,
     building: z.string(),
     /** 원본 사진 서명 URL (관리자 확인용) */
-    imageUrl: z.string(),
+    imageUrl: z.string().nullable(),
   }),
   claimant: z.object({ emailMasked: z.string() }),
   expiresAt: z.iso.datetime(),
