@@ -41,15 +41,45 @@
 
 전체 표는 아래 코드표 참고. 조사 기록·출처는 Notion 작업 보드 태스크 [LOST112 습득물·분실물 API 확인](https://app.notion.com/p/3f2dc7667cb7813ea6dfe1e741f79019)에 있음.
 
-## 남은 확인 (키 발급 후)
+## 실호출 검증 (2026-10-12)
 
-1. 실제 호출로 전체 오퍼레이션·응답 필드 재확인
-2. 공통코드 API로 분류·색상·지역 코드 최신화
-3. 시드 30건 파이프라인에 `source: lost112_seed`만 넣고 원문 전체 미러는 하지 않음
+키: 환경변수 `DATA_GO_KR_SERVICE_KEY` (Decoding 키, 쿼리 생성 시 URL 인코딩). 두 API 모두 resultCode 00.
+
+**동작하는 오퍼레이션**
+
+| 서비스 | 오퍼레이션 | 비고 |
+| --- | --- | --- |
+| 습득물 | `getLosfundInfoAccToClAreaPd` | 분류(`PRDT_CL_CD_01/02`)·지역(`N_FD_LCT_CD`)·색상(`FD_COL_CD`)·기간 |
+| 습득물 | `getLosfundInfoAccTpNmCstdyPlace` | 날짜 파라미터 무시 (전체 약 60만 건) |
+| 습득물 | `getLosfundInfoAccToLc` | `PRDT_NM`+`ADDR` 필수 |
+| 습득물 | `getLosfundDetailInfo` | `ATC_ID`, `FD_SN` |
+| 분실물 | `getLostGoodsInfoAccToClAreaPd` | 지역은 `LST_LCT_CD` |
+| 분실물 | `getLostGoodsInfoAccTpNmCstdyPlace` | `LST_PLACE`+`LST_PRDT_NM` 둘 다 필수 |
+| 분실물 | `getLostGoodsDetailInfo` | `ATC_ID` |
+
+`getLostGoodsInfoAccToLc`는 **없음** (NO_OPENAPI_SERVICE_ERROR 12).
+
+**실제 응답 필드**
+
+- 습득 목록: `atcId`, `fdSn`, `prdtClNm`("대 > 중"), `clrNm`, `fdPrdtNm`, `fdSbjt`, `fdFilePathImg`, `depPlace`, `fdYmd`(YYYY-MM-DD), `rnum` (AccToLc는 `fdFilePathImg` 대신 `addr`)
+- 습득 상세: `fdPrdtNm`, `atcId`, `fdSn`, `fdFilePathImg`, `fdYmd`, `fdHor`, `fdPlace`, `prdtClNm`, `depPlace`, `csteSteNm`, `fndKeepOrgnSeNm`, `orgId`, `orgNm`, `tel`, `uniq`
+- 분실 목록: `atcId`, `prdtClNm`, `lstPrdtNm`, `lstSbjt`, `lstPlace`, `lstYmd`, `rnum` — **색상 없음** (상세에만 `clrNm`)
+- 분실 상세: `lstPrdtNm`, `atcId`, `lstYmd`, `lstHor`, `lstPlace`, `prdtClNm`, `lstSteNm`, `uniq`, `lstFilePathImg`, `clrNm`, `lstLctNm`, `lstSbjt`, `orgId`, `orgNm`, `tel`, `lstPlaceSeNm`
+
+**주의**
+
+- 색상: 같은 이름이 여러 코드에 있고 각각 따로 필터됨. 예: 블랙 = `CL1002`(13,334건) + `CL1043`(127,484건). UI 기본색 1개 → CL 코드 여러 개로 매핑해서 여러 번 조회. `CL1010`=기타, `CL1011`=핑크 확인.
+- 기간을 짧게: 무거운 쿼리(예: 분실 서울 전체 기간)는 `HTTP_ERROR`(04). 필수 파라미터 누락도 04.
+- 응답 느림 (호출당 수 초~수십 초). 사용자 요청마다 호출하지 말고 서버에서 미리 동기화.
+- 보류였던 중분류 9개·`LCG000`은 모두 실제 필터·응답으로 확인 (대조: 없는 코드 `PRG999`·`LCZ999`는 0건).
+
+## 남은 일
+
+1. 시드 30건 파이프라인에 `source: lost112_seed`만 넣고 원문 전체 미러는 하지 않음
 
 ## 우리 서비스 분류 (초안)
 
-출처: notion.md의 LOST112 코드표 중 확인된 코드만 사용 (미확인 코드 제외).
+출처: notion.md의 LOST112 코드표 중 확인된 코드만 사용 (레거시 코드 제외).
 
 | # | 서비스 분류명 | 대분류 코드 | 대분류명 | 중분류 코드 | 중분류명 | 선정 이유 |
 |---|---|---|---|---|---|---|
@@ -180,17 +210,17 @@
 | PRZ000 | 기타물품 | PRZ100 | 기타 |  |
 | PRX000 | 유류품 | PRX200 | 무안공항유류품 |  |
 | PRX000 | 유류품 | PRX100 | 유류품 |  |
-| PRG000 | 전자기기 | PRG100 | PMP | 미확인: 현행 LOST112 화면에 없음, 과거 API 응답 덤프에만 있음 |
-| PRG000 | 전자기기 | PRG200 | MP3 | 미확인: 현행 LOST112 화면에 없음, 과거 API 응답 덤프에만 있음 |
-| PRG000 | 전자기기 | PRG300 | PDA | 미확인: 현행 LOST112 화면에 없음, 과거 API 응답 덤프에만 있음 |
-| PRG000 | 전자기기 | PRG500 | 전자수첩 | 미확인: 현행 LOST112 화면에 없음, 과거 API 응답 덤프에만 있음 |
-| PRI000 | 컴퓨터 | PRI300 | 삼보노트북 | 미확인: 현행 LOST112 화면에 없음, 과거 API 응답 덤프에만 있음 |
-| PRI000 | 컴퓨터 | PRI500 | HP노트북 | 미확인: 현행 LOST112 화면에 없음, 과거 API 응답 덤프에만 있음 |
-| PRJ000 | 휴대폰 | PRJ300 | 스카이휴대폰 | 미확인: 현행 LOST112 화면에 없음, 과거 API 응답 덤프에만 있음 |
-| PRJ000 | 휴대폰 | PRJ600 | 모토로라휴대폰 | 미확인: 현행 LOST112 화면에 없음, 과거 API 응답 덤프에만 있음 |
-| PRN000 | 증명서 | PRN500 | 판결문 | 미확인: 현행 LOST112 화면에 없음, 과거 API 응답 덤프에만 있음 |
+| PRG000 | 전자기기 | PRG100 | PMP | 확인 (2026-10-12 실호출): 현행 화면엔 없는 레거시 코드, API 필터·응답 정상 |
+| PRG000 | 전자기기 | PRG200 | MP3 | 확인 (2026-10-12 실호출): 현행 화면엔 없는 레거시 코드, API 필터·응답 정상 |
+| PRG000 | 전자기기 | PRG300 | PDA | 확인 (2026-10-12 실호출): 현행 화면엔 없는 레거시 코드, API 필터·응답 정상 |
+| PRG000 | 전자기기 | PRG500 | 전자수첩 | 확인 (2026-10-12 실호출): 현행 화면엔 없는 레거시 코드, API 필터·응답 정상 |
+| PRI000 | 컴퓨터 | PRI300 | 삼보노트북 | 확인 (2026-10-12 실호출): 현행 화면엔 없는 레거시 코드, API 필터·응답 정상 |
+| PRI000 | 컴퓨터 | PRI500 | HP노트북 | 확인 (2026-10-12 실호출): 현행 화면엔 없는 레거시 코드, API 필터·응답 정상 |
+| PRJ000 | 휴대폰 | PRJ300 | 스카이휴대폰 | 확인 (2026-10-12 실호출): 현행 화면엔 없는 레거시 코드, API 필터·응답 정상 |
+| PRJ000 | 휴대폰 | PRJ600 | 모토로라휴대폰 | 확인 (2026-10-12 실호출): 현행 화면엔 없는 레거시 코드, API 필터·응답 정상 |
+| PRN000 | 증명서 | PRN500 | 판결문 | 확인 (2026-10-12 실호출): 현행 화면엔 없는 레거시 코드, API 필터·응답 정상 |
 
-출처: LOST112 습득물 검색 화면의 분류 선택 레이어 `https://www.lost112.go.kr/ajaxLayer.do` (웹 아카이브 2025-05-01 캡처, 2026-05-30 캡처까지 내용 동일). 대분류 20개·중분류 73개 확인. "미확인" 9개 행은 공통코드 API 응답을 저장한 GitHub 저장소 px201226/LossFound(app/src/main/res/xml/prd_sub_code.xml)에만 있음. 제3자 문서(GitHub yseho031018/LOST_QUEST)는 API 기준 대분류 21개·중분류 85개라고 적고 있어, 나머지 대분류 1개·중분류 일부는 미확인. PRX000(유류품)은 대분류 셀렉트 옵션(ajaxCodeSelect, 2020 캡처)에는 없고 분류 레이어에만 있음.
+출처: LOST112 습득물 검색 화면의 분류 선택 레이어 `https://www.lost112.go.kr/ajaxLayer.do` (웹 아카이브 2025-05-01 캡처, 2026-05-30 캡처까지 내용 동일). 대분류 20개·중분류 73개 확인. 레거시 9개 행(2026-10-12 실호출로 확인)은 원래 GitHub 저장소 px201226/LossFound(app/src/main/res/xml/prd_sub_code.xml)에만 있음. 제3자 문서(GitHub yseho031018/LOST_QUEST)는 API 기준 대분류 21개·중분류 85개라고 적고 있어, 나머지 대분류 1개·중분류 일부는 미확인. PRX000(유류품)은 대분류 셀렉트 옵션(ajaxCodeSelect, 2020 캡처)에는 없고 분류 레이어에만 있음.
 
 ### 2. 색상 코드 (FD_COL_CD)
 
@@ -345,6 +375,6 @@
 | LCW000 | 세종특별자치시 |  |
 | LCF000 | 해외 |  |
 | LCE000 | 기타 |  |
-| LCG000 | 전남광주통합특별시 | 미확인: LOST112 화면 캡처(2026-01-04)에는 없음. 제3자 문서 LOST_QUEST에만 "실제 API 응답에 있음"으로 기재 |
+| LCG000 | 전남광주통합특별시 | 확인 (2026-10-12 실호출): 습득 17,977건·분실 47,512건. 광주·전남 데이터 대부분이 이 코드 |
 
-출처: LOST112 지역 셀렉트 `https://www.lost112.go.kr/ajaxCodeSelect.do?ajaxParam1=LC0` (공통코드 그룹 LC0 "지역구분", 웹 아카이브 2025-02-05 캡처, 2026-01-04 캡처까지 내용 동일). 시·도 19개. **서울특별시 = LCA000** (공식 활용가이드 샘플값과 일치). 시·군·구 하위 코드(예: LCA001 강남구)도 있으나 LOST_QUEST 문서에 따르면 하위 코드로 검색하면 0건이라 시·도 코드만 사용. 일부 GitHub 코드(finditem/FI-FE)는 LCB000=부산 같은 다른 매핑을 쓰지만 공식 화면과 맞지 않아 제외.
+출처: LOST112 지역 셀렉트 `https://www.lost112.go.kr/ajaxCodeSelect.do?ajaxParam1=[+503 bytes at .content[1].resource.text]
