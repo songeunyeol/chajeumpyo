@@ -95,7 +95,7 @@ describe("기준 2. 관리 범위: 경비실은 자기 보관처만, 센터는 �
 describe("기준 3. 상세: 비공개 정보, 원본 사진, 기록 전체 (이메일은 가림)", () => {
   it("시도·열람·수령 기록과 두 사진 링크", async () => {
     const item = await at(guardPlace, {
-      color: "흰색",
+      color: "WHITE",
       brand: "Apple",
       features: [{ key: "sticker", value: "곰돌이" }],
       description: "흰색 에어팟",
@@ -110,7 +110,7 @@ describe("기준 3. 상세: 비공개 정보, 원본 사진, 기록 전체 (이�
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       id: item.id,
-      color: "흰색",
+      color: "WHITE",
       brand: "Apple",
       features: [{ key: "sticker", value: "곰돌이" }],
       description: "흰색 에어팟",
@@ -127,7 +127,7 @@ describe("기준 4. 권한", () => {
   it("범위 밖 403, 없는 물건 404, 회원 403, 비로그인 401", async () => {
     const other = await at(otherPlace);
     expect((await detail(guard, other.id)).status).toBe(403);
-    expect((await patch(guard, other.id, { color: "검정" })).status).toBe(403);
+    expect((await patch(guard, other.id, { color: "BLACK" })).status).toBe(403);
     expect((await detail(guard, "00000000-0000-4000-8000-000000000000")).status).toBe(404);
     expect((await list(user.accessToken)).status).toBe(403);
     expect((await request(app).get("/api/v1/admin/found-items")).status).toBe(401);
@@ -151,13 +151,13 @@ describe("기준 5. 검토 대기 → 등록: 속성 저장, 임베딩, 새 후�
 
     const res = await patch(center, item.id, {
       category: "UMBRELLA",
-      color: "검정",
+      color: "BLACK",
       features: [{ key: "pattern", value: "체크무늬" }],
       description: "검정 장우산, 손잡이 체크무늬",
       status: "REGISTERED",
     });
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: "REGISTERED", category: "UMBRELLA", color: "검정" });
+    expect(res.body).toMatchObject({ status: "REGISTERED", category: "UMBRELLA", color: "BLACK" });
     const [row] = await prisma.$queryRaw<
       { has: boolean }[]
     >`SELECT embedding IS NOT NULL AS has FROM found_item_detail WHERE found_item_id = ${item.id}::uuid`;
@@ -183,6 +183,28 @@ describe("기준 6. 등록 검증", () => {
     expect((await patch(guard, registered.id, {})).status).toBe(400);
     expect((await patch(guard, registered.id, { status: "CLAIMED" })).status).toBe(400);
     expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: review.id } })).status).toBe("REVIEW");
+  });
+});
+
+describe("기준 6-2. 속성 형식: 색은 12색 키, 특징은 정해진 키로 최대 4개", () => {
+  it("허용 밖 색·특징 키·5개 특징은 400, 12색 키와 제목은 저장", async () => {
+    const item = await at(guardPlace);
+    expect((await patch(guard, item.id, { color: "파란색" })).status).toBe(400);
+    expect((await patch(guard, item.id, { features: [{ key: "memo", value: "x" }] })).status).toBe(400);
+    const five = Array.from({ length: 5 }, (_, i) => ({ key: "sticker", value: `스티커${i}` }));
+    expect((await patch(guard, item.id, { features: five })).status).toBe(400);
+    const ok = await patch(guard, item.id, { color: "BLUE_TEAL", title: "파란 텀블러" });
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({ color: "BLUE_TEAL", title: "파란 텀블러" });
+  });
+
+  it("목록에 관리자용 제목·층, 상세에 후보용 블러 사진 링크", async () => {
+    const item = await at(guardPlace);
+    await prisma.foundItem.update({ where: { id: item.id }, data: { floor: 3 } });
+    await prisma.foundItemDetail.update({ where: { foundItemId: item.id }, data: { title: "흰색 이어폰" } });
+    const row = (await list(guard)).body.items.find((i: { id: string }) => i.id === item.id);
+    expect(row).toMatchObject({ title: "흰색 이어폰", floor: 3 });
+    expect((await detail(guard, item.id)).body.thumbnailUrl).toContain("thumb.jpg");
   });
 });
 
@@ -216,7 +238,7 @@ describe("기준 7. 등록된 물건의 속성 고치기", () => {
     });
     const item = await at(guardPlace);
     embeds = 0;
-    await patch(guard, item.id, { color: "검정" }).expect(200);
+    await patch(guard, item.id, { color: "BLACK" }).expect(200);
     expect(embeds).toBe(0);
   });
 });
