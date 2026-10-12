@@ -19,15 +19,16 @@
 - 원칙: 학번·카드번호 저장 안 함. "숨은 특징" 질문만 (예: 케이스 스티커, 키링)
 - 레퍼런스: 토스 본인확인 단계 화면, 중고거래 앱 거래 인증 플로우 (Mobbin)
 
-## 4. 교내 지도 (2D 건물/층 지도 + 핀)
-- **Leaflet** — https://leafletjs.com · 무료 · BSD-2-Clause · 45,710★ · `CRS.Simple` + 직접 그린 캠퍼스 이미지로 타일 없이 2D 지도. 1순위 (직접 래핑)
-- **MapLibre GL JS** — https://maplibre.org · 무료 · BSD-3-Clause · 11,815★ · 벡터·3D 확장(스트레치 목표)용 대안
-- ⚠️ **react-leaflet** — 5,602★ · Hippocratic License 2.1 (MIT 아님, 사용 제한 조항). Leaflet 직접 래핑으로 결정
-- 레퍼런스: 학교 공식 캠퍼스맵 이미지를 밑그림으로, 카카오맵 실내지도 층 전환 UI
+## 4. 교내 지도 (건물 핀, P0 · 10/12 결정)
+- **네이버 클라우드 Maps (Dynamic Map)** — https://www.ncloud.com/product/applicationService/maps · 1순위. `maps.js?ncpKeyId=`로 로드, 키는 `NEXT_PUBLIC_` 환경변수(공개 키). Client Secret은 어디에도 넣지 않음
+- 웹 서비스 URL: `http://localhost:3000` + 실제 배포 도메인만(www 제외, Vercel 미리보기 주소 금지, 테스트 주소는 개발 후 삭제)
+- 핀은 건물 테이블의 미리 넣은 건물 좌표에만. 분실물 API 응답엔 `buildingId`만, 위도·경도 금지(QA B17, 위협모델 T6)
+- 키 인증 실패(`navermap_authFailure`) 시 건물 목록 화면으로 대체(B17 통과 기준)
+- 이전 안 Leaflet/MapLibre는 폐기. ⚠️ react-leaflet(Hippocratic 2.1)도 사용 안 함
 
 ## 5. 관리자 대시보드 (차트 + 히트맵)
 - **Recharts** — https://github.com/recharts/recharts · 무료 · MIT · 27,615★ · 시간대·요일별 분실 차트. shadcn 차트 기반
-- **heatmap.js** — https://github.com/pa7/heatmap.js · 무료 · MIT · 6,384★ · 장소별 분실 히트맵 (Leaflet 플러그인 있음). 최근 유지보수 미확인
+- **heatmap.js** — https://github.com/pa7/heatmap.js · 무료 · MIT · 6,384★ · 장소별 분실 히트맵. 최근 유지보수 미확인
 - 레퍼런스: shadcn/ui Blocks dashboard 예시 (https://ui.shadcn.com/blocks)
 
 ## 6. 공통
