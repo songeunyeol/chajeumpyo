@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { AiFeature } from "../ai";
-import { Category, FoundStatus, MatchResult, PickupMethod, PickupStatus, StorageType } from "../enums";
+import {
+  Category,
+  Color,
+  FoundStatus,
+  MAX_FEATURES,
+  MatchResult,
+  PickupMethod,
+  PickupStatus,
+  StorageType,
+} from "../enums";
 import { BuildingSummary } from "./buildings";
 import { StoragePlaceSummary } from "./found-items";
 
@@ -17,7 +26,10 @@ export const AdminFoundItemSummary = z.object({
   id: z.string(),
   status: FoundStatus,
   category: Category.nullable(),
+  /** AI가 만든 짧은 제목. 비공개 정보가 들어가므로 관리자 화면에만 (open-issues #38) */
+  title: z.string().nullable(),
   building: BuildingSummary,
+  floor: z.number().int().nullable(),
   storageType: StorageType,
   storagePlace: StoragePlaceSummary.nullable(),
   foundAt: z.iso.datetime(),
@@ -38,6 +50,7 @@ export type AdminFoundItemListResponse = z.infer<typeof AdminFoundItemListRespon
 /** GET /admin/found-items/:id: 공개·비공개 정보, 원본 사진, 기록 전체 */
 export const AdminFoundItemDetailResponse = AdminFoundItemSummary.extend({
   categoryAlt: Category.nullable(),
+  /** 기본 12색 키 */
   color: z.string().nullable(),
   brand: z.string().nullable(),
   features: z.array(AiFeature),
@@ -45,6 +58,8 @@ export const AdminFoundItemDetailResponse = AdminFoundItemSummary.extend({
   isSensitive: z.boolean(),
   originalImageUrl: z.string(),
   publicImageUrl: z.string(),
+  /** 후보 카드에 보이는 강한 블러본 */
+  thumbnailUrl: z.string().nullable(),
   expiresAt: z.iso.datetime().nullable(),
   attempts: z.array(
     z.object({
@@ -73,9 +88,10 @@ export const AdminUpdateFoundItemRequest = z
   .object({
     category: Category.optional(),
     categoryAlt: Category.nullable().optional(),
-    color: z.string().trim().max(30).nullable().optional(),
-    brand: z.string().trim().max(50).nullable().optional(),
-    features: z.array(AiFeature).max(10).optional(),
+    color: Color.nullable().optional(),
+    brand: z.string().trim().max(40).nullable().optional(),
+    features: z.array(AiFeature).max(MAX_FEATURES).optional(),
+    title: z.string().trim().min(1).max(60).optional(),
     description: z.string().trim().min(1).max(500).optional(),
     /** 검토 대기 물건을 등록할 때만 */
     status: z.literal("REGISTERED").optional(),
