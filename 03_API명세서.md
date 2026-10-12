@@ -228,6 +228,9 @@
       "category": "EARPHONE",
       "foundAt": "2026-10-13T14:20:00+09:00",
       "building": { "id": 1, "name": "혜인관" },
+      "floor": 2,
+      "thumbnailUrl": "https://.../files/found/6a1f.../thumb.jpg?exp=...&sig=... (강한 블러본, 10분 만료)",
+      "reasons": ["SAME_CATEGORY", "SAME_BUILDING", "FOUND_SOON_AFTER"],
       "attemptsLeft": 3,
       "locked": false,
       "isSeed": false
@@ -236,10 +239,12 @@
 }
 ```
 - `buildingId`는 선택. 모르면 생략한다.
-- 후보에는 **공개 정보만** 담는다. 사진, 색, 특징, 점수는 넣지 않는다.
+- 후보에는 **공개 정보만** 담는다. 색, 특징, 2순위 종류, 점수는 넣지 않는다.
+- 사진은 숨은 특징을 알아볼 수 없을 만큼 강하게 흐린 후보용 사본(`thumbnailUrl`)만 준다. 선명한 공개본은 판정 통과 후에만. (10/12 결정, open-issues #29)
+- `reasons`는 공개 정보와 신고자가 적은 값으로만 만든 근거다: `SAME_CATEGORY`(공개 종류가 같음), `RELATED_CATEGORY`(공개 종류가 연관 묶음), `SAME_BUILDING`, `FOUND_SOON_AFTER`(잃어버린 뒤 2시간 안에 습득). 2순위 종류로만 걸린 물건에는 종류 근거를 붙이지 않는다. (open-issues #28)
 - 후보는 서버가 점수로 고른 **최대 5개**이고, **`foundAt` 최신순**으로 내려준다. 배열 순서는 점수와 관계없다.
 - 체험 계정은 시드 습득물만, 일반 계정은 시드가 아닌 습득물만 후보로 받는다. (초안)
-- 설명 추출에 실패하면 저장하지 않고 `502 AI_UNAVAILABLE`.
+- 설명 추출에 실패하거나 응답 형식(4장)이 틀리면 저장하지 않고 `502 AI_UNAVAILABLE`.
 - 설명은 5~500자. `lostFrom` ≤ `lostTo`이고 미래 시각은 안 된다. (초안)
 - 후보 점수 = 0.4×속성(종류·색·브랜드) + 0.3×장소 + 0.2×시간 + 0.1×설명 유사도. 값은 `backend/src/matching/policy.ts`에 모여 있다. (초안, 회의)
 

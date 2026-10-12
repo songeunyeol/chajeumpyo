@@ -41,6 +41,7 @@ export async function createFoundItem(o: FoundOpts) {
         create: {
           imageOriginalKey: "test/original.jpg",
           imagePublicKey: "test/public.jpg",
+          imageThumbKey: "test/thumb.jpg",
           color: o.color ?? null,
           brand: o.brand ?? null,
           features: o.features ?? [],

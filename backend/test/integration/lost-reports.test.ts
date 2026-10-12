@@ -44,7 +44,7 @@ beforeEach(async () => {
   // 신고 설명에서 색을 뽑아 주는 추출기 (mock 기본은 색을 비워 둔다)
   useExtraction(async (description) => ({
     category: "EARPHONE",
-    color: description.includes("흰색") ? "흰색" : null,
+    color: description.includes("흰색") ? "WHITE" : null,
     brand: null,
     features: [{ key: "sticker", value: "곰돌이 스티커" }],
     description,
@@ -64,7 +64,7 @@ describe("기준 1. 신고를 저장하고 후보를 함께 준다", () => {
     const saved = await prisma.lostReport.findUniqueOrThrow({ where: { id: res.body.id } });
     expect(saved).toMatchObject({ category: "EARPHONE", buildingId: A, description: DESC });
     expect(saved.descriptionHash).toMatch(/^[0-9a-f]{64}$/);
-    expect(saved.extractedAttributes).toMatchObject({ color: "흰색" });
+    expect(saved.extractedAttributes).toMatchObject({ color: "WHITE" });
     const [row] = await prisma.$queryRaw<
       { dims: number }[]
     >`SELECT vector_dims(embedding) AS dims FROM lost_report WHERE id = ${res.body.id}::uuid`;
@@ -113,6 +113,21 @@ describe("기준 3. AI 분석이 실패하면 502, 저장하지 않는다", () =
     expect(calls).toBe(2);
     expect(res.status).toBe(502);
     expect(res.body.error.code).toBe("AI_UNAVAILABLE");
+    expect(await prisma.lostReport.count()).toBe(0);
+  });
+
+  it("AI 응답 형식이 계약과 다르거나(허용 밖 색) 임베딩 차원이 틀려도 502", async () => {
+    useExtraction(async (description) => ({
+      category: "EARPHONE",
+      color: "파란색" as never,
+      brand: null,
+      features: [],
+      description,
+    }));
+    expect((await post(report())).status).toBe(502);
+    resetAiClient();
+    setAiClient({ ...mockAiClient, embed: async () => [1, 2, 3] });
+    expect((await post(report())).status).toBe(502);
     expect(await prisma.lostReport.count()).toBe(0);
   });
 });
@@ -187,25 +202,57 @@ describe("기준 7. 순서는 습득 시각 최신순, 응답에 비공개 정�
     const best = await createFoundItem({
       buildingId: A,
       category: "EARPHONE",
-      color: "흰색",
+      color: "WHITE",
       description: DESC,
       foundAt: hoursAgo(1.9),
     });
-    const newer = await createFoundItem({ buildingId: B, category: "CHARGER", color: "검정", foundAt: hoursAgo(0.5) });
+    const newer = await createFoundItem({ buildingId: B, category: "CHARGER", color: "BLACK", foundAt: hoursAgo(0.5) });
     const res = await post(report());
     expect(res.body.candidates.map((c: { foundItemId: string }) => c.foundItemId)).toEqual([newer.id, best.id]);
     const text = JSON.stringify(res.body);
-    for (const secret of ["흰색", "검정", "score", "color", "곰돌이", "description", "categoryAlt"])
+    for (const secret of ["WHITE", "BLACK", "score", "color", "곰돌이", "description", "categoryAlt", "public.jpg"])
       expect(text).not.toContain(secret);
     expect(Object.keys(res.body.candidates[0]).sort()).toEqual([
       "attemptsLeft",
       "building",
       "category",
+      "floor",
       "foundAt",
       "foundItemId",
       "isSeed",
       "locked",
+      "reasons",
+      "thumbnailUrl",
     ]);
+  });
+
+  it("후보 사진은 강한 블러본의 서명 URL만 (공개본·원본 아님)", async () => {
+    await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(1) });
+    const res = await post(report());
+    const url = res.body.candidates[0].thumbnailUrl as string;
+    expect(url).toContain("/files/test/thumb.jpg");
+    expect(url).toMatch(/[?&]sig=/);
+    expect(url).toMatch(/[?&]exp=/);
+  });
+
+  it("근거는 공개 정보로만: 같은 종류·같은 건물·곧 습득, 2순위 종류로 걸린 물건엔 종류 근거 없음", async () => {
+    // 5~6시간 전에 잃어버림
+    const exact = await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(4) }); // 1시간 뒤 습득
+    const related = await createFoundItem({ buildingId: B, category: "CHARGER", foundAt: hoursAgo(1) }); // 4시간 뒤
+    // 공개 종류는 우산이지만 2순위(비공개)가 이어폰이라 후보에 든다. 근거로 2순위를 드러내면 안 된다.
+    const viaAlt = await createFoundItem({
+      buildingId: B,
+      category: "UMBRELLA",
+      categoryAlt: "EARPHONE",
+      foundAt: hoursAgo(1),
+    });
+    const res = await post(report({ lostFrom: hoursAgo(6).toISOString(), lostTo: hoursAgo(5).toISOString() }));
+    const byId = new Map(
+      res.body.candidates.map((c: { foundItemId: string; reasons: string[] }) => [c.foundItemId, c.reasons]),
+    );
+    expect(byId.get(exact.id)).toEqual(["SAME_CATEGORY", "SAME_BUILDING", "FOUND_SOON_AFTER"]);
+    expect(byId.get(related.id)).toEqual(["RELATED_CATEGORY"]);
+    expect(byId.get(viaAlt.id)).toEqual([]);
   });
 });
 

@@ -2036,6 +2036,30 @@
                               "name"
                             ]
                           },
+                          "floor": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "thumbnailUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "SAME_CATEGORY",
+                                "RELATED_CATEGORY",
+                                "SAME_BUILDING",
+                                "FOUND_SOON_AFTER"
+                              ]
+                            }
+                          },
                           "attemptsLeft": {
                             "type": "integer",
                             "minimum": 0
@@ -2052,6 +2076,9 @@
                           "category",
                           "foundAt",
                           "building",
+                          "floor",
+                          "thumbnailUrl",
+                          "reasons",
                           "attemptsLeft",
                           "locked",
                           "isSeed"
@@ -2521,6 +2548,30 @@
                               "name"
                             ]
                           },
+                          "floor": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "thumbnailUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "SAME_CATEGORY",
+                                "RELATED_CATEGORY",
+                                "SAME_BUILDING",
+                                "FOUND_SOON_AFTER"
+                              ]
+                            }
+                          },
                           "attemptsLeft": {
                             "type": "integer",
                             "minimum": 0
@@ -2537,6 +2588,9 @@
                           "category",
                           "foundAt",
                           "building",
+                          "floor",
+                          "thumbnailUrl",
+                          "reasons",
                           "attemptsLeft",
                           "locked",
                           "isSeed"
@@ -2727,6 +2781,30 @@
                               "name"
                             ]
                           },
+                          "floor": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "thumbnailUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "SAME_CATEGORY",
+                                "RELATED_CATEGORY",
+                                "SAME_BUILDING",
+                                "FOUND_SOON_AFTER"
+                              ]
+                            }
+                          },
                           "attemptsLeft": {
                             "type": "integer",
                             "minimum": 0
@@ -2743,6 +2821,9 @@
                           "category",
                           "foundAt",
                           "building",
+                          "floor",
+                          "thumbnailUrl",
+                          "reasons",
                           "attemptsLeft",
                           "locked",
                           "isSeed"

@@ -44,12 +44,31 @@ export type UpdateLostReportRequest = z.infer<typeof UpdateLostReportRequest>;
 
 export const LostReportIdParams = z.object({ id: z.uuid() });
 
+/**
+ * 후보 근거. 공개 정보(종류·건물·습득 시각)와 신고자 본인이 적은 값만으로 만든다.
+ * 색·특징·2순위 종류 같은 비공개 정보는 근거에 쓰지 않는다 (open-issues #28).
+ */
+export const CandidateReason = z.enum(["SAME_CATEGORY", "RELATED_CATEGORY", "SAME_BUILDING", "FOUND_SOON_AFTER"]);
+export type CandidateReason = z.infer<typeof CandidateReason>;
+
+export const CANDIDATE_REASON_LABELS: Record<CandidateReason, string> = {
+  SAME_CATEGORY: "같은 종류",
+  RELATED_CATEGORY: "비슷한 종류",
+  SAME_BUILDING: "같은 건물",
+  FOUND_SOON_AFTER: "잃어버린 뒤 2시간 안에 습득",
+};
+
 /** 후보 한 개. 공개 정보만 담는다. 배열 순서는 습득 시각 최신순이고 점수와 관계없다. */
 export const Candidate = z.object({
   foundItemId: z.string(),
   category: Category,
   foundAt: z.iso.datetime(),
   building: BuildingSummary,
+  floor: z.number().int().nullable(),
+  /** 숨은 특징을 알아볼 수 없을 만큼 강하게 흐린 사진 (서명 URL, 10분). 사진이 없으면 null */
+  thumbnailUrl: z.string().nullable(),
+  /** 공개 정보로만 만든 근거. 점수나 순위는 담지 않는다 */
+  reasons: z.array(CandidateReason),
   /** 이 물건에 남은 확인 시도 횟수 */
   attemptsLeft: z.number().int().min(0),
   locked: z.boolean(),
