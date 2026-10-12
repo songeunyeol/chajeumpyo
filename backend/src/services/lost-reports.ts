@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
-import type {
-  CreateLostReportRequest,
+import {
+  type CreateLostReportRequest,
   LostReportExtraction,
-  LostReportListResponse,
-  LostReportWithCandidates,
-  Role,
-  UpdateLostReportRequest,
+  type LostReportListResponse,
+  type LostReportWithCandidates,
+  type Role,
+  type UpdateLostReportRequest,
 } from "@chajeumpyo/shared";
 import { ai } from "../ai";
 import { env } from "../config/env";
@@ -15,6 +15,7 @@ import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
 import { findCandidates, publicCandidates } from "../matching/candidates";
 import { setLostReportEmbedding } from "../repositories/embedding";
+import { isValidEmbedding } from "./found-items";
 
 type Viewer = { userId: string; role: Role };
 
@@ -23,15 +24,15 @@ export function descriptionHash(description: string): string {
   return createHash("sha256").update(description.replace(/\s+/g, " ").trim()).digest("hex");
 }
 
-/** 설명 추출 + 임베딩. 실패하면 저장하지 않고 502 (open-issues #5) */
+/** 설명 추출 + 임베딩. 응답 형식(고정 계약)도 다시 검증한다. 실패하면 저장하지 않고 502 (open-issues #5) */
 async function analyzeDescription(
   description: string,
 ): Promise<{ extraction: LostReportExtraction; embedding: number[] }> {
   try {
-    const extraction = await retryOnce(() =>
-      withTimeout(ai.extractLostReport(description), env.AI_TIMEOUT_MS, "신고 추출"),
-    );
+    const raw = await retryOnce(() => withTimeout(ai.extractLostReport(description), env.AI_TIMEOUT_MS, "신고 추출"));
+    const extraction = LostReportExtraction.parse(raw);
     const embedding = await retryOnce(() => withTimeout(ai.embed(extraction.description), env.AI_TIMEOUT_MS, "임베딩"));
+    if (!isValidEmbedding(embedding as unknown)) throw new Error("임베딩 형식 오류");
     return { extraction, embedding };
   } catch (err) {
     logger.warn({ err }, "분실 신고 AI 분석 실패");
@@ -50,7 +51,11 @@ async function withCandidates(
   report: Awaited<ReturnType<typeof getOwnReport>>,
   role: Role,
 ): Promise<LostReportWithCandidates> {
-  return { id: report.id, status: report.status, candidates: publicCandidates(await findCandidates(report, role)) };
+  return {
+    id: report.id,
+    status: report.status,
+    candidates: await publicCandidates(await findCandidates(report, role)),
+  };
 }
 
 /** POST /lost-reports (F-06, F-07) */

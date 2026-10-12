@@ -1,6 +1,13 @@
-import { type Candidate, type Role, relatedCategories } from "@chajeumpyo/shared";
+import {
+  type Candidate,
+  type CandidateReason,
+  RELATED_CATEGORIES,
+  type Role,
+  relatedCategories,
+} from "@chajeumpyo/shared";
 import { prisma } from "../lib/prisma";
 import { similarityToFoundItems } from "../repositories/embedding";
+import { storage } from "../storage";
 import { CANDIDATE_LIMIT, MAX_FAILED_ATTEMPTS } from "./policy";
 import { type ScoreBreakdown, scoreCandidate } from "./score";
 
@@ -15,7 +22,27 @@ type ReportForMatching = {
   extractedAttributes: unknown;
 };
 
-export type ScoredCandidate = Candidate & { score: ScoreBreakdown };
+/** 서버 안에서 쓰는 후보. 사진은 키로 들고 있다가 응답할 때만 서명한다 */
+export type ScoredCandidate = Omit<Candidate, "thumbnailUrl"> & { thumbKey: string | null; score: ScoreBreakdown };
+
+/** 후보 사진 서명 URL 유효 시간 */
+export const THUMBNAIL_URL_TTL_SECONDS = 600;
+/** "잃어버린 뒤 곧 습득" 근거의 기준 */
+const SOON_AFTER_HOURS = 2;
+
+/** 공개 정보와 신고자 본인이 적은 값만으로 근거를 만든다. 2순위 종류(비공개)는 쓰지 않는다 */
+export function publicReasons(
+  report: Pick<ReportForMatching, "category" | "buildingId" | "lostFrom" | "lostTo">,
+  item: { category: Candidate["category"]; buildingId: number; foundAt: Date },
+): CandidateReason[] {
+  const reasons: CandidateReason[] = [];
+  if (item.category === report.category) reasons.push("SAME_CATEGORY");
+  else if (RELATED_CATEGORIES[report.category]?.includes(item.category)) reasons.push("RELATED_CATEGORY");
+  if (report.buildingId !== null && report.buildingId === item.buildingId) reasons.push("SAME_BUILDING");
+  const hoursAfterLost = (item.foundAt.getTime() - report.lostTo.getTime()) / 3600_000;
+  if (item.foundAt >= report.lostFrom && hoursAfterLost <= SOON_AFTER_HOURS) reasons.push("FOUND_SOON_AFTER");
+  return reasons;
+}
 
 function attrsOf(extracted: unknown): { color: string | null; brand: string | null } {
   const e = (extracted ?? {}) as { color?: unknown; brand?: unknown };
@@ -65,9 +92,10 @@ export async function findCandidates(report: ReportForMatching, viewerRole: Role
       categoryAlt: true,
       foundAt: true,
       buildingId: true,
+      floor: true,
       isSeed: true,
       building: { select: { id: true, name: true } },
-      detail: { select: { color: true, brand: true } },
+      detail: { select: { color: true, brand: true, imageThumbKey: true } },
     },
   });
   if (items.length === 0) return [];
@@ -99,11 +127,15 @@ export async function findCandidates(report: ReportForMatching, viewerRole: Role
   return scored
     .map(({ item, score }) => {
       const left = Math.max(0, MAX_FAILED_ATTEMPTS - (failures.get(item.id) ?? 0));
+      const category = item.category as Candidate["category"];
       return {
         foundItemId: item.id,
-        category: item.category as Candidate["category"],
+        category,
         foundAt: item.foundAt.toISOString(),
         building: item.building,
+        floor: item.floor,
+        thumbKey: item.detail?.imageThumbKey ?? null,
+        reasons: publicReasons(report, { category, buildingId: item.buildingId, foundAt: item.foundAt }),
         attemptsLeft: left,
         locked: left === 0,
         isSeed: item.isSeed,
@@ -113,7 +145,12 @@ export async function findCandidates(report: ReportForMatching, viewerRole: Role
     .sort((a, b) => b.foundAt.localeCompare(a.foundAt) || a.foundItemId.localeCompare(b.foundItemId));
 }
 
-/** 응답용: 점수를 뺀다 */
-export function publicCandidates(list: ScoredCandidate[]): Candidate[] {
-  return list.map(({ score: _score, ...c }) => c);
+/** 응답용: 점수를 빼고, 강한 블러 사진만 서명 URL로 바꾼다 */
+export async function publicCandidates(list: ScoredCandidate[]): Promise<Candidate[]> {
+  return Promise.all(
+    list.map(async ({ score: _score, thumbKey, ...c }) => ({
+      ...c,
+      thumbnailUrl: thumbKey ? await storage.signedUrl(thumbKey, THUMBNAIL_URL_TTL_SECONDS) : null,
+    })),
+  );
 }
