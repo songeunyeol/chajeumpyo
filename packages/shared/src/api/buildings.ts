@@ -8,22 +8,14 @@ export const BuildingSummary = z.object({
 });
 export type BuildingSummary = z.infer<typeof BuildingSummary>;
 
-/** GET /buildings */
+/** GET /buildings. 좌표는 건물 중심(공개 정보). 프론트가 가장 가까운 건물을 직접 고르는 데 쓴다 (shared/geo.ts) */
+export const BuildingListItem = BuildingSummary.extend({
+  lat: z.number(),
+  lng: z.number(),
+});
+export type BuildingListItem = z.infer<typeof BuildingListItem>;
+
 export const BuildingListResponse = z.object({
-  buildings: z.array(BuildingSummary),
+  buildings: z.array(BuildingListItem),
 });
 export type BuildingListResponse = z.infer<typeof BuildingListResponse>;
-
-/** GET /buildings/nearest */
-export const NearestBuildingQuery = z.object({
-  lat: z.coerce.number<number>().min(-90).max(90),
-  lng: z.coerce.number<number>().min(-180).max(180),
-});
-export type NearestBuildingQuery = z.infer<typeof NearestBuildingQuery>;
-
-export const NearestBuildingResponse = z.object({
-  /** 기준 거리보다 멀면 null. 이때 프론트는 건물 목록에서 고르게 한다. */
-  building: BuildingSummary.nullable(),
-  distanceM: z.number().nullable(),
-});
-export type NearestBuildingResponse = z.infer<typeof NearestBuildingResponse>;

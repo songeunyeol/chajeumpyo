@@ -1,6 +1,5 @@
+import { distanceM, NEAREST_MAX_DISTANCE_M, nearestBuilding } from "@chajeumpyo/shared";
 import { describe, expect, it } from "vitest";
-import { distanceM } from "../../src/lib/geo";
-import { NEAREST_MAX_DISTANCE_M, pickNearest } from "../../src/services/buildings";
 
 const A = { id: 1, name: "A관", lat: 37.6, lng: 127.0 };
 const B = { id: 2, name: "B관", lat: 37.601, lng: 127.0 }; // A에서 북쪽 약 111m
@@ -12,16 +11,16 @@ describe("distanceM", () => {
   });
 });
 
-describe("pickNearest", () => {
+describe("nearestBuilding (프론트가 브라우저 안에서 쓰는 공용 함수)", () => {
   it("가장 가까운 건물을 고른다", () => {
-    expect(pickNearest([A, B], { lat: 37.6009, lng: 127.0 }).building).toEqual({ id: 2, name: "B관" });
+    expect(nearestBuilding([A, B], { lat: 37.6009, lng: 127.0 })?.building).toEqual(B);
   });
 
   it(`${NEAREST_MAX_DISTANCE_M}m보다 멀면 null`, () => {
-    expect(pickNearest([A, B], { lat: 37.61, lng: 127.0 })).toEqual({ building: null, distanceM: null });
+    expect(nearestBuilding([A, B], { lat: 37.61, lng: 127.0 })).toBeNull();
   });
 
   it("건물이 없으면 null", () => {
-    expect(pickNearest([], { lat: 37.6, lng: 127.0 }).building).toBeNull();
+    expect(nearestBuilding([], { lat: 37.6, lng: 127.0 })).toBeNull();
   });
 });

@@ -11,6 +11,8 @@
 - **권한 표기**: `공개` 누구나 · `회원` 분실자·체험 계정 · `관리자` 관리자 계정
 - **시간**: ISO 8601, 한국 시간 기준으로 표시는 프론트에서 처리
 - **이미지 URL**: 비공개 사진은 만료 시간이 있는 서명 URL로 내려준다. (초안: 10분)
+- **캡차**: 습득물 등록, 체험 로그인, 인증 코드 요청은 Cloudflare Turnstile 토큰을 `X-Captcha-Token` 헤더로 보낸다. 없거나 틀리면 `400 CAPTCHA_FAILED`. 개발 환경에서는 `CAPTCHA_MODE=off`로 끌 수 있고 production에서는 끌 수 없다. (open-issues #38)
+- **동의**: 가입·체험 로그인·습득물 등록은 동의 화면 버전(`CONSENT_VERSION`, `packages/shared/src/api/consent.ts`)과 동의 항목을 같이 보낸다. 버전이 다르거나 필수 항목(가입: 이메일 수집·외부 AI 처리, 체험·등록: 외부 AI 처리)이 빠지면 `400 VALIDATION_ERROR`. 동의 문구도 같은 파일의 `CONSENT_TEXTS`를 쓴다. (QA B15, open-issues #35)
 
 ### 에러 응답 형식
 
@@ -30,6 +32,7 @@
 | 400 | `VALIDATION_ERROR` | 입력 형식 오류 |
 | 400 | `INVALID_EMAIL_DOMAIN` | 학교 이메일이 아님 |
 | 400 | `INVALID_CODE` | 인증 코드 불일치·만료 |
+| 400 | `CAPTCHA_FAILED` | 캡차 토큰이 없거나 틀림, 캡차 검증 서버 오류 |
 | 401 | `UNAUTHORIZED` | 토큰 없음·만료 |
 | 403 | `FORBIDDEN` | 권한 없음 (일치 판정을 통과하지 않은 습득물 상세 조회, 후보가 아닌 습득물에 판정 시도, 다른 보관처 물건 수령 처리 등) |
 | 404 | `NOT_FOUND` | 대상 없음 |
@@ -52,7 +55,6 @@
 | 메서드 | 경로 | 권한 | 기능 ID |
 | --- | --- | --- | --- |
 | GET | `/buildings` | 공개 | F-01 |
-| GET | `/buildings/nearest` | 공개 | F-01 |
 | GET | `/storage-places` | 공개 | F-01 |
 | GET | `/files/*` | 서명 URL | F-10, F-14 |
 | POST | `/found-items` | 공개 | F-01, F-02, F-03 |
@@ -89,18 +91,13 @@
 ### 건물
 
 #### `GET /buildings` · 공개
-건물 목록. 위치 권한이 없을 때 선택지로 쓴다.
+건물 목록과 건물 중심 좌표(공개 정보).
 
 ```json
-{ "buildings": [ { "id": 1, "name": "혜인관" }, { "id": 2, "name": "청운관" } ] }
+{ "buildings": [ { "id": 1, "name": "혜인관", "lat": 37.615, "lng": 127.013 }, { "id": 2, "name": "청운관", "lat": 37.616, "lng": 127.012 } ] }
 ```
-
-#### `GET /buildings/nearest?lat=37.615&lng=127.013` · 공개
-가장 가까운 건물. 거리가 기준보다 멀면 `building`이 `null`이다.
-
-```json
-{ "building": { "id": 1, "name": "혜인관" }, "distanceM": 42 }
-```
+- **사용자 좌표는 서버로 보내지 않는다** (open-issues #34, QA B14). 프론트가 사진 GPS(EXIF) → 브라우저 위치 순으로 좌표를 얻어 `packages/shared`의 `nearestBuilding()`으로 브라우저 안에서 건물을 고르고(300m 넘으면 목록에서 고름), 좌표는 버린다. 업로드 전 canvas로 다시 인코딩해 EXIF를 지운다.
+- 예전 `GET /buildings/nearest`는 없앴다.
 
 #### `GET /storage-places?buildingId=1` · 공개
 활성 보관처 목록. `buildingId`를 주면 그 건물 보관처가 앞에 온다(`sameBuilding: true`).
@@ -137,7 +134,8 @@
   "floor": 2,
   "storageType": "HANDED_OVER",
   "storagePlace": { "id": 3, "name": "혜인관 경비실", "guideText": "혜인관 1층 정문 옆 경비실" },
-  "message": null
+  "message": null,
+  "handOverAdvice": null
 }
 ```
 - 응답에는 공개 정보만 담는다. 색·특징·`categoryAlt`는 습득자에게도 돌려주지 않는다.
@@ -148,6 +146,8 @@
 - 사진은 JPG·PNG·WEBP·HEIC, 10MB 이하. 아니면 `400` / `413 IMAGE_TOO_LARGE`. 서버는 회전을 적용하고 위치(GPS)를 포함한 EXIF를 모두 지운 뒤 긴 변 1600px로 저장한다. 사진은 세 가지로 저장한다: 원본(관리자만), 공개본(판정 통과 후, 1024px, 개인정보 영역만 블러. 민감한데 영역을 모르면 전체 블러), 후보용 블러본(판정 전 후보 카드, 320px, 항상 강한 블러).
 - 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안)
 - AI 분석은 호출마다 제한 시간(기본 8초)이 있고 실패하면 한 번 재시도한다. AI 실패로 민감 여부를 모르면 공개본은 블러 처리한다.
+- 동의 필드: `consentVersion`, `consentExternalAi`(`"true"` 필수), `consentLocation`(`"true"`/`"false"`). 물건에 버전과 위치 동의 여부를 남긴다.
+- **고가품 안내**: AI가 고가품으로 본 물건을 `IN_PLACE`로 등록하면 `handOverAdvice`에 "보관처에 맡겨 주세요" 문구와 가까운 보관처 최대 3곳(같은 건물 먼저)을 준다. 아니면 `null`. 등록 단계 차단은 P1. (open-issues #32)
 - AI 응답이 4장의 형식과 다르면(허용 밖 색·종류·특징 키, 특징 5개 이상, 사진 밖 영역, 임베딩 차원 불일치) 실패로 보고 `REVIEW`로 저장한다.
 
 ### 인증
@@ -177,7 +177,7 @@
 - 토큰이 만료됐거나 이미 가입에 쓴 토큰(`email_verification.consumed_at`이 있음)이면 `400 INVALID_CODE`.
 ```json
 // 요청
-{ "verificationToken": "eyJ...", "password": "********" }
+{ "verificationToken": "eyJ...", "password": "********", "consent": { "version": "2026-10-12", "email": true, "externalAi": true, "location": true } }
 // 응답 201
 { "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
 ```
@@ -197,6 +197,7 @@
 #### `POST /auth/demo` · 공개
 호출할 때마다 **새 체험 계정**을 만들어 로그인시킨다. 체험 계정은 시드 습득물만 후보로 보고, 판정·열람·수령해도 시드 상태가 바뀌지 않는다. 24시간 뒤 삭제된다.
 - 같은 IP에서 과도하게 만들면 `429 RATE_LIMITED`. (초안: 10분에 5개)
+- 요청: `{ "consent": { "version": "2026-10-12", "externalAi": true, "location": false } }`, 헤더 `X-Captcha-Token`.
 ```json
 { "accessToken": "...", "expiresAt": "2026-10-14T14:00:00+09:00", "user": { "id": "u_...", "email": "demo-7f3a@demo.local", "role": "DEMO" } }
 ```
@@ -340,17 +341,20 @@
 {
   "id": "6a1f...",
   "category": "EARPHONE",
-  "color": "흰색",
-  "imageUrl": "https://...signed... (블러본, 10분 만료)",
+  "color": "WHITE",
+  "imageUrl": "https://...signed... (개인정보 영역만 가린 공개본, 10분 만료)",
   "building": { "id": 1, "name": "혜인관" },
   "storageType": "HANDED_OVER",
   "storagePlace": { "id": 3, "name": "혜인관 경비실", "guideText": "혜인관 1층 정문 옆 경비실" },
-  "status": "REVEALED"
+  "status": "REVEALED",
+  "pickupNotice": "귀중품은 보관처에서 직원이 한 번 더 확인한 뒤 돌려드려요. 학생증을 가져가 주세요(저장하지 않아요)."
 }
 ```
+- `pickupNotice`: 고가품(지갑·카드·노트북·태블릿·이어폰, 분류 확정 후 휴대폰·시계 등 추가)이면 보관처 대면 수령 안내, 아니면 `null`. (QA W3)
+- 수령·기한 만료로 지운 물건은 수령됨이면 `409 ALREADY_CLAIMED`, 만료면 `404`.
 - 체험 계정이 열람해도 시드 습득물의 `status`는 바뀌지 않는다.
 - 확인 질문 정답(`BORDERLINE` + 정답)도 통과로 본다. 통과하지 않았으면 `403`, 없는 물건 `404`.
-- 응답 필드: `id`, `category`, `color`, `imageUrl`(공개본 서명 URL), `imageUrlExpiresAt`, `building`, `storageType`, `storagePlace`, `status`, `foundAt`, `isSeed`. 브랜드·특징·설명은 주지 않는다.
+- 응답 필드: `id`, `category`, `color`, `imageUrl`(공개본 서명 URL), `imageUrlExpiresAt`, `building`, `storageType`, `storagePlace`, `status`, `foundAt`, `isSeed`, `pickupNotice`. 브랜드·특징·설명은 주지 않는다.
 - 다른 일반 계정이 이미 열람한 물건을 새 계정이 처음 열람하면, 맡은 관리자(보관처 관리자, 없으면 종합서비스센터 관리자)에게 `MULTI_REVEAL` 알림을 만든다. 체험 계정은 세지 않는다.
 
 #### `POST /found-items/:id/pickup-qr` · 회원
@@ -420,7 +424,7 @@
 - 없는 QR은 `404`. 같은 사람이 새 QR을 받아 만료된 이전 QR도 `410 QR_EXPIRED`.
 
 #### `POST /admin/pickups/:id/complete` · 관리자
-상태를 `COMPLETED`, 습득물을 `CLAIMED`로 바꾸고 처리 관리자를 기록한다. `purge_after`를 30일 뒤로 설정한다. (초안)
+상태를 `COMPLETED`, 습득물을 `CLAIMED`로 바꾸고 처리 관리자를 기록한다. `purge_after`를 30일 뒤로 설정한다. 완료 직후 사진(원본·공개본·후보용 블러본)과 비공개 정보·임베딩을 지운다(open-issues #33). 삭제가 실패해도 수령은 완료되고 정기 작업이 다시 지운다.
 - 한 트랜잭션 안에서 물건 상태까지 확인한다. 다른 사람의 수령이 먼저 완료됐으면 `409 ALREADY_CLAIMED`. 다른 보관처 물건이면 `403 FORBIDDEN`.
 - 완료되면 수령한 계정의 신고를 `RESOLVED`로 바꾸고, 같은 물건의 다른 사람 QR은 `EXPIRED`로 바꾼다.
 ```json
@@ -432,7 +436,7 @@
 - 관리 범위(open-issues #18 추천안): 경비실 관리자는 자기 보관처 물건만, 종합서비스센터 관리자와 보관처가 없는 관리자는 전체. 범위 밖 물건의 상세·수정은 `403`.
 
 #### `GET /admin/found-items/:id` · 관리자
-공개·비공개 정보와 원본·공개본·후보용 블러본 사진 링크(10분), 시도·열람·수령 기록 전체. 기록의 이메일은 가린다(`st****@skuniv.ac.kr`).
+공개·비공개 정보와 원본·공개본·후보용 블러본 사진 링크(10분), 시도·열람·수령 기록 전체. 수령·기한 만료로 지운 물건은 사진 링크가 `null`이다. 기록의 이메일은 가린다(`st****@skuniv.ac.kr`).
 
 #### `PATCH /admin/found-items/:id` · 관리자
 검토 대기 습득물의 속성을 직접 고치고 `REGISTERED`로 바꾼다. 등록된 물건의 속성 수정에도 쓴다(상태는 그대로).
