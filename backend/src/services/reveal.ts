@@ -1,8 +1,18 @@
-import { CATEGORY_LABELS, type Category, type FoundItemDetailResponse, type Role } from "@chajeumpyo/shared";
+import {
+  CATEGORY_LABELS,
+  type Category,
+  type FoundItemDetailResponse,
+  type Role,
+  VALUABLE_CATEGORIES,
+} from "@chajeumpyo/shared";
 import { AppError } from "../lib/errors";
 import { prisma } from "../lib/prisma";
 import { storage } from "../storage";
 import { adminsInChargeOf, notifyUsers } from "./notifications";
+
+/** 고가품은 앱 확인을 통과해도 보관처에서 대면으로 돌려준다 (QA W3, 위협 모델 T11) */
+export const VALUABLE_PICKUP_NOTICE =
+  "귀중품은 보관처에서 직원이 한 번 더 확인한 뒤 돌려드려요. 학생증을 가져가 주세요(저장하지 않아요).";
 
 /** 상세에 주는 사진 링크 유효 시간 (초안) */
 export const DETAIL_IMAGE_TTL_SECONDS = 10 * 60;
@@ -83,5 +93,6 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
     status,
     foundAt: item.foundAt.toISOString(),
     isSeed: item.isSeed,
+    pickupNotice: VALUABLE_CATEGORIES.includes(item.category) ? VALUABLE_PICKUP_NOTICE : null,
   };
 }
