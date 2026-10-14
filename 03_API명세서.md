@@ -348,6 +348,9 @@
 }
 ```
 - 체험 계정이 열람해도 시드 습득물의 `status`는 바뀌지 않는다.
+- 확인 질문 정답(`BORDERLINE` + 정답)도 통과로 본다. 통과하지 않았으면 `403`, 없는 물건 `404`.
+- 응답 필드: `id`, `category`, `color`, `imageUrl`(공개본 서명 URL), `imageUrlExpiresAt`, `building`, `storageType`, `storagePlace`, `status`, `foundAt`, `isSeed`. 브랜드·특징·설명은 주지 않는다.
+- 다른 일반 계정이 이미 열람한 물건을 새 계정이 처음 열람하면, 맡은 관리자(보관처 관리자, 없으면 종합서비스센터 관리자)에게 `MULTI_REVEAL` 알림을 만든다. 체험 계정은 세지 않는다.
 
 #### `POST /found-items/:id/pickup-qr` · 회원
 `storageType`이 `HANDED_OVER`일 때만. 아니면 `409 INVALID_STORAGE_TYPE`. 이미 수령 완료된 물건이면 `409 ALREADY_CLAIMED`.
