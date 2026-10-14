@@ -11,6 +11,11 @@ const Env = z.object({
   /** mock이면 Gemini를 호출하지 않고 고정 계약 형식의 가짜 응답을 쓴다 */
   AI_MODE: z.enum(["mock", "gemini"]).default("mock"),
   GEMINI_API_KEY: z.string().optional(),
+  /** 속성 추출 기본 모델과, 실패할 때 쓰는 대체 모델 */
+  GEMINI_MODEL: z.string().default("gemini-2.5-flash-lite"),
+  GEMINI_FALLBACK_MODEL: z.string().default("gemini-2.5-flash"),
+  /** 임베딩 모델. 출력 차원은 src/ai/types.ts의 EMBEDDING_DIM */
+  GEMINI_EMBED_MODEL: z.string().default("gemini-embedding-001"),
   DATA_GO_KR_SERVICE_KEY: z.string().optional(),
 
   /** 가입을 허용하는 이메일 도메인. 쉼표로 여러 개. 기본값을 두지 않아 설정을 빠뜨리면 서버가 뜨지 않는다 */
@@ -37,6 +42,17 @@ const Env = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default("찾음표 <no-reply@chajeumpyo.local>"),
+
+  /** 사진 저장소. local: 서버 디스크(개발). 클라우드 저장소는 배포 결정 후 추가 */
+  STORAGE_DRIVER: z.enum(["local"]).default("local"),
+  /** local 저장 위치 (backend 폴더 기준) */
+  STORAGE_LOCAL_DIR: z.string().default("uploads"),
+  /** 서명 URL에 쓰는 이 서버의 외부 주소 */
+  PUBLIC_BASE_URL: z.string().default("http://localhost:4000"),
+  /** 습득물 보관 기한(일). 지나면 기한 만료 (초안, F-18) */
+  FOUND_ITEM_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+  /** AI 호출 한 번의 제한 시간 */
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
 });
 
 /** 테스트에서 설정 규칙을 확인할 수 있게 내보낸다 */

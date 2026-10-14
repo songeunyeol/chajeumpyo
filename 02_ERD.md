@@ -72,6 +72,7 @@ erDiagram
         enum category_alt "2순위, 비공개"
         enum storage_type "IN_PLACE | HANDED_OVER"
         int storage_place_id FK "HANDED_OVER일 때 필수"
+        int floor "습득 층, 지하는 음수, nullable"
         enum status "ANALYZING | REVIEW | REGISTERED | REVEALED | CLAIMED | EXPIRED"
         boolean is_seed
         string uploader_fingerprint "해시"
@@ -81,12 +82,14 @@ erDiagram
     FOUND_ITEM_DETAIL {
         uuid found_item_id PK, FK
         string image_original_key "관리자만"
-        string image_public_key "블러본"
+        string image_public_key "판정 통과 후 공개본, 개인정보 영역만 블러"
+        string image_thumb_key "후보 카드용 강한 블러본"
         boolean is_sensitive
-        string color
+        string color "기본 12색 키"
         string brand
-        json features "비공개 특징 목록"
+        json features "비공개 특징 목록, 최대 4개"
         text description
+        string title "관리자 목록용 제목"
         vector embedding
         json raw_ai_response
     }

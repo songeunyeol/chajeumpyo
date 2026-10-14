@@ -1,6 +1,10 @@
 import type { FoundItemExtraction, LostReportExtraction } from "@chajeumpyo/shared";
 
-/** 임베딩 차원. prisma/schema.prisma의 vector(1536)과 맞춘다. 모델 확정 후 함께 바꾼다. */
+/**
+ * 임베딩 차원. prisma/schema.prisma의 vector(1536)과 맞춘다.
+ * Gemini 임베딩은 기본 3072차원이지만 outputDimensionality로 768·1536·3072 중 골라 받을 수 있다(MRL).
+ * pgvector의 HNSW·IVFFlat 인덱스가 2000차원까지만 지원하므로 1536을 쓴다.
+ */
 export const EMBEDDING_DIM = 1536;
 
 /**

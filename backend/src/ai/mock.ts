@@ -47,7 +47,7 @@ export const mockAiClient: AiClient = {
       hasObject: true,
       category: "EARPHONE",
       categoryAlt: "CHARGER",
-      color: "흰색",
+      color: "WHITE",
       brand: "Apple",
       features: [
         { key: "sticker", value: "곰돌이 스티커" },
@@ -55,6 +55,8 @@ export const mockAiClient: AiClient = {
       ],
       description: "흰색 애플 무선 이어폰 케이스, 곰돌이 스티커와 오른쪽 아래 긁힘이 있다.",
       isSensitive: false,
+      sensitiveRegions: [],
+      title: "흰색 무선 이어폰, 곰돌이 스티커",
     });
   },
 

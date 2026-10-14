@@ -8,6 +8,7 @@ import { logger } from "./lib/logger";
 import { errorHandler, notFound } from "./middlewares/error";
 import { buildOpenApiDocument } from "./openapi/document";
 import { createApiRouter } from "./routes";
+import { createFilesRouter } from "./routes/files";
 
 export function createApp() {
   const app = express();
@@ -32,6 +33,7 @@ export function createApp() {
   }
 
   app.use("/api/v1", createApiRouter());
+  app.use(createFilesRouter());
 
   app.use(notFound);
   app.use(errorHandler);
