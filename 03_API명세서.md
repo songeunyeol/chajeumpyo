@@ -71,8 +71,9 @@
 | GET | `/found-items/:id/detail` | 회원 | F-10, F-12 |
 | POST | `/found-items/:id/pickup-qr` | 회원 | F-11 |
 | POST | `/found-items/:id/self-pickup` | 회원 | F-11 |
-| GET | `/notifications` | 회원 | F-13 |
-| PATCH | `/notifications/:id/read` | 회원 | F-13 |
+| GET | `/notifications` | 회원·관리자 | F-13 |
+| PATCH | `/notifications/:id/read` | 회원·관리자 | F-13 |
+| PATCH | `/notifications/read-all` | 회원·관리자 | F-13 |
 | POST | `/admin/auth/login` | 공개 | F-14 |
 | POST | `/admin/pickups/scan` | 관리자 | F-11, F-14 |
 | POST | `/admin/pickups/:id/complete` | 관리자 | F-11, F-14 |
@@ -383,8 +384,15 @@
 }
 ```
 
-#### `PATCH /notifications/:id/read` · 회원
+#### `PATCH /notifications/:id/read` · 회원·관리자
+응답 204. 이미 읽었으면 그대로 204. 남의 알림이면 `404`.
+
+#### `PATCH /notifications/read-all` · 회원·관리자
 응답 204.
+
+- 알림 목록·읽음 처리는 관리자 계정도 쓸 수 있다(자기 알림만, open-issues #13).
+- 목록은 최신순 최대 50개.
+- 새 후보 알림(`NEW_CANDIDATE`)은 습득물이 `REGISTERED`가 될 때, 그 물건이 실제로 후보(상위 5개)에 들어가는 열린 신고에만 만든다. 신고·물건 조합당 한 번. 알림 생성이 실패해도 등록은 성공한다.
 
 ### 관리자
 
