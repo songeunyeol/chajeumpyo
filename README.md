@@ -53,7 +53,7 @@
 
 ```bash
 npm install                    # 워크스페이스 전체 설치 + Prisma 클라이언트 생성
-cp .env.example .env           # 기본값 그대로 로컬에서 동작 (AI_MODE=mock)
+cp .env.example .env           # POSTGRES_PASSWORD·DATABASE_URL 비밀번호, JWT_SECRET(32자 이상)을 채운다 (AI_MODE=mock)
 npm run db:up                  # PostgreSQL + pgvector (Docker)
 npm run db:deploy -w backend   # 마이그레이션 적용
 npm run db:seed -w backend     # 건물·보관처 (backend/prisma/seed-data)
@@ -67,8 +67,11 @@ npm run dev                    # http://localhost:4000, API 문서 /api/docs
 | `npm run lint` / `npm run format` | Biome 검사 / 자동 수정 |
 | `npm run openapi -w backend` | `docs/api/openapi.json` 다시 만들기 |
 | `npm run db:migrate -w backend` | 스키마를 바꾼 뒤 새 마이그레이션 만들기 |
+| `npm run admin:create -w backend -- --email <이메일> --password <비밀번호> [--place <보관처>]` | 관리자 계정 만들기 |
 
-`AI_MODE=mock`이면 Gemini 키 없이 고정된 가짜 응답으로 동작한다.
+`AI_MODE=mock`이면 Gemini 키 없이 고정된 가짜 응답으로 동작한다. `MAIL_MODE=console`이면 인증 메일 대신 서버 로그에 코드가 찍힌다.
+
+테스트는 같은 Docker DB 안의 `chajeumpyo_test` 데이터베이스를 쓴다. `npm run db:up` 후 `npm test`.
 
 ## 프론트엔드가 붙을 때
 

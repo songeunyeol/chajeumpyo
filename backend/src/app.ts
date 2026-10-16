@@ -7,7 +7,8 @@ import { corsOrigins, env } from "./config/env";
 import { logger } from "./lib/logger";
 import { errorHandler, notFound } from "./middlewares/error";
 import { buildOpenApiDocument } from "./openapi/document";
-import { apiRouter } from "./routes";
+import { createApiRouter } from "./routes";
+import { createFilesRouter } from "./routes/files";
 
 export function createApp() {
   const app = express();
@@ -22,13 +23,17 @@ export function createApp() {
     res.json({ ok: true });
   });
 
-  const openapi = buildOpenApiDocument();
-  app.get("/api/openapi.json", (_req, res) => {
-    res.json(openapi);
-  });
-  app.use("/api/docs", helmet({ contentSecurityPolicy: false }), swaggerUi.serve, swaggerUi.setup(openapi));
+  // API 문서는 개발용. production에서는 API_DOCS_ENABLED=true일 때만 연다.
+  if (env.NODE_ENV !== "production" || env.API_DOCS_ENABLED) {
+    const openapi = buildOpenApiDocument();
+    app.get("/api/openapi.json", (_req, res) => {
+      res.json(openapi);
+    });
+    app.use("/api/docs", helmet({ contentSecurityPolicy: false }), swaggerUi.serve, swaggerUi.setup(openapi));
+  }
 
-  app.use("/api/v1", apiRouter);
+  app.use("/api/v1", createApiRouter());
+  app.use(createFilesRouter());
 
   app.use(notFound);
   app.use(errorHandler);

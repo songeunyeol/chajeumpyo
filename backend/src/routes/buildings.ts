@@ -10,8 +10,6 @@ import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import { findNearestBuilding, listBuildings, listStoragePlaces } from "../services/buildings";
 
-export const buildingsRouter = Router();
-
 registry.registerPath({
   method: "get",
   path: "/buildings",
@@ -20,10 +18,6 @@ registry.registerPath({
   responses: {
     200: { description: "건물 목록", content: { "application/json": { schema: BuildingListResponse } } },
   },
-});
-buildingsRouter.get("/buildings", async (_req, res) => {
-  const body: BuildingListResponse = { buildings: await listBuildings() };
-  res.json(body);
 });
 
 registry.registerPath({
@@ -38,11 +32,6 @@ registry.registerPath({
     400: errorResponse("좌표 형식 오류"),
   },
 });
-buildingsRouter.get("/buildings/nearest", validate("query", NearestBuildingQuery), async (_req, res) => {
-  const query: NearestBuildingQuery = res.locals.query;
-  const body: NearestBuildingResponse = await findNearestBuilding(query);
-  res.json(body);
-});
 
 registry.registerPath({
   method: "get",
@@ -56,8 +45,26 @@ registry.registerPath({
     400: errorResponse("입력 형식 오류"),
   },
 });
-buildingsRouter.get("/storage-places", validate("query", StoragePlaceListQuery), async (_req, res) => {
-  const query: StoragePlaceListQuery = res.locals.query;
-  const body: StoragePlaceListResponse = { storagePlaces: await listStoragePlaces(query.buildingId) };
-  res.json(body);
-});
+
+export function createBuildingsRouter() {
+  const router = Router();
+
+  router.get("/buildings", async (_req, res) => {
+    const body: BuildingListResponse = { buildings: await listBuildings() };
+    res.json(body);
+  });
+
+  router.get("/buildings/nearest", validate("query", NearestBuildingQuery), async (_req, res) => {
+    const query: NearestBuildingQuery = res.locals.query;
+    const body: NearestBuildingResponse = await findNearestBuilding(query);
+    res.json(body);
+  });
+
+  router.get("/storage-places", validate("query", StoragePlaceListQuery), async (_req, res) => {
+    const query: StoragePlaceListQuery = res.locals.query;
+    const body: StoragePlaceListResponse = { storagePlaces: await listStoragePlaces(query.buildingId) };
+    res.json(body);
+  });
+
+  return router;
+}

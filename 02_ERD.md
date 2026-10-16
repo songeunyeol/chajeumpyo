@@ -72,6 +72,7 @@ erDiagram
         enum category_alt "2순위, 비공개"
         enum storage_type "IN_PLACE | HANDED_OVER"
         int storage_place_id FK "HANDED_OVER일 때 필수"
+        int floor "습득 층, 지하는 음수, nullable"
         enum status "ANALYZING | REVIEW | REGISTERED | REVEALED | CLAIMED | EXPIRED"
         boolean is_seed
         string uploader_fingerprint "해시"
@@ -81,12 +82,14 @@ erDiagram
     FOUND_ITEM_DETAIL {
         uuid found_item_id PK, FK
         string image_original_key "관리자만"
-        string image_public_key "블러본"
+        string image_public_key "판정 통과 후 공개본, 개인정보 영역만 블러"
+        string image_thumb_key "후보 카드용 강한 블러본"
         boolean is_sensitive
-        string color
+        string color "기본 12색 키"
         string brand
-        json features "비공개 특징 목록"
+        json features "비공개 특징 목록, 최대 4개"
         text description
+        string title "관리자 목록용 제목"
         vector embedding
         json raw_ai_response
     }
@@ -158,7 +161,7 @@ erDiagram
 | 테이블 | 역할 | 비고 |
 | --- | --- | --- |
 | `user` | 분실자, 관리자, 체험 계정 | 저장하는 개인정보는 이메일뿐. 관리자는 `storage_place_id`로 소속 보관처를 가진다 |
-| `email_verification` | 가입 인증 코드 | 코드는 해시로 저장, 10분 만료 (초안). 가입하면 `consumed_at`을 채워 같은 가입용 토큰 재사용을 막는다 |
+| `email_verification` | 가입 인증 코드 | 코드는 해시로 저장, 5분 만료, 확인은 한 번만(`verified_at`). 이미 가입된 이메일 요청도 행을 남겨 발송 제한을 똑같이 건다. 가입하면 `consumed_at`을 채워 같은 가입용 토큰 재사용을 막는다 |
 | `building` | 건물 목록과 좌표 | 가장 가까운 건물 추천에 사용 |
 | `storage_place` | 보관처 (종합서비스센터, 건물별 경비실) | 등록 화면의 보관처 선택, 수령 안내 문구, 관리자 소속 |
 | `found_item` | 습득물의 **공개 정보** | 후보 목록·알림은 이 테이블만 읽는다. `category_alt`는 후보 검색에만 쓰고 응답에 넣지 않는다 |

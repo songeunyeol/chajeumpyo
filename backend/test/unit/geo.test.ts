@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { distanceM } from "../src/lib/geo";
-import { NEAREST_MAX_DISTANCE_M, pickNearest } from "../src/services/buildings";
+import { distanceM } from "../../src/lib/geo";
+import { NEAREST_MAX_DISTANCE_M, pickNearest } from "../../src/services/buildings";
 
 const A = { id: 1, name: "A관", lat: 37.6, lng: 127.0 };
 const B = { id: 2, name: "B관", lat: 37.601, lng: 127.0 }; // A에서 북쪽 약 111m

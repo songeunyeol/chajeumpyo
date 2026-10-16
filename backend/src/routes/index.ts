@@ -1,7 +1,13 @@
 import { Router } from "express";
-import { buildingsRouter } from "./buildings";
+import { createAuthRouter } from "./auth";
+import { createBuildingsRouter } from "./buildings";
+import { createFoundItemsRouter } from "./found-items";
 
-/** /api/v1 아래 라우터. 기능별 라우터를 여기에 붙인다. */
-export const apiRouter = Router();
-
-apiRouter.use(buildingsRouter);
+/** /api/v1 아래 라우터. 기능별 라우터를 여기에 붙인다. 요청 제한 카운터가 앱마다 따로 생기도록 팩토리로 만든다. */
+export function createApiRouter() {
+  const router = Router();
+  router.use(createAuthRouter());
+  router.use(createBuildingsRouter());
+  router.use(createFoundItemsRouter());
+  return router;
+}

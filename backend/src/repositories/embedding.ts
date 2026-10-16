@@ -1,5 +1,8 @@
 import { EMBEDDING_DIM } from "../ai/types";
+import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
+
+type Db = Pick<Prisma.TransactionClient, "$executeRaw" | "$queryRaw">;
 
 // Prisma는 vector 타입을 읽고 쓰지 못해(Unsupported) 임베딩만 이 파일에서 raw SQL로 다룬다.
 
@@ -10,14 +13,14 @@ function toVectorLiteral(embedding: number[]): string {
   return `[${embedding.join(",")}]`;
 }
 
-export async function setFoundItemEmbedding(foundItemId: string, embedding: number[]) {
-  await prisma.$executeRaw`
+export async function setFoundItemEmbedding(foundItemId: string, embedding: number[], db: Db = prisma) {
+  await db.$executeRaw`
     UPDATE found_item_detail SET embedding = ${toVectorLiteral(embedding)}::vector
     WHERE found_item_id = ${foundItemId}::uuid`;
 }
 
-export async function setLostReportEmbedding(lostReportId: string, embedding: number[]) {
-  await prisma.$executeRaw`
+export async function setLostReportEmbedding(lostReportId: string, embedding: number[], db: Db = prisma) {
+  await db.$executeRaw`
     UPDATE lost_report SET embedding = ${toVectorLiteral(embedding)}::vector
     WHERE id = ${lostReportId}::uuid`;
 }

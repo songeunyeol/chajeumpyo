@@ -1,13 +1,14 @@
 # 로컬 개발용 PostgreSQL + pgvector
+# 비밀번호는 루트 .env의 POSTGRES_PASSWORD에서 읽는다. 포트는 이 컴퓨터(127.0.0.1)에만 연다.
 services:
   db:
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: chajeumpyo
-      POSTGRES_PASSWORD: chajeumpyo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?루트 .env에 POSTGRES_PASSWORD를 넣어 주세요}
       POSTGRES_DB: chajeumpyo
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
 

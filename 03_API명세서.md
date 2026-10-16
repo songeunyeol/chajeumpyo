@@ -33,7 +33,7 @@
 | 401 | `UNAUTHORIZED` | 토큰 없음·만료 |
 | 403 | `FORBIDDEN` | 권한 없음 (일치 판정을 통과하지 않은 습득물 상세 조회, 후보가 아닌 습득물에 판정 시도, 다른 보관처 물건 수령 처리 등) |
 | 404 | `NOT_FOUND` | 대상 없음 |
-| 409 | `EMAIL_TAKEN` | 이미 가입된 이메일 |
+| 409 | `EMAIL_TAKEN` | 이미 가입된 이메일 (가입 단계에서 동시에 가입한 경우만. 코드 요청 단계에서는 쓰지 않는다) |
 | 409 | `MATCH_LOCKED` | 시도 횟수 초과로 잠김 |
 | 409 | `ALREADY_CLAIMED` | 이미 수령 완료된 물건 |
 | 409 | `ALREADY_ANSWERED` | 이미 답한 확인 질문 |
@@ -54,6 +54,7 @@
 | GET | `/buildings` | 공개 | F-01 |
 | GET | `/buildings/nearest` | 공개 | F-01 |
 | GET | `/storage-places` | 공개 | F-01 |
+| GET | `/files/*` | 서명 URL | F-10, F-14 |
 | POST | `/found-items` | 공개 | F-01, F-02, F-03 |
 | POST | `/auth/email/code` | 공개 | F-04 |
 | POST | `/auth/email/verify` | 공개 | F-04 |
@@ -121,8 +122,9 @@
 | `buildingId` | number | O | 건물 |
 | `storageType` | `IN_PLACE` \| `HANDED_OVER` | O | 보관 위치 (그 자리에 둠 / 보관처에 맡김) |
 | `storagePlaceId` | number | `HANDED_OVER`면 O | 보관처 |
+| `floor` | number | X | 습득 층. 지하는 음수(B1 = -1), -10~30 |
 
-**처리**: 지문(기기·IP 해시)으로 등록 제한 확인 → 이미지 저장 → AI 속성 추출·민감 정보 판단 → 블러본 저장 → 임베딩 저장 → 열린 신고와 비교해 알림 생성.
+**처리**: 지문(기기·IP 해시)으로 등록 제한 확인 → 이미지 저장 → AI 속성 추출·민감 정보 판단 → AI 응답 형식 검증 → 공개본·후보용 블러본 저장 → 임베딩 저장 → 열린 신고와 비교해 알림 생성.
 
 **201 응답** (AI 처리를 응답 안에서 끝내는 방식, 10초 목표)
 ```json
@@ -131,6 +133,7 @@
   "status": "REGISTERED",
   "category": "EARPHONE",
   "building": { "id": 1, "name": "혜인관" },
+  "floor": 2,
   "storageType": "HANDED_OVER",
   "storagePlace": { "id": 3, "name": "혜인관 경비실", "guideText": "혜인관 1층 정문 옆 경비실" },
   "message": null
@@ -140,6 +143,11 @@
 - **AI 실패 시에도 `201`**로 응답한다. `"status": "REVIEW"`, `"category": null`, `"message": "분석이 늦어져서 관리자가 확인한 뒤 등록돼요."`
 - 물건이 없는 사진이면 `422 NO_OBJECT_DETECTED`, 저장하지 않는다.
 - `HANDED_OVER`인데 `storagePlaceId`가 없거나 비활성 보관처면 `400 VALIDATION_ERROR`.
+- `IN_PLACE`인데 `storagePlaceId`를 보내면 `400 VALIDATION_ERROR`.
+- 사진은 JPG·PNG·WEBP·HEIC, 10MB 이하. 아니면 `400` / `413 IMAGE_TOO_LARGE`. 서버는 회전을 적용하고 위치(GPS)를 포함한 EXIF를 모두 지운 뒤 긴 변 1600px로 저장한다. 사진은 세 가지로 저장한다: 원본(관리자만), 공개본(판정 통과 후, 1024px, 개인정보 영역만 블러. 민감한데 영역을 모르면 전체 블러), 후보용 블러본(판정 전 후보 카드, 320px, 항상 강한 블러).
+- 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안)
+- AI 분석은 호출마다 제한 시간(기본 8초)이 있고 실패하면 한 번 재시도한다. AI 실패로 민감 여부를 모르면 공개본은 블러 처리한다.
+- AI 응답이 4장의 형식과 다르면(허용 밖 색·종류·특징 키, 특징 5개 이상, 사진 밖 영역, 임베딩 차원 불일치) 실패로 보고 `REVIEW`로 저장한다.
 
 ### 인증
 
@@ -149,6 +157,11 @@
 { "email": "student@skuniv.ac.kr" }
 // 응답 204
 ```
+- 이메일은 앞뒤 공백을 지우고 소문자로 바꿔 처리한다.
+- 학교 도메인이 아니면 `400 INVALID_EMAIL_DOMAIN`. 도메인은 소문자로 바꾼 뒤 `@` 뒤 전체가 정확히 같아야 한다.
+- **이미 가입된 이메일도 `204`**. 가입 여부를 드러내지 않기 위해 코드 대신 로그인 안내 메일을 보낸다.
+- 같은 이메일은 1분에 한 번·하루 10번, 같은 IP는 10분에 10번·하루 50번, 서비스 전체 하루 상한(`MAIL_DAILY_LIMIT`). 넘으면 `429 RATE_LIMITED`.
+- 코드는 6자리 숫자, 5분 유효, 한 번만 확인할 수 있다. 새 코드를 받으면 이전 코드는 무효. 5번 틀리면 코드를 버리고 다시 받아야 한다.
 
 #### `POST /auth/email/verify` · 공개
 ```json
@@ -165,25 +178,30 @@
 // 요청
 { "verificationToken": "eyJ...", "password": "********" }
 // 응답 201
-{ "accessToken": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
+{ "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
 ```
+- 비밀번호는 8~64자. (초안)
+- 같은 IP에서 10분에 10번까지. 넘으면 `429 RATE_LIMITED`.
 
 #### `POST /auth/login` · 공개
 ```json
 // 요청
 { "email": "student@skuniv.ac.kr", "password": "********" }
 // 응답 200
-{ "accessToken": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
+{ "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
 ```
+- 분실자(`USER`) 계정만. 틀린 비밀번호와 없는 이메일은 같은 `401 UNAUTHORIZED` 메시지로 응답한다.
+- 토큰 유효 기간은 7일(초안, open-issues #14). 로그아웃은 프론트가 토큰을 지운다. 만료되면 다시 로그인한다.
 
 #### `POST /auth/demo` · 공개
 호출할 때마다 **새 체험 계정**을 만들어 로그인시킨다. 체험 계정은 시드 습득물만 후보로 보고, 판정·열람·수령해도 시드 상태가 바뀌지 않는다. 24시간 뒤 삭제된다.
 - 같은 IP에서 과도하게 만들면 `429 RATE_LIMITED`. (초안: 10분에 5개)
 ```json
-{ "accessToken": "...", "user": { "id": "u_...", "email": "demo-7f3a@demo.local", "role": "DEMO" }, "expiresAt": "2026-10-14T14:00:00+09:00" }
+{ "accessToken": "...", "expiresAt": "2026-10-14T14:00:00+09:00", "user": { "id": "u_...", "email": "demo-7f3a@demo.local", "role": "DEMO" } }
 ```
 
 #### `GET /me` · 회원
+- 토큰이 없거나 만료·위조됐거나, 계정이 삭제됐으면 `401`. 관리자 토큰이면 `403`.
 ```json
 { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" }
 ```
@@ -354,7 +372,11 @@
 ### 관리자
 
 #### `POST /admin/auth/login` · 공개
-`/auth/login`과 같은 형식. `role`이 `ADMIN`인 계정만 성공한다.
+`/auth/login`과 같은 형식. `role`이 `ADMIN`인 계정만 성공한다. 응답에 소속 보관처를 함께 준다.
+```json
+{ "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "guard@skuniv.ac.kr", "role": "ADMIN" }, "storagePlace": { "id": 3, "name": "혜인관 경비실" } }
+```
+- 관리자 계정은 `npm run admin:create -w backend`로 직접 만든다.
 
 #### `POST /admin/pickups/scan` · 관리자
 ```json
@@ -413,18 +435,26 @@
   "hasObject": true,
   "category": "EARPHONE",
   "categoryAlt": "CHARGER",
-  "color": "흰색",
+  "color": "WHITE",
   "brand": "Apple",
   "features": [
     { "key": "sticker", "value": "곰돌이 스티커" },
     { "key": "scratch", "value": "오른쪽 아래 긁힘" }
   ],
   "description": "흰색 애플 무선 이어폰 케이스, 곰돌이 스티커와 오른쪽 아래 긁힘이 있다.",
-  "isSensitive": false
+  "isSensitive": false,
+  "sensitiveRegions": [],
+  "title": "흰색 무선 이어폰, 곰돌이 스티커"
 }
 ```
 
 - `categoryAlt`: 2순위 종류. 확신이 높으면 `null`. 후보 검색에만 쓴다.
+- `color`: 기본 12색 키 중 하나(`WHITE`, `BLACK`, `GRAY_SILVER`, `RED`, `ORANGE_CORAL`, `YELLOW`, `GREEN`, `BLUE_TEAL`, `PURPLE`, `PINK_MAGENTA`, `BROWN`, `OTHER`) 또는 `null`. LOST112 색 코드 묶음은 `docs/api/LOST112.md`, 이웃 색(헷갈리는 색)은 판정에서 모순이 아니라 확인 불가.
+- `features`: 최대 4개. `key`는 `sticker`, `scratch`, `case`, `keyring`, `contents`, `text`, `pattern`, `other` 중 하나, `value`는 40자 이하.
+- `sensitiveRegions`: 개인정보가 보이는 영역(사진 크기 대비 0~1 비율, `x`·`y`·`width`·`height`). 이 영역만 가린 공개본을 만든다.
+- `title`: 관리자 목록용 제목. 비공개 정보가 들어가므로 관리자 화면에만 쓴다.
+- 모델: 속성 추출은 `gemini-2.5-flash-lite`, 실패하면 `gemini-2.5-flash`로 한 번 더. 온도 0, JSON 스키마 강제. 사진 속 글자·신고 설명은 데이터로만 다루고 그 안의 지시는 따르지 않는다(신고 설명은 `<report>` 태그로 감싼다).
+- 임베딩: `gemini-embedding-001`, 출력 차원 1536(pgvector 인덱스 한도 2000 아래), 길이 1로 정규화.
 - 코드 기준: `packages/shared/src/ai.ts`
 
-분실 신고 설명도 같은 형식으로 추출한다(`hasObject`, `isSensitive`, `categoryAlt` 제외).
+분실 신고 설명도 같은 형식으로 추출한다(`hasObject`, `isSensitive`, `categoryAlt`, `sensitiveRegions`, `title` 제외).
