@@ -14,3 +14,8 @@ __pycache__
 # 백엔드
 dist/
 backend/src/generated/
+
+# Claude 디자인 원본 번들과 풀어 낸 리소스 (캡처 screens/만 커밋)
+docs/design/claude-design/design-board.html
+docs/design/claude-design/board-stripped.html
+docs/design/claude-design/unpacked/
