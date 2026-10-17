@@ -11,7 +11,7 @@ describe("후보 점수", () => {
 
   it("종류: 정확 > 2순위 > 연관 > 기타 > 무관", () => {
     expect(categoryScore("EARPHONE", { category: "EARPHONE", categoryAlt: null })).toBe(CATEGORY_SCORE.exact);
-    expect(categoryScore("EARPHONE", { category: "PENCIL_CASE", categoryAlt: "EARPHONE" })).toBe(CATEGORY_SCORE.alt);
+    expect(categoryScore("EARPHONE", { category: "STATIONERY", categoryAlt: "EARPHONE" })).toBe(CATEGORY_SCORE.alt);
     expect(categoryScore("EARPHONE", { category: "CHARGER", categoryAlt: null })).toBe(CATEGORY_SCORE.related);
     expect(categoryScore("EARPHONE", { category: "ETC", categoryAlt: null })).toBe(CATEGORY_SCORE.etc);
     expect(categoryScore("EARPHONE", { category: "UMBRELLA", categoryAlt: null })).toBe(0);

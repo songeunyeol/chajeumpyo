@@ -115,7 +115,7 @@ describe("기준 6. 가장 몰리는 건물·시간대·종류를 한 문장으�
     await add(HYE, "UMBRELLA", kst("2026-10-05", 9));
     await add(HYE, "UMBRELLA", kst("2026-10-05", 18));
     expect((await get(range)).body.topInsight).toBe(
-      "학술정보관에서 오후 1시~3시에 충전기·보조배터리 분실이 가장 많아요.",
+      "학술정보관에서 오후 1시~3시에 충전기·기타 전자기기 분실이 가장 많아요.",
     );
   });
 
