@@ -20,7 +20,7 @@ let closedPlaceId: number;
 
 const SENSITIVE: FoundItemExtraction = {
   hasObject: true,
-  category: "CARD",
+  category: "ID_CARD",
   categoryAlt: "WALLET",
   color: "BLUE_TEAL",
   brand: null,
@@ -115,7 +115,7 @@ describe("기준 2. 비공개 정보와 임베딩은 서버에만 저장", () =>
   });
 
   it("2순위 종류가 1순위와 같으면 비워 둔다", async () => {
-    useExtraction({ ...SENSITIVE, isSensitive: false, category: "CARD", categoryAlt: "CARD" });
+    useExtraction({ ...SENSITIVE, isSensitive: false, category: "ID_CARD", categoryAlt: "ID_CARD" });
     const { body } = await register(inPlace(), await noisyJpeg());
     expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: body.id } })).categoryAlt).toBeNull();
   });
