@@ -74,7 +74,7 @@ describe("기준 1. 새 습득물이 내 신고의 후보가 되면 알림", () 
 describe("기준 2. 연관 종류·2순위 종류도 알리고, 관련 없는 종류는 알리지 않는다", () => {
   it("충전기 신고(연관)·노트북 신고(2순위의 연관)는 알림, 우산 신고는 없음", async () => {
     const charger = await report("CHARGER");
-    const laptop = await report("LAPTOP_TABLET");
+    const laptop = await report("LAPTOP");
     await report("UMBRELLA");
     await registerItem();
     const ids = (await prisma.notification.findMany()).map((n) => n.lostReportId).sort();

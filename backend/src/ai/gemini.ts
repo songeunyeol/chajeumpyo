@@ -1,4 +1,5 @@
 import {
+  CATEGORY_LABELS,
   Category,
   Color,
   FeatureKey,
@@ -79,7 +80,9 @@ const LOST_REPORT_RESPONSE_SCHEMA = {
 } as const;
 
 const COMMON_RULES = `
-- category: ${Category.options.join(", ")} 중 하나. 애매하면 ETC.
+- category: 아래 중 하나. 애매하면 ETC.
+  ${Category.options.map((c) => `${c}(${CATEGORY_LABELS[c]})`).join(", ")}
+  카드는 학생증·주민등록증은 ID_CARD, 체크·신용카드는 PAYMENT_CARD, 교통카드는 TRANSIT_CARD, 그 밖의 카드는 OTHER_CARD. 자동차 열쇠·스마트키도 KEY. 손목시계는 ACCESSORY, 스마트워치는 SMARTWATCH.
 - color: ${Color.options.join(", ")} 중 하나. 물건의 주된 색. 모르면 null.
 - brand: 로고·글자로 확인되는 브랜드만. 추측하지 말고 모르면 null.
 - features: 주인만 알 만한 숨은 특징을 최대 ${MAX_FEATURES}개. key는 ${FeatureKey.options.join(", ")} 중 하나, value는 한국어 짧은 구절(예: "곰돌이 스티커", "오른쪽 아래 긁힘").

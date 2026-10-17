@@ -3,44 +3,147 @@ import { z } from "zod";
 // ERD(02_ERD.md)의 enum과 이름·값을 맞춘다. 바꾸면 backend/prisma/schema.prisma도 같이 바꾼다.
 
 export const Category = z.enum([
-  "EARPHONE",
-  "CHARGER",
-  "UMBRELLA",
-  "CARD",
   "WALLET",
+  "ID_CARD",
+  "DRIVER_LICENSE",
+  "PAYMENT_CARD",
+  "TRANSIT_CARD",
+  "OTHER_CARD",
+  "PHONE",
+  "EARPHONE",
+  "SMARTWATCH",
+  "TABLET",
+  "LAPTOP",
+  "CHARGER",
+  "BAG",
+  "CLOTHING",
+  "HAT",
+  "BOOK",
+  "GLASSES",
+  "ACCESSORY",
+  "CASH",
+  "UMBRELLA",
   "TUMBLER",
-  "PENCIL_CASE",
-  "LAPTOP_TABLET",
-  "CLOTHING_BAG",
+  "KEY",
+  "STATIONERY",
   "ETC",
 ]);
 export type Category = z.infer<typeof Category>;
 
 /** 화면 표시용 한국어 이름 */
 export const CATEGORY_LABELS: Record<Category, string> = {
-  EARPHONE: "무선 이어폰",
-  CHARGER: "충전기·보조배터리",
-  UMBRELLA: "우산",
-  CARD: "학생증·카드",
   WALLET: "지갑",
-  TUMBLER: "텀블러",
-  PENCIL_CASE: "필통·필기구",
-  LAPTOP_TABLET: "노트북·태블릿",
-  CLOTHING_BAG: "옷·가방",
+  ID_CARD: "학생증·신분증",
+  DRIVER_LICENSE: "운전면허증",
+  PAYMENT_CARD: "체크·신용카드",
+  TRANSIT_CARD: "교통카드",
+  OTHER_CARD: "기타 카드",
+  PHONE: "휴대폰",
+  EARPHONE: "무선 이어폰",
+  SMARTWATCH: "스마트워치",
+  TABLET: "태블릿",
+  LAPTOP: "노트북",
+  CHARGER: "충전기·기타 전자기기",
+  BAG: "가방",
+  CLOTHING: "의류",
+  HAT: "모자",
+  BOOK: "교재·도서",
+  GLASSES: "안경·선글라스",
+  ACCESSORY: "시계·액세서리",
+  CASH: "현금",
+  UMBRELLA: "우산",
+  TUMBLER: "텀블러·물병",
+  KEY: "열쇠",
+  STATIONERY: "필기구·필통",
   ETC: "기타",
 };
 
+/** LOST112 물품분류 코드. `prdtCl02`가 null이면 대분류 전체 */
+export type Lost112CategoryCode = { prdtCl01: string; prdtCl02: string | null };
+
+const lost112 = (prdtCl01: string, ...prdtCl02: string[]): Lost112CategoryCode[] =>
+  prdtCl02.length === 0 ? [{ prdtCl01, prdtCl02: null }] : prdtCl02.map((c) => ({ prdtCl01, prdtCl02: c }));
+
 /**
- * 연관 종류 묶음 (초안, 기능 명세서 F-07). 신고 종류로 후보를 찾을 때 함께 찾는 종류.
+ * 종류 → LOST112 물품분류 코드 (docs/api/LOST112.md "우리 서비스 분류"). LOST112를 검색하거나 가져올 때 쓴다.
+ * 우산·텀블러·열쇠·필기구는 LOST112에 전용 코드가 없어 기타(PRZ100)로 찾는다. 자동차 열쇠는 PRF100.
+ */
+export const CATEGORY_LOST112_CODES: Record<Category, Lost112CategoryCode[]> = {
+  WALLET: lost112("PRH000"),
+  ID_CARD: lost112("PRN000", "PRN100"),
+  DRIVER_LICENSE: lost112("PRN000", "PRN200"),
+  PAYMENT_CARD: lost112("PRP000", "PRP100"),
+  TRANSIT_CARD: lost112("PRP000", "PRP400"),
+  OTHER_CARD: lost112("PRP000", "PRP300"),
+  PHONE: lost112("PRJ000"),
+  EARPHONE: lost112("PRG000", "PRG900"),
+  SMARTWATCH: lost112("PRG000", "PRG800"),
+  TABLET: lost112("PRG000", "PRG700"),
+  LAPTOP: lost112("PRI000"),
+  CHARGER: lost112("PRG000", "PRG600"),
+  BAG: lost112("PRA000"),
+  CLOTHING: lost112("PRK000", "PRK100", "PRK200", "PRK400"),
+  HAT: lost112("PRK000", "PRK500"),
+  BOOK: lost112("PRB000"),
+  GLASSES: lost112("PRZ000", "PRZ700", "PRZ600"),
+  ACCESSORY: lost112("PRO000"),
+  CASH: lost112("PRL000", "PRL100"),
+  UMBRELLA: lost112("PRZ000", "PRZ100"),
+  TUMBLER: lost112("PRZ000", "PRZ100"),
+  KEY: [...lost112("PRF000", "PRF100"), ...lost112("PRZ000", "PRZ100")],
+  STATIONERY: lost112("PRZ000", "PRZ100"),
+  ETC: lost112("PRZ000", "PRZ100"),
+};
+
+/**
+ * LOST112 물품분류 코드 → 종류. 중분류가 한 종류에만 맞으면 그 종류, 아니면 대분류 전체로 묶인 종류.
+ * 여러 종류가 함께 쓰는 코드(PRZ100 기타)나 모르는 코드는 ETC.
+ */
+export function categoryFromLost112(prdtCl01: string, prdtCl02?: string | null): Category {
+  const exact = Category.options.filter((c) =>
+    CATEGORY_LOST112_CODES[c].some((x) => x.prdtCl01 === prdtCl01 && x.prdtCl02 === (prdtCl02 ?? null)),
+  );
+  if (exact.length > 1) return "ETC";
+  if (exact[0]) return exact[0];
+  const whole = Category.options.find((c) =>
+    CATEGORY_LOST112_CODES[c].some((x) => x.prdtCl01 === prdtCl01 && x.prdtCl02 === null),
+  );
+  return whole ?? "ETC";
+}
+
+/**
+ * 연관 종류 묶음 (기능 명세서 F-07). 신고 종류로 후보를 찾을 때 함께 찾는 종류. 서로 대칭이다.
  * ETC는 모든 종류와 묶이므로 아래 relatedCategories()에서 따로 처리한다.
  */
-export const RELATED_CATEGORIES: Partial<Record<Category, Category[]>> = {
-  EARPHONE: ["CHARGER"],
-  CHARGER: ["EARPHONE", "LAPTOP_TABLET"],
-  WALLET: ["CARD"],
-  CARD: ["WALLET"],
-  LAPTOP_TABLET: ["CHARGER"],
-};
+const RELATED_PAIRS: [Category, Category][] = [
+  ["WALLET", "ID_CARD"],
+  ["WALLET", "DRIVER_LICENSE"],
+  ["WALLET", "PAYMENT_CARD"],
+  ["WALLET", "TRANSIT_CARD"],
+  ["WALLET", "OTHER_CARD"],
+  ["WALLET", "CASH"],
+  ["ID_CARD", "DRIVER_LICENSE"],
+  ["PAYMENT_CARD", "TRANSIT_CARD"],
+  ["PAYMENT_CARD", "OTHER_CARD"],
+  ["TRANSIT_CARD", "OTHER_CARD"],
+  ["ID_CARD", "OTHER_CARD"],
+  ["LAPTOP", "TABLET"],
+  ["LAPTOP", "CHARGER"],
+  ["TABLET", "CHARGER"],
+  ["PHONE", "CHARGER"],
+  ["EARPHONE", "CHARGER"],
+  ["SMARTWATCH", "CHARGER"],
+  ["SMARTWATCH", "ACCESSORY"],
+  ["BAG", "CLOTHING"],
+  ["CLOTHING", "HAT"],
+  ["BOOK", "STATIONERY"],
+];
+
+export const RELATED_CATEGORIES: Partial<Record<Category, Category[]>> = Object.fromEntries(
+  Category.options
+    .map((c) => [c, RELATED_PAIRS.flatMap(([a, b]) => (a === c ? [b] : b === c ? [a] : []))] as const)
+    .filter(([, list]) => list.length > 0),
+);
 
 /** 신고 종류로 후보 검색할 때 볼 종류 전체 (자기 자신 포함) */
 export function relatedCategories(category: Category): Category[] {
@@ -238,9 +341,21 @@ export const MAX_FEATURES = 4;
 
 /**
  * 고가품 (open-issues #32, QA B11). 그 자리에 두면 보관처에 맡겨 달라고 안내하고, 공개 화면에 대면 수령 안내를 붙인다.
- * 분류가 LOST112 기반으로 바뀌면(휴대폰·스마트워치·귀금속 등) 여기에 더한다.
+ * 돈·신분·결제에 쓰이거나 비싼 전자기기·귀금속.
  */
-export const VALUABLE_CATEGORIES: readonly Category[] = ["WALLET", "CARD", "LAPTOP_TABLET", "EARPHONE"];
+export const VALUABLE_CATEGORIES: readonly Category[] = [
+  "WALLET",
+  "ID_CARD",
+  "DRIVER_LICENSE",
+  "PAYMENT_CARD",
+  "PHONE",
+  "EARPHONE",
+  "SMARTWATCH",
+  "TABLET",
+  "LAPTOP",
+  "ACCESSORY",
+  "CASH",
+];
 
 export const Role = z.enum(["USER", "ADMIN", "DEMO"]);
 export type Role = z.infer<typeof Role>;
