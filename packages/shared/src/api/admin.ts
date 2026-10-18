@@ -76,11 +76,16 @@ export const AdminFoundItemDetailResponse = AdminFoundItemSummary.extend({
   pickups: z.array(
     z.object({
       id: z.string(),
-      emailMasked: z.string(),
+      /** 대면 확인 수령(IN_PERSON)은 계정이 없어 null */
+      emailMasked: z.string().nullable(),
       method: PickupMethod,
       status: PickupStatus,
       completedAt: z.iso.datetime().nullable(),
       createdAt: z.iso.datetime(),
+      /** 수령을 처리한 관리자 (가린 이메일). QR 수령·대면 확인 수령만 */
+      processedByEmailMasked: z.string().nullable(),
+      /** 대면 확인 수령의 신분 확인 메모. 수령 기록과 함께 30일 뒤 지워진다 */
+      verificationNote: z.string().nullable(),
     }),
   ),
 });

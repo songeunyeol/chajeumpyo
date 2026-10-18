@@ -106,7 +106,10 @@ export async function getFoundItem(admin: Admin, id: string): Promise<AdminFound
       detail: true,
       attempts: { orderBy: { createdAt: "desc" }, include: { user: { select: { email: true } } } },
       reveals: { orderBy: { revealedAt: "desc" }, include: { user: { select: { email: true } } } },
-      pickups: { orderBy: { createdAt: "desc" }, include: { user: { select: { email: true } } } },
+      pickups: {
+        orderBy: { createdAt: "desc" },
+        include: { user: { select: { email: true } }, processedBy: { select: { email: true } } },
+      },
     },
   });
   const d = item.detail;
@@ -135,11 +138,13 @@ export async function getFoundItem(admin: Admin, id: string): Promise<AdminFound
     })),
     pickups: item.pickups.map((p) => ({
       id: p.id,
-      emailMasked: maskEmail(p.user.email),
+      emailMasked: p.user ? maskEmail(p.user.email) : null,
       method: p.method,
       status: p.status,
       completedAt: p.completedAt?.toISOString() ?? null,
       createdAt: p.createdAt.toISOString(),
+      processedByEmailMasked: p.processedBy ? maskEmail(p.processedBy.email) : null,
+      verificationNote: p.verificationNote,
     })),
   };
 }

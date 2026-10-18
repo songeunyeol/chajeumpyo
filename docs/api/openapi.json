@@ -278,6 +278,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -644,13 +645,17 @@
                             "type": "string"
                           },
                           "emailMasked": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "method": {
                             "type": "string",
                             "enum": [
                               "CENTER_QR",
                               "SELF_REPORT",
+                              "IN_PERSON",
                               "DEMO"
                             ]
                           },
@@ -672,6 +677,18 @@
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
+                          },
+                          "processedByEmailMasked": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "verificationNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -680,7 +697,9 @@
                           "method",
                           "status",
                           "completedAt",
-                          "createdAt"
+                          "createdAt",
+                          "processedByEmailMasked",
+                          "verificationNote"
                         ]
                       }
                     }
@@ -741,6 +760,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -810,6 +830,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1322,13 +1343,17 @@
                             "type": "string"
                           },
                           "emailMasked": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "method": {
                             "type": "string",
                             "enum": [
                               "CENTER_QR",
                               "SELF_REPORT",
+                              "IN_PERSON",
                               "DEMO"
                             ]
                           },
@@ -1350,6 +1375,18 @@
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
+                          },
+                          "processedByEmailMasked": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "verificationNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -1358,7 +1395,9 @@
                           "method",
                           "status",
                           "completedAt",
-                          "createdAt"
+                          "createdAt",
+                          "processedByEmailMasked",
+                          "verificationNote"
                         ]
                       }
                     }
@@ -1419,6 +1458,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1488,6 +1528,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1557,6 +1598,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1626,6 +1668,370 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/found-items/{id}/in-person-pickup": {
+      "post": {
+        "tags": [
+          "관리자"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "대면 확인 후 수령 완료 (#29)",
+        "description": "모든 계정의 확인 실패가 10회에 닿아 온라인 확인이 막힌 물건(claimLockedAt)을, 관리자가 신분을 직접 확인하고 내준다. 처리 관리자와 신분 확인 메모를 남기고, 메모는 수령 기록과 함께 30일 뒤 지운다. 신분증 번호 전체는 적지 않는다. 물건의 사진·비공개 정보는 바로 지운다. 경비실 관리자는 자기 보관처 물건만, 종합서비스센터·보관처 없는 관리자는 전체.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "verificationNote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "verificationNote"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "수령 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pickupId": {
+                      "type": "string"
+                    },
+                    "method": {
+                      "type": "string",
+                      "enum": [
+                        "IN_PERSON"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "COMPLETED"
+                      ]
+                    },
+                    "completedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "pickupId",
+                    "method",
+                    "status",
+                    "completedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: 메모가 비었거나 200자 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: 관리 범위 밖",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ALREADY_CLAIMED · NOT_IN_PERSON_ITEM: 대면 확인으로 넘어간 보관 중 물건이 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1852,6 +2258,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1952,6 +2359,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2021,6 +2429,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2146,6 +2555,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2331,6 +2741,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2400,6 +2811,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2469,6 +2881,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2618,6 +3031,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2785,6 +3199,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2854,6 +3269,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2969,6 +3385,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3137,6 +3554,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3345,6 +3763,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3560,6 +3979,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3629,6 +4049,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3698,6 +4119,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3767,6 +4189,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3836,6 +4259,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4003,6 +4427,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4072,6 +4497,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4141,6 +4567,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4464,6 +4891,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4533,6 +4961,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4602,6 +5031,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4671,6 +5101,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4906,6 +5337,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4975,6 +5407,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5044,6 +5477,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5329,6 +5763,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5398,6 +5833,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5467,6 +5903,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5659,6 +6096,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5879,6 +6317,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6134,6 +6573,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6203,6 +6643,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6272,6 +6713,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6431,6 +6873,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6529,6 +6972,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6718,6 +7162,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6787,6 +7232,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6856,6 +7302,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6940,6 +7387,7 @@
                       "enum": [
                         "CENTER_QR",
                         "SELF_REPORT",
+                        "IN_PERSON",
                         "DEMO"
                       ]
                     },
@@ -6992,6 +7440,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7061,6 +7510,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7253,6 +7703,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7322,6 +7773,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7391,6 +7843,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7460,6 +7913,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7586,6 +8040,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7655,6 +8110,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7724,6 +8180,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7793,6 +8250,7 @@
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
