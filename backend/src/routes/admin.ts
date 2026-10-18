@@ -6,6 +6,8 @@ import {
   FoundItemIdParams,
   HotspotQuery,
   HotspotResponse,
+  InPersonPickupRequest,
+  InPersonPickupResponse,
 } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { getAuth, requireAdmin } from "../middlewares/auth";
@@ -13,6 +15,7 @@ import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import * as service from "../services/admin-found-items";
 import { hotspots } from "../services/hotspots";
+import { completeInPersonPickup } from "../services/pickups";
 
 const json = <T>(schema: T) => ({ content: { "application/json": { schema } } });
 const security = [{ bearerAuth: [] }];
@@ -59,6 +62,22 @@ registry.registerPath({
     502: errorResponse("AI_UNAVAILABLE: 임베딩 실패, 저장 안 함"),
   },
 });
+registry.registerPath({
+  method: "post",
+  path: "/admin/found-items/{id}/in-person-pickup",
+  tags,
+  security,
+  summary: "대면 확인 후 수령 완료 (#29)",
+  description: `모든 계정의 확인 실패가 10회에 닿아 온라인 확인이 막힌 물건(claimLockedAt)을, 관리자가 신분을 직접 확인하고 내준다. 처리 관리자와 신분 확인 메모를 남기고, 메모는 수령 기록과 함께 30일 뒤 지운다. 신분증 번호 전체는 적지 않는다. 물건의 사진·비공개 정보는 바로 지운다. ${scopeNote}`,
+  request: { params: FoundItemIdParams, body: json(InPersonPickupRequest) },
+  responses: {
+    200: { description: "수령 완료", ...json(InPersonPickupResponse) },
+    400: errorResponse("VALIDATION_ERROR: 메모가 비었거나 200자 초과"),
+    403: errorResponse("FORBIDDEN: 관리 범위 밖"),
+    404: errorResponse("NOT_FOUND"),
+    409: errorResponse("ALREADY_CLAIMED · NOT_IN_PERSON_ITEM: 대면 확인으로 넘어간 보관 중 물건이 아님"),
+  },
+});
 
 registry.registerPath({
   method: "get",
@@ -99,6 +118,21 @@ export function createAdminRouter() {
         admin(res),
         res.locals.params.id,
         res.locals.body,
+      );
+      res.json(result);
+    },
+  );
+
+  router.post(
+    "/admin/found-items/:id/in-person-pickup",
+    requireAdmin(),
+    validate("params", FoundItemIdParams),
+    validate("body", InPersonPickupRequest),
+    async (_req, res) => {
+      const result: InPersonPickupResponse = await completeInPersonPickup(
+        admin(res),
+        res.locals.params.id,
+        res.locals.body.verificationNote,
       );
       res.json(result);
     },
