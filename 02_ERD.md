@@ -82,6 +82,7 @@ erDiagram
         datetime found_at
         datetime expires_at
         datetime data_purged_at "수령·만료로 사진·비공개 정보를 지운 시각"
+        datetime claim_locked_at "모든 계정 실패 10회로 온라인 확인을 막은 시각"
         string consent_version "습득자 동의 화면 버전"
         boolean location_consent
     }
@@ -153,7 +154,7 @@ erDiagram
     NOTIFICATION {
         uuid id PK
         uuid user_id FK
-        enum type "NEW_CANDIDATE | MULTI_REVEAL | SYSTEM"
+        enum type "NEW_CANDIDATE | MULTI_REVEAL | CLAIM_LOCKED | SYSTEM"
         uuid found_item_id FK "nullable"
         uuid lost_report_id FK "nullable"
         string message
@@ -180,7 +181,9 @@ erDiagram
 
 ## 4. 주요 규칙 (DB 수준)
 
-- **잠금 판단**: `match_attempt`에서 `(user_id, found_item_id)`의 실패 횟수(`result = FAIL` 또는 `answer_correct = false`)가 3 이상이면 잠김. 별도 컬럼 없이 조회로 계산한다. (초안 3회)
+- **잠금 판단** (#29): 실패는 `result = FAIL` 또는 `answer_correct = false`.
+  - 계정: `match_attempt`에서 `(user_id, found_item_id)`의 실패가 3 이상이면 그 계정만 잠김. 조회로 계산한다.
+  - 물건: 그 물건의 모든 계정 실패가 10이 되면 `found_item.claim_locked_at`을 채운다. 이후 새 판정·답은 막고(대면 확인), 맡은 관리자에게 `CLAIM_LOCKED` 알림을 한 번 만든다. 시드는 제외. 같은 물건의 판정·답은 advisory lock으로 하나씩 처리해 10을 넘지 않는다.
 - **재시도**: 같은 `(user_id, found_item_id)`의 마지막 시도와 `lost_report.description_hash`가 같으면 새 시도를 만들지 않고 그 결과를 돌려준다.
 - **수령 완료는 물건당 1건**: 부분 유니크 인덱스로 보장한다. 체험 수령(`method = DEMO`)은 시드를 여러 번 수령하므로 제외한다. Prisma 7의 `partialIndexes` 미리보기 기능으로 스키마에 직접 적는다(마이그레이션 SQL에 손으로 넣으면 다음 마이그레이션에서 Prisma가 지우려 한다).
   ```sql

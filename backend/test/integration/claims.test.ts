@@ -175,7 +175,13 @@ describe("기준 5. 실패 응답에는 힌트가 없고, 3번 실패하면 잠�
     const it1 = await item();
     const r = await newReport({ features: [feature("sticker", "토끼")] });
     const first = await claim(r, it1.id);
-    expect(first.body).toEqual({ attemptId: expect.any(String), reused: false, result: "FAIL", attemptsLeft: 2 });
+    expect(first.body).toEqual({
+      attemptId: expect.any(String),
+      reused: false,
+      result: "FAIL",
+      attemptsLeft: 2,
+      inPersonOnly: false,
+    });
 
     const patch = (description: string) =>
       request(app).patch(`/api/v1/lost-reports/${r}`).set("Authorization", `Bearer ${token}`).send({ description });
@@ -277,7 +283,7 @@ describe("기준 8. 확인 질문 정답 판정", () => {
   it("질문에 나온 낱말만 답하면 오답 ('스티커')", async () => {
     const { attemptId } = await borderline();
     const res = await answer(attemptId, "스티커요");
-    expect(res.body).toEqual({ result: "FAIL", attemptsLeft: 2 });
+    expect(res.body).toEqual({ result: "FAIL", attemptsLeft: 2, inPersonOnly: false });
     expect(judgeCalls).toBe(0);
   });
 

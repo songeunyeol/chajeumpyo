@@ -44,6 +44,7 @@ const summarySelect = {
   foundAt: true,
   isSeed: true,
   floor: true,
+  claimLockedAt: true,
   building: { select: { id: true, name: true } },
   storagePlace: { select: { id: true, name: true, guideText: true } },
   detail: { select: { title: true } },
@@ -54,6 +55,7 @@ const toSummary = ({ detail, ...i }: Summary) => ({
   ...i,
   title: detail?.title ?? null,
   foundAt: i.foundAt.toISOString(),
+  claimLockedAt: i.claimLockedAt?.toISOString() ?? null,
 });
 
 /** GET /admin/found-items (F-14) */
