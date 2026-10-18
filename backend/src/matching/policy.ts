@@ -1,7 +1,7 @@
 // 매칭 정책 값. 회의(open-issues #6~#10)에서 바뀌면 여기만 고친다.
 
-/** 후보 목록에 보여줄 최대 개수 (#6) */
-export const CANDIDATE_LIMIT = 5;
+/** 후보 목록에 보여줄 최대 개수 (#6, QA B5: 상위 3개) */
+export const CANDIDATE_LIMIT = 3;
 
 /** 습득물 하나당 계정별 실패 허용 횟수 (F-08, 초안) */
 export const MAX_FAILED_ATTEMPTS = 3;

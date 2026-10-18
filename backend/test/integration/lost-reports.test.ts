@@ -152,8 +152,8 @@ describe("기준 4. 후보 범위: 분실 이후, 등록됨·열람됨, 보관 �
 });
 
 describe("기준 5. 종류: 같은 종류, 2순위 종류, 연관 묶음, 기타", () => {
+  // 같은 종류는 기준 4·6에서 본다. 후보가 최대 3개라 여기서는 나머지 셋만 넣는다
   it("관련 없는 종류만 빠진다", async () => {
-    const exact = await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(1) });
     const alt = await createFoundItem({
       buildingId: A,
       category: "PENCIL_CASE",
@@ -164,12 +164,12 @@ describe("기준 5. 종류: 같은 종류, 2순위 종류, 연관 묶음, 기타
     const etc = await createFoundItem({ buildingId: A, category: "ETC", foundAt: hoursAgo(1) });
     await createFoundItem({ buildingId: A, category: "UMBRELLA", foundAt: hoursAgo(1) });
     const ids = (await post(report())).body.candidates.map((c: { foundItemId: string }) => c.foundItemId).sort();
-    expect(ids).toEqual([exact.id, alt.id, related.id, etc.id].sort());
+    expect(ids).toEqual([alt.id, related.id, etc.id].sort());
   });
 });
 
-describe("기준 6. 점수로 최대 5개를 고른다", () => {
-  it("정확한 종류·같은 건물·가까운 시간·비슷한 설명이 우선", async () => {
+describe("기준 6. 점수로 최대 3개를 고른다", () => {
+  it("정확한 종류·같은 건물·가까운 시간·비슷한 설명이 우선, 같은 건물이 다른 건물의 정확한 종류보다 앞선다", async () => {
     const t = (h: number) => hoursAgo(h);
     const best = await createFoundItem({
       buildingId: A,
@@ -190,10 +190,12 @@ describe("기준 6. 점수로 최대 5개를 고른다", () => {
     await createFoundItem({ buildingId: B, category: "ETC", foundAt: t(1.0) }); // 기타 + 다른 건물
     await createFoundItem({ buildingId: B, category: "CHARGER", foundAt: t(0.9) }); // 연관 + 다른 건물
     const res = await post(report());
-    expect(res.body.candidates).toHaveLength(5);
+    expect(res.body.candidates).toHaveLength(3);
     expect(res.body.candidates.map((c: { foundItemId: string }) => c.foundItemId).sort()).toEqual(
-      [best.id, sameBldg.id, otherBldg.id, alt.id, related.id].sort(),
+      [best.id, sameBldg.id, alt.id].sort(),
     );
+    for (const out of [otherBldg, related])
+      expect(res.body.candidates.map((c: { foundItemId: string }) => c.foundItemId)).not.toContain(out.id);
   });
 });
 

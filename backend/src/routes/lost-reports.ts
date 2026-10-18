@@ -22,7 +22,7 @@ registry.registerPath({
   tags,
   security,
   summary: "분실 신고 (F-06, F-07)",
-  description: "신고 직후 후보 목록을 함께 준다. 후보는 최대 5개, 습득 시각 최신순(점수 순서 아님), 공개 정보만.",
+  description: "신고 직후 후보 목록을 함께 준다. 후보는 최대 3개, 습득 시각 최신순(점수 순서 아님), 공개 정보만.",
   request: { body: json(CreateLostReportRequest) },
   responses: {
     201: { description: "신고됨", ...json(LostReportWithCandidates) },
