@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type {
+  InPersonPickupResponse,
   PickupCompleteResponse,
   PickupQrResponse,
   PickupScanResponse,
@@ -11,6 +12,7 @@ import { AppError } from "../lib/errors";
 import { hmac } from "../lib/hash";
 import { prisma } from "../lib/prisma";
 import { storage } from "../storage";
+import { adminScope } from "./admin-found-items";
 import { purgeAfterClaimSafely } from "./data-purge";
 
 /** 수령 QR 유효 시간 (초안) */
@@ -152,11 +154,11 @@ async function usablePickup(db: Tx, admin: Admin, where: Prisma.PickupWhereInput
   const p = await db.pickup.findFirst({
     where: { ...where, method: "CENTER_QR" },
     include: {
-      user: { select: { email: true } },
+      user: { select: { id: true, email: true } },
       foundItem: { include: { building: { select: { name: true } }, detail: { select: { imageOriginalKey: true } } } },
     },
   });
-  if (!p) throw new AppError("NOT_FOUND", "수령 QR을 찾을 수 없어요.");
+  if (!p?.user) throw new AppError("NOT_FOUND", "수령 QR을 찾을 수 없어요.");
   if (p.foundItem.storagePlaceId === null || p.foundItem.storagePlaceId !== admin.storagePlaceId) {
     throw new AppError("FORBIDDEN", "우리 보관처에 맡겨진 물건이 아니에요.");
   }
@@ -164,7 +166,7 @@ async function usablePickup(db: Tx, admin: Admin, where: Prisma.PickupWhereInput
   if (p.status === "EXPIRED" || !p.qrExpiresAt || p.qrExpiresAt < new Date()) {
     throw new AppError("QR_EXPIRED", "만료된 수령 QR이에요. 새 QR을 받아 달라고 안내해 주세요.");
   }
-  return p;
+  return { ...p, user: p.user };
 }
 
 /** POST /admin/pickups/scan (F-11, F-14) */
@@ -195,7 +197,7 @@ export async function completePickup(admin: Admin, pickupId: string): Promise<Pi
     if (!found) throw new AppError("NOT_FOUND", "수령 건을 찾을 수 없어요.");
     await lockItem(tx, found.foundItemId);
     const p = await usablePickup(tx, admin, { id: pickupId });
-    const attempt = await passedAttempt(tx, p.userId, p.foundItemId);
+    const attempt = await passedAttempt(tx, p.user.id, p.foundItemId);
 
     const now = new Date();
     await tx.pickup.update({
@@ -205,6 +207,56 @@ export async function completePickup(admin: Admin, pickupId: string): Promise<Pi
     await markClaimed(tx, p.foundItemId, attempt.lostReportId, p.id);
     foundItemId = p.foundItemId;
     return { pickupId: p.id, status: "COMPLETED" as const, completedAt: now.toISOString() };
+  });
+  await purgeAfterClaimSafely(foundItemId);
+  return result;
+}
+
+/**
+ * POST /admin/found-items/:id/in-person-pickup (#29 후속, #8 리뷰)
+ * 모든 계정의 확인 실패가 한도에 닿아 온라인 확인이 막힌 물건을, 관리자가 신분을 직접 확인하고 내준다.
+ * - 관리 범위 안의 물건만(경비실은 자기 보관처, 종합서비스센터는 전체). 막히지 않은 물건은 QR 수령으로.
+ * - 처리 관리자와 신분 확인 메모를 남긴다. 메모는 수령 기록과 함께 30일 뒤 지운다 (F-12).
+ * - 찾으러 온 사람의 계정은 모를 수 있어 신고는 그대로 둔다. 다른 사람이 받아 둔 QR은 만료한다.
+ */
+export async function completeInPersonPickup(
+  admin: Admin,
+  foundItemId: string,
+  verificationNote: string,
+): Promise<InPersonPickupResponse> {
+  const result = await prisma.$transaction(async (tx) => {
+    await lockItem(tx, foundItemId);
+    const item = await loadItem(tx, foundItemId);
+    const scoped = await tx.foundItem.count({ where: { id: foundItemId, ...(await adminScope(admin)) } });
+    if (!scoped) throw new AppError("FORBIDDEN", "관리 범위 밖의 물건이에요.");
+    if (item.status === "CLAIMED") throw claimedError();
+    if (!item.claimLockedAt || !(item.status === "REGISTERED" || item.status === "REVEALED")) {
+      throw new AppError(
+        "NOT_IN_PERSON_ITEM",
+        "대면 확인으로 넘어간 보관 중인 물건만 여기서 처리해요. 확인을 통과한 분은 수령 QR로 처리해 주세요.",
+      );
+    }
+
+    const now = new Date();
+    const p = await tx.pickup.create({
+      data: {
+        foundItemId,
+        method: "IN_PERSON",
+        status: "COMPLETED",
+        processedByAdminId: admin.userId,
+        verificationNote,
+        completedAt: now,
+        purgeAfter: purgeAfter(now),
+      },
+    });
+    await tx.foundItem.update({ where: { id: foundItemId }, data: { status: "CLAIMED" } });
+    await tx.pickup.updateMany({ where: { foundItemId, status: "ISSUED" }, data: { status: "EXPIRED" } });
+    return {
+      pickupId: p.id,
+      method: "IN_PERSON" as const,
+      status: "COMPLETED" as const,
+      completedAt: now.toISOString(),
+    };
   });
   await purgeAfterClaimSafely(foundItemId);
   return result;
