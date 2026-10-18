@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetAiClient, setAiClient } from "../../src/ai";
 import { mockAiClient } from "../../src/ai/mock";
 import { createApp } from "../../src/app";
+import { CANDIDATE_LIMIT } from "../../src/matching/policy";
 import * as alerts from "../../src/services/candidate-alerts";
 import { createAdmin, demoLogin, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
@@ -79,15 +80,15 @@ describe("기준 2. 연관 종류·2순위 종류도 알리고, 관련 없는 �
   });
 });
 
-describe("기준 3. 닫힌 신고, 후보 상위 5개에 못 드는 경우는 알리지 않는다", () => {
-  it("닫힌 신고 X, 더 잘 맞는 후보 5개가 이미 있으면 X", async () => {
+describe("기준 3. 닫힌 신고, 후보 상위 3개에 못 드는 경우는 알리지 않는다", () => {
+  it("닫힌 신고 X, 더 잘 맞는 후보 3개가 이미 있으면 X", async () => {
     const closed = await report("EARPHONE");
     await request(app).patch(`/api/v1/lost-reports/${closed}`).set(as(user.accessToken)).send({ status: "CLOSED" });
 
     const B = (await createBuilding("청운관")).id;
     const other = await signupUser(app, "other@skuniv.ac.kr");
     await report("EARPHONE", other.accessToken, { buildingId: B });
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < CANDIDATE_LIMIT; i++) {
       await createFoundItem({
         buildingId: B,
         category: "EARPHONE",
@@ -95,7 +96,7 @@ describe("기준 3. 닫힌 신고, 후보 상위 5개에 못 드는 경우는 �
         description: "EARPHONE 잃어버렸어요",
       });
     }
-    await registerItem(); // 혜인관 등록 → 청운관 신고의 상위 5개 밖
+    await registerItem(); // 혜인관 등록 → 청운관 신고의 상위 3개 밖
     expect(await prisma.notification.count()).toBe(0);
   });
 });
