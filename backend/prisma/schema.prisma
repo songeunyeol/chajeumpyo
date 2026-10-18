@@ -91,6 +91,7 @@ enum PickupStatus {
 enum NotificationType {
   NEW_CANDIDATE
   MULTI_REVEAL
+  CLAIM_LOCKED
   SYSTEM
 }
 
@@ -184,6 +185,8 @@ model FoundItem {
   locationConsent     Boolean          @default(false) @map("location_consent")
   /// 수령·기한 만료로 사진과 비공개 정보를 지운 시각 (open-issues #33)
   dataPurgedAt        DateTime?        @map("data_purged_at")
+  /// 모든 계정의 확인 실패 합계가 한도(10회)에 닿아 온라인 확인을 막은 시각. 이후엔 대면 확인만 (#29)
+  claimLockedAt       DateTime?        @map("claim_locked_at")
   detail              FoundItemDetail?
   attempts            MatchAttempt[]
   reveals             RevealLog[]

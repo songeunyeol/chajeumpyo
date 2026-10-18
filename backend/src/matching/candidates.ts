@@ -53,7 +53,12 @@ function attrsOf(extracted: unknown): { color: string | null; brand: string | nu
   };
 }
 
-/** 계정·습득물별 실패 횟수 (FAIL 판정 + 확인 질문 오답) */
+/** 실패로 세는 시도: FAIL 판정 + 확인 질문 오답 */
+export const FAILED_ATTEMPT = {
+  OR: [{ result: "FAIL" }, { answerCorrect: false }],
+} satisfies Prisma.MatchAttemptWhereInput;
+
+/** 계정·습득물별 실패 횟수 */
 export async function failedAttemptCounts(
   userId: string,
   foundItemIds: string[],
@@ -65,7 +70,7 @@ export async function failedAttemptCounts(
     where: {
       userId,
       foundItemId: { in: foundItemIds },
-      OR: [{ result: "FAIL" }, { answerCorrect: false }],
+      ...FAILED_ATTEMPT,
     },
     _count: { _all: true },
   });
@@ -99,6 +104,7 @@ export async function findCandidates(report: ReportForMatching, viewerRole: Role
       buildingId: true,
       floor: true,
       isSeed: true,
+      claimLockedAt: true,
       building: { select: { id: true, name: true } },
       detail: { select: { color: true, brand: true, imageThumbKey: true } },
     },
@@ -131,7 +137,8 @@ export async function findCandidates(report: ReportForMatching, viewerRole: Role
 
   return scored
     .map(({ item, score }) => {
-      const left = Math.max(0, MAX_FAILED_ATTEMPTS - (failures.get(item.id) ?? 0));
+      const inPersonOnly = item.claimLockedAt !== null;
+      const left = inPersonOnly ? 0 : Math.max(0, MAX_FAILED_ATTEMPTS - (failures.get(item.id) ?? 0));
       const category = item.category as Candidate["category"];
       return {
         foundItemId: item.id,
@@ -143,6 +150,7 @@ export async function findCandidates(report: ReportForMatching, viewerRole: Role
         reasons: publicReasons(report, { category, buildingId: item.buildingId, foundAt: item.foundAt }),
         attemptsLeft: left,
         locked: left === 0,
+        inPersonOnly,
         isSeed: item.isSeed,
         score,
       };

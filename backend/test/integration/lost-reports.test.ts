@@ -221,6 +221,7 @@ describe("기준 7. 순서는 습득 시각 최신순, 응답에 비공개 정�
       "floor",
       "foundAt",
       "foundItemId",
+      "inPersonOnly",
       "isSeed",
       "locked",
       "reasons",
