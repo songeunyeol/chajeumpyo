@@ -369,9 +369,15 @@ async function adminDetail(id) {
       <label>숨은 특징 (최대 4)</label>${feats}
       <button class="b" onclick="adminPatch('${id}', false)">저장</button>
       ${d.status === "REVIEW" ? `<button class="b" onclick="adminPatch('${id}', true)">저장하고 등록</button>` : ""}
-      <div id="edOut"></div></div></div>`;
+      <div id="edOut"></div>
+      ${d.claimLockedAt && (d.status === "REGISTERED" || d.status === "REVEALED") ? `<hr><label>대면 확인 후 수령 완료 — 신분 확인 메모 (200자, 신분증 번호 전체는 적지 않기)</label><textarea id="ipNote" maxlength="200" placeholder="학생증 이름·학번 확인, 스티커 위치 설명 일치"></textarea><button class="b" onclick="inPersonPickup('${id}')">대면 확인 후 수령 완료</button><div id="ipOut"></div>` : ""}
+      ${d.pickups.length ? `<p class="hint">수령 기록: ${d.pickups.map((p) => `${esc(p.method)} ${esc(p.status)} · ${esc(p.emailMasked ?? "계정 없음")}${p.processedByEmailMasked ? ` · 처리 ${esc(p.processedByEmailMasked)}` : ""}${p.verificationNote ? ` · 메모 "${esc(p.verificationNote)}"` : ""}`).join("<br>")}</p>` : ""}
+      </div></div>`;
     imgInto($("adDetail").querySelector("img"), d.originalImageUrl);
   } catch (e) { fail("adList")(e); }
+}
+async function inPersonPickup(id) {
+  try { await call("POST", `/admin/found-items/${id}/in-person-pickup`, { body: { verificationNote: $("ipNote").value }, as: "admin" }); adminDetail(id); adminList(); } catch (e) { fail("ipOut")(e); }
 }
 async function adminPatch(id, register) {
   const features = [0, 1, 2, 3].map((i) => ({ key: document.querySelector(`[data-fk="${i}"]`).value, value: document.querySelector(`[data-fv="${i}"]`).value.trim() })).filter((f) => f.key && f.value);
