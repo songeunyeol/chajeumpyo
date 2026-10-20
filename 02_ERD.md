@@ -39,6 +39,9 @@ erDiagram
         string password_hash
         enum role "USER | ADMIN | DEMO"
         int storage_place_id FK "관리자만"
+        string consent_version "동의 화면 버전"
+        datetime consented_at
+        boolean location_consent
         datetime created_at
     }
     EMAIL_VERIFICATION {
@@ -78,10 +81,13 @@ erDiagram
         string uploader_fingerprint "해시"
         datetime found_at
         datetime expires_at
+        datetime data_purged_at "수령·만료로 사진·비공개 정보를 지운 시각"
+        string consent_version "습득자 동의 화면 버전"
+        boolean location_consent
     }
     FOUND_ITEM_DETAIL {
         uuid found_item_id PK, FK
-        string image_original_key "관리자만"
+        string image_original_key "관리자만, 삭제 후 null"
         string image_public_key "판정 통과 후 공개본, 개인정보 영역만 블러"
         string image_thumb_key "후보 카드용 강한 블러본"
         boolean is_sensitive
@@ -162,7 +168,7 @@ erDiagram
 | --- | --- | --- |
 | `user` | 분실자, 관리자, 체험 계정 | 저장하는 개인정보는 이메일뿐. 관리자는 `storage_place_id`로 소속 보관처를 가진다 |
 | `email_verification` | 가입 인증 코드 | 코드는 해시로 저장, 5분 만료, 확인은 한 번만(`verified_at`). 이미 가입된 이메일 요청도 행을 남겨 발송 제한을 똑같이 건다. 가입하면 `consumed_at`을 채워 같은 가입용 토큰 재사용을 막는다 |
-| `building` | 건물 목록과 좌표 | 가장 가까운 건물 추천에 사용 |
+| `building` | 건물 목록과 좌표 | 가장 가까운 건물 추천에 사용(계산은 브라우저에서, 사용자 좌표는 서버로 보내지 않음) |
 | `storage_place` | 보관처 (종합서비스센터, 건물별 경비실) | 등록 화면의 보관처 선택, 수령 안내 문구, 관리자 소속 |
 | `found_item` | 습득물의 **공개 정보** | 후보 목록·알림은 이 테이블만 읽는다. `category_alt`는 후보 검색에만 쓰고 응답에 넣지 않는다 |
 | `found_item_detail` | 습득물의 **비공개 정보** | 일치 판정 통과자, 관리자만 접근 |
@@ -193,7 +199,11 @@ erDiagram
   - `found_item (category_alt)`: 2순위 종류 후보 조회
   - `match_attempt (user_id, found_item_id)`: 잠금 판단
   - `found_item_detail.embedding`, `lost_report.embedding`: pgvector 인덱스 (데이터가 적은 동안은 생략 가능)
-- **삭제 배치**: 하루 한 번 `pickup.purge_after`가 지난 건의 `reveal_log`, `match_attempt`를 삭제한다. 수령 후 30일 (초안)
+- **삭제** (open-issues #33, 10/12 확정)
+  - 수령 완료 직후: 사진 3개와 `found_item_detail`의 비공개 칸·임베딩을 비우고 `found_item.data_purged_at`을 채운다. 실패하면 정기 작업이 다시 지운다.
+  - 보관 기한(`expires_at`)이 지난 미수령 물건: `EXPIRED`로 바꾸고 같은 방식으로 지운다. 시드 제외.
+  - 기록: `pickup.purge_after`(수령 30일 뒤) 또는 `expires_at` 30일 뒤가 지난 물건의 `reveal_log`, `pickup`, `match_attempt`를 지운다.
+  - 정기 작업은 1시간마다 돈다.
 - **임베딩 차원**: 사용할 임베딩 모델이 정해지면 `vector(N)`의 N을 맞춘다. 지금 1536은 자리표시값이다. pgvector 인덱스는 2000차원까지만 지원한다.
 
 ## 5. 대분류(category) 초안

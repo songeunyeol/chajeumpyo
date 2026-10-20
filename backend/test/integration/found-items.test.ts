@@ -9,6 +9,7 @@ import { EMBEDDING_DIM } from "../../src/ai/types";
 import { createApp } from "../../src/app";
 import { storage } from "../../src/storage";
 import { readLocalFile } from "../../src/storage/local";
+import { finderConsentFields } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
 import { jpegWithGpsAndRotation, noisyJpeg, sharpness, stripedJpeg } from "../helpers/images";
 
@@ -36,7 +37,7 @@ function useExtraction(result: FoundItemExtraction | (() => Promise<FoundItemExt
 
 async function register(fields: Record<string, string | number>, image?: Buffer, ua = "test-agent") {
   let req = request(app).post("/api/v1/found-items").set("User-Agent", ua);
-  for (const [k, v] of Object.entries(fields)) req = req.field(k, String(v));
+  for (const [k, v] of Object.entries({ ...finderConsentFields(), ...fields })) req = req.field(k, String(v));
   if (image) req = req.attach("image", image, "photo.jpg");
   return req;
 }
@@ -76,6 +77,7 @@ describe("기준 1. 정상 등록은 201, 응답에는 공개 정보만", () => 
       storageType: "HANDED_OVER",
       storagePlace: { id: placeId, name: "혜인관 경비실", guideText: "1층 정문 옆" },
       message: null,
+      handOverAdvice: null,
     });
     const text = JSON.stringify(res.body);
     for (const secret of ["WHITE", "Apple", "곰돌이", "CHARGER", "found/"]) expect(text).not.toContain(secret);
@@ -185,7 +187,7 @@ describe("기준 5. 위치 정보(EXIF)는 지우고, 회전은 적용하고, �
     const { body } = await register(inPlace(), input);
     const detail = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: body.id } });
     for (const key of [detail.imageOriginalKey, detail.imagePublicKey]) {
-      const meta = await sharp((await readLocalFile(key)) as Buffer).metadata();
+      const meta = await sharp((await readLocalFile(key as string)) as Buffer).metadata();
       expect(meta.exif).toBeUndefined();
       expect(meta.orientation ?? 1).toBe(1);
       expect(meta.height).toBeGreaterThan(meta.width ?? 0); // 400x200 + 90도 회전 → 세로
@@ -195,8 +197,8 @@ describe("기준 5. 위치 정보(EXIF)는 지우고, 회전은 적용하고, �
   it("큰 사진은 원본 1600px, 공개본 1024px 이하로", async () => {
     const { body } = await register(inPlace(), await noisyJpeg(3000, 2000));
     const detail = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: body.id } });
-    const orig = await sharp((await readLocalFile(detail.imageOriginalKey)) as Buffer).metadata();
-    const pub = await sharp((await readLocalFile(detail.imagePublicKey)) as Buffer).metadata();
+    const orig = await sharp((await readLocalFile(detail.imageOriginalKey as string)) as Buffer).metadata();
+    const pub = await sharp((await readLocalFile(detail.imagePublicKey as string)) as Buffer).metadata();
     expect(Math.max(orig.width ?? 0, orig.height ?? 0)).toBe(1600);
     expect(Math.max(pub.width ?? 0, pub.height ?? 0)).toBe(1024);
   });
@@ -205,14 +207,14 @@ describe("기준 5. 위치 정보(EXIF)는 지우고, 회전은 적용하고, �
 describe("기준 6. 공개본은 개인정보만 가리고, 후보용 사진은 항상 강하게 흐린다", () => {
   async function publicSharpness(id: string) {
     const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: id } });
-    return { pub: await sharpness((await readLocalFile(d.imagePublicKey)) as Buffer), d };
+    return { pub: await sharpness((await readLocalFile(d.imagePublicKey as string)) as Buffer), d };
   }
 
   it("민감하면 공개본이 원본보다 훨씬 흐리고, 원본은 그대로", async () => {
     useExtraction(SENSITIVE);
     const { body } = await register(inPlace(), await noisyJpeg());
     const { pub, d } = await publicSharpness(body.id);
-    const orig = await sharpness((await readLocalFile(d.imageOriginalKey)) as Buffer);
+    const orig = await sharpness((await readLocalFile(d.imageOriginalKey as string)) as Buffer);
     expect(d.isSensitive).toBe(true);
     expect(pub).toBeLessThan(orig * 0.3);
   });
@@ -220,7 +222,7 @@ describe("기준 6. 공개본은 개인정보만 가리고, 후보용 사진은 
   it("민감하지 않으면 공개본도 선명", async () => {
     const { body } = await register(inPlace(), await noisyJpeg());
     const { pub, d } = await publicSharpness(body.id);
-    const orig = await sharpness((await readLocalFile(d.imageOriginalKey)) as Buffer);
+    const orig = await sharpness((await readLocalFile(d.imageOriginalKey as string)) as Buffer);
     expect(pub).toBeGreaterThan(orig * 0.7);
   });
 
@@ -229,8 +231,8 @@ describe("기준 6. 공개본은 개인정보만 가리고, 후보용 사진은 
     useExtraction({ ...SENSITIVE, sensitiveRegions: [{ x: 0, y: 0, width: 0.25, height: 0.25 }] });
     const { body } = await register(inPlace(), await noisyJpeg(400, 300));
     const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: body.id } });
-    const pub = (await readLocalFile(d.imagePublicKey)) as Buffer;
-    const orig = (await readLocalFile(d.imageOriginalKey)) as Buffer;
+    const pub = (await readLocalFile(d.imagePublicKey as string)) as Buffer;
+    const orig = (await readLocalFile(d.imageOriginalKey as string)) as Buffer;
     const crop = (img: Buffer, left: number, top: number) =>
       sharp(img).extract({ left, top, width: 80, height: 60 }).toBuffer();
     const inside = await sharpness(await crop(pub, 5, 5));
@@ -249,7 +251,7 @@ describe("기준 6. 공개본은 개인정보만 가리고, 후보용 사진은 
     const meta = await sharp(thumb).metadata();
     expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBeLessThanOrEqual(320);
     // 같은 크기로 줄이기만 한 사본과 비교해야 축소 효과가 아니라 블러를 확인할 수 있다
-    const original = (await readLocalFile(d.imageOriginalKey)) as Buffer;
+    const original = (await readLocalFile(d.imageOriginalKey as string)) as Buffer;
     const shrunk = await sharp(original).resize(meta.width, meta.height).toBuffer();
     expect(await sharpness(thumb)).toBeLessThan((await sharpness(shrunk)) * 0.3);
   });
@@ -294,7 +296,7 @@ describe("기준 8. AI 실패: 한 번 재시도, 그래도 실패하면 201 REV
     });
     const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: res.body.id } });
     expect(d.isSensitive).toBe(true);
-    expect(await readLocalFile(d.imageOriginalKey)).not.toBeNull();
+    expect(await readLocalFile(d.imageOriginalKey as string)).not.toBeNull();
   });
 
   it("AI 응답 형식이 계약과 다르면 REVIEW (허용 밖 색, 특징 5개, 정해지지 않은 특징 키)", async () => {
@@ -365,20 +367,20 @@ describe("기준 10. 사진은 서명된 링크로만 볼 수 있다", () => {
 
   it("서명이 맞으면 200 이미지", async () => {
     const d = await savedKeys();
-    const res = await request(app).get(pathOf(await storage.signedUrl(d.imagePublicKey, 60)));
+    const res = await request(app).get(pathOf(await storage.signedUrl(d.imagePublicKey as string, 60)));
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toBe("image/jpeg");
   });
 
   it("서명 없음·틀림·만료·다른 파일 서명은 403", async () => {
     const d = await savedKeys();
-    const good = new URL(await storage.signedUrl(d.imagePublicKey, 60));
+    const good = new URL(await storage.signedUrl(d.imagePublicKey as string, 60));
     const sig = good.searchParams.get("sig") ?? "";
     const exp = good.searchParams.get("exp") ?? "";
     expect((await request(app).get(`/files/${d.imagePublicKey}`)).status).toBe(403);
     expect((await request(app).get(`/files/${d.imagePublicKey}?exp=${exp}&sig=${"0".repeat(64)}`)).status).toBe(403);
     expect((await request(app).get(`/files/${d.imageOriginalKey}?exp=${exp}&sig=${sig}`)).status).toBe(403);
-    const expired = new URL(await storage.signedUrl(d.imagePublicKey, -10));
+    const expired = new URL(await storage.signedUrl(d.imagePublicKey as string, -10));
     expect((await request(app).get(expired.pathname + expired.search)).status).toBe(403);
   });
 

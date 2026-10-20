@@ -1,35 +1,18 @@
-import {
-  BuildingListResponse,
-  NearestBuildingQuery,
-  NearestBuildingResponse,
-  StoragePlaceListQuery,
-  StoragePlaceListResponse,
-} from "@chajeumpyo/shared";
+import { BuildingListResponse, StoragePlaceListQuery, StoragePlaceListResponse } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
-import { findNearestBuilding, listBuildings, listStoragePlaces } from "../services/buildings";
+import { listBuildings, listStoragePlaces } from "../services/buildings";
 
 registry.registerPath({
   method: "get",
   path: "/buildings",
   tags: ["건물"],
   summary: "건물 목록 (F-01)",
+  description:
+    "건물 중심 좌표를 함께 준다. 가장 가까운 건물은 프론트가 브라우저 안에서 고르고(packages/shared nearestBuilding), 사용자 좌표는 서버로 보내지 않는다.",
   responses: {
     200: { description: "건물 목록", content: { "application/json": { schema: BuildingListResponse } } },
-  },
-});
-
-registry.registerPath({
-  method: "get",
-  path: "/buildings/nearest",
-  tags: ["건물"],
-  summary: "가장 가까운 건물 (F-01)",
-  description: "기준 거리(초안 300m)보다 멀면 building이 null이다.",
-  request: { query: NearestBuildingQuery },
-  responses: {
-    200: { description: "가장 가까운 건물", content: { "application/json": { schema: NearestBuildingResponse } } },
-    400: errorResponse("좌표 형식 오류"),
   },
 });
 
@@ -51,12 +34,6 @@ export function createBuildingsRouter() {
 
   router.get("/buildings", async (_req, res) => {
     const body: BuildingListResponse = { buildings: await listBuildings() };
-    res.json(body);
-  });
-
-  router.get("/buildings/nearest", validate("query", NearestBuildingQuery), async (_req, res) => {
-    const query: NearestBuildingQuery = res.locals.query;
-    const body: NearestBuildingResponse = await findNearestBuilding(query);
     res.json(body);
   });
 
