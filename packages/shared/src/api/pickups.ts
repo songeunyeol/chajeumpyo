@@ -56,3 +56,21 @@ export const PickupCompleteResponse = z.object({
   completedAt: z.iso.datetime(),
 });
 export type PickupCompleteResponse = z.infer<typeof PickupCompleteResponse>;
+
+/** 신분 확인 메모 최대 길이. 신분증 번호 전체는 적지 않게 안내한다 */
+export const VERIFICATION_NOTE_MAX = 200;
+
+/** POST /admin/found-items/:id/in-person-pickup: 대면 확인으로 넘어간 물건을 관리자가 신분 확인 후 수령 완료 (#29) */
+export const InPersonPickupRequest = z.object({
+  /** 예: "학생증 이름·학번 확인, 스티커 모양 설명 일치" */
+  verificationNote: z.string().trim().min(1).max(VERIFICATION_NOTE_MAX),
+});
+export type InPersonPickupRequest = z.infer<typeof InPersonPickupRequest>;
+
+export const InPersonPickupResponse = z.object({
+  pickupId: z.string(),
+  method: z.literal("IN_PERSON"),
+  status: z.literal("COMPLETED"),
+  completedAt: z.iso.datetime(),
+});
+export type InPersonPickupResponse = z.infer<typeof InPersonPickupResponse>;
