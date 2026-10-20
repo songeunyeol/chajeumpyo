@@ -4,12 +4,15 @@ import {
   AdminFoundItemListResponse,
   AdminUpdateFoundItemRequest,
   FoundItemIdParams,
+  HotspotQuery,
+  HotspotResponse,
 } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { getAuth, requireAdmin } from "../middlewares/auth";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import * as service from "../services/admin-found-items";
+import { hotspots } from "../services/hotspots";
 
 const json = <T>(schema: T) => ({ content: { "application/json": { schema } } });
 const security = [{ bearerAuth: [] }];
@@ -57,6 +60,18 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: "get",
+  path: "/admin/stats/hotspots",
+  tags,
+  security,
+  summary: "분실 다발 카드 (F-15)",
+  description:
+    "습득물 등록 건수를 건물·시간대(한국 시간)·종류별로 집계. 기간은 한국 날짜, 생략하면 최근 30일. 실제 데이터만 집계하고, 없으면 시드로 집계해 isSeedData=true. 모든 관리자가 캠퍼스 전체를 본다.",
+  request: { query: HotspotQuery },
+  responses: { 200: { description: "집계", ...json(HotspotResponse) }, 400: errorResponse("VALIDATION_ERROR") },
+});
+
 export function createAdminRouter() {
   const router = Router();
   const admin = (res: Parameters<typeof getAuth>[0]) => {
@@ -88,6 +103,11 @@ export function createAdminRouter() {
       res.json(result);
     },
   );
+
+  router.get("/admin/stats/hotspots", requireAdmin(), validate("query", HotspotQuery), async (_req, res) => {
+    const result: HotspotResponse = await hotspots(res.locals.query);
+    res.json(result);
+  });
 
   return router;
 }
