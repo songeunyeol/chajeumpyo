@@ -7,7 +7,8 @@ import { z } from "zod";
 export const CONSENT_VERSION = "2026-10-12";
 
 export const CONSENT_TEXTS = {
-  email: "가입한 학교 이메일을 저장해요. 물건을 확인하고 가져간 계정을 특정하는 데 쓰고, 수령 30일 뒤 관련 기록을 지워요.",
+  email:
+    "가입한 학교 이메일을 저장해요. 물건을 확인하고 가져간 계정을 특정하는 데 쓰고, 수령 30일 뒤 관련 기록을 지워요.",
   location:
     "사진의 위치 정보나 지금 위치로 가장 가까운 건물을 골라요. 좌표는 휴대폰 안에서 건물로만 바꾸고 서버에 보내거나 저장하지 않아요.",
   externalAi:

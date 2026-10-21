@@ -206,20 +206,27 @@ erDiagram
   - 정기 작업은 1시간마다 돈다.
 - **임베딩 차원**: 사용할 임베딩 모델이 정해지면 `vector(N)`의 N을 맞춘다. 지금 1536은 자리표시값이다. pgvector 인덱스는 2000차원까지만 지원한다.
 
-## 5. 대분류(category) 초안
+## 5. 종류(category) 24개
 
-`EARPHONE`(무선 이어폰), `CHARGER`(충전기·보조배터리), `UMBRELLA`(우산), `CARD`(학생증·카드), `WALLET`(지갑), `TUMBLER`(텀블러), `PENCIL_CASE`(필통·필기구), `LAPTOP_TABLET`(노트북·태블릿), `CLOTHING_BAG`(옷·가방), `ETC`(기타)
+LOST112 기반 서비스 분류(`docs/api/LOST112.md` "우리 서비스 분류")에 우산·텀블러·열쇠·필기구를 따로 둔 24개 (#27, PR #6 리뷰 결정). 열쇠와 자동차 열쇠는 `KEY` 하나로 합쳤다. 코드 기준은 `packages/shared/src/enums.ts`의 `Category`, LOST112 코드는 `CATEGORY_LOST112_CODES`.
 
-### 연관 종류 묶음 (초안)
+`WALLET`(지갑), `ID_CARD`(학생증·신분증), `DRIVER_LICENSE`(운전면허증), `PAYMENT_CARD`(체크·신용카드), `TRANSIT_CARD`(교통카드), `OTHER_CARD`(기타 카드), `PHONE`(휴대폰), `EARPHONE`(무선 이어폰), `SMARTWATCH`(스마트워치), `TABLET`(태블릿), `LAPTOP`(노트북), `CHARGER`(충전기·기타 전자기기), `BAG`(가방), `CLOTHING`(의류), `HAT`(모자), `BOOK`(교재·도서), `GLASSES`(안경·선글라스), `ACCESSORY`(시계·액세서리), `CASH`(현금), `UMBRELLA`(우산), `TUMBLER`(텀블러·물병), `KEY`(열쇠), `STATIONERY`(필기구·필통), `ETC`(기타)
 
-후보 검색 때 함께 찾는 종류. 코드 기준은 `packages/shared/src/enums.ts`의 `RELATED_CATEGORIES`.
+- 옛 10개에서 옮긴 값: `CARD`→`ID_CARD`, `PENCIL_CASE`→`STATIONERY`, `LAPTOP_TABLET`→`LAPTOP`, `CLOTHING_BAG`→`BAG` (마이그레이션 `20261017120000_categories_24`)
+- 고가품(`VALUABLE_CATEGORIES`, 보관처·대면 수령 안내): 지갑, 학생증·신분증, 운전면허증, 체크·신용카드, 휴대폰, 무선 이어폰, 스마트워치, 태블릿, 노트북, 시계·액세서리, 현금
 
-| 신고 종류 | 함께 찾는 종류 |
+### 연관 종류 묶음
+
+후보 검색 때 함께 찾는 종류. 서로 대칭이다. 코드 기준은 `RELATED_CATEGORIES`.
+
+| 종류 | 함께 찾는 종류 |
 | --- | --- |
-| `EARPHONE` | `CHARGER` |
-| `CHARGER` | `EARPHONE`, `LAPTOP_TABLET` |
-| `WALLET` | `CARD` |
-| `CARD` | `WALLET` |
-| `LAPTOP_TABLET` | `CHARGER` |
+| `WALLET` | 카드·신분증 5종(`ID_CARD`, `DRIVER_LICENSE`, `PAYMENT_CARD`, `TRANSIT_CARD`, `OTHER_CARD`), `CASH` |
+| 카드·신분증끼리 | `ID_CARD`↔`DRIVER_LICENSE`, `ID_CARD`↔`OTHER_CARD`, `PAYMENT_CARD`↔`TRANSIT_CARD`↔`OTHER_CARD` (+ 모두 `WALLET`) |
+| `CHARGER` | `PHONE`, `EARPHONE`, `SMARTWATCH`, `LAPTOP`, `TABLET` |
+| `LAPTOP` ↔ `TABLET` | 서로 (+ `CHARGER`) |
+| `SMARTWATCH` ↔ `ACCESSORY` | 서로 |
+| `BAG` ↔ `CLOTHING` ↔ `HAT` | 가방↔의류, 의류↔모자 |
+| `BOOK` ↔ `STATIONERY` | 서로 |
 | `ETC` | 모든 종류 |
 | 모든 종류 | `ETC` |
