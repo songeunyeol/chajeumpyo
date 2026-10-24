@@ -154,7 +154,7 @@ describe("L-10 → L-11 → L-12", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     renderAt(`/items/${F_PASS}`);
-    await userEvent.click(await screen.findByRole("button", { name: /수령 QR 받기/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /수령 QR 받기/ }, JUDGE));
     await userEvent.click(await screen.findByRole("button", { name: /코드 보기/ }));
     const code = screen.getByTestId("qr-code-text").textContent ?? "";
     const raw = code.replaceAll(" ", "");
@@ -173,7 +173,7 @@ describe("L-10 → L-11 → L-12", () => {
 
   it("그 자리 물건은 찾았어요 → 기록 완료", async () => {
     renderAt(`/items/${F_QUESTION}`);
-    await userEvent.click(await screen.findByRole("button", { name: /찾았어요/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /찾았어요/ }, JUDGE));
     await userEvent.click(await screen.findByRole("button", { name: "네, 찾았어요" }));
     expect(await screen.findByText("찾았다고 기록했어요")).toBeInTheDocument();
   });
