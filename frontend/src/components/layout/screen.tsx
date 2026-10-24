@@ -1,4 +1,4 @@
-import { ChevronLeft, FlaskConical } from "lucide-react";
+import { ChevronLeft, FlaskConical, X } from "lucide-react";
 import type * as React from "react";
 import { useNavigate } from "react-router";
 import { useSession } from "@/data";
@@ -46,7 +46,7 @@ export function Screen({
         {children}
       </main>
       {footer && (
-        <div className="sticky bottom-0 z-10 flex flex-col gap-2 bg-inherit px-gutter pt-3 pb-5 safe-bottom">
+        <div className="sticky bottom-0 z-10 flex flex-col gap-2 bg-inherit px-gutter pt-3 pb-[calc(20px+env(safe-area-inset-bottom))]">
           {footer}
         </div>
       )}
@@ -63,12 +63,42 @@ export function DemoStrip() {
       className="flex h-8 shrink-0 items-center gap-1.5 border-b border-[#D9CDB7] bg-band-demo px-4 text-[13px] font-semibold text-band-demo-fg"
     >
       <FlaskConical className="size-4" aria-hidden />
-      체험 모드 <span className="font-normal">· 시연용 데이터예요</span>
+      체험 모드 <span className="font-normal">· 시연용 데이터로 움직여요</span>
     </div>
   );
 }
 
-/** 머리 띠 (흐름 색) */
+/** 왼쪽 버튼: 뒤로(true 또는 경로) / 닫기({ close: 경로 }) / 없음 */
+export type Leading = boolean | string | { close: string };
+
+function LeadingButton({ leading }: { leading?: Leading }) {
+  const navigate = useNavigate();
+  if (!leading) return <span className="w-3" />;
+  const isClose = typeof leading === "object";
+  return (
+    <button
+      type="button"
+      aria-label={isClose ? "닫기" : "뒤로 가기"}
+      className="inline-flex size-touch shrink-0 items-center justify-center rounded-md"
+      onClick={() => {
+        if (typeof leading === "object") navigate(leading.close);
+        else if (typeof leading === "string") navigate(leading);
+        else navigate(-1);
+      }}
+    >
+      {isClose ? <X className="size-6" aria-hidden /> : <ChevronLeft className="size-6" aria-hidden />}
+    </button>
+  );
+}
+
+const bandClass: Record<Flow, string> = {
+  finder: "bg-band-finder text-band-finder-fg",
+  lost: "border-b border-line bg-band-lost text-ink",
+  demo: "bg-band-demo text-ink",
+  admin: "bg-band-admin text-white",
+};
+
+/** 머리 띠 (흐름 색, 56px) */
 export function BandHeader({
   variant,
   title,
@@ -77,62 +107,55 @@ export function BandHeader({
 }: {
   variant: Flow;
   title?: React.ReactNode;
-  /** true면 뒤로 가기, 문자열이면 그 경로로 */
-  back?: boolean | string;
+  back?: Leading;
   right?: React.ReactNode;
 }) {
-  const navigate = useNavigate();
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-20 flex min-h-header shrink-0 items-center gap-1 px-2",
-        variant === "finder" && "bg-band-finder text-band-finder-fg",
-        variant === "lost" && "border-b border-line bg-band-lost text-ink",
-        variant === "demo" && "bg-band-demo text-ink",
-        variant === "admin" && "bg-band-admin text-white",
-      )}
-    >
-      {back ? (
-        <button
-          type="button"
-          aria-label="뒤로 가기"
-          className="inline-flex size-touch items-center justify-center rounded-md"
-          onClick={() => (typeof back === "string" ? navigate(back) : navigate(-1))}
-        >
-          <ChevronLeft className="size-6" aria-hidden />
-        </button>
-      ) : (
-        <span className="w-3" />
-      )}
+    <header className={cn("sticky top-0 z-20 flex min-h-header shrink-0 items-center gap-1 px-2", bandClass[variant])}>
+      <LeadingButton leading={back} />
       <h1 className="m-0 flex-1 truncate text-body-lg font-semibold">{title}</h1>
       {right}
     </header>
   );
 }
 
-/** 큰 띠 머리 (흐름 첫 화면) */
+/** 띠 오른쪽 단계 글자 (1 / 2) */
+export function StepCount({ current, total }: { current: number; total: number }) {
+  return (
+    <span className="px-3 text-[13px] font-semibold" role="img" aria-label={`${total}단계 중 ${current}단계`}>
+      {current} / {total}
+    </span>
+  );
+}
+
+/** 큰 띠 머리 (흐름 첫 화면): 뒤로 + 제목 24 + 한 줄 설명 + (단계 막대) */
 export function BandHero({
   variant,
-  eyebrow = "찾음표",
   title,
+  back,
+  right,
+  eyebrow,
   children,
+  stepper,
 }: {
   variant: "finder" | "lost" | "demo";
-  eyebrow?: React.ReactNode;
   title: React.ReactNode;
+  back?: Leading;
+  right?: React.ReactNode;
+  eyebrow?: React.ReactNode;
   children?: React.ReactNode;
+  stepper?: React.ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "shrink-0 px-2 pt-2 pb-6",
-        variant === "finder" && "bg-band-finder text-white",
-        variant === "lost" && "bg-band-lost",
-        variant === "demo" && "bg-band-demo",
+    <header className={cn("shrink-0 px-2 pt-2 pb-6", bandClass[variant], "border-b-0")}>
+      {(back || right) && (
+        <div className="flex min-h-touch items-center justify-between">
+          <LeadingButton leading={back} />
+          {right}
+        </div>
       )}
-    >
-      <div className={cn("px-3 text-[13px] font-bold", variant === "finder" && "text-band-finder-sub")}>{eyebrow}</div>
-      <h2 className="mx-3 mt-2 mb-1 text-headline font-bold tracking-tight-ko">{title}</h2>
+      {eyebrow && <div className="px-3 text-[13px] font-bold">{eyebrow}</div>}
+      <h1 className="mx-3 mt-2 mb-1 text-headline font-bold tracking-tight-ko">{title}</h1>
       {children && (
         <div
           className={cn("mx-3 text-[14px] leading-5", variant === "finder" ? "text-band-finder-sub" : "text-ink-muted")}
@@ -140,6 +163,7 @@ export function BandHero({
           {children}
         </div>
       )}
-    </div>
+      {stepper && <div className="mx-3 mt-4">{stepper}</div>}
+    </header>
   );
 }

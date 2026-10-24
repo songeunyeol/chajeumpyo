@@ -28,14 +28,14 @@ const F = "11111111-1111-4111-8111-111111111111";
 
 // [경로, 화면 ID, 필요한 세션]
 const cases: [string, RegExp, "none" | "member" | "admin"][] = [
-  ["/", /C-01/, "none"],
-  ["/demo", /C-03/, "none"],
+  ["/", /잃어버렸어요/, "none"],
+  ["/demo", /이렇게 체험해요/, "none"],
   ["/status/offline", /C-06/, "none"],
   ["/map", /C-07/, "none"],
-  ["/found/new", /F-01/, "none"],
-  ["/found/new/details", /F-02/, "none"],
-  ["/found/new/uploading", /F-03/, "none"],
-  ["/found/new/result", /F-04/, "none"],
+  ["/found/new", /물건 사진을 올려 주세요/, "none"],
+  ["/found/new/details", /물건 사진을 올려 주세요/, "none"], // 사진 없으면 F-01로
+  ["/found/new/uploading", /물건 사진을 올려 주세요/, "none"],
+  ["/found/new/result", /물건 사진을 올려 주세요/, "none"],
   ["/login", /L-01/, "none"],
   ["/signup", /L-02/, "none"],
   ["/home", /L-03/, "member"],
@@ -62,7 +62,7 @@ describe("라우트: 모든 화면 ID에 경로가 있다", () => {
   it.each(cases)("%s → %s", async (path, id, who) => {
     setMockSession(who === "member" ? MEMBER : who === "admin" ? ADMIN : null);
     renderAt(path);
-    expect(await screen.findByText(id)).toBeInTheDocument();
+    expect((await screen.findAllByText(id))[0]).toBeInTheDocument();
   });
 });
 

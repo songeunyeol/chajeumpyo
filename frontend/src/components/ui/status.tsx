@@ -66,6 +66,20 @@ export function StatusBadge({
   );
 }
 
+/** 작은 글자 꼬리표 (같은 건물 등). 정보 표시용 */
+export function Tag({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 items-center rounded-sm bg-brand-soft px-1.5 text-caption leading-none font-bold whitespace-nowrap text-brand",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
 export function SeedBadge({ className }: { className?: string }) {
   return (
     <StatusBadge tone="seed" className={className}>
@@ -128,7 +142,9 @@ export function Alert({
   title,
   children,
   className,
+  role,
 }: {
+  role?: "alert" | "status";
   tone?: AlertTone;
   icon?: LucideIcon;
   title?: React.ReactNode;
@@ -138,7 +154,10 @@ export function Alert({
   const Icon = icon ?? alertIcon[tone];
   const [bg, fg] = alertClass[tone];
   return (
-    <div className={cn("flex items-start gap-2.5 rounded-md px-3.5 py-3 text-[14px] leading-5", bg, className)}>
+    <div
+      role={role}
+      className={cn("flex items-start gap-2.5 rounded-md px-3.5 py-3 text-[14px] leading-5", bg, className)}
+    >
       <Icon className={cn("size-5 shrink-0", fg)} aria-hidden />
       <div className="min-w-0 flex-1">
         {title && <b className="block font-bold">{title}</b>}

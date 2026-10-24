@@ -46,6 +46,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: false,
+    // 화면 테스트는 가짜 훅(src/data/mock)으로 돈다
+    env: { VITE_USE_MOCKS: "true" },
     include: ["src/**/*.test.{ts,tsx}"],
   },
 });

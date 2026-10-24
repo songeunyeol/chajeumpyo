@@ -1,4 +1,12 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
+import { DemoStartPage } from "@/pages/common/demo-start";
+import { LandingPage } from "@/pages/common/landing";
+import { DevPreviewPage } from "@/pages/dev/preview";
+import { FinderDetailsPage } from "@/pages/finder/details-page";
+import { FinderFlowLayout } from "@/pages/finder/flow-context";
+import { FinderPhotoPage } from "@/pages/finder/photo-page";
+import { FinderResultPage } from "@/pages/finder/result-page";
+import { FinderUploadingPage } from "@/pages/finder/uploading-page";
 import { ScreenPlaceholder as P } from "@/pages/placeholder";
 import { RequireAdmin, RequireMember } from "./guards";
 
@@ -9,16 +17,21 @@ import { RequireAdmin, RequireMember } from "./guards";
  */
 export const routes: RouteObject[] = [
   // 공통
-  { path: "/", element: <P id="C-01" title="첫 화면" flow="lost" /> },
-  { path: "/demo", element: <P id="C-03" title="체험 시작" flow="demo" /> },
+  { path: "/", element: <LandingPage /> },
+  { path: "/demo", element: <DemoStartPage /> },
   { path: "/map", element: <P id="C-07" title="캠퍼스 지도" flow="lost" /> },
   { path: "/status/:kind", element: <P id="C-06" title="상태 화면" flow="lost" /> },
 
   // 습득자
-  { path: "/found/new", element: <P id="F-01" title="사진 찍기" flow="finder" /> },
-  { path: "/found/new/details", element: <P id="F-02" title="등록 정보" flow="finder" /> },
-  { path: "/found/new/uploading", element: <P id="F-03" title="등록 중" flow="finder" /> },
-  { path: "/found/new/result", element: <P id="F-04" title="등록 결과" flow="finder" /> },
+  {
+    element: <FinderFlowLayout />,
+    children: [
+      { path: "/found/new", element: <FinderPhotoPage /> },
+      { path: "/found/new/details", element: <FinderDetailsPage /> },
+      { path: "/found/new/uploading", element: <FinderUploadingPage /> },
+      { path: "/found/new/result", element: <FinderResultPage /> },
+    ],
+  },
 
   // 분실자 (로그인 전)
   { path: "/login", element: <P id="L-01" title="로그인" flow="lost" /> },
@@ -58,6 +71,7 @@ export const routes: RouteObject[] = [
     ],
   },
 
+  ...(import.meta.env.DEV ? [{ path: "/__dev/:name", element: <DevPreviewPage /> }] : []),
   { path: "*", element: <P id="C-06" title="페이지를 찾을 수 없어요" flow="lost" /> },
 ];
 

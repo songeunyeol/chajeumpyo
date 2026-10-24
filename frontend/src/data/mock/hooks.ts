@@ -50,6 +50,15 @@ class MockApiError extends Error {
 const fail = (code: ErrorCode): never => {
   throw new MockApiError(code);
 };
+/** 스크린샷용: localStorage "chajeumpyo.mock.fail.<작업>"에 에러 코드를 넣으면 그 작업이 그 오류로 실패한다 */
+function forcedFailure(op: string) {
+  try {
+    const code = localStorage.getItem(`chajeumpyo.mock.fail.${op}`);
+    if (code && code in ERROR_STATUS) fail(code as ErrorCode);
+  } catch (e) {
+    if (e instanceof MockApiError) throw e;
+  }
+}
 
 // ── 세션 ─────────────────────────────────────────────
 
@@ -77,7 +86,7 @@ function setSession(next: Session) {
 /** 테스트·스크린샷용 */
 export const setMockSession = (next: Session | null) => setSession(next ?? EMPTY);
 
-export function useSession(): Session {
+export function useSession(_scope?: "member" | "admin"): Session {
   return useSyncExternalStore(
     (cb) => {
       listeners.add(cb);
@@ -89,7 +98,7 @@ export function useSession(): Session {
 
 export function useLogout() {
   const qc = useQueryClient();
-  return () => {
+  return (_scope?: "member" | "admin") => {
     setSession(EMPTY);
     qc.clear();
   };
@@ -129,6 +138,7 @@ export function useDemoLogin() {
   return useMutation({
     mutationFn: async (_: DemoLoginInput) => {
       await wait(600);
+      forcedFailure("demo");
       const res = authOf("demo-7f3a@demo.chajeumpyo", "DEMO");
       setSession({ user: res.user, isDemo: true, isAdmin: false, storagePlace: null });
       return res;

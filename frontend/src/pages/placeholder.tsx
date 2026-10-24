@@ -21,7 +21,7 @@ export function ScreenPlaceholder({
       flow={flow}
       tabs={tabs}
       wide={flow === "admin"}
-      header={<BandHeader variant={flow === "demo" ? "lost" : flow} title={title} back />}
+      header={<BandHeader variant={flow === "demo" ? "lost" : flow} title={title} back={!tabs} />}
     >
       <EmptyState icon={<ResultIcon tone="neutral" icon={Construction} size={64} />} title={`${id} ${title}`}>
         이 화면은 곧 만들어요.
