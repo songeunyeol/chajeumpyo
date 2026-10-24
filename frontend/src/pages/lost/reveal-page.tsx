@@ -120,7 +120,11 @@ export function RevealPage() {
   );
 
   return (
-    <Screen flow="lost" header={<BandHeader variant="lost" back={close} title="내 물건" />} footer={footer}>
+    <Screen
+      flow="lost"
+      header={<BandHeader variant="lost" back={close} title="내 물건" />}
+      footer={shown ? footer : undefined}
+    >
       <div className="relative aspect-[320/220] w-full overflow-hidden rounded-lg bg-[#CFC8BB]">
         {!imgBroken ? (
           <img

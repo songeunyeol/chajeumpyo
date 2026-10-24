@@ -47,7 +47,7 @@ export function SignupPage() {
   const header = (
     <BandHeader
       variant="lost"
-      back={step === 1 ? "/login" : { close: () => setStep(1) }}
+      back={step === 1 ? "/login" : { back: () => setStep(1) }}
       title="회원가입"
       right={<StepCount current={step} total={3} />}
     />

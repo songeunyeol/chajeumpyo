@@ -85,12 +85,15 @@ export function QuestionPage() {
         </Button>
       }
     >
-      <section className="flex flex-col gap-3 rounded-lg bg-white p-4 shadow-card" aria-labelledby="q-text">
+      <section
+        className="flex min-h-[160px] flex-col gap-5 rounded-lg bg-white p-4 pb-6 shadow-card"
+        aria-labelledby="q-text"
+      >
         <StatusBadge tone="question" icon={CircleHelp} className="w-fit">
           질문 1개
         </StatusBadge>
         {question ? (
-          <h2 id="q-text" className="m-0 text-body-lg font-bold">
+          <h2 id="q-text" className="m-0 text-title leading-snug font-bold tracking-tight-ko">
             {question}
           </h2>
         ) : (

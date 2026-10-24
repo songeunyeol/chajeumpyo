@@ -73,20 +73,21 @@ export function DemoStrip() {
   );
 }
 
-/** 왼쪽 버튼: 뒤로(true 또는 경로) / 닫기({ close: 경로 }) / 없음 */
-export type Leading = boolean | string | { close: string | (() => void) };
+/** 왼쪽 버튼: 뒤로(true 또는 경로 또는 { back: 함수 }) / 닫기({ close: 경로 }) / 없음 */
+export type Leading = boolean | string | { close: string | (() => void) } | { back: () => void };
 
 function LeadingButton({ leading }: { leading?: Leading }) {
   const navigate = useNavigate();
   if (!leading) return <span className="w-3" />;
-  const isClose = typeof leading === "object";
+  const isClose = typeof leading === "object" && "close" in leading;
   return (
     <button
       type="button"
       aria-label={isClose ? "닫기" : "뒤로 가기"}
       className="inline-flex size-touch shrink-0 items-center justify-center rounded-md"
       onClick={() => {
-        if (typeof leading === "object") {
+        if (typeof leading === "object" && "back" in leading) leading.back();
+        else if (typeof leading === "object") {
           if (typeof leading.close === "function") leading.close();
           else navigate(leading.close);
         } else if (typeof leading === "string") navigate(leading);

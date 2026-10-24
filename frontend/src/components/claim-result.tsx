@@ -65,7 +65,7 @@ export function ClaimResultScreen({
       body = "설명한 특징이 물건과 맞았어요.";
       const labels = [...new Set(view.matchedFields.map(matchedFieldLabel).filter((x): x is string => !!x))];
       extra = labels.length > 0 && (
-        <ul className="m-0 flex list-none flex-wrap justify-center gap-1.5 p-0" aria-label="맞은 항목">
+        <ul className="m-0 mt-2 flex list-none flex-wrap justify-center gap-1.5 p-0" aria-label="맞은 항목">
           {labels.map((l) => (
             <li
               key={l}
