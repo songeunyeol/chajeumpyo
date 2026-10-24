@@ -476,9 +476,11 @@ export function useAdminFoundItems(params: AdminListParams = {}) {
       const all = [db.reviewItem, ...Object.keys(db.foundItems).map(db.adminDetail)];
       const items = (params.status ? all.filter((x) => x.status === params.status) : all).map((x) => ({
         ...x,
-        listImageUrl: x.isSensitive ? x.publicImageUrl : x.originalImageUrl,
+        // 실제 서버와 같게: 목록 사진은 공개본만, 수령·만료로 지웠으면 null
+        listImageUrl: x.status === "CLAIMED" ? null : x.publicImageUrl,
       }));
-      const counts: Partial<Record<FoundStatus, number>> = { REVIEW: 1, REGISTERED: 5, REVEALED: 2, CLAIMED: 14 };
+      const counts: Partial<Record<FoundStatus, number>> = {};
+      for (const x of all) counts[x.status] = (counts[x.status] ?? 0) + 1;
       return { items, page: params.page ?? 1, pageSize: 20, total: items.length, counts };
     },
   });
@@ -552,7 +554,11 @@ export function useHotspots(params: HotspotParams) {
     queryKey: ["admin", "hotspots", params],
     queryFn: async () => {
       await delay();
-      return { ...db.hotspots, from: params.from ?? db.hotspots.from, to: params.to ?? db.hotspots.to };
+      const range = { from: params.from ?? db.hotspots.from, to: params.to ?? db.hotspots.to };
+      // 화면 확인용: 2020년 기간은 빈 집계
+      if (range.from.startsWith("2020"))
+        return { ...db.hotspots, ...range, total: 0, byBuilding: [], byHour: [], byCategory: [], isSeedData: false };
+      return { ...db.hotspots, ...range };
     },
   });
 }

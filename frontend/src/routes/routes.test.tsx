@@ -49,9 +49,9 @@ const cases: [string, RegExp, "none" | "member" | "admin"][] = [
   [`/items/${F}/done`, /물건을 찾았어요/, "member"],
   ["/notifications", /알림/, "member"],
   ["/me", /내 정보/, "member"],
-  ["/admin/login", /A-01/, "none"],
-  ["/admin", /A-02/, "admin"],
-  ["/admin/items", /A-03/, "admin"],
+  ["/admin/login", /보관처 직원 로그인/, "none"],
+  ["/admin", /습득물 현황/, "admin"],
+  ["/admin/items", /이전 페이지|전체/, "admin"],
   [`/admin/items/${F}`, /A-04/, "admin"],
   ["/admin/scan", /A-05/, "admin"],
   ["/admin/hotspots", /A-06/, "admin"],
@@ -75,6 +75,6 @@ describe("가드", () => {
   it("관리자 화면은 A-01로 보낸다", async () => {
     setMockSession(MEMBER);
     renderAt("/admin/items");
-    expect(await screen.findByText(/A-01/)).toBeInTheDocument();
+    expect(await screen.findByText(/보관처 직원 로그인/)).toBeInTheDocument();
   });
 });

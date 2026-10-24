@@ -269,7 +269,7 @@ export function adminDetail(id: string): AdminFoundItemDetailResponse {
   const c = f.candidate;
   return {
     id,
-    status: f.outcome === "PASS" ? "REGISTERED" : "REGISTERED",
+    status: id.startsWith("4") ? "CLAIMED" : id.startsWith("2") ? "REVEALED" : "REGISTERED",
     category: c.category,
     title: f.title,
     building: c.building,
@@ -286,15 +286,34 @@ export function adminDetail(id: string): AdminFoundItemDetailResponse {
     description: `${f.title}. 케이스 모서리에 작은 흠집이 있어요.`,
     isSensitive: false,
     originalImageUrl: f.detail.imageUrl,
-    publicImageUrl: f.detail.imageUrl,
+    // 공개본은 원본과 다른 그림으로 둬서 목록이 원본을 쓰지 않는지 화면·테스트로 가릴 수 있게
+    publicImageUrl: mockPhoto("#D9D2C5"),
     thumbnailUrl: c.thumbnailUrl,
     expiresAt: new Date(Date.now() + 14 * 86_400_000).toISOString(),
     attempts: [
       { emailMasked: "ki***@skuniv.ac.kr", result: "FAIL", answerCorrect: null, createdAt: hoursAgo(4) },
       { emailMasked: "le***@skuniv.ac.kr", result: "BORDERLINE", answerCorrect: false, createdAt: hoursAgo(3) },
     ],
-    reveals: [],
-    pickups: [],
+    reveals: id.startsWith("3")
+      ? [
+          { emailMasked: "kj***@skuniv.ac.kr", revealedAt: hoursAgo(30) },
+          { emailMasked: "mh***@skuniv.ac.kr", revealedAt: hoursAgo(26) },
+        ]
+      : [],
+    pickups: id.startsWith("4")
+      ? [
+          {
+            id: "p-done",
+            emailMasked: "kj***@skuniv.ac.kr",
+            method: "CENTER_QR",
+            status: "COMPLETED",
+            completedAt: hoursAgo(2),
+            createdAt: hoursAgo(5),
+            processedByEmailMasked: "ce***@skuniv.ac.kr",
+            verificationNote: null,
+          },
+        ]
+      : [],
   };
 }
 

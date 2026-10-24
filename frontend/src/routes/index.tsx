@@ -70,16 +70,30 @@ export const routes: RouteObject[] = [
     ],
   },
 
-  // 관리자
-  { path: "/admin/login", element: <P id="A-01" title="관리자 로그인" flow="admin" /> },
+  // 관리자 (학생은 받지 않게 경로째 지연 로드)
+  {
+    path: "/admin/login",
+    lazy: async () => ({ Component: (await import("@/pages/admin/login-page")).AdminLoginPage }),
+  },
   {
     element: <RequireAdmin />,
     children: [
-      { path: "/admin", element: <P id="A-02" title="관리자 홈" flow="admin" /> },
-      { path: "/admin/items", element: <P id="A-03" title="습득물 목록" flow="admin" /> },
-      { path: "/admin/items/:id", element: <P id="A-04" title="습득물 상세" flow="admin" /> },
-      { path: "/admin/scan", element: <P id="A-05" title="QR 스캔" flow="admin" /> },
-      { path: "/admin/hotspots", element: <P id="A-06" title="분실 다발 카드" flow="admin" /> },
+      {
+        lazy: async () => ({ Component: (await import("@/components/layout/admin-shell")).AdminShell }),
+        children: [
+          {
+            path: "/admin",
+            lazy: async () => ({ Component: (await import("@/pages/admin/home-page")).AdminHomePage }),
+          },
+          {
+            path: "/admin/items",
+            lazy: async () => ({ Component: (await import("@/pages/admin/items-page")).AdminItemsPage }),
+          },
+          { path: "/admin/items/:id", element: <P id="A-04" title="습득물 상세" flow="admin" /> },
+          { path: "/admin/scan", element: <P id="A-05" title="QR 스캔" flow="admin" /> },
+          { path: "/admin/hotspots", element: <P id="A-06" title="분실 다발 카드" flow="admin" /> },
+        ],
+      },
     ],
   },
 

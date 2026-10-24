@@ -146,7 +146,7 @@ export function BandHero({
   children,
   stepper,
 }: {
-  variant: "finder" | "lost" | "demo";
+  variant: "finder" | "lost" | "demo" | "admin";
   title: React.ReactNode;
   back?: Leading;
   right?: React.ReactNode;
@@ -166,7 +166,10 @@ export function BandHero({
       <h1 className="mx-3 mt-2 mb-1 text-headline font-bold tracking-tight-ko">{title}</h1>
       {children && (
         <div
-          className={cn("mx-3 text-[14px] leading-5", variant === "finder" ? "text-band-finder-sub" : "text-ink-muted")}
+          className={cn(
+            "mx-3 text-[14px] leading-5",
+            variant === "finder" ? "text-band-finder-sub" : variant === "admin" ? "text-white/75" : "text-ink-muted",
+          )}
         >
           {children}
         </div>
