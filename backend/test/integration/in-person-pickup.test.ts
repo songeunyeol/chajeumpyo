@@ -67,6 +67,7 @@ describe("기준 1. 잠긴 물건을 처리 관리자·메모와 함께 수령 �
     expect(days).toBe(30);
     const after = await prisma.foundItem.findUniqueOrThrow({ where: { id: item.id }, include: { detail: true } });
     expect(after.status).toBe("CLAIMED");
+    expect(after.claimLockedAt).not.toBeNull(); // 잠겼던 기록은 남긴다
     expect(after.dataPurgedAt).not.toBeNull();
     expect(after.detail?.description).toBeNull();
   });
