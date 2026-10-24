@@ -46,7 +46,12 @@ export function Screen({
         {children}
       </main>
       {footer && (
-        <div className="sticky bottom-0 z-10 flex flex-col gap-2 bg-inherit px-gutter pt-3 pb-[calc(20px+env(safe-area-inset-bottom))]">
+        <div
+          className={cn(
+            "sticky z-10 flex flex-col gap-2 bg-inherit px-gutter pt-3",
+            tabs ? "bottom-tabbar pb-5" : "bottom-0 pb-[calc(20px+env(safe-area-inset-bottom))]",
+          )}
+        >
           {footer}
         </div>
       )}
@@ -69,7 +74,7 @@ export function DemoStrip() {
 }
 
 /** 왼쪽 버튼: 뒤로(true 또는 경로) / 닫기({ close: 경로 }) / 없음 */
-export type Leading = boolean | string | { close: string };
+export type Leading = boolean | string | { close: string | (() => void) };
 
 function LeadingButton({ leading }: { leading?: Leading }) {
   const navigate = useNavigate();
@@ -81,8 +86,10 @@ function LeadingButton({ leading }: { leading?: Leading }) {
       aria-label={isClose ? "닫기" : "뒤로 가기"}
       className="inline-flex size-touch shrink-0 items-center justify-center rounded-md"
       onClick={() => {
-        if (typeof leading === "object") navigate(leading.close);
-        else if (typeof leading === "string") navigate(leading);
+        if (typeof leading === "object") {
+          if (typeof leading.close === "function") leading.close();
+          else navigate(leading.close);
+        } else if (typeof leading === "string") navigate(leading);
         else navigate(-1);
       }}
     >

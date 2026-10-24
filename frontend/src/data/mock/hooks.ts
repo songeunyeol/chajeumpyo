@@ -42,13 +42,17 @@ class MockApiError extends Error {
   status: number;
   code: ErrorCode;
   constructor(code: ErrorCode, message?: string) {
-    super(message ?? code);
+    super(message ?? MOCK_MESSAGES[code] ?? code);
     this.code = code;
     this.status = ERROR_STATUS[code];
   }
 }
-const fail = (code: ErrorCode): never => {
-  throw new MockApiError(code);
+const MOCK_MESSAGES: Partial<Record<ErrorCode, string>> = {
+  INVALID_CODE: "인증 코드가 맞지 않아요.",
+  UNAUTHORIZED: "이메일 또는 비밀번호가 맞지 않아요.",
+};
+const fail = (code: ErrorCode, message?: string): never => {
+  throw new MockApiError(code, message);
 };
 /** 스크린샷용: localStorage "chajeumpyo.mock.fail.<작업>"에 에러 코드를 넣으면 그 작업이 그 오류로 실패한다 */
 function forcedFailure(op: string) {
@@ -113,7 +117,8 @@ const authOf = (email: string, role: "USER" | "ADMIN" | "DEMO"): AuthResponse =>
 export function useLogin() {
   return useMutation({
     mutationFn: async (body: LoginRequest) => {
-      await delay();
+      await wait(500);
+      forcedFailure("login");
       if (body.password === "wrong-password") fail("UNAUTHORIZED");
       const res = authOf(body.email, "USER");
       setSession({ user: res.user, isDemo: false, isAdmin: false, storagePlace: null });
@@ -148,8 +153,9 @@ export function useDemoLogin() {
 
 export function useRequestEmailCode() {
   return useMutation({
-    mutationFn: async ({ email }: { email: string }) => {
+    mutationFn: async ({ email }: { email: string; captchaToken?: string }) => {
       await delay();
+      forcedFailure("code");
       if (!email.endsWith("@skuniv.ac.kr")) fail("INVALID_EMAIL_DOMAIN");
       if (email.startsWith("taken")) fail("EMAIL_TAKEN");
       return { sent: true };
@@ -162,7 +168,8 @@ export function useVerifyEmailCode() {
     mutationFn: async ({ code }: { email: string; code: string }): Promise<EmailVerifyResponse> => {
       await delay();
       if (code === "000000") fail("INVALID_CODE");
-      if (code === "999999") fail("RATE_LIMITED");
+      if (code === "111111") fail("INVALID_CODE", "인증 코드를 여러 번 틀렸어요. 다시 받아 주세요.");
+      if (code === "222222") fail("INVALID_CODE", "인증 코드가 만료됐어요. 다시 받아 주세요.");
       return { verificationToken: "vt", expiresAt: new Date(Date.now() + 600_000).toISOString() };
     },
   });
@@ -172,6 +179,7 @@ export function useSignup() {
   return useMutation({
     mutationFn: async (_: SignupInput) => {
       await delay();
+      forcedFailure("signup");
       const res = authOf("student@skuniv.ac.kr", "USER");
       setSession({ user: res.user, isDemo: false, isAdmin: false, storagePlace: null });
       return res;
@@ -271,6 +279,11 @@ export function useLostReports() {
   });
 }
 
+export function useLostReport(reportId: string | undefined) {
+  const q = useLostReports();
+  return { ...q, data: q.data?.reports.find((r) => r.id === reportId) };
+}
+
 export function useCandidates(reportId: string) {
   return useQuery({
     queryKey: ["candidates", reportId],
@@ -292,6 +305,7 @@ export function useCreateLostReport() {
   return useMutation({
     mutationFn: async (body: CreateLostReportRequest): Promise<LostReportWithCandidates> => {
       await wait(1500);
+      forcedFailure("report");
       if (body.description.includes("오류")) fail("AI_UNAVAILABLE");
       const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
       return {
@@ -331,16 +345,24 @@ export function useClaim(reportId: string) {
   return useMutation({
     mutationFn: async ({ foundItemId }: { foundItemId: string }): Promise<ClaimResponse> => {
       await wait(2200);
+      forcedFailure("claim");
       const f = db.foundItems[foundItemId];
       if (!f) return fail("NOT_FOUND");
       const attemptId = `at-${foundItemId.slice(0, 8)}`;
+      const reused = localStorage.getItem("chajeumpyo.mock.reused") === "1";
       switch (f.outcome) {
         case "PASS":
-          return { result: "PASS", attemptId, reused: false, matchedFields: ["color", "feature:sticker"], foundItemId };
+          return {
+            result: "PASS",
+            attemptId,
+            reused,
+            matchedFields: ["feature:sticker", "feature:scratch", "color"],
+            foundItemId,
+          };
         case "BORDERLINE":
-          return { result: "BORDERLINE", attemptId, reused: false, question: "손잡이는 어떤 재질이었나요?" };
+          return { result: "BORDERLINE", attemptId, reused, question: "손잡이는 어떤 재질이었나요?" };
         case "FAIL":
-          return { result: "FAIL", attemptId, reused: false, attemptsLeft: 1, inPersonOnly: false };
+          return { result: "FAIL", attemptId, reused, attemptsLeft: 2, inPersonOnly: false };
         case "LOCKED":
           return fail("MATCH_LOCKED");
         case "IN_PERSON":
@@ -355,6 +377,7 @@ export function useAnswer(attemptId: string) {
   return useMutation({
     mutationFn: async ({ answer }: { answer: string }): Promise<AnswerResponse> => {
       await wait(1500);
+      forcedFailure("answer");
       if (attemptId === "used") fail("ALREADY_ANSWERED");
       if (answer.includes("나무")) return { result: "PASS", foundItemId: "22222222-2222-4222-8222-222222222222" };
       return { result: "FAIL", attemptsLeft: 1, inPersonOnly: false };
@@ -377,11 +400,14 @@ export function useFoundItemDetail(id: string) {
   });
 }
 
+const B62 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
 export function useIssuePickupQr(foundItemId: string) {
   const s = useSession();
   return useMutation({
     mutationFn: async (): Promise<PickupQrResponse> => {
       await wait(500);
+      forcedFailure("qr");
       if (s.isDemo) {
         return { method: "DEMO", pickupId: "p-demo", status: "COMPLETED", completedAt: new Date().toISOString() };
       }
@@ -389,7 +415,7 @@ export function useIssuePickupQr(foundItemId: string) {
       return {
         method: "CENTER_QR",
         pickupId: "p1",
-        qrToken: `mock-qr-${Math.random().toString(36).slice(2, 10)}`,
+        qrToken: Array.from({ length: 28 }, () => B62[Math.floor(Math.random() * 62)]).join(""),
         status: "ISSUED",
         expiresAt: new Date(Date.now() + 24 * 3_600_000).toISOString(),
       };
@@ -448,7 +474,10 @@ export function useAdminFoundItems(params: AdminListParams = {}) {
     queryFn: async (): Promise<AdminFoundItemListResponse> => {
       await delay();
       const all = [db.reviewItem, ...Object.keys(db.foundItems).map(db.adminDetail)];
-      const items = params.status ? all.filter((x) => x.status === params.status) : all;
+      const items = (params.status ? all.filter((x) => x.status === params.status) : all).map((x) => ({
+        ...x,
+        listImageUrl: x.isSensitive ? x.publicImageUrl : x.originalImageUrl,
+      }));
       const counts: Partial<Record<FoundStatus, number>> = { REVIEW: 1, REGISTERED: 5, REVEALED: 2, CLAIMED: 14 };
       return { items, page: params.page ?? 1, pageSize: 20, total: items.length, counts };
     },

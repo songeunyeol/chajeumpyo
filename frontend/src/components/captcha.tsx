@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, CircleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { TURNSTILE_SITE_KEY } from "@/lib/env";
 import { cn } from "@/lib/utils";
@@ -31,13 +31,42 @@ function loadTurnstile(): Promise<void> {
   return scriptPromise;
 }
 
+export type CaptchaMode = "turnstile" | "dev" | "misconfigured";
+
+/** 사이트 키가 있으면 Turnstile. 없으면 개발 빌드는 개발용 상자, 배포 빌드는 설정 오류(통과 토큰을 절대 보내지 않음) */
+export function resolveCaptchaMode(siteKey: string, isProd: boolean): CaptchaMode {
+  if (siteKey) return "turnstile";
+  return isProd ? "misconfigured" : "dev";
+}
+
 /**
- * 캡차 (Cloudflare Turnstile). 사이트 키가 없으면 개발용 확인 상자를 보여 주고 통과 토큰을 준다.
- * resetKey가 바뀌면 다시 확인하게 한다 (CAPTCHA_FAILED 뒤).
+ * 캡차 (Cloudflare Turnstile). resetKey가 바뀌면 다시 확인하게 한다 (CAPTCHA_FAILED 뒤).
+ * mode는 테스트용으로만 넘긴다.
  */
-export function Captcha({ onToken, resetKey = 0 }: { onToken: (token: string | null) => void; resetKey?: number }) {
-  if (!TURNSTILE_SITE_KEY) return <DevCaptcha onToken={onToken} resetKey={resetKey} />;
+export function Captcha({
+  onToken,
+  resetKey = 0,
+  mode = resolveCaptchaMode(TURNSTILE_SITE_KEY, import.meta.env.PROD),
+}: {
+  onToken: (token: string | null) => void;
+  resetKey?: number;
+  mode?: CaptchaMode;
+}) {
+  if (mode === "misconfigured") return <CaptchaConfigError />;
+  if (mode === "dev") return <DevCaptcha onToken={onToken} resetKey={resetKey} />;
   return <TurnstileWidget onToken={onToken} resetKey={resetKey} />;
+}
+
+function CaptchaConfigError() {
+  return (
+    <div role="alert" className="flex items-start gap-2.5 rounded-md bg-fail-bg px-3.5 py-3 text-[14px] leading-5">
+      <CircleAlert className="size-5 shrink-0 text-fail" aria-hidden />
+      <div>
+        <b className="block font-bold">사람 확인을 준비하지 못했어요</b>
+        서비스 설정(캡차 사이트 키)이 빠져 있어 지금은 보낼 수 없어요. 잠시 뒤 다시 시도해 주세요.
+      </div>
+    </div>
+  );
 }
 
 function DevCaptcha({ onToken, resetKey }: { onToken: (t: string | null) => void; resetKey: number }) {

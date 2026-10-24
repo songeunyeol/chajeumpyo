@@ -83,7 +83,7 @@ export function Tag({ children, className }: { children: React.ReactNode; classN
 export function SeedBadge({ className }: { className?: string }) {
   return (
     <StatusBadge tone="seed" className={className}>
-      시연용
+      시연용 데이터
     </StatusBadge>
   );
 }

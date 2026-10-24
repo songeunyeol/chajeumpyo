@@ -59,3 +59,50 @@ export function formatRemaining(ms: number): string {
   if (m === 0) return `${h}시간 남음`;
   return `${h}시간 ${m}분 남음`;
 }
+
+const partsKst = (iso: string) => {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("ko-KR", {
+      timeZone: KST,
+      month: "numeric",
+      day: "numeric",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(new Date(iso))
+      .map((x) => [x.type, x.value]),
+  ) as Record<string, string>;
+  return p;
+};
+
+/** 10월 23일(금) */
+export function formatDay(iso: string): string {
+  const p = partsKst(iso);
+  return `${p.month}월 ${p.day}일(${p.weekday})`;
+}
+
+/** 13:00 */
+export function formatHm(iso: string): string {
+  const p = partsKst(iso);
+  return `${p.hour}:${p.minute}`;
+}
+
+/** 10월 23일(금) 14:10 */
+export function formatDayTime(iso: string): string {
+  return `${formatDay(iso)} ${formatHm(iso)}`;
+}
+
+/** 10월 23일(금) 13:00~15:00 (날이 다르면 끝에도 날짜) */
+export function formatRange(from: string, to: string): string {
+  const sameDay = formatDay(from) === formatDay(to);
+  return sameDay
+    ? `${formatDay(from)} ${formatHm(from)}~${formatHm(to)}`
+    : `${formatDayTime(from)} ~ ${formatDayTime(to)}`;
+}
+
+/** 오늘(한국 시간)인지 */
+export function isTodayKst(iso: string, now = new Date()): boolean {
+  return formatDay(iso) === formatDay(now.toISOString());
+}

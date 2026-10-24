@@ -25,6 +25,7 @@ export const useBuildings = pick("useBuildings");
 export const useStoragePlaces = pick("useStoragePlaces");
 export const useRegisterFoundItem = pick("useRegisterFoundItem");
 export const useLostReports = pick("useLostReports");
+export const useLostReport = pick("useLostReport");
 export const useCandidates = pick("useCandidates");
 export const useCreateLostReport = pick("useCreateLostReport");
 export const useUpdateLostReport = pick("useUpdateLostReport");

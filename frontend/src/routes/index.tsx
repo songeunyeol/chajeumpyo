@@ -1,7 +1,6 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 import { DemoStartPage } from "@/pages/common/demo-start";
 import { LandingPage } from "@/pages/common/landing";
-import { DevPreviewPage } from "@/pages/dev/preview";
 import { FinderDetailsPage } from "@/pages/finder/details-page";
 import { FinderFlowLayout } from "@/pages/finder/flow-context";
 import { FinderPhotoPage } from "@/pages/finder/photo-page";
@@ -71,7 +70,15 @@ export const routes: RouteObject[] = [
     ],
   },
 
-  ...(import.meta.env.DEV ? [{ path: "/__dev/:name", element: <DevPreviewPage /> }] : []),
+  // 개발 서버에서만. 배포 빌드에서는 이 줄이 통째로 빠지고 미리보기 파일도 번들에 들어가지 않는다
+  ...(import.meta.env.DEV
+    ? [
+        {
+          path: "/__dev/:name",
+          lazy: async () => ({ Component: (await import("@/pages/dev/preview")).DevPreviewPage }),
+        },
+      ]
+    : []),
   { path: "*", element: <P id="C-06" title="페이지를 찾을 수 없어요" flow="lost" /> },
 ];
 
