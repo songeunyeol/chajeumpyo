@@ -206,6 +206,32 @@ describe("기준 6-2. 속성 형식: 색은 12색 키, 특징은 정해진 키�
     expect(row).toMatchObject({ title: "흰색 이어폰", floor: 3 });
     expect((await detail(guard, item.id)).body.thumbnailUrl).toContain("thumb.jpg");
   });
+
+  it("목록 썸네일은 공개본(민감하면 이미 흐림)의 서명 링크, 원본은 절대 없음, 지운 물건은 null", async () => {
+    const sensitive = await at(guardPlace);
+    await prisma.foundItemDetail.update({ where: { foundItemId: sensitive.id }, data: { isSensitive: true } });
+    const purged = await at(guardPlace, { status: "CLAIMED" });
+    await prisma.foundItemDetail.update({
+      where: { foundItemId: purged.id },
+      data: { imageOriginalKey: null, imagePublicKey: null, imageThumbKey: null },
+    });
+    const res = await list(guard);
+    expect(res.status).toBe(200);
+    const row = (id: string) => res.body.items.find((i: { id: string }) => i.id === id);
+    const url = new URL(row(sensitive.id).thumbnailUrl);
+    expect(url.pathname).toBe("/files/test/public.jpg");
+    expect(url.searchParams.get("sig")).toBeTruthy();
+    // 10분 링크
+    const exp = Number(url.searchParams.get("exp"));
+    expect(exp * 1000 - Date.now()).toBeGreaterThan(9 * 60_000);
+    expect(exp * 1000 - Date.now()).toBeLessThanOrEqual(10 * 60_000 + 1000);
+    expect(row(purged.id).thumbnailUrl).toBeNull();
+    const text = JSON.stringify(res.body);
+    expect(text).not.toContain("original");
+    expect(text).not.toContain("thumb.jpg");
+    // 서명이 맞다(파일이 없는 테스트 키라 404, 서명이 틀리면 403)
+    expect((await request(app).get(url.pathname + url.search)).status).toBe(404);
+  });
 });
 
 describe("기준 7. 등록된 물건의 속성 고치기", () => {

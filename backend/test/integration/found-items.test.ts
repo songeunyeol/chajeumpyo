@@ -370,6 +370,16 @@ describe("기준 10. 사진은 서명된 링크로만 볼 수 있다", () => {
     const res = await request(app).get(pathOf(await storage.signedUrl(d.imagePublicKey as string, 60)));
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toBe("image/jpeg");
+    // 프론트(다른 출처) <img>가 띄울 수 있게 사진만 cross-origin
+    expect(res.headers["cross-origin-resource-policy"]).toBe("cross-origin");
+  });
+
+  it("사진이 아닌 응답은 helmet 기본값(same-origin)을 유지한다", async () => {
+    const api = await request(app).get("/api/v1/buildings");
+    expect(api.headers["cross-origin-resource-policy"]).toBe("same-origin");
+    const denied = await request(app).get("/files/found/x.jpg");
+    expect(denied.status).toBe(403);
+    expect(denied.headers["cross-origin-resource-policy"]).toBe("same-origin");
   });
 
   it("서명 없음·틀림·만료·다른 파일 서명은 403", async () => {

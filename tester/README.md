@@ -11,7 +11,7 @@
 ```bash
 npm run db:up                       # DB
 npm run dev                         # API (http://localhost:4000)
-npx tsx --env-file=.env tester/seed-dev.mts   # 테스트용 건물·보관처·관리자·습득물 (개발 DB에만, 여러 번 돌려도 됨)
+npm run seed:dev -w backend         # 테스트용 건물·보관처·관리자·습득물 (backend/scripts/seed-dev.ts, 개발 DB에만, 여러 번 돌려도 됨)
 python3 -m http.server 5173 -d tester         # 테스터 (http://localhost:5173)
 ```
 
@@ -19,7 +19,7 @@ python3 -m http.server 5173 -d tester         # 테스터 (http://localhost:5173
 - 가입 인증 코드는 `MAIL_MODE=console`이라 API 서버 로그에 찍힌다
 - `AI_MODE=mock`이면 사진과 상관없이 "흰색 애플 이어폰, 곰돌이 스티커"로 분석된다. 다른 물건은 관리자 탭에서 속성을 고쳐서 만든다
 
-## 테스트 계정 (seed-dev.mts가 만든다)
+## 테스트 계정 (backend/scripts/seed-dev.ts가 만든다)
 
 | 역할 | 이메일 | 비밀번호 |
 |---|---|---|
@@ -28,7 +28,7 @@ python3 -m http.server 5173 -d tester         # 테스터 (http://localhost:5173
 
 분실자는 "체험 로그인"이나 `@skuniv.ac.kr` 이메일 가입으로 만든다.
 
-## seed-dev.mts가 넣는 것
+## seed-dev.ts가 넣는 것
 
 - 건물 6개: 좌표는 캠퍼스 중심 근처 **임의 값** (실제 좌표는 기획에서 받기로 함, #39)
 - 보관처 3개, 관리자 2명

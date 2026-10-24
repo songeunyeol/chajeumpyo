@@ -1,13 +1,21 @@
-// ⚠️ 임시 테스터용 더미 데이터 (tester/README.md). 프론트 개발이 시작되면 tester/ 폴더째 지운다 (이슈 #31).
-// 개발 DB에만 넣는다. 여러 번 돌려도 건물·보관처·관리자는 덮어쓰고, 습득물은 이미 있으면 건너뛴다.
-// 실행: npx tsx --env-file=.env tester/seed-dev.mts  (API 서버가 켜져 있어야 함)
+// 개발용 더미 데이터: 건물 6·보관처 3·관리자 2·습득물 7 (실제 5 + 체험용 시드 2).
+// 개발 DB(또는 e2e DB)에만 넣는다. 여러 번 돌려도 건물·보관처·관리자는 덮어쓰고, 습득물은 이미 있으면 건너뛴다.
+// 습득물은 실제 API로 등록하므로 API 서버가 켜져 있어야 한다:
+//   npm run seed:dev -w backend            (PORT의 API, 기본 4000)
+//   PORT=4100 npm run seed:dev -w backend  (4100에 띄운 API)
+// 관리자: center@skuniv.ac.kr / guard@skuniv.ac.kr, 비밀번호 admin1234!
+import { CONSENT_VERSION } from "@chajeumpyo/shared";
 import sharp from "sharp";
-import { CONSENT_VERSION } from "../packages/shared/src/index";
-import { hashPassword } from "../backend/src/lib/hash";
-import { prisma } from "../backend/src/lib/prisma";
 
-if (process.env.NODE_ENV === "production") throw new Error("테스터 더미 데이터는 개발 DB에만 넣어요.");
-const API = `http://localhost:${process.env.PORT ?? 4000}/api/v1`;
+// 개발 DB 전용: production이거나 테스트 DB(테스트가 비우고 채운다)면 멈춘다
+const dbName = new URL(process.env.DATABASE_URL ?? "postgresql://x/none").pathname.slice(1);
+if (process.env.NODE_ENV === "production" || dbName.endsWith("_test")) {
+  throw new Error(`개발용 더미 데이터는 개발 DB에만 넣어요. (NODE_ENV=${process.env.NODE_ENV}, DB=${dbName})`);
+}
+// DB에 닿는 모듈은 확인을 마친 뒤에 불러온다 (정적 import는 위 확인보다 먼저 실행되므로)
+const { hashPassword } = await import("../src/lib/hash");
+const { prisma } = await import("../src/lib/prisma");
+const API = process.env.SEED_API_BASE ?? `http://localhost:${process.env.PORT ?? 4000}/api/v1`;
 
 // 1) 건물·보관처·관리자 ------------------------------------------------------
 const C = { lat: 37.6148855, lng: 127.0133508 }; // 캠퍼스 중심. 건물 좌표는 임의 값
@@ -40,7 +48,12 @@ for (const [email, place] of [
   ["center@skuniv.ac.kr", "종합서비스센터"],
   ["guard@skuniv.ac.kr", "유담관 경비실"],
 ] as const) {
-  const data = { email, passwordHash: await hashPassword("admin1234!"), role: "ADMIN" as const, storagePlaceId: await pid(place) };
+  const data = {
+    email,
+    passwordHash: await hashPassword("admin1234!"),
+    role: "ADMIN" as const,
+    storagePlaceId: await pid(place),
+  };
   await prisma.user.upsert({ where: { email }, update: data, create: data });
 }
 
@@ -56,7 +69,7 @@ const login = await fetch(`${API}/admin/auth/login`, {
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ email: "center@skuniv.ac.kr", password: "admin1234!" }),
 });
-if (!login.ok) throw new Error(`관리자 로그인 실패 ${login.status}. API 서버(npm run dev)가 켜져 있나요?`);
+if (!login.ok) throw new Error(`관리자 로그인 실패 ${login.status}. API 서버(${API})가 켜져 있나요?`);
 const adminToken = ((await login.json()) as { accessToken: string }).accessToken;
 
 type Sample = {

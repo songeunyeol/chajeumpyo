@@ -191,6 +191,12 @@
                               "null"
                             ],
                             "format": "date-time"
+                          },
+                          "thumbnailUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -204,7 +210,8 @@
                           "storagePlace",
                           "foundAt",
                           "isSeed",
-                          "claimLockedAt"
+                          "claimLockedAt",
+                          "thumbnailUrl"
                         ]
                       }
                     },
@@ -473,6 +480,12 @@
                       ],
                       "format": "date-time"
                     },
+                    "thumbnailUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "categoryAlt": {
                       "type": [
                         "string",
@@ -564,12 +577,6 @@
                       ]
                     },
                     "publicImageUrl": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "thumbnailUrl": {
                       "type": [
                         "string",
                         "null"
@@ -716,6 +723,7 @@
                     "foundAt",
                     "isSeed",
                     "claimLockedAt",
+                    "thumbnailUrl",
                     "categoryAlt",
                     "color",
                     "brand",
@@ -724,7 +732,6 @@
                     "isSensitive",
                     "originalImageUrl",
                     "publicImageUrl",
-                    "thumbnailUrl",
                     "expiresAt",
                     "attempts",
                     "reveals",
@@ -1171,6 +1178,12 @@
                       ],
                       "format": "date-time"
                     },
+                    "thumbnailUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "categoryAlt": {
                       "type": [
                         "string",
@@ -1262,12 +1275,6 @@
                       ]
                     },
                     "publicImageUrl": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "thumbnailUrl": {
                       "type": [
                         "string",
                         "null"
@@ -1414,6 +1421,7 @@
                     "foundAt",
                     "isSeed",
                     "claimLockedAt",
+                    "thumbnailUrl",
                     "categoryAlt",
                     "color",
                     "brand",
@@ -1422,7 +1430,6 @@
                     "isSensitive",
                     "originalImageUrl",
                     "publicImageUrl",
-                    "thumbnailUrl",
                     "expiresAt",
                     "attempts",
                     "reveals",

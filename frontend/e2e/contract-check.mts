@@ -472,10 +472,10 @@ if (demoCand) {
   rec("후보 attemptsLeft 반영", after?.attemptsLeft === 2, String(after?.attemptsLeft));
 
   const bRep = check<S.LostReportWithCandidates>(
-    "POST /lost-reports (애매한 설명)",
+    "POST /lost-reports (색 모순 + 스티커 일치)",
     await call("/lost-reports", {
       token: userTok,
-      json: { category: "EARPHONE", lostFrom, lostTo, buildingId: yudam.id, description: "흰색 이어폰 잃어버렸어요" },
+      json: { category: "EARPHONE", lostFrom, lostTo, buildingId: yudam.id, description: "검정 이어폰, 곰돌이 스티커" },
     }),
     201,
     S.LostReportWithCandidates,
@@ -486,15 +486,20 @@ if (demoCand) {
     200,
     S.ClaimResponse,
   );
-  rec("애매한 설명 결과", true, `${b.result}${b.result === "BORDERLINE" ? ` q=${b.question}` : ""}`);
+  // 가짜 AI 규칙: 스티커 일치 1 + 색 모순 1 → 경계, 신고에 없는 '긁힘'을 묻는다 (backend/src/matching/judge.ts)
+  rec(
+    "색 모순 + 스티커 일치 = BORDERLINE",
+    b.result === "BORDERLINE",
+    `${b.result}${b.result === "BORDERLINE" ? ` q=${b.question}` : ""}`,
+  );
   if (b.result === "BORDERLINE") {
     const a = check<S.AnswerResponse>(
       "POST /claims/:attemptId/answer",
-      await call(`/claims/${b.attemptId}/answer`, { token: userTok, json: { answer: "곰돌이" } }),
+      await call(`/claims/${b.attemptId}/answer`, { token: userTok, json: { answer: "오른쪽 아래" } }),
       200,
       S.AnswerResponse,
     );
-    rec("답 결과", true, a.result);
+    rec("맞는 답(오른쪽 아래) = PASS", a.result === "PASS", a.result);
     checkErr(
       "두 번째 답",
       await call(`/claims/${b.attemptId}/answer`, { token: userTok, json: { answer: "곰돌이" } }),

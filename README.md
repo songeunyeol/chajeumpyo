@@ -67,6 +67,7 @@ npm run dev                    # http://localhost:4000, API 문서 /api/docs
 | `npm run openapi -w backend` | `docs/api/openapi.json` 다시 만들기 |
 | `npm run db:migrate -w backend` | 스키마를 바꾼 뒤 새 마이그레이션 만들기 |
 | `npm run admin:create -w backend -- --email <이메일> --password <비밀번호> [--place <보관처>]` | 관리자 계정 만들기 |
+| `npm run seed:dev -w backend` | 개발용 더미 데이터(건물·보관처·관리자 center/guard@skuniv.ac.kr `admin1234!`·습득물). API 서버가 켜져 있어야 함, 다른 포트면 `PORT=4100`. 개발 DB 전용 |
 
 `AI_MODE=mock`이면 Gemini 키 없이 고정된 가짜 응답으로 동작한다. `MAIL_MODE=console`이면 인증 메일 대신 서버 로그에 코드가 찍힌다.
 

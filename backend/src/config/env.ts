@@ -50,8 +50,8 @@ const Env = z.object({
   STORAGE_DRIVER: z.enum(["local"]).default("local"),
   /** local 저장 위치 (backend 폴더 기준) */
   STORAGE_LOCAL_DIR: z.string().default("uploads"),
-  /** 서명 URL에 쓰는 이 서버의 외부 주소 */
-  PUBLIC_BASE_URL: z.string().default("http://localhost:4000"),
+  /** 서명 URL에 쓰는 이 서버의 외부 주소(브라우저가 사진을 받는 주소). 개발에서 비우면 http://localhost:${PORT}, production은 필수 */
+  PUBLIC_BASE_URL: z.url().optional(),
   /** 습득물 보관 기한(일). 지나면 기한 만료 (초안, F-18) */
   FOUND_ITEM_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
   /** AI 호출 한 번의 제한 시간 */
@@ -71,7 +71,14 @@ export const EnvSchema = Env.superRefine((v, ctx) => {
   if (v.MAIL_MODE === "smtp" && !(v.SMTP_HOST && v.SMTP_USER && v.SMTP_PASS)) {
     fail("MAIL_MODE", "MAIL_MODE=smtp이면 SMTP_HOST, SMTP_USER, SMTP_PASS가 필요합니다.");
   }
-});
+  if (v.NODE_ENV === "production" && !v.PUBLIC_BASE_URL) {
+    fail("PUBLIC_BASE_URL", "production에서는 사진 링크에 쓸 외부 주소(PUBLIC_BASE_URL)를 꼭 넣어 주세요.");
+  }
+}).transform((v) => ({
+  ...v,
+  // 끝의 / 는 떼어 서명 URL이 //files가 되지 않게
+  PUBLIC_BASE_URL: (v.PUBLIC_BASE_URL ?? `http://localhost:${v.PORT}`).replace(/\/+$/, ""),
+}));
 
 const parsed = EnvSchema.safeParse(process.env);
 if (!parsed.success) {

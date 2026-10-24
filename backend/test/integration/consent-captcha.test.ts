@@ -180,9 +180,36 @@ describe("기준 7. 캡차 끄기는 개발에서만", () => {
     expect(EnvSchema.safeParse({ ...ok, NODE_ENV: "production" }).success).toBe(false);
     expect(EnvSchema.safeParse({ ...ok, CAPTCHA_MODE: "turnstile" }).success).toBe(false);
     expect(
-      EnvSchema.safeParse({ ...ok, NODE_ENV: "production", CAPTCHA_MODE: "turnstile", TURNSTILE_SECRET_KEY: "k" })
-        .success,
+      EnvSchema.safeParse({
+        ...ok,
+        NODE_ENV: "production",
+        CAPTCHA_MODE: "turnstile",
+        TURNSTILE_SECRET_KEY: "k",
+        PUBLIC_BASE_URL: "https://api.example.kr",
+      }).success,
     ).toBe(true);
+  });
+});
+
+describe("사진 링크 주소(PUBLIC_BASE_URL)", () => {
+  const ok = { DATABASE_URL: "postgresql://x", JWT_SECRET: "a".repeat(32), ALLOWED_EMAIL_DOMAINS: "skuniv.ac.kr" };
+  const prod = { ...ok, NODE_ENV: "production", CAPTCHA_MODE: "turnstile", TURNSTILE_SECRET_KEY: "k" };
+
+  it("개발에서 비우면 이 서버 포트로 정한다", () => {
+    const r = EnvSchema.safeParse({ ...ok, PORT: "4100" });
+    expect(r.success && r.data.PUBLIC_BASE_URL).toBe("http://localhost:4100");
+    const d = EnvSchema.safeParse(ok);
+    expect(d.success && d.data.PUBLIC_BASE_URL).toBe("http://localhost:4000");
+  });
+
+  it("넣은 값은 그대로 쓰고 끝의 /는 뗀다", () => {
+    const r = EnvSchema.safeParse({ ...ok, PUBLIC_BASE_URL: "https://api.example.kr/" });
+    expect(r.success && r.data.PUBLIC_BASE_URL).toBe("https://api.example.kr");
+  });
+
+  it("production에서는 꼭 넣어야 한다", () => {
+    expect(EnvSchema.safeParse(prod).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...prod, PUBLIC_BASE_URL: "https://api.example.kr" }).success).toBe(true);
   });
 });
 

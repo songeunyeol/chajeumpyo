@@ -36,6 +36,11 @@ export const AdminFoundItemSummary = z.object({
   isSeed: z.boolean(),
   /** 확인 실패가 쌓여 온라인 확인을 막은 시각. 찾으러 오면 직접 본인 확인 (#29) */
   claimLockedAt: z.iso.datetime().nullable(),
+  /**
+   * 목록 행 썸네일: 공개본(민감하면 이미 흐린 사진)의 서명 URL, 10분. 원본은 목록에 절대 넣지 않는다.
+   * 수령·기한 만료로 사진을 지웠거나 없으면 null. (상세 응답에서는 같은 이름이 후보용 블러본을 가리킨다)
+   */
+  thumbnailUrl: z.string().nullable(),
 });
 export type AdminFoundItemSummary = z.infer<typeof AdminFoundItemSummary>;
 
@@ -61,7 +66,7 @@ export const AdminFoundItemDetailResponse = AdminFoundItemSummary.extend({
   /** 수령·기한 만료로 지웠으면 null */
   originalImageUrl: z.string().nullable(),
   publicImageUrl: z.string().nullable(),
-  /** 후보 카드에 보이는 강한 블러본 */
+  /** 상세에서는 후보 카드에 보이는 강한 블러본 (목록의 thumbnailUrl과 다름) */
   thumbnailUrl: z.string().nullable(),
   expiresAt: z.iso.datetime().nullable(),
   attempts: z.array(

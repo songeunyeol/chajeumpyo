@@ -47,7 +47,7 @@ const summarySelect = {
   claimLockedAt: true,
   building: { select: { id: true, name: true } },
   storagePlace: { select: { id: true, name: true, guideText: true } },
-  detail: { select: { title: true } },
+  detail: { select: { title: true, imagePublicKey: true } },
 } satisfies Prisma.FoundItemSelect;
 
 type Summary = Prisma.FoundItemGetPayload<{ select: typeof summarySelect }>;
@@ -56,6 +56,14 @@ const toSummary = ({ detail, ...i }: Summary) => ({
   title: detail?.title ?? null,
   foundAt: i.foundAt.toISOString(),
   claimLockedAt: i.claimLockedAt?.toISOString() ?? null,
+});
+
+/** 목록 행: 공개본(민감하면 흐린 사진) 썸네일만. 원본 키는 고르지도 않는다 */
+const toListItem = async (s: Summary) => ({
+  ...toSummary(s),
+  thumbnailUrl: s.detail?.imagePublicKey
+    ? await storage.signedUrl(s.detail.imagePublicKey, ADMIN_IMAGE_TTL_SECONDS)
+    : null,
 });
 
 /** GET /admin/found-items (F-14) */
@@ -78,7 +86,13 @@ export async function listFoundItems(
   ]);
   const counts: Partial<Record<FoundStatus, number>> = {};
   for (const g of grouped) counts[g.status] = g._count._all;
-  return { items: items.map(toSummary), page: query.page, pageSize: ADMIN_PAGE_SIZE, total, counts };
+  return {
+    items: await Promise.all(items.map(toListItem)),
+    page: query.page,
+    pageSize: ADMIN_PAGE_SIZE,
+    total,
+    counts,
+  };
 }
 
 /** 범위 안의 물건만. 범위 밖이면 403, 없으면 404 */
