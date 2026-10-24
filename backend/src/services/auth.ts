@@ -118,6 +118,9 @@ export async function verifySignupCode(email: string, code: string) {
 }
 
 /** POST /auth/signup. 가입용 토큰은 consumed_at으로 한 번만 쓸 수 있다. */
+/** 가입용 인증을 쓸 수 없을 때. 이미 쓴 인증과 이미 가입된 이메일을 구분하지 않는다 */
+const signupTokenUsed = () => new AppError("INVALID_CODE", "이미 사용한 인증이에요. 이메일 인증을 다시 해주세요.");
+
 export async function signup(verificationToken: string, password: string): Promise<AuthResponse> {
   const { email, verificationId } = verifySignupToken(verificationToken);
   const passwordHash = await hashPassword(password);
@@ -128,16 +131,13 @@ export async function signup(verificationToken: string, password: string): Promi
         where: { id: verificationId, email, consumedAt: null, verifiedAt: { not: null } },
         data: { consumedAt: new Date() },
       });
-      if (consumed.count !== 1) {
-        throw new AppError("INVALID_CODE", "이미 사용한 인증이에요. 이메일 인증을 다시 해주세요.");
-      }
+      if (consumed.count !== 1) throw signupTokenUsed();
       return tx.user.create({ data: { email, passwordHash, role: "USER" } });
     });
     return issueAuth(user);
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new AppError("EMAIL_TAKEN", "이미 가입된 이메일이에요. 로그인해 주세요.");
-    }
+    // 그사이 같은 이메일로 가입됐어도 이미 쓴 인증과 같은 응답을 준다. 가입 여부가 드러나지 않게 (#30 리뷰)
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") throw signupTokenUsed();
     throw err;
   }
 }
