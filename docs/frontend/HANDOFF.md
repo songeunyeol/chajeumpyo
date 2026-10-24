@@ -8,6 +8,7 @@
 - [10/25] [디자인] D1(배치1) 준비됨, 오케스트레이터 검토 대기: 토큰 `frontend/src/styles/tokens.css`(맨 위 주석에 Tailwind·shadcn 연결법), 컴포넌트 표 `docs/design/system/README.md` §3, 화면 C-01·C-02(습득자/가입)·C-03(기본/로딩/오류)·F-01~F-04(결과 6종) (docs/design/system/screens/batch1.html, 클래스 모양은 docs/design/system/components.css)
 - [10/25] [디자인] D1 승인됨. D2(배치2) 준비됨, 검토 대기: L-01~L-12, C-04, C-05 (docs/design/system/screens/batch2.html, 노트·LockReveal 타이밍은 README §4 배치 2). 배치1 변경: C-02 문구는 `CONSENT_TEXTS`·`CONSENT_VERSION` import(하드코딩 금지), 후보 썸네일 CSS `blur(14px) grayscale(1)`, 예시 날짜 10월 23일(금). tokens.css는 biome 포맷 통과(값 변화 없음)
 - [10/25] [디자인] D2 승인됨. D3(배치3) 준비됨, 검토 대기: A-01~A-06 + A-03 PC 1280 넓은 목록 (docs/design/system/screens/batch3.html, 노트 README §4 배치 3). 관리자는 `data-flow="admin"`(먹색 띠), 모바일 하단 탭 4칸, PC 왼쪽 내비 232. 필수 규칙: 후보 썸네일 CSS `blur(14px) grayscale(1)` 유지(README §5-5)
+- [10/25] [디자인] D3 승인됨. D4(배치4) 준비됨, 검토 대기: C-06 상태 6종, C-07 지도(건물 핀만)·목록 대체·로딩, PC 1280(C-01·L-05 가운데 480·A-04 2열), PWA 아이콘 (docs/design/system/screens/batch4.html, 아이콘 PNG·SVG는 docs/design/system/icons/ → frontend/public/로 복사, manifest 값은 README §4 배치 4). 추가: L-11 [코드 보기](qrToken 4자씩·복사), A-03 목록에서 민감 물건 썸네일은 공개본만. 산출물 표 README §6
 
 ## 프론트 → 연결
 <!-- 예: - [프론트] F-01~F-04 화면 완성, API는 src/api 훅 이름 useRegisterFound 사용 -->
@@ -22,3 +23,4 @@
 - [10/25] [프론트] `npx biome check frontend`가 `src/styles/tokens.css`(디자인, 한 줄에 여러 선언 → 포매터 오류)와 `src/api`·`src/lib/http.test.ts`·`src/lib/auth.test.tsx`(연결, 서식·noUnsafeOptionalChaining)에서 실패해요. 각 작업이 자기 파일에 `npx biome check --write`를 돌려 주세요. Tailwind 지시어 파싱은 `frontend/biome.json`(중첩 설정)으로 켰어요.
 - [10/25] [프론트] `backend/prisma/seed-data/buildings.json`·`storage-places.json`이 비어 있어 실제 API로는 F-02 건물·보관처 목록이 빈 채로 나와요. 가짜 데이터는 캠퍼스 중심 좌표 주변 임시값으로 화면을 그려요.
 - [10/25] [연결] 위 biome 지적(src/api·http.test·auth.test)은 671c5b1에서 고쳤어요. 건물·보관처: 개발 DB에는 `tester/seed-dev.mts`로 이미 들어 있어요(4100 API에서 건물 6·보관처 3 확인). I2에서 `backend/scripts/seed-dev.ts`로 옮겨요. `tsconfig.app.json`의 `baseUrl`이 TS 6에서 경고(TS5101)라 `tsc`가 멈춰요 — `"ignoreDeprecations": "6.0"`을 넣거나 `baseUrl`을 빼고 `paths`만 두세요(프론트 파일).
+- [10/25] [디자인] A-03 목록 썸네일용 데이터가 없어요: `AdminFoundItemSummary`에 사진 URL·`isSensitive`가 없음. 백엔드에 목록용 썸네일 URL(민감하면 공개본) 추가가 필요해요. 그 전까지 프론트는 종류 아이콘 상자로 대신하면 돼요.
