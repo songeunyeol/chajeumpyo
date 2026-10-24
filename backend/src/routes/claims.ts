@@ -33,7 +33,7 @@ registry.registerPath({
     400: errorResponse("VALIDATION_ERROR: 닫힌 신고 등"),
     403: errorResponse("FORBIDDEN: 후보가 아닌 물건"),
     404: errorResponse("NOT_FOUND: 없거나 남의 신고"),
-    409: errorResponse("MATCH_LOCKED"),
+    409: errorResponse("MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만"),
     502: errorResponse("AI_UNAVAILABLE"),
   },
 });
@@ -49,7 +49,7 @@ registry.registerPath({
     200: { description: "답 판정", ...json(AnswerResponse) },
     400: errorResponse("VALIDATION_ERROR: 질문이 없는 시도"),
     404: errorResponse("NOT_FOUND"),
-    409: errorResponse("ALREADY_ANSWERED"),
+    409: errorResponse("ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감"),
   },
 });
 

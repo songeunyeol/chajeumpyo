@@ -34,6 +34,8 @@ export const AdminFoundItemSummary = z.object({
   storagePlace: StoragePlaceSummary.nullable(),
   foundAt: z.iso.datetime(),
   isSeed: z.boolean(),
+  /** 확인 실패가 쌓여 온라인 확인을 막은 시각. 찾으러 오면 직접 본인 확인 (#29) */
+  claimLockedAt: z.iso.datetime().nullable(),
 });
 export type AdminFoundItemSummary = z.infer<typeof AdminFoundItemSummary>;
 
