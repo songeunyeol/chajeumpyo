@@ -97,7 +97,10 @@ export const routes: RouteObject[] = [
             path: "/admin/scan",
             lazy: async () => ({ Component: (await import("@/pages/admin/scan-page")).AdminScanPage }),
           },
-          { path: "/admin/hotspots", element: <P id="A-06" title="분실 다발 카드" flow="admin" /> },
+          {
+            path: "/admin/hotspots",
+            lazy: async () => ({ Component: (await import("@/pages/admin/hotspots-page")).AdminHotspotsPage }),
+          },
         ],
       },
     ],

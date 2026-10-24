@@ -71,7 +71,6 @@ function Camera({ onCode, onFail }: { onCode: (t: string) => void; onFail: () =>
   }, []);
   return (
     <div className="relative flex flex-1 flex-col items-center justify-center gap-6 overflow-hidden bg-[#141A17] text-white">
-      {/* biome-ignore lint/a11y/useMediaCaption: 카메라 미리보기(소리 없음) */}
       <video ref={video} muted playsInline className="absolute inset-0 size-full object-cover opacity-80" />
       <div aria-hidden className="relative size-[232px]">
         {[
