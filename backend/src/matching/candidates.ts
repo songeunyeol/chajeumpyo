@@ -5,6 +5,7 @@ import {
   type Role,
   relatedCategories,
 } from "@chajeumpyo/shared";
+import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { similarityToFoundItems } from "../repositories/embedding";
 import { storage } from "../storage";
@@ -53,9 +54,13 @@ function attrsOf(extracted: unknown): { color: string | null; brand: string | nu
 }
 
 /** 계정·습득물별 실패 횟수 (FAIL 판정 + 확인 질문 오답) */
-export async function failedAttemptCounts(userId: string, foundItemIds: string[]): Promise<Map<string, number>> {
+export async function failedAttemptCounts(
+  userId: string,
+  foundItemIds: string[],
+  db: Pick<Prisma.TransactionClient, "matchAttempt"> = prisma,
+): Promise<Map<string, number>> {
   if (foundItemIds.length === 0) return new Map();
-  const rows = await prisma.matchAttempt.groupBy({
+  const rows = await db.matchAttempt.groupBy({
     by: ["foundItemId"],
     where: {
       userId,

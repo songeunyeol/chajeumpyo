@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { type Category, FoundItemExtraction, LostReportExtraction } from "@chajeumpyo/shared";
+import { compareByRules } from "../matching/compare";
+import { rawWords, sameWord } from "../matching/text";
 import { type AiClient, EMBEDDING_DIM } from "./types";
 
 // 고정 계약 형식의 가짜 응답. 같은 입력엔 항상 같은 결과가 나온다.
@@ -72,5 +74,18 @@ export const mockAiClient: AiClient = {
 
   async embed(text) {
     return hashEmbedding(text);
+  },
+
+  async compareFeatures(reported, stored) {
+    return compareByRules(reported, stored);
+  },
+
+  /** 규칙으로 못 가린 답: 답의 낱말이 모두 저장 값의 낱말과 같을 때만 MATCH (1글자 답도 여기서 판단) */
+  async judgeAnswer({ stored, answer }) {
+    const storedWords = rawWords(stored);
+    const answerWords = rawWords(answer);
+    return answerWords.length > 0 && answerWords.every((w) => storedWords.some((s) => sameWord(w, s) !== null))
+      ? "MATCH"
+      : "NO_MATCH";
   },
 };
