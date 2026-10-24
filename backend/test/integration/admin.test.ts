@@ -207,7 +207,7 @@ describe("기준 6-2. 속성 형식: 색은 12색 키, 특징은 정해진 키�
     expect((await detail(guard, item.id)).body.thumbnailUrl).toContain("thumb.jpg");
   });
 
-  it("목록 썸네일은 공개본(민감하면 이미 흐림)의 서명 링크, 원본은 절대 없음, 지운 물건은 null", async () => {
+  it("목록 사진(listImageUrl)은 공개본(민감하면 이미 흐림)의 서명 링크, 원본은 절대 없음, 지운 물건은 null", async () => {
     const sensitive = await at(guardPlace);
     await prisma.foundItemDetail.update({ where: { foundItemId: sensitive.id }, data: { isSensitive: true } });
     const purged = await at(guardPlace, { status: "CLAIMED" });
@@ -218,14 +218,16 @@ describe("기준 6-2. 속성 형식: 색은 12색 키, 특징은 정해진 키�
     const res = await list(guard);
     expect(res.status).toBe(200);
     const row = (id: string) => res.body.items.find((i: { id: string }) => i.id === id);
-    const url = new URL(row(sensitive.id).thumbnailUrl);
+    const url = new URL(row(sensitive.id).listImageUrl);
     expect(url.pathname).toBe("/files/test/public.jpg");
     expect(url.searchParams.get("sig")).toBeTruthy();
     // 10분 링크
     const exp = Number(url.searchParams.get("exp"));
     expect(exp * 1000 - Date.now()).toBeGreaterThan(9 * 60_000);
     expect(exp * 1000 - Date.now()).toBeLessThanOrEqual(10 * 60_000 + 1000);
-    expect(row(purged.id).thumbnailUrl).toBeNull();
+    expect(row(purged.id).listImageUrl).toBeNull();
+    // 목록에는 상세용 이름(thumbnailUrl 등)을 쓰지 않는다
+    expect(row(sensitive.id)).not.toHaveProperty("thumbnailUrl");
     const text = JSON.stringify(res.body);
     expect(text).not.toContain("original");
     expect(text).not.toContain("thumb.jpg");

@@ -38,9 +38,9 @@ export const AdminFoundItemSummary = z.object({
   claimLockedAt: z.iso.datetime().nullable(),
   /**
    * 목록 행 썸네일: 공개본(민감하면 이미 흐린 사진)의 서명 URL, 10분. 원본은 목록에 절대 넣지 않는다.
-   * 수령·기한 만료로 사진을 지웠거나 없으면 null. (상세 응답에서는 같은 이름이 후보용 블러본을 가리킨다)
+   * 수령·기한 만료로 사진을 지웠거나 없으면 null. 목록에만 있다(상세는 originalImageUrl·publicImageUrl·thumbnailUrl)
    */
-  thumbnailUrl: z.string().nullable(),
+  listImageUrl: z.string().nullable(),
 });
 export type AdminFoundItemSummary = z.infer<typeof AdminFoundItemSummary>;
 
@@ -55,7 +55,7 @@ export const AdminFoundItemListResponse = z.object({
 export type AdminFoundItemListResponse = z.infer<typeof AdminFoundItemListResponse>;
 
 /** GET /admin/found-items/:id: 공개·비공개 정보, 원본 사진, 기록 전체 */
-export const AdminFoundItemDetailResponse = AdminFoundItemSummary.extend({
+export const AdminFoundItemDetailResponse = AdminFoundItemSummary.omit({ listImageUrl: true }).extend({
   categoryAlt: Category.nullable(),
   /** 기본 12색 키 */
   color: z.string().nullable(),
@@ -66,7 +66,7 @@ export const AdminFoundItemDetailResponse = AdminFoundItemSummary.extend({
   /** 수령·기한 만료로 지웠으면 null */
   originalImageUrl: z.string().nullable(),
   publicImageUrl: z.string().nullable(),
-  /** 상세에서는 후보 카드에 보이는 강한 블러본 (목록의 thumbnailUrl과 다름) */
+  /** 후보 카드에 보이는 강한 블러본 */
   thumbnailUrl: z.string().nullable(),
   expiresAt: z.iso.datetime().nullable(),
   attempts: z.array(

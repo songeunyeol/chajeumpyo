@@ -61,7 +61,7 @@ const toSummary = ({ detail, ...i }: Summary) => ({
 /** 목록 행: 공개본(민감하면 흐린 사진) 썸네일만. 원본 키는 고르지도 않는다 */
 const toListItem = async (s: Summary) => ({
   ...toSummary(s),
-  thumbnailUrl: s.detail?.imagePublicKey
+  listImageUrl: s.detail?.imagePublicKey
     ? await storage.signedUrl(s.detail.imagePublicKey, ADMIN_IMAGE_TTL_SECONDS)
     : null,
 });

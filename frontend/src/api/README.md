@@ -56,8 +56,8 @@ export type { AdminListParams, HotspotParams } from "./types";
 | `useNotifications(scope?)` | `GET /notifications` | C-04, 탭 점 | 1분마다. 회원·관리자 공용 |
 | `useMarkNotificationRead(scope?)` | `PATCH /notifications/:id/read` | C-04 | 낙관적 갱신 |
 | `useMarkAllNotificationsRead(scope?)` | `PATCH /notifications/read-all` | C-04 | |
-| `useAdminFoundItems({status,page})` | `GET /admin/found-items` | A-02(counts), A-03 | 20개씩, 이전 페이지 유지 |
-| `useAdminFoundItem(id)` | `GET /admin/found-items/:id` | A-04 | 원본·공개본·블러 URL, 기록 |
+| `useAdminFoundItems({status,page})` | `GET /admin/found-items` | A-02(counts), A-03 | 20개씩, 이전 페이지 유지. 행 사진 `listImageUrl`(공개본, 민감하면 흐림, 지웠으면 null) |
+| `useAdminFoundItem(id)` | `GET /admin/found-items/:id` | A-04 | `originalImageUrl`·`publicImageUrl`·`thumbnailUrl`(후보용 블러), 기록 |
 | `useUpdateAdminFoundItem(id)` | `PATCH /admin/found-items/:id` | A-04 | 검토 대기 → `{..., status:"REGISTERED"}` |
 | `useInPersonPickup(id)` | `POST /admin/found-items/:id/in-person-pickup` | A-04 | `{verificationNote}` ≤200자. 대면 확인 물건이 아니면 `NOT_IN_PERSON_ITEM` |
 | `useScanPickup()` | `POST /admin/pickups/scan` | A-05 | `mutate({qrToken})`. `QR_EXPIRED` 410, `ALREADY_CLAIMED` 409, `FORBIDDEN` 다른 보관처, `NOT_FOUND` 없는 토큰 |
