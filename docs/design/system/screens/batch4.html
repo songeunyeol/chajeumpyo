@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>찾음표 배치 4</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+/*
+ * 찾음표 디자인 토큰 — 시안 11 "창구 띠"
+ * 출처: docs/design/system/README.md (원칙·컴포넌트), docs/design/system/screens/batch*.html (화면 명세)
+ * 소유: 디자인 작업. 값을 바꾸면 README의 대비 표도 같이 고친다.
+ *
+ * ── Tailwind 연결 방법 (tailwind.config.ts) ─────────────────────────────
+ *   import "./src/styles/tokens.css"  // main.tsx 또는 index.css 맨 위에서 @import
+ *
+ *   theme: {
+ *     extend: {
+ *       colors: {
+ *         band:    { finder: "var(--band-finder)", "finder-fg": "var(--band-finder-fg)",
+ *                    "finder-sub": "var(--band-finder-sub)",
+ *                    lost: "var(--band-lost)", demo: "var(--band-demo)", "demo-fg": "var(--band-demo-fg)" },
+ *         brand:   { DEFAULT: "var(--brand)", hover: "var(--brand-hover)", soft: "var(--brand-soft)",
+ *                    fg: "var(--brand-fg)" },
+ *         surface: { DEFAULT: "var(--surface)", card: "var(--surface-card)", sunken: "var(--surface-sunken)" },
+ *         ink:     { DEFAULT: "var(--text)", muted: "var(--text-muted)", subtle: "var(--text-subtle)",
+ *                    inverse: "var(--text-inverse)" },
+ *         line:    { DEFAULT: "var(--border)", strong: "var(--border-strong)" },
+ *         pass:     { DEFAULT: "var(--pass)", bg: "var(--pass-bg)" },
+ *         question: { DEFAULT: "var(--question)", bg: "var(--question-bg)" },
+ *         fail:     { DEFAULT: "var(--fail)", bg: "var(--fail-bg)" },   // 실패·잠김·위험 버튼
+ *         review:   { DEFAULT: "var(--review)", bg: "var(--review-bg)" },
+ *         inperson: { DEFAULT: "var(--inperson)", bg: "var(--inperson-bg)" },
+ *         seed:     { DEFAULT: "var(--seed)", bg: "var(--seed-bg)" },
+ *         // shadcn/ui 기본 이름도 같은 값으로 묶는다 (components.json cssVariables: true)
+ *         background: "var(--surface)", foreground: "var(--text)",
+ *         primary: { DEFAULT: "var(--brand)", foreground: "var(--brand-fg)" },
+ *         secondary: { DEFAULT: "var(--surface-card)", foreground: "var(--brand)" },
+ *         destructive: { DEFAULT: "var(--fail)", foreground: "#FFFFFF" },
+ *         muted: { DEFAULT: "var(--surface-sunken)", foreground: "var(--text-muted)" },
+ *         border: "var(--border)", input: "var(--border-strong)", ring: "var(--focus)",
+ *       },
+ *       borderRadius: { sm: "var(--radius-sm)", md: "var(--radius-md)", lg: "var(--radius-lg)",
+ *                       xl: "var(--radius-xl)" },
+ *       boxShadow: { card: "var(--shadow-card)", sheet: "var(--shadow-sheet)", toast: "var(--shadow-toast)" },
+ *       fontFamily: { sans: ["Pretendard", "Pretendard Variable", "-apple-system", "system-ui", "sans-serif"] },
+ *       fontSize: {  // [크기, 줄높이] — 클래스 text-title 등
+ *         caption: ["var(--fs-caption)", "var(--lh-caption)"], small: ["var(--fs-small)", "var(--lh-small)"],
+ *         body: ["var(--fs-body)", "var(--lh-body)"], "body-lg": ["var(--fs-body-lg)", "var(--lh-body-lg)"],
+ *         title: ["var(--fs-title)", "var(--lh-title)"], headline: ["var(--fs-headline)", "var(--lh-headline)"],
+ *         display: ["var(--fs-display)", "var(--lh-display)"],
+ *       },
+ *       spacing: { gutter: "var(--gutter)", touch: "var(--touch)" },
+ *       maxWidth: { app: "var(--w-app)", admin: "var(--w-admin)" },
+ *     },
+ *   }
+ *
+ * 흐름 색은 <body data-flow="finder|lost|demo|admin"> 로 바꾼다. --flow-* 만 쓰면 화면 코드는 그대로 둔다.
+ * Pretendard: index.html <link rel="stylesheet"
+ *   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+ */
+
+:root {
+  /* ── 띠(흐름) 색 ── */
+  --band-finder: #1c4b34; /* 습득자 흐름 머리 띠. 흰 글자 9.97:1 */
+  --band-finder-fg: #ffffff;
+  --band-finder-sub: #c9dccf; /* 띠 위 보조 글자 6.94:1 */
+  --band-lost: #f6f2ea; /* 분실자 흐름 바탕(아이보리) */
+  --band-demo: #e8dfcf; /* 체험 띠·체험 모드 띠(베이지) */
+  --band-demo-fg: #5a4527; /* 베이지 위 글자 6.86:1 */
+  --band-admin: #22302a; /* 관리자 머리 띠(먹색 초록). 흰 글자 13:1 이상 */
+
+  /* ── 브랜드(팀 Figma oklch(0.42 0.1 155) 계열을 조금 눅인 값) ── */
+  --brand: #1e5b3d; /* 주 버튼, 강조. 흰 글자 8.02:1, 아이보리 위 7.18:1 */
+  --brand-hover: #174a31;
+  --brand-pressed: #123c28;
+  --brand-soft: #e4f1e8; /* 선택된 칩 바탕, 강조 박스 */
+  --brand-fg: #ffffff;
+  --focus: #2f7a53; /* 포커스 링(2px, offset 2px) */
+
+  /* ── 바탕·글자·선 ── */
+  --surface: #fbf9f4; /* 앱 기본 바탕(아이보리보다 밝음) */
+  --surface-card: #ffffff;
+  --surface-sunken: #efebe3; /* 입력 비활성, 스켈레톤 */
+  --text: #1c1f1d; /* 14.9:1 (아이보리) */
+  --text-muted: #565d58; /* 보조 글자. 흰 6.77, 아이보리 6.06, 베이지 5.12 */
+  --text-subtle: #636964; /* 캡션·자리표시. 흰/아이보리 5.0 이상. 베이지 위에는 쓰지 않는다 */
+  --text-inverse: #ffffff;
+  --border: #e2ddd2;
+  --border-strong: #c9c2b4; /* 입력 테두리 */
+  --scrim: rgba(20, 24, 22, 0.48);
+
+  /* ── 상태 색 (항상 Lucide 아이콘 + 글자와 함께) ── */
+  --pass: #1e6b43;
+  --pass-bg: #e4f1e8; /* 통과 · CircleCheck   5.57:1 */
+  --question: #9a4a06;
+  --question-bg: #fceedc; /* 확인 질문 · CircleHelp 5.48:1 */
+  --fail: #b42318;
+  --fail-bg: #fceae8; /* 실패 · CircleX / 잠김 · Lock 5.66:1 */
+  --review: #6a5400;
+  --review-bg: #f6eecf; /* 검토 대기 · Clock 6.27:1 */
+  --inperson: #2e3d8c;
+  --inperson-bg: #e7eaf7; /* 대면 확인 · UserCheck 8.10:1 */
+  --seed: #5a4527;
+  --seed-bg: #f1eadd; /* 시연용 데이터 배지 · Database 7.58:1 */
+  --info: #1e5b3d;
+  --info-bg: #e4f1e8;
+
+  /* ── 흐름 별칭 (기본 = 분실자) ── */
+  --flow-band: var(--band-lost);
+  --flow-band-fg: var(--text);
+  --flow-accent: var(--brand);
+
+  /* ── 모양 ── */
+  --radius-sm: 6px; /* 배지, 칩 안쪽 */
+  --radius-md: 10px; /* 버튼, 입력 */
+  --radius-lg: 14px; /* 카드 */
+  --radius-xl: 20px; /* 바텀시트 위 모서리 */
+  --radius-full: 999px; /* 칩, 점 */
+  --shadow-card: 0 1px 2px rgba(28, 31, 29, 0.06), 0 0 0 1px var(--border);
+  --shadow-sheet: 0 -8px 24px rgba(28, 31, 29, 0.14);
+  --shadow-toast: 0 6px 20px rgba(28, 31, 29, 0.18);
+
+  /* ── 간격 (4px 단위) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --gutter: 20px; /* 360px 화면 좌우 여백 */
+  --touch: 44px; /* 최소 터치 높이 */
+  --btn-h: 52px; /* 주 버튼 높이 */
+  --input-h: 48px;
+  --header-h: 56px;
+  --tabbar-h: 64px;
+  --w-app: 480px; /* PC에서 분실자·습득자 가운데 최대 폭 */
+  --w-admin: 1200px; /* PC 관리자 넓은 목록 */
+
+  /* ── 글자 (Pretendard) ── */
+  --font-sans: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fs-caption: 12px;
+  --lh-caption: 16px;
+  --fs-small: 13px;
+  --lh-small: 18px;
+  --fs-body: 15px;
+  --lh-body: 22px;
+  --fs-body-lg: 17px;
+  --lh-body-lg: 24px;
+  --fs-title: 20px;
+  --lh-title: 28px;
+  --fs-headline: 24px;
+  --lh-headline: 32px;
+  --fs-display: 28px;
+  --lh-display: 36px; /* 첫 화면 띠 제목 */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --tracking-tight: -0.02em;
+
+  /* ── 움직임 ── */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-reveal: 900ms; /* L-10 잠금 해제 */
+}
+
+/* 흐름별 별칭 */
+[data-flow="finder"] {
+  --flow-band: var(--band-finder);
+  --flow-band-fg: var(--band-finder-fg);
+  --flow-accent: var(--brand);
+}
+[data-flow="lost"] {
+  --flow-band: var(--band-lost);
+  --flow-band-fg: var(--text);
+  --flow-accent: var(--brand);
+}
+[data-flow="demo"] {
+  --flow-band: var(--band-lost);
+  --flow-band-fg: var(--text);
+  --flow-accent: var(--brand);
+}
+[data-flow="admin"] {
+  --flow-band: var(--band-admin);
+  --flow-band-fg: #ffffff;
+  --flow-accent: var(--brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-reveal: 0ms;
+  }
+}
+
+/*
+ * 찾음표 목업 공용 컴포넌트 CSS (batch*.html 에 그대로 들어간다)
+ * 토큰은 frontend/src/styles/tokens.css 와 같다. 이 파일은 "모양 명세"이고,
+ * 프론트는 같은 값을 Tailwind 클래스(shadcn/ui 컴포넌트)로 옮긴다. README 컴포넌트 표 참고.
+ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body.board {
+  font-family: var(--font-sans); color: var(--text); background: #DCD6CB;
+  -webkit-font-smoothing: antialiased; word-break: keep-all; padding: 32px;
+}
+.board-head { max-width: 1600px; margin: 0 0 24px; }
+.board-head h1 { font-size: 24px; line-height: 32px; margin: 0 0 4px; letter-spacing: var(--tracking-tight); }
+.board-head p { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 20px; }
+.board-section { margin: 40px 0 12px; font-size: 18px; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 32px 28px; align-items: flex-start; }
+.frame { width: 360px; flex: none; }
+.frame-label { font-size: 13px; line-height: 18px; margin: 0 0 8px; color: var(--text); }
+.frame-label b { font-weight: 700; margin-right: 6px; }
+.frame-label span { color: var(--text-muted); }
+.phone {
+  width: 360px; height: 740px; border-radius: 28px; overflow: hidden; position: relative;
+  background: var(--surface); box-shadow: 0 12px 32px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.06);
+  display: flex; flex-direction: column; font-size: var(--fs-body); line-height: var(--lh-body);
+}
+.phone.ivory { background: var(--band-lost); }
+.note { font-size: 12px; line-height: 17px; color: var(--text-muted); margin-top: 8px; }
+
+/* 아이콘 (Lucide, stroke 2) */
+.i { width: 20px; height: 20px; flex: none; stroke-width: 2; }
+.i-16 { width: 16px; height: 16px; } .i-14 { width: 14px; height: 14px; }
+.i-24 { width: 24px; height: 24px; } .i-32 { width: 32px; height: 32px; } .i-48 { width: 48px; height: 48px; stroke-width: 1.5; }
+
+/* ── 띠 머리 (흐름 색) ── */
+.bandhead { display: flex; align-items: center; gap: 4px; min-height: var(--header-h); padding: 0 8px; flex: none; }
+.bandhead .title { font-size: var(--fs-body-lg); line-height: var(--lh-body-lg); font-weight: 600; flex: 1; }
+.bandhead.finder { background: var(--band-finder); color: var(--band-finder-fg); }
+.bandhead.lost { background: var(--band-lost); color: var(--text); border-bottom: 1px solid var(--border); }
+.bandhead.demo { background: var(--band-demo); color: var(--text); }
+.bandhead.admin { background: var(--band-admin); color: #fff; }
+.iconbtn { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-md); color: inherit; position: relative; background: none; border: 0; }
+/* 큰 띠 머리: 흐름 첫 화면 */
+.bandhero { padding: 8px 8px 24px; flex: none; }
+.bandhero.finder { background: var(--band-finder); color: #fff; }
+.bandhero.lost { background: var(--band-lost); }
+.bandhero.demo { background: var(--band-demo); }
+.bandhero .wordmark { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; padding: 0 12px; }
+.bandhero h2 { margin: 8px 12px 4px; font-size: var(--fs-headline); line-height: var(--lh-headline); font-weight: 700; letter-spacing: var(--tracking-tight); }
+.bandhero p { margin: 0 12px; font-size: 14px; line-height: 20px; }
+.bandhero.finder p, .bandhero.finder .wordmark { color: var(--band-finder-sub); }
+.bandhero.demo p { color: var(--text-muted); }
+.stepnum { font-size: 13px; font-weight: 600; }
+
+/* 체험 모드 띠 (모든 체험 화면 맨 위) */
+.demostrip { height: 32px; flex: none; background: var(--band-demo); color: var(--band-demo-fg); display: flex; align-items: center; gap: 6px; padding: 0 16px; font-size: 13px; font-weight: 600; border-bottom: 1px solid #D9CDB7; }
+.demostrip .i { width: 16px; height: 16px; }
+.demostrip span { font-weight: 400; }
+
+/* ── 본문 ── */
+.body { flex: 1; overflow: hidden; padding: 20px var(--gutter); display: flex; flex-direction: column; gap: 16px; }
+.body.tight { gap: 12px; }
+.body.center { align-items: center; justify-content: center; text-align: center; }
+.foot { flex: none; padding: 12px var(--gutter) 20px; display: flex; flex-direction: column; gap: 8px; background: inherit; }
+.foot.line { border-top: 1px solid var(--border); background: var(--surface-card); }
+.h1 { font-size: var(--fs-title); line-height: var(--lh-title); font-weight: 700; margin: 0; letter-spacing: var(--tracking-tight); }
+.h2 { font-size: var(--fs-body-lg); line-height: var(--lh-body-lg); font-weight: 700; margin: 0; }
+.h-display { font-size: var(--fs-display); line-height: var(--lh-display); font-weight: 700; margin: 0; letter-spacing: var(--tracking-tight); }
+.p { margin: 0; color: var(--text-muted); }
+.small { font-size: var(--fs-small); line-height: var(--lh-small); color: var(--text-muted); margin: 0; }
+.caption { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--text-subtle); margin: 0; }
+.strong { color: var(--text); font-weight: 600; }
+.sec-label { font-size: 13px; line-height: 18px; font-weight: 700; color: var(--text-muted); margin: 0; }
+.divider { height: 1px; background: var(--border); border: 0; margin: 0; }
+.stack { display: flex; flex-direction: column; gap: 8px; }
+.hrow { display: flex; align-items: center; gap: 8px; }
+.spacer { flex: 1; }
+
+/* ── Button (shadcn Button) ── */
+.btn { height: var(--btn-h); width: 100%; border-radius: var(--radius-md); border: 1px solid transparent; font: inherit; font-size: 16px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; cursor: pointer; }
+.btn-primary { background: var(--brand); color: var(--brand-fg); }
+.btn-secondary { background: var(--surface-card); color: var(--brand); border-color: var(--border-strong); }
+.btn-danger { background: var(--fail); color: #fff; }
+.btn-danger-outline { background: var(--surface-card); color: var(--fail); border-color: #E7B7B2; }
+.btn-ghost { background: transparent; color: var(--brand); height: var(--touch); font-size: 15px; }
+.btn-onband { background: #fff; color: var(--band-finder); }
+.btn-sm { height: var(--touch); font-size: 15px; width: auto; }
+.btn[disabled], .btn.disabled { background: var(--surface-sunken); color: var(--text-subtle); border-color: transparent; }
+.btn.loading { opacity: 1; }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.link { color: var(--brand); font-weight: 600; padding: 0 8px; min-width: 44px; justify-content: center; text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; font-size: 14px; }
+
+/* ── Input / Textarea / Select ── */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 14px; line-height: 20px; font-weight: 600; }
+.label .opt { font-weight: 400; color: var(--text-subtle); margin-left: 4px; }
+.input { height: var(--input-h); border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-card); padding: 0 14px; display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.input .ph { color: var(--text-subtle); }
+.input.focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(30, 91, 61, .16); }
+.input.err { border-color: var(--fail); }
+.input.readonly { background: var(--surface-sunken); color: var(--text-muted); }
+.textarea { min-height: 120px; height: auto; align-items: flex-start; padding: 12px 14px; line-height: 24px; }
+.select { justify-content: space-between; }
+.hint { font-size: 13px; line-height: 18px; color: var(--text-muted); margin: 0; }
+.errtext { font-size: 13px; line-height: 18px; color: var(--fail); display: flex; gap: 4px; align-items: flex-start; margin: 0; font-weight: 500; }
+.errtext .i { width: 16px; height: 16px; margin-top: 1px; }
+.counter { font-size: 12px; color: var(--text-subtle); text-align: right; }
+.otp { display: flex; gap: 8px; }
+.otp div { width: 44px; height: 52px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; }
+.otp div.cur { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(30,91,61,.16); }
+
+/* ── Chip selector (ToggleGroup) ── */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { min-height: var(--touch); padding: 0 14px; border-radius: var(--radius-full); border: 1px solid var(--border-strong); background: var(--surface-card); display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: var(--text); }
+.chip .i { width: 18px; height: 18px; color: var(--text-muted); }
+.chip.on { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); font-weight: 700; }
+.chip.on .i { color: var(--brand); }
+/* 세그먼트 (2지선다) */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg > div { min-height: 64px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: #fff; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; justify-content: center; }
+.seg > div b { font-size: 15px; display: flex; align-items: center; gap: 6px; }
+.seg > div small { font-size: 12px; color: var(--text-muted); line-height: 16px; }
+.seg > div.on { border: 2px solid var(--brand); background: var(--brand-soft); padding: 9px 11px; }
+.seg > div.on b { color: var(--brand); }
+
+/* ── 선택 목록 (Radio list, 건물·보관처) ── */
+.opts { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-lg); background: #fff; overflow: hidden; }
+.opt-row { min-height: 56px; padding: 8px 14px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--border); }
+.opt-row:first-child { border-top: 0; }
+.opt-row .t { flex: 1; display: flex; flex-direction: column; }
+.opt-row .t b { font-weight: 600; font-size: 15px; }
+.opt-row .t small { font-size: 13px; color: var(--text-muted); line-height: 18px; }
+.radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-strong); flex: none; }
+.radio.on { border: 7px solid var(--brand); }
+.check { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border-strong); flex: none; display: inline-flex; align-items: center; justify-content: center; background: #fff; }
+.check.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.check.on .i { width: 16px; height: 16px; stroke-width: 3; }
+
+/* ── Card ── */
+.card { background: var(--surface-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.card.flat { box-shadow: 0 0 0 1px var(--border); }
+.card.soft { background: var(--brand-soft); box-shadow: none; }
+.kv { display: grid; grid-template-columns: 72px 1fr; gap: 8px 12px; font-size: 14px; line-height: 20px; margin: 0; }
+.kv dt { color: var(--text-muted); } .kv dd { margin: 0; font-weight: 600; }
+
+/* ── StatusBadge ── */
+.badge { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.badge .i { width: 14px; height: 14px; stroke-width: 2.4; }
+.b-pass { color: var(--pass); background: var(--pass-bg); }
+.b-question { color: var(--question); background: var(--question-bg); }
+.b-fail { color: var(--fail); background: var(--fail-bg); }
+.b-review { color: var(--review); background: var(--review-bg); }
+.b-inperson { color: var(--inperson); background: var(--inperson-bg); }
+.b-seed { color: var(--seed); background: var(--seed-bg); }
+.b-neutral { color: var(--text-muted); background: var(--surface-sunken); }
+/* 공개 근거 칩 (후보 카드) */
+.reason { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: var(--radius-full); background: var(--surface-sunken); color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.reason .i { width: 14px; height: 14px; }
+
+/* ── 결과 큰 아이콘 원 ── */
+.result-ic { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.result-ic .i { width: 36px; height: 36px; stroke-width: 2; }
+.r-pass { background: var(--pass-bg); color: var(--pass); }
+.r-question { background: var(--question-bg); color: var(--question); }
+.r-fail { background: var(--fail-bg); color: var(--fail); }
+.r-review { background: var(--review-bg); color: var(--review); }
+.r-inperson { background: var(--inperson-bg); color: var(--inperson); }
+.r-brand { background: var(--brand-soft); color: var(--brand); }
+.r-neutral { background: var(--surface-sunken); color: var(--text-muted); }
+
+/* ── 알림 박스 (Alert) ── */
+.alert { border-radius: var(--radius-md); padding: 12px 14px; display: flex; gap: 10px; font-size: 14px; line-height: 20px; align-items: flex-start; }
+.alert .i { margin-top: 0; }
+.alert b { display: block; font-weight: 700; }
+.a-info { background: var(--brand-soft); color: var(--text); } .a-info .i { color: var(--brand); }
+.a-warn { background: var(--question-bg); color: var(--text); } .a-warn .i { color: var(--question); }
+.a-fail { background: var(--fail-bg); color: var(--text); } .a-fail .i { color: var(--fail); }
+.a-review { background: var(--review-bg); color: var(--text); } .a-review .i { color: var(--review); }
+.a-inperson { background: var(--inperson-bg); color: var(--text); } .a-inperson .i { color: var(--inperson); }
+.a-plain { background: var(--surface-sunken); color: var(--text-muted); } .a-plain .i { color: var(--text-muted); }
+
+/* ── Stepper ── */
+.stepper { display: flex; gap: 6px; }
+.stepper i { height: 4px; flex: 1; border-radius: 2px; background: var(--border); display: block; }
+.stepper i.on { background: var(--brand); }
+.bandhero.finder .stepper i { background: rgba(255,255,255,.25); } .bandhero.finder .stepper i.on { background: #fff; }
+
+/* ── Skeleton ── */
+.sk { background: linear-gradient(90deg, var(--surface-sunken) 0%, #F6F3EC 50%, var(--surface-sunken) 100%); background-size: 200% 100%; border-radius: var(--radius-sm); animation: sk 1.4s ease-in-out infinite; }
+@keyframes sk { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* ── Progress (등록 중·판정 중) ── */
+.progress { height: 6px; border-radius: 3px; background: var(--surface-sunken); overflow: hidden; width: 100%; }
+.progress > i { display: block; height: 100%; background: var(--brand); border-radius: 3px; }
+.steps-v { display: flex; flex-direction: column; gap: 12px; text-align: left; width: 100%; }
+.steps-v div { display: flex; gap: 10px; align-items: center; font-size: 15px; min-height: 24px; }
+.steps-v .done { color: var(--text); } .steps-v .done .i { color: var(--pass); }
+.steps-v .now { color: var(--text); font-weight: 600; } .steps-v .now .i { color: var(--brand); }
+.steps-v .todo { color: var(--text-subtle); }
+
+/* ── Toast (sonner) ── */
+.toast { position: absolute; left: 16px; right: 16px; bottom: 88px; background: #1C1F1D; color: #fff; border-radius: var(--radius-md); padding: 12px 14px; display: flex; gap: 10px; align-items: center; font-size: 14px; line-height: 20px; box-shadow: var(--shadow-toast); }
+.toast .i { color: #8FD1A8; }
+.toast.err .i { color: #F4A79F; }
+
+/* ── BottomSheet (Drawer) ── */
+.scrim { position: absolute; inset: 0; background: var(--scrim); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface-card); border-radius: var(--radius-xl) var(--radius-xl) 0 0; box-shadow: var(--shadow-sheet); padding: 8px var(--gutter) 20px; display: flex; flex-direction: column; gap: 14px; }
+.grabber { width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto 4px; }
+
+/* ── 하단 탭 ── */
+.tabbar { height: var(--tabbar-h); flex: none; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--border); background: var(--surface-card); }
+.tabbar div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; color: var(--text-subtle); position: relative; }
+.tabbar div.on { color: var(--brand); font-weight: 700; }
+.tabbar .i { width: 24px; height: 24px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fail); position: absolute; }
+.tabbar .dot { top: 10px; left: calc(50% + 8px); }
+.iconbtn .dot { top: 10px; right: 10px; }
+
+/* ── CandidateCard ── */
+.cand { background: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.cand-top { display: flex; gap: 12px; }
+.thumb-blur { width: 72px; height: 72px; border-radius: var(--radius-md); flex: none; overflow: hidden; position: relative; background: #CFC8BB; }
+.thumb-blur > div { position: absolute; inset: -12px; filter: blur(14px) grayscale(1); }
+.thumb-blur .i { position: absolute; right: 4px; bottom: 4px; width: 16px; height: 16px; color: #fff; filter: drop-shadow(0 0 2px rgba(0,0,0,.4)); }
+.thumb-none { width: 72px; height: 72px; border-radius: var(--radius-md); background: var(--surface-sunken); color: var(--text-muted); display: flex; align-items: center; justify-content: center; flex: none; }
+.cand-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cand-meta .cat { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 700; }
+.cand-meta .cat .i { color: var(--brand); }
+.cand-meta .sub { font-size: 13px; color: var(--text-muted); line-height: 18px; }
+.cand-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+.cand-foot { display: flex; align-items: center; gap: 8px; }
+.tries { font-size: 13px; color: var(--text-muted); flex: 1; display: flex; align-items: center; gap: 4px; }
+.tries b { color: var(--text); }
+.cand.locked { background: #FAF8F4; }
+
+/* ── NotificationItem ── */
+.noti { display: flex; gap: 12px; padding: 14px var(--gutter); min-height: 72px; border-bottom: 1px solid var(--border); background: #fff; position: relative; }
+.noti.unread { background: #FDFCF8; }
+.noti .ic { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; background: var(--brand-soft); color: var(--brand); }
+.noti .tx { flex: 1; font-size: 15px; line-height: 21px; }
+.noti .tx small { display: block; color: var(--text-subtle); font-size: 12px; margin-top: 2px; }
+.noti .dot { position: static; margin-top: 8px; background: var(--brand); flex: none; }
+.noti.read .tx { color: var(--text-muted); }
+
+/* ── EmptyState ── */
+.empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 32px 8px; }
+.empty .result-ic { width: 64px; height: 64px; }
+
+/* ── SeedBadge / 마스킹 ── */
+.mask { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+
+/* ── 사진 자리 ── */
+.photo { border-radius: var(--radius-lg); overflow: hidden; position: relative; background: #CFC8BB; }
+.photo .obj { position: absolute; }
+.camera-view { background: #1E2421; color: #fff; border-radius: var(--radius-lg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+/* ── QR ── */
+.qr-card { background: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.qr { width: 232px; height: 232px; padding: 12px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); }
+
+/* ── Turnstile 자리 ── */
+.captcha { height: 65px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: #FAFAFA; display: flex; align-items: center; gap: 12px; padding: 0 14px; font-size: 14px; }
+.captcha .box { width: 26px; height: 26px; border: 2px solid #9AA09B; border-radius: 4px; background: #fff; display: flex; align-items: center; justify-content: center; }
+.captcha .box.ok { border-color: var(--pass); background: var(--pass); color: #fff; }
+.captcha small { margin-left: auto; font-size: 10px; color: var(--text-subtle); text-align: right; line-height: 12px; }
+
+/* ── 컴포넌트 시트 (보드 전용) ── */
+.sheetboard { background: var(--surface); border-radius: 20px; padding: 28px; box-shadow: 0 12px 32px rgba(0,0,0,.10); display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 28px; max-width: 1560px; }
+.sheetboard h3 { font-size: 14px; margin: 0 0 12px; color: var(--text-muted); font-weight: 700; }
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.sw { border-radius: 10px; height: 64px; padding: 8px; font-size: 11px; line-height: 14px; display: flex; flex-direction: column; justify-content: flex-end; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
+.phone.long { height: auto; min-height: 740px; }
+.phone.long .body { overflow: visible; flex: none; }
+
+/* 배치 4 전용 */
+.wm { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; color: var(--brand); padding-left: 12px; flex: 1; }
+/* 지도 (네이버 지도 자리) */
+.map { position: relative; border-radius: var(--radius-lg); overflow: hidden; background: #EEF0EA; box-shadow: 0 0 0 1px var(--border); flex: none; }
+.map .road { position: absolute; background: #fff; box-shadow: 0 0 0 1px #E0E2DA; }
+.map .green { position: absolute; background: #D7E6D2; border-radius: 30px; }
+.map .bld { position: absolute; background: #E2E0D8; border-radius: 4px; }
+.pin { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; }
+.pin .head { min-width: 44px; height: 30px; padding: 0 10px; border-radius: 15px; background: #fff; color: var(--text); font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,0,0,.2); white-space: nowrap; }
+.pin .tail { width: 2px; height: 8px; background: var(--brand); }
+.pin .dotp { width: 10px; height: 10px; border-radius: 50%; background: var(--brand); border: 2px solid #fff; margin-top: -2px; }
+.pin.on .head { background: var(--brand); color: #fff; height: 34px; font-size: 13px; }
+.pin .head .i { width: 14px; height: 14px; }
+.map .attr { position: absolute; left: 8px; bottom: 6px; font-size: 10px; font-weight: 800; color: #03C75A; letter-spacing: .02em; background: rgba(255,255,255,.8); padding: 1px 4px; border-radius: 3px; }
+.map .zoom { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.map .zoom span { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text); }
+.map .zoom span + span { border-top: 1px solid var(--border); }
+/* PC */
+.frame.wide { width: 1280px; }
+.desk { width: 1280px; height: 800px; border-radius: 12px; overflow: hidden; position: relative; background: var(--surface); box-shadow: 0 12px 32px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.06); display: flex; flex-direction: column; }
+.wrap { width: 100%; max-width: var(--w-app); margin: 0 auto; }
+.pc-bands { display: flex; flex-direction: column; height: 100%; }
+.pc-bands a { display: block; text-decoration: none; color: inherit; position: relative; }
+.pc-bands .in { max-width: 960px; margin: 0 auto; padding: 0 48px; height: 100%; display: flex; align-items: center; gap: 24px; }
+.pc-bands .tx { flex: 1; }
+.pc-bands h2 { margin: 0; font-size: 40px; line-height: 50px; font-weight: 700; letter-spacing: -0.02em; }
+.pc-bands p { margin: 6px 0 0; font-size: 17px; line-height: 26px; }
+.pc-bands .go { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.side { background: var(--band-admin); color: #fff; padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; width: 232px; flex: none; }
+.side .awm { font-size: 15px; font-weight: 800; padding: 0 12px 20px; display: flex; gap: 8px; align-items: center; }
+.side .awm small { font-weight: 600; font-size: 12px; color: #B8C4BD; }
+.side .nav { min-height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-radius: 8px; font-size: 15px; color: #CFD8D3; }
+.side .nav.on { background: rgba(255,255,255,.12); color: #fff; font-weight: 700; }
+.side .nav em { margin-left: auto; font-style: normal; font-size: 12px; font-weight: 700; background: var(--review-bg); color: var(--review); border-radius: 6px; padding: 2px 6px; }
+.photos3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.photos3 figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.photos3 .ph { aspect-ratio: 1; border-radius: 8px; position: relative; overflow: hidden; background: linear-gradient(160deg,#D9D2C4,#BDB4A3); }
+.photos3 figcaption { font-size: 12px; color: var(--text-muted); text-align: center; }
+.mini-earbud { position: absolute; left: 50%; top: 50%; width: 52%; height: 40%; transform: translate(-50%,-50%); background: #F8F8F6; border-radius: 30%; box-shadow: 0 6px 10px rgba(0,0,0,.18); }
+.colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.color { min-height: 44px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: #fff; display: flex; align-items: center; gap: 6px; padding: 0 8px; font-size: 12px; font-weight: 500; }
+.color i { width: 16px; height: 16px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); display: block; }
+.color.on { border: 2px solid var(--brand); background: var(--brand-soft); font-weight: 700; padding: 0 7px; }
+.rec { font-size: 13px; } .rec table { width: 100%; border-collapse: collapse; } .rec td, .rec th { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: left; } .rec th { font-size: 12px; color: var(--text-muted); }
+.icons-row { display: flex; gap: 32px; align-items: flex-end; flex-wrap: wrap; background: var(--surface); padding: 28px; border-radius: 20px; box-shadow: 0 12px 32px rgba(0,0,0,.10); }
+.icons-row figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+.homescreen { width: 360px; height: 220px; border-radius: 20px; background: linear-gradient(160deg,#5B6B78,#2F3A44); display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 24px; }
+.homescreen div { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: #fff; }
+.homescreen i { width: 60px; height: 60px; border-radius: 14px; background: rgba(255,255,255,.25); display: block; }
+</style>
+</head>
+<body class="board">
+<header class="board-head">
+  <h1>찾음표 · 배치 4 — 상태 화면 C-06, 지도 카드 C-07, PC 1280, PWA 아이콘</h1>
+  <p>마감 품질. 지도에는 건물 핀만(분실물·습득물 좌표는 절대 표시하지 않음). PC는 분실자·습득자 가운데 480 열, 관리자 넓은 화면.</p>
+</header>
+
+<div class="board-section">C-06 상태 화면</div>
+<div class="row">
+  <div class="frame" data-id="C-06-loading">
+    <p class="frame-label"><b>C-06</b><span>로딩 스켈레톤 (공통 틀)</span></p>
+    <div class="phone ivory">
+      <div class="bandhead lost"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><div class="sk" style="height:18px;width:120px"></div></div>
+      <div class="body tight">
+        <div class="sk" style="height:24px;width:55%"></div>
+        <div class="sk" style="height:14px;width:80%"></div>
+        <div class="card flat"><div class="sk" style="height:16px;width:40%"></div><div class="sk" style="height:12px;width:90%"></div><div class="sk" style="height:12px;width:70%"></div></div>
+        <div class="card flat"><div class="sk" style="height:16px;width:50%"></div><div class="sk" style="height:12px;width:85%"></div><div class="sk" style="height:12px;width:60%"></div></div>
+      </div>
+      <div class="foot"><div class="sk" style="height:52px;border-radius:10px"></div></div>
+    </div>
+    <p class="note">300ms 안에 끝나면 스켈레톤을 보이지 않는다(깜빡임 방지). 화면별 스켈레톤은 각 배치 참고, 이 틀은 기본값. aria-busy="true".</p>
+  </div>
+
+  <div class="frame" data-id="C-06-offline">
+    <p class="frame-label"><b>C-06</b><span>네트워크 오류</span></p>
+    <div class="phone ivory">
+      <div class="bandhead lost"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">후보 확인</span></div>
+      <div class="body center">
+        <div class="result-ic r-neutral"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12 20h.01" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /> <path d="M5 12.859a10 10 0 0 1 5.17-2.69" /> <path d="M19 12.859a10 10 0 0 0-2.007-1.523" /> <path d="M2 8.82a15 15 0 0 1 4.177-2.643" /> <path d="M22 8.82a15 15 0 0 0-11.288-3.764" /> <path d="m2 2 20 20" /> </svg></div>
+        <p class="h1">인터넷 연결을 확인해 주세요</p>
+        <p class="p">연결되면 다시 불러올게요.<br>쓰던 내용은 그대로 있어요.</p>
+      </div>
+      <div class="foot"><button class="btn btn-primary"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" /> </svg>다시 시도하기</button></div>
+      <div class="toast err" style="bottom:96px"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12 20h.01" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /> <path d="M5 12.859a10 10 0 0 1 5.17-2.69" /> <path d="M19 12.859a10 10 0 0 0-2.007-1.523" /> <path d="M2 8.82a15 15 0 0 1 4.177-2.643" /> <path d="M22 8.82a15 15 0 0 0-11.288-3.764" /> <path d="m2 2 20 20" /> </svg>오프라인이에요. 연결되면 자동으로 다시 시도해요.</div>
+    </div>
+    <p class="note">목록을 이미 가진 화면에서는 전체 화면 대신 아래 토스트만. 요청 실패 화면(데이터 없음)일 때 이 전체 화면.</p>
+  </div>
+
+  <div class="frame" data-id="C-06-404">
+    <p class="frame-label"><b>C-06</b><span>404</span></p>
+    <div class="phone ivory">
+      <div class="bandhead lost"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title"></span></div>
+      <div class="body center">
+        <div class="result-ic r-neutral"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12 17h.01" /> <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z" /> <path d="M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3" /> </svg></div>
+        <p class="h1">페이지를 찾을 수 없어요</p>
+        <p class="p">주소가 바뀌었거나 이미 닫힌 신고일 수 있어요.</p>
+      </div>
+      <div class="foot"><button class="btn btn-primary">처음으로</button></div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="C-06-expired">
+    <p class="frame-label"><b>C-06</b><span>로그인 만료 (401)</span></p>
+    <div class="phone ivory">
+      <div class="bandhead lost"><span class="wm">찾음표</span></div>
+      <div class="body"></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grabber"></div>
+        <div class="hrow" style="gap:12px"><div class="result-ic r-brand" style="width:48px;height:48px"><svg class="i i-24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /> <polyline points="10 17 15 12 10 7" /> <line x1="15" x2="3" y1="12" y2="12" /> </svg></div><p class="h1" style="font-size:19px">다시 로그인해 주세요</p></div>
+        <p class="p">로그인한 지 오래돼서 안전을 위해 나갔어요. 쓰던 내용은 로그인한 뒤 이어서 할 수 있어요.</p>
+        <button class="btn btn-primary">로그인</button>
+        <button class="btn btn-ghost">처음으로</button>
+      </div>
+    </div>
+    <p class="note">체험 계정이 만료되면 버튼은 [체험 다시 시작하기](C-03). 관리자는 A-01로.</p>
+  </div>
+
+  <div class="frame" data-id="C-06-429">
+    <p class="frame-label"><b>C-06</b><span>요청 제한 (429)</span></p>
+    <div class="phone ivory">
+      <div class="bandhead lost"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title"></span></div>
+      <div class="body center">
+        <div class="result-ic r-review"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <line x1="10" x2="14" y1="2" y2="2" /> <line x1="12" x2="15" y1="14" y2="11" /> <circle cx="12" cy="14" r="8" /> </svg></div>
+        <p class="h1">잠시 후 다시 시도해 주세요</p>
+        <p class="p">짧은 시간에 요청이 많았어요.</p>
+        <span class="badge b-review"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /> </svg>0:42 뒤에 다시 할 수 있어요</span>
+      </div>
+      <div class="foot"><button class="btn" disabled>다시 시도하기</button></div>
+    </div>
+    <p class="note">Retry-After 헤더가 있으면 카운트다운 후 버튼이 켜진다. 없으면 30초.</p>
+  </div>
+
+  <div class="frame" data-id="C-06-500">
+    <p class="frame-label"><b>C-06</b><span>알 수 없는 오류 (500·502)</span></p>
+    <div class="phone ivory">
+      <div class="bandhead lost"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title"></span></div>
+      <div class="body center">
+        <div class="result-ic r-fail"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <line x1="12" x2="12" y1="8" y2="12" /> <line x1="12" x2="12.01" y1="16" y2="16" /> </svg></div>
+        <p class="h1">문제가 생겼어요</p>
+        <p class="p">잠시 후 다시 시도해 주세요.<br>계속되면 종합서비스센터에 알려 주세요.</p>
+      </div>
+      <div class="foot"><button class="btn btn-primary"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" /> </svg>다시 시도하기</button><button class="btn btn-ghost">처음으로</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="board-section">C-07 공용 지도 카드 (네이버 지도, 건물 핀만)</div>
+<div class="row">
+  <div class="frame" data-id="C-07-picker">
+    <p class="frame-label"><b>C-07</b><span>건물 고르기 시트 안 지도 (F-02)</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">등록 정보</span></div>
+      <div class="body"></div>
+      <div class="scrim"></div>
+      <div class="sheet" style="top:72px">
+        <div class="grabber"></div>
+        <h3 class="h2">어느 건물에서 주웠나요?</h3>
+        <div class="map" style="height:260px">
+          <div class="green" style="left:-20px;top:150px;width:180px;height:140px"></div>
+          <div class="road" style="left:0;right:0;top:120px;height:12px"></div>
+          <div class="road" style="left:200px;top:0;bottom:0;width:10px"></div>
+          <div class="road" style="left:40px;top:0;height:120px;width:8px;transform:skewX(-12deg)"></div>
+          <div class="bld" style="left:70px;top:40px;width:60px;height:44px"></div>
+          <div class="bld" style="left:230px;top:30px;width:70px;height:50px"></div>
+          <div class="bld" style="left:110px;top:160px;width:70px;height:46px"></div>
+          <div class="bld" style="left:236px;top:160px;width:60px;height:60px"></div>
+          <div class="pin on" style="left:100px;top:62px"><span class="head"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /> </svg>혜인관</span><span class="tail"></span><span class="dotp"></span></div>
+          <div class="pin" style="left:265px;top:55px"><span class="head">청운관</span><span class="tail"></span><span class="dotp"></span></div>
+          <div class="pin" style="left:145px;top:183px"><span class="head">북악관</span><span class="tail"></span><span class="dotp"></span></div>
+          <div class="pin" style="left:266px;top:190px"><span class="head">한림관</span><span class="tail"></span><span class="dotp"></span></div>
+          <span class="attr">NAVER</span>
+          <div class="zoom"><span><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M5 12h14" /> <path d="M12 5v14" /> </svg></span><span><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M5 12h14" /> </svg></span></div>
+        </div>
+        <div class="opts">
+          <div class="opt-row"><span class="radio on"></span><div class="t"><b>혜인관</b><small>사진 위치로 골랐어요</small></div></div>
+          <div class="opt-row"><span class="radio"></span><div class="t"><b>청운관</b></div></div>
+        </div>
+        <button class="btn btn-primary">혜인관으로 할게요</button>
+      </div>
+    </div>
+    <p class="note">핀 = 건물 좌표(GET /buildings)만. 핀을 누르면 아래 목록 선택과 같이 바뀜(양방향). 사용자 위치 점은 그리지 않음(좌표를 화면에 남기지 않음). 핀 전체(머리+꼬리+점, 46 이상 높이·51 이상 폭)가 하나의 버튼.</p>
+  </div>
+
+  <div class="frame" data-id="C-07-reveal">
+    <p class="frame-label"><b>C-07</b><span>공개 화면 속 작은 지도 (L-10, 건물 하나)</span></p>
+    <div class="phone ivory">
+      <div class="bandhead lost"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M18 6 6 18" /> <path d="m6 6 12 12" /> </svg></span><span class="title">내 물건</span></div>
+      <div class="body tight">
+        <p class="sec-label">지금 여기 있어요</p>
+        <div class="place" style="background:#fff;border-radius:14px;box-shadow:var(--shadow-card);padding:14px;display:flex;gap:12px"><div style="width:40px;height:40px;border-radius:10px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" /> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /> <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" /> <path d="M2 7h20" /> <path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7" /> </svg></div><div><b style="font-size:17px;display:block">종합서비스센터</b><small style="font-size:14px;color:var(--text-muted)">혜인관 1층 정문 옆</small></div></div>
+        <div class="map" style="height:180px">
+          <div class="green" style="left:200px;top:100px;width:200px;height:120px"></div>
+          <div class="road" style="left:0;right:0;top:110px;height:12px"></div>
+          <div class="road" style="left:150px;top:0;bottom:0;width:10px"></div>
+          <div class="bld" style="left:120px;top:50px;width:80px;height:50px"></div>
+          <div class="pin on" style="left:160px;top:72px"><span class="head"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /> </svg>혜인관</span><span class="tail"></span><span class="dotp"></span></div>
+          <span class="attr">NAVER</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="width:100%"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /> <path d="M15 5.764v15" /> <path d="M9 3.236v15" /> </svg>네이버 지도에서 길찾기</button>
+        <p class="caption">지도에는 건물 위치만 보여요. 물건이 있던 정확한 자리는 표시하지 않아요.</p>
+      </div>
+    </div>
+    <p class="note">지도는 움직이지 않는 정적 카드(드래그 끔), 누르면 확대 시트. 길찾기는 건물 좌표로 네이버 지도 앱/웹 링크.</p>
+  </div>
+
+  <div class="frame" data-id="C-07-fallback">
+    <p class="frame-label"><b>C-07</b><span>키 없음·인증 실패 → 건물 목록 대체</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">등록 정보</span></div>
+      <div class="body"></div>
+      <div class="scrim"></div>
+      <div class="sheet" style="top:72px">
+        <div class="grabber"></div>
+        <h3 class="h2">어느 건물에서 주웠나요?</h3>
+        <div class="alert a-plain"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /> <path d="M15 5.764v15" /> <path d="M9 3.236v15" /> </svg><div>지도를 불러오지 못해서 건물 목록으로 보여 드려요.</div></div>
+        <div class="input"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="11" cy="11" r="8" /> <path d="m21 21-4.3-4.3" /> </svg><span class="ph">건물 이름 검색</span></div>
+        <div class="opts">
+          <div class="opt-row"><span class="radio on"></span><div class="t"><b>혜인관</b><small>사진 위치로 골랐어요</small></div></div>
+          <div class="opt-row"><span class="radio"></span><div class="t"><b>청운관</b></div></div>
+          <div class="opt-row"><span class="radio"></span><div class="t"><b>북악관</b></div></div>
+          <div class="opt-row"><span class="radio"></span><div class="t"><b>한림관</b></div></div>
+          <div class="opt-row"><span class="radio"></span><div class="t"><b>학술정보관</b></div></div>
+        </div>
+        <button class="btn btn-primary">혜인관으로 할게요</button>
+      </div>
+    </div>
+    <p class="note">VITE_NAVER_MAP_CLIENT_ID가 없거나 window.navermap_authFailure가 불리면 이 화면. 오류 문구는 개발자용 콘솔에만, 사용자에게는 한 줄 안내. 기능은 그대로(목록 선택).</p>
+  </div>
+
+  <div class="frame" data-id="C-07-loading">
+    <p class="frame-label"><b>C-07</b><span>지도 불러오는 중</span></p>
+    <div class="phone ivory">
+      <div class="bandhead lost"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M18 6 6 18" /> <path d="m6 6 12 12" /> </svg></span><span class="title">내 물건</span></div>
+      <div class="body tight">
+        <p class="sec-label">지금 여기 있어요</p>
+        <div class="sk" style="height:68px;border-radius:14px"></div>
+        <div class="map sk" style="height:180px;display:flex;align-items:center;justify-content:center;color:var(--text-subtle)"><svg class="i i-32" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /> <path d="M15 5.764v15" /> <path d="M9 3.236v15" /> </svg></div>
+        <p class="caption">지도는 3초 안에 안 뜨면 건물 이름만 보여 줘요.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="board-section">PC 1280 — 첫 화면 · 분실자(가운데 480 열) · 관리자(넓은 화면)</div>
+<div class="row" style="flex-direction:column">
+  <div class="frame wide" data-id="PC-C-01">
+    <p class="frame-label"><b>C-01</b><span>PC 1280 · 띠가 화면 끝까지, 글은 가운데 960 안</span></p>
+    <div class="desk">
+      <nav class="pc-bands">
+        <a style="background:var(--band-finder);color:#fff;height:300px"><div class="in"><div class="tx"><div style="font-size:15px;font-weight:800;color:var(--band-finder-sub);margin-bottom:40px">찾음표</div><div style="color:#fff;margin-bottom:12px"><svg class="i i-32" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" /> </svg></div><h2>물건을 주웠어요</h2><p style="color:var(--band-finder-sub)">가입 없이 사진만</p></div><span class="go" style="background:rgba(255,255,255,.14)"><svg class="i i-24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /> </svg></span></div></a>
+        <a style="background:var(--band-lost);height:260px"><div class="in"><div class="tx"><div style="color:var(--brand);margin-bottom:12px"><svg class="i i-32" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="11" cy="11" r="8" /> <path d="m21 21-4.3-4.3" /> </svg></div><h2>잃어버렸어요</h2><p style="color:var(--text-muted)">로그인 · 회원가입</p></div><span class="go" style="background:var(--brand);color:#fff"><svg class="i i-24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /> </svg></span></div></a>
+        <a style="background:var(--band-demo);flex:1"><div class="in"><div class="tx"><div style="font-size:13px;font-weight:700;color:var(--band-demo-fg);display:flex;gap:4px;align-items:center;margin-bottom:6px"><svg class="i i-14" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /> <path d="M8.5 2h7" /> <path d="M7 16h10" /> </svg>심사위원용</div><h2>체험해 보기</h2><p style="color:var(--text-muted)">사진은 바로 올리고, 특징이 맞아야 위치가 열린다.</p></div><span class="go" style="background:rgba(90,69,39,.12);color:var(--band-demo-fg)"><svg class="i i-24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /> </svg></span></div></a>
+      </nav>
+      <span style="position:absolute;right:48px;bottom:16px;font-size:13px;color:var(--text-muted);text-decoration:underline;min-height:44px;display:flex;align-items:center">관리자 로그인</span>
+    </div>
+    <p class="note">모바일과 같은 구조·순서. 768px 이상에서 제목 40/50, 화살표 원 56. 띠 높이 300 / 260 / 나머지.</p>
+  </div>
+
+  <div class="frame wide" data-id="PC-L-05">
+    <p class="frame-label"><b>L-05</b><span>PC 1280 · 분실자 흐름 가운데 480 열 (체험)</span></p>
+    <div class="desk" style="background:var(--band-lost)">
+      <div class="demostrip" style="justify-content:center"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /> <path d="M8.5 2h7" /> <path d="M7 16h10" /> </svg>체험 모드 <span>· 시연용 데이터로 움직여요</span></div>
+      <div style="background:var(--band-lost);border-bottom:1px solid var(--border)"><div class="wrap bandhead lost" style="border:0;padding:0 8px"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">후보 확인</span><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /> <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /> </svg><span class="dot"></span></span><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /> </svg></span></div></div>
+      <div class="wrap" style="padding:20px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+        <div style="background:#fff;border-radius:14px;box-shadow:var(--shadow-card);padding:14px">
+          <div class="hrow"><span class="hrow" style="gap:6px;font-weight:700;flex:1"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /> </svg>무선 이어폰 · 혜인관</span><span class="link" style="font-size:13px">설명 고치기</span></div>
+          <p class="small">10월 23일(금) 13:00~15:00</p>
+        </div>
+        <div class="hrow"><p class="h2" style="flex:1">비슷한 물건 2개</p><span class="caption">습득 날짜 최신순</span></div>
+        <div class="cand">
+          <div class="cand-top">
+            <div class="thumb-blur"><div style="background:radial-gradient(circle at 45% 50%,#F4F4F0 0 28%,#B9B2A4 60%)"></div><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /> <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /> <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /> <path d="m2 2 20 20" /> </svg></div>
+            <div class="cand-meta"><div class="cat"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /> </svg>무선 이어폰</div><div class="sub">10월 23일(금) 습득 · 혜인관 3층</div><div class="cand-reasons" style="margin-top:6px"><span class="reason"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" /> <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /> </svg>같은 종류</span><span class="reason"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /> <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /> <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /> <path d="M10 6h4" /> <path d="M10 10h4" /> <path d="M10 14h4" /> <path d="M10 18h4" /> </svg>같은 건물</span></div></div>
+          </div>
+          <div class="cand-foot"><span class="tries"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /> </svg>확인 기회 <b>3번 중 3번</b> 남음</span><button class="btn btn-primary btn-sm" style="padding:0 16px">내 물건인지 확인</button></div>
+        </div>
+        <div class="cand">
+          <div class="cand-top">
+            <div class="thumb-blur"><div style="background:radial-gradient(circle at 50% 55%,#2A2A2A 0 26%,#A79F90 62%)"></div><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /> <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /> <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /> <path d="m2 2 20 20" /> </svg></div>
+            <div class="cand-meta"><div class="cat"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /> </svg>무선 이어폰</div><div class="sub">10월 22일(목) 습득 · 청운관 1층</div><div class="cand-reasons" style="margin-top:6px"><span class="reason"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" /> <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /> </svg>같은 종류</span></div></div>
+          </div>
+          <div class="cand-foot"><span class="badge b-fail"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 10 0v4" /> </svg>잠김</span><span class="tries">확인 기회를 모두 썼어요</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">768px 이상: 하단 탭 대신 머리 띠 오른쪽 아이콘(알림·내 정보). 띠와 바탕은 화면 끝까지, 내용은 max-width 480 가운데. 카드의 확인 버튼은 넓은 폭에서 오른쪽 정렬 sm. 습득자(F-*)도 같은 규칙에 초록 띠.</p>
+  </div>
+
+  <div class="frame wide" data-id="PC-A-04">
+    <p class="frame-label"><b>A-04</b><span>PC 1280 · 관리자 상세 (2열: 사진·기록 / 속성 편집)</span></p>
+    <div class="desk" style="flex-direction:row">
+      <aside class="side">
+        <span class="awm">찾음표 관리자<small>종합서비스센터</small></span>
+        <div class="nav"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /> </svg>홈</div>
+        <div class="nav on"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 6h18" /> <path d="M7 12h10" /> <path d="M10 18h4" /> </svg>습득물<em>검토 3</em></div>
+        <div class="nav"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M17 12v4a1 1 0 0 1-1 1h-4" /> <path d="M17 3h2a2 2 0 0 1 2 2v2" /> <path d="M17 8V7" /> <path d="M21 17v2a2 2 0 0 1-2 2h-2" /> <path d="M3 7V5a2 2 0 0 1 2-2h2" /> <path d="M7 17h.01" /> <path d="M7 21H5a2 2 0 0 1-2-2v-2" /> <rect x="7" y="7" width="5" height="5" rx="1" /> </svg>QR 스캔</div>
+        <div class="nav"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 3v16a2 2 0 0 0 2 2h16" /> <path d="M18 17V9" /> <path d="M13 17V5" /> <path d="M8 17v-3" /> </svg>분실 다발 카드</div>
+      </aside>
+      <main style="flex:1;padding:24px 32px;display:flex;flex-direction:column;gap:16px;overflow:hidden;max-width:1048px">
+        <div class="hrow"><span class="iconbtn" style="border:1px solid var(--border-strong);background:#fff"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><h2 class="h1" style="flex:1">흰색 무선 이어폰 케이스</h2><span class="badge b-review"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /> </svg>검토 대기</span></div>
+        <div style="display:grid;grid-template-columns:400px 1fr;gap:24px;min-height:0">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="photos3">
+              <figure><div class="ph"><div class="mini-earbud"></div></div><figcaption>원본</figcaption></figure>
+              <figure><div class="ph"><div class="mini-earbud"></div></div><figcaption>공개본</figcaption></figure>
+              <figure><div class="ph"><div class="mini-earbud" style="filter:blur(8px) grayscale(1)"></div></div><figcaption>후보용 흐림</figcaption></figure>
+            </div>
+            <div class="card flat"><dl class="kv"><dt>주운 곳</dt><dd>혜인관 3층</dd><dt>보관</dt><dd>종합서비스센터</dd><dt>습득</dt><dd>10월 25일(일) 11:20</dd><dt>기한</dt><dd>11월 24일(화)</dd></dl></div>
+            <div class="rec card flat"><p class="sec-label">확인 시도 · 열람 · 수령</p><p class="small">아직 기록이 없어요.</p></div>
+          </div>
+          <div class="card" style="gap:14px">
+            <div class="alert a-review"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /> </svg><div><b>검토 대기</b>AI 분석이 실패했어요. 속성을 채우고 등록해 주세요.</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="field"><span class="label">종류</span><div class="input select"><span class="hrow" style="gap:6px"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /> </svg>무선 이어폰</span><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m6 9 6 6 6-6" /> </svg></div></div>
+              <div class="field"><span class="label">2순위 종류 <span class="opt">선택</span></span><div class="input select"><span class="ph">없음</span><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m6 9 6 6 6-6" /> </svg></div></div>
+            </div>
+            <div class="field"><span class="label">색</span><div class="colors">
+              <div class="color on"><i style="background:#fff"></i>흰색</div><div class="color"><i style="background:#1C1C1C"></i>검정</div><div class="color"><i style="background:#A7ABB0"></i>회색·은색</div><div class="color"><i style="background:#D33A2C"></i>빨강</div><div class="color"><i style="background:#F08A4B"></i>주황·코럴</div><div class="color"><i style="background:#F2C94C"></i>노랑</div>
+              <div class="color"><i style="background:#3E9B5F"></i>초록</div><div class="color"><i style="background:#2F6FB5"></i>파랑·청록</div><div class="color"><i style="background:#7B5AB5"></i>보라</div><div class="color"><i style="background:#E07AA5"></i>분홍·자홍</div><div class="color"><i style="background:#7A5A3A"></i>갈색</div><div class="color"><i style="background:conic-gradient(#D33A2C,#F2C94C,#3E9B5F,#2F6FB5,#D33A2C)"></i>기타</div>
+            </div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="field"><span class="label">브랜드 <span class="opt">선택</span></span><div class="input">애플</div></div>
+              <div class="field"><span class="label">제목</span><div class="input">흰색 무선 이어폰 케이스</div></div>
+            </div>
+            <div class="field"><span class="label">숨은 특징 <span class="opt">최대 4개</span></span>
+              <div style="display:grid;grid-template-columns:150px 1fr 44px;gap:8px;align-items:center"><div class="input select"><span>스티커</span><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m6 9 6 6 6-6" /> </svg></div><div class="input">노란 별 스티커</div><span class="iconbtn" style="color:var(--text-muted)"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M18 6 6 18" /> <path d="m6 6 12 12" /> </svg></span></div>
+            </div>
+            <div class="hrow" style="justify-content:flex-end;margin-top:auto"><button class="btn btn-primary" style="width:200px">저장하고 등록</button></div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <p class="note">1024px 이상: 왼쪽 400 열(사진·요약·기록·대면 수령 블록), 오른쪽 속성 편집. 저장 버튼은 편집 카드 오른쪽 아래. 설명 Textarea는 특징 아래(아래로 스크롤).</p>
+  </div>
+</div>
+
+<div class="board-section">PWA 아이콘 · 파비콘 (docs/design/system/icons/)</div>
+<div class="icons-row shot" data-id="icons">
+  <figure><div style="width:192px;height:192px"><svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#1C4B34"/><g transform="translate(256 256) scale(1.15) translate(-256 -256)"><path d="M206 164H372a24 24 0 0 1 24 24V324a24 24 0 0 1-24 24H206a12 12 0 0 1-8.5-3.5L130 277a30 30 0 0 1 0-42l67.5-67.5A12 12 0 0 1 206 164Z" fill="#F6F2EA"/><circle cx="194" cy="256" r="20" fill="#1C4B34"/><path d="M252 258l36 36 66-74" fill="none" stroke="#1E5B3D" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></g></svg></div>icon-192 / icon-512 (any)</figure>
+  <figure><div style="width:192px;height:192px;border-radius:50%;overflow:hidden"><svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#1C4B34"/><path d="M206 164H372a24 24 0 0 1 24 24V324a24 24 0 0 1-24 24H206a12 12 0 0 1-8.5-3.5L130 277a30 30 0 0 1 0-42l67.5-67.5A12 12 0 0 1 206 164Z" fill="#F6F2EA"/><circle cx="194" cy="256" r="20" fill="#1C4B34"/><path d="M252 258l36 36 66-74" fill="none" stroke="#1E5B3D" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg></div>maskable 512 (원형 마스크 예시)</figure>
+  <figure><div style="width:120px;height:120px;border-radius:26px;overflow:hidden"><svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#1C4B34"/><path d="M206 164H372a24 24 0 0 1 24 24V324a24 24 0 0 1-24 24H206a12 12 0 0 1-8.5-3.5L130 277a30 30 0 0 1 0-42l67.5-67.5A12 12 0 0 1 206 164Z" fill="#F6F2EA"/><circle cx="194" cy="256" r="20" fill="#1C4B34"/><path d="M252 258l36 36 66-74" fill="none" stroke="#1E5B3D" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg></div>maskable (둥근 사각 마스크)</figure>
+  <figure><div style="width:32px;height:32px"><svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#1C4B34"/><g transform="translate(256 256) scale(1.3) translate(-256 -256)"><path d="M206 164H372a24 24 0 0 1 24 24V324a24 24 0 0 1-24 24H206a12 12 0 0 1-8.5-3.5L130 277a30 30 0 0 1 0-42l67.5-67.5A12 12 0 0 1 206 164Z" fill="#F6F2EA"/><circle cx="194" cy="256" r="20" fill="#1C4B34"/><path d="M252 258l36 36 66-74" fill="none" stroke="#1E5B3D" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></g></svg></div>favicon 32</figure>
+  <figure><div style="width:16px;height:16px"><svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#1C4B34"/><g transform="translate(256 256) scale(1.3) translate(-256 -256)"><path d="M206 164H372a24 24 0 0 1 24 24V324a24 24 0 0 1-24 24H206a12 12 0 0 1-8.5-3.5L130 277a30 30 0 0 1 0-42l67.5-67.5A12 12 0 0 1 206 164Z" fill="#F6F2EA"/><circle cx="194" cy="256" r="20" fill="#1C4B34"/><path d="M252 258l36 36 66-74" fill="none" stroke="#1E5B3D" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></g></svg></div>16</figure>
+  <figure><div class="homescreen"><div><i></i>메모</div><div><span style="width:60px;height:60px;display:block;border-radius:14px;overflow:hidden"><svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#1C4B34"/><path d="M206 164H372a24 24 0 0 1 24 24V324a24 24 0 0 1-24 24H206a12 12 0 0 1-8.5-3.5L130 277a30 30 0 0 1 0-42l67.5-67.5A12 12 0 0 1 206 164Z" fill="#F6F2EA"/><circle cx="194" cy="256" r="20" fill="#1C4B34"/><path d="M252 258l36 36 66-74" fill="none" stroke="#1E5B3D" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg></span>찾음표</div><div><i></i>지도</div><div><i></i>카메라</div><div><i></i></div><div><i></i></div><div><i></i></div><div><i></i></div></div>홈 화면에서</figure>
+</div>
+<p class="note" style="max-width:900px">모양: 짙은 초록(band-finder) 바탕에 아이보리 꼬리표(찾음"표") + 초록 체크(찾음). 꼬리표 구멍은 바탕색. maskable은 중앙 80% 안전 영역 안(꼭짓점까지 반지름 162 &lt; 205). theme_color #1C4B34, background_color #F6F2EA.</p>
+</body>
+</html>
