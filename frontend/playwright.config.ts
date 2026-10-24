@@ -34,7 +34,8 @@ export default defineConfig({
       env: { E2E_API_PORT: String(API_PORT), E2E_WEB_PORT: String(WEB_PORT) },
     },
     {
-      command: `npx vite --port ${WEB_PORT} --strictPort`,
+      // npx를 거치면 끝날 때 vite 자식이 남아 다음 실행이 포트 충돌한다. node로 바로 띄운다
+      command: `node ../node_modules/vite/bin/vite.js --port ${WEB_PORT} --strictPort`,
       url: `http://localhost:${WEB_PORT}`,
       timeout: 120_000,
       reuseExistingServer: false,
