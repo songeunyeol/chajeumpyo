@@ -52,9 +52,9 @@ const cases: [string, RegExp, "none" | "member" | "admin"][] = [
   ["/admin/login", /보관처 직원 로그인/, "none"],
   ["/admin", /습득물 현황/, "admin"],
   ["/admin/items", /이전 페이지|전체/, "admin"],
-  [`/admin/items/${F}`, /A-04/, "admin"],
-  ["/admin/scan", /A-05/, "admin"],
-  ["/admin/hotspots", /A-06/, "admin"],
+  [`/admin/items/${F}`, /습득물 상세/, "admin"],
+  ["/admin/scan", /QR 스캔/, "admin"],
+  ["/admin/hotspots", /분실 다발 카드/, "admin"],
   ["/no-such-page", /C-06/, "none"],
 ];
 
