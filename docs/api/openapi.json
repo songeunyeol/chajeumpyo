@@ -69,7 +69,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -136,7 +135,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -259,7 +257,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -391,7 +388,7 @@
             }
           },
           "400": {
-            "description": "VALIDATION_ERROR, INVALID_CODE",
+            "description": "VALIDATION_ERROR, INVALID_CODE: 인증 만료·이미 사용(그사이 같은 이메일로 가입된 경우도 같은 응답)",
             "content": {
               "application/json": {
                 "schema": {
@@ -409,74 +406,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
-                            "MATCH_LOCKED",
-                            "ALREADY_CLAIMED",
-                            "ALREADY_ANSWERED",
-                            "INVALID_STORAGE_TYPE",
-                            "QR_EXPIRED",
-                            "IMAGE_TOO_LARGE",
-                            "NO_OBJECT_DETECTED",
-                            "RATE_LIMITED",
-                            "INTERNAL_ERROR",
-                            "AI_UNAVAILABLE"
-                          ]
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "path": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "path",
-                              "message"
-                            ]
-                          }
-                        }
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "EMAIL_TAKEN",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "VALIDATION_ERROR",
-                            "INVALID_EMAIL_DOMAIN",
-                            "INVALID_CODE",
-                            "UNAUTHORIZED",
-                            "FORBIDDEN",
-                            "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -543,7 +472,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -690,7 +618,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -816,7 +743,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -929,7 +855,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -1095,7 +1020,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -1284,7 +1208,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -1438,7 +1361,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -1662,7 +1584,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -1729,7 +1650,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -1796,7 +1716,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -1863,7 +1782,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -2114,7 +2032,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -2181,7 +2098,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -2248,7 +2164,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -2424,7 +2339,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -2624,7 +2538,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -2859,7 +2772,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -2926,7 +2838,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
@@ -2993,7 +2904,6 @@
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
-                            "EMAIL_TAKEN",
                             "MATCH_LOCKED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
