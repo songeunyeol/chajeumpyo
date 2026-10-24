@@ -4,14 +4,17 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "backend"
+    "backend",
+    "frontend"
   ],
   "engines": {
     "node": ">=22.12"
   },
   "scripts": {
     "dev": "npm run dev -w backend",
+    "dev:web": "npm run dev -w frontend",
     "build": "npm run build -w backend",
+    "build:web": "npm run build -w frontend",
     "test": "npm run test -w backend",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "biome check .",

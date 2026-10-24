@@ -1,0 +1,174 @@
+@import "tailwindcss";
+@import "./styles/tokens.css";
+
+/* 디자인 토큰(tokens.css, 디자인 작업 소유)을 Tailwind v4 테마로 잇는다. 값은 여기서 바꾸지 않는다. */
+@theme inline {
+  --color-band-finder: var(--band-finder);
+  --color-band-finder-fg: var(--band-finder-fg);
+  --color-band-finder-sub: var(--band-finder-sub);
+  --color-band-lost: var(--band-lost);
+  --color-band-demo: var(--band-demo);
+  --color-band-demo-fg: var(--band-demo-fg);
+  --color-band-admin: var(--band-admin);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-pressed: var(--brand-pressed);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-fg: var(--brand-fg);
+  --color-focus: var(--focus);
+
+  --color-surface: var(--surface);
+  --color-surface-card: var(--surface-card);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-ink: var(--text);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-subtle: var(--text-subtle);
+  --color-ink-inverse: var(--text-inverse);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-scrim: var(--scrim);
+
+  --color-pass: var(--pass);
+  --color-pass-bg: var(--pass-bg);
+  --color-question: var(--question);
+  --color-question-bg: var(--question-bg);
+  --color-fail: var(--fail);
+  --color-fail-bg: var(--fail-bg);
+  --color-review: var(--review);
+  --color-review-bg: var(--review-bg);
+  --color-inperson: var(--inperson);
+  --color-inperson-bg: var(--inperson-bg);
+  --color-seed: var(--seed);
+  --color-seed-bg: var(--seed-bg);
+
+  --color-flow-band: var(--flow-band);
+  --color-flow-band-fg: var(--flow-band-fg);
+  --color-flow-accent: var(--flow-accent);
+
+  /* shadcn/ui 기본 이름 */
+  --color-background: var(--surface);
+  --color-foreground: var(--text);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-fg);
+  --color-secondary: var(--surface-card);
+  --color-secondary-foreground: var(--brand);
+  --color-destructive: var(--fail);
+  --color-destructive-foreground: #ffffff;
+  --color-muted: var(--surface-sunken);
+  --color-muted-foreground: var(--text-muted);
+  --color-border: var(--border);
+  --color-input: var(--border-strong);
+  --color-ring: var(--focus);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-sheet: var(--shadow-sheet);
+  --shadow-toast: var(--shadow-toast);
+
+  --font-sans: var(--font-sans);
+
+  --text-caption: var(--fs-caption);
+  --text-caption--line-height: var(--lh-caption);
+  --text-small: var(--fs-small);
+  --text-small--line-height: var(--lh-small);
+  --text-body: var(--fs-body);
+  --text-body--line-height: var(--lh-body);
+  --text-body-lg: var(--fs-body-lg);
+  --text-body-lg--line-height: var(--lh-body-lg);
+  --text-title: var(--fs-title);
+  --text-title--line-height: var(--lh-title);
+  --text-headline: var(--fs-headline);
+  --text-headline--line-height: var(--lh-headline);
+  --text-display: var(--fs-display);
+  --text-display--line-height: var(--lh-display);
+
+  --spacing-gutter: var(--gutter);
+  --spacing-touch: var(--touch);
+  --spacing-btn: var(--btn-h);
+  --spacing-input: var(--input-h);
+  --spacing-header: var(--header-h);
+  --spacing-tabbar: var(--tabbar-h);
+  --container-app: var(--w-app);
+  --container-admin: var(--w-admin);
+
+  --ease-out: var(--ease-out);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    letter-spacing: -0.01em;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+}
+
+@layer utilities {
+  .tracking-tight-ko {
+    letter-spacing: var(--tracking-tight);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@keyframes reveal-unlock {
+  0% {
+    filter: blur(24px);
+    transform: scale(1.04);
+    opacity: 0.4;
+  }
+  100% {
+    filter: blur(0);
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-reveal {
+  animation: reveal-unlock var(--dur-reveal) var(--ease-out) both;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+.animate-progress {
+  animation: progress-indeterminate 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-progress {
+    animation: none;
+  }
+}
