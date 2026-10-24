@@ -1,5 +1,13 @@
 import { createHash } from "node:crypto";
-import { type Category, FoundItemExtraction, LostReportExtraction } from "@chajeumpyo/shared";
+import {
+  type AiFeature,
+  type Category,
+  type Color,
+  type FeatureKey,
+  FoundItemExtraction,
+  LostReportExtraction,
+  MAX_FEATURES,
+} from "@chajeumpyo/shared";
 import { compareByRules } from "../matching/compare";
 import { rawWords, sameWord } from "../matching/text";
 import { type AiClient, EMBEDDING_DIM } from "./types";
@@ -63,6 +71,71 @@ function guessCategory(text: string): Category {
   return KEYWORDS.find(([k]) => text.includes(k))?.[1] ?? "ETC";
 }
 
+const COLOR_WORDS: [string, Color][] = [
+  ["흰", "WHITE"],
+  ["하얀", "WHITE"],
+  ["화이트", "WHITE"],
+  ["검정", "BLACK"],
+  ["검은", "BLACK"],
+  ["블랙", "BLACK"],
+  ["회색", "GRAY_SILVER"],
+  ["은색", "GRAY_SILVER"],
+  ["실버", "GRAY_SILVER"],
+  ["빨간", "RED"],
+  ["빨강", "RED"],
+  ["주황", "ORANGE_CORAL"],
+  ["노란", "YELLOW"],
+  ["노랑", "YELLOW"],
+  ["초록", "GREEN"],
+  ["녹색", "GREEN"],
+  ["파란", "BLUE_TEAL"],
+  ["파랑", "BLUE_TEAL"],
+  ["남색", "BLUE_TEAL"],
+  ["보라", "PURPLE"],
+  ["분홍", "PINK_MAGENTA"],
+  ["핑크", "PINK_MAGENTA"],
+  ["갈색", "BROWN"],
+  ["브라운", "BROWN"],
+];
+
+function guessColor(text: string): Color | null {
+  return COLOR_WORDS.find(([w]) => text.includes(w))?.[1] ?? null;
+}
+
+const FEATURE_WORDS: [string, FeatureKey][] = [
+  ["스티커", "sticker"],
+  ["긁힘", "scratch"],
+  ["흠집", "scratch"],
+  ["찍힘", "scratch"],
+  ["찌그러", "scratch"],
+  ["케이스", "case"],
+  ["커버", "case"],
+  ["키링", "keyring"],
+  ["고리", "keyring"],
+  ["각인", "text"],
+  ["이니셜", "text"],
+  ["이름", "text"],
+  ["무늬", "pattern"],
+  ["그림", "pattern"],
+];
+
+/**
+ * 설명을 쉼표·마침표로 나눠, 특징 낱말이 든 구절을 특징으로 본다. 구절에 낱말이 여럿이면 뒤에 나온 것
+ * (예: "케이스에 곰돌이 스티커" → sticker). 키 없이 개발할 때도 확인 통과까지 흘려 보기 위한 흉내다.
+ */
+function guessFeatures(text: string): AiFeature[] {
+  const out: AiFeature[] = [];
+  for (const phrase of text.split(/[,.·\n]/).map((p) => p.trim())) {
+    let best: { key: FeatureKey; at: number } | null = null;
+    for (const [w, key] of FEATURE_WORDS) {
+      const at = phrase.lastIndexOf(w);
+      if (at >= 0 && (!best || at > best.at)) best = { key, at };
+    }
+    if (best && phrase.length <= 40) out.push({ key: best.key, value: phrase });
+  }
+  return out.slice(0, MAX_FEATURES);
+}
+
 /** 텍스트 해시로 만든 단위 벡터. 같은 텍스트면 유사도 1. */
 function hashEmbedding(text: string): number[] {
   const out: number[] = [];
@@ -100,9 +173,9 @@ export const mockAiClient: AiClient = {
   async extractLostReport(description) {
     return LostReportExtraction.parse({
       category: guessCategory(description),
-      color: null,
+      color: guessColor(description),
       brand: null,
-      features: [],
+      features: guessFeatures(description),
       description,
     });
   },
