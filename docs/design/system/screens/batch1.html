@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>찾음표 배치 1</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+/*
+ * 찾음표 디자인 토큰 — 시안 11 "창구 띠"
+ * 출처: docs/design/system/README.md (원칙·컴포넌트), docs/design/system/screens/batch*.html (화면 명세)
+ * 소유: 디자인 작업. 값을 바꾸면 README의 대비 표도 같이 고친다.
+ *
+ * ── Tailwind 연결 방법 (tailwind.config.ts) ─────────────────────────────
+ *   import "./src/styles/tokens.css"  // main.tsx 또는 index.css 맨 위에서 @import
+ *
+ *   theme: {
+ *     extend: {
+ *       colors: {
+ *         band:    { finder: "var(--band-finder)", "finder-fg": "var(--band-finder-fg)",
+ *                    "finder-sub": "var(--band-finder-sub)",
+ *                    lost: "var(--band-lost)", demo: "var(--band-demo)", "demo-fg": "var(--band-demo-fg)" },
+ *         brand:   { DEFAULT: "var(--brand)", hover: "var(--brand-hover)", soft: "var(--brand-soft)",
+ *                    fg: "var(--brand-fg)" },
+ *         surface: { DEFAULT: "var(--surface)", card: "var(--surface-card)", sunken: "var(--surface-sunken)" },
+ *         ink:     { DEFAULT: "var(--text)", muted: "var(--text-muted)", subtle: "var(--text-subtle)",
+ *                    inverse: "var(--text-inverse)" },
+ *         line:    { DEFAULT: "var(--border)", strong: "var(--border-strong)" },
+ *         pass:     { DEFAULT: "var(--pass)", bg: "var(--pass-bg)" },
+ *         question: { DEFAULT: "var(--question)", bg: "var(--question-bg)" },
+ *         fail:     { DEFAULT: "var(--fail)", bg: "var(--fail-bg)" },   // 실패·잠김·위험 버튼
+ *         review:   { DEFAULT: "var(--review)", bg: "var(--review-bg)" },
+ *         inperson: { DEFAULT: "var(--inperson)", bg: "var(--inperson-bg)" },
+ *         seed:     { DEFAULT: "var(--seed)", bg: "var(--seed-bg)" },
+ *         // shadcn/ui 기본 이름도 같은 값으로 묶는다 (components.json cssVariables: true)
+ *         background: "var(--surface)", foreground: "var(--text)",
+ *         primary: { DEFAULT: "var(--brand)", foreground: "var(--brand-fg)" },
+ *         secondary: { DEFAULT: "var(--surface-card)", foreground: "var(--brand)" },
+ *         destructive: { DEFAULT: "var(--fail)", foreground: "#FFFFFF" },
+ *         muted: { DEFAULT: "var(--surface-sunken)", foreground: "var(--text-muted)" },
+ *         border: "var(--border)", input: "var(--border-strong)", ring: "var(--focus)",
+ *       },
+ *       borderRadius: { sm: "var(--radius-sm)", md: "var(--radius-md)", lg: "var(--radius-lg)",
+ *                       xl: "var(--radius-xl)" },
+ *       boxShadow: { card: "var(--shadow-card)", sheet: "var(--shadow-sheet)", toast: "var(--shadow-toast)" },
+ *       fontFamily: { sans: ["Pretendard", "Pretendard Variable", "-apple-system", "system-ui", "sans-serif"] },
+ *       fontSize: {  // [크기, 줄높이] — 클래스 text-title 등
+ *         caption: ["var(--fs-caption)", "var(--lh-caption)"], small: ["var(--fs-small)", "var(--lh-small)"],
+ *         body: ["var(--fs-body)", "var(--lh-body)"], "body-lg": ["var(--fs-body-lg)", "var(--lh-body-lg)"],
+ *         title: ["var(--fs-title)", "var(--lh-title)"], headline: ["var(--fs-headline)", "var(--lh-headline)"],
+ *         display: ["var(--fs-display)", "var(--lh-display)"],
+ *       },
+ *       spacing: { gutter: "var(--gutter)", touch: "var(--touch)" },
+ *       maxWidth: { app: "var(--w-app)", admin: "var(--w-admin)" },
+ *     },
+ *   }
+ *
+ * 흐름 색은 <body data-flow="finder|lost|demo|admin"> 로 바꾼다. --flow-* 만 쓰면 화면 코드는 그대로 둔다.
+ * Pretendard: index.html <link rel="stylesheet"
+ *   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+ */
+
+:root {
+  /* ── 띠(흐름) 색 ── */
+  --band-finder: #1C4B34;      /* 습득자 흐름 머리 띠. 흰 글자 9.97:1 */
+  --band-finder-fg: #FFFFFF;
+  --band-finder-sub: #C9DCCF;  /* 띠 위 보조 글자 6.94:1 */
+  --band-lost: #F6F2EA;        /* 분실자 흐름 바탕(아이보리) */
+  --band-demo: #E8DFCF;        /* 체험 띠·체험 모드 띠(베이지) */
+  --band-demo-fg: #5A4527;     /* 베이지 위 글자 6.86:1 */
+  --band-admin: #22302A;       /* 관리자 머리 띠(먹색 초록). 흰 글자 13:1 이상 */
+
+  /* ── 브랜드(팀 Figma oklch(0.42 0.1 155) 계열을 조금 눅인 값) ── */
+  --brand: #1E5B3D;            /* 주 버튼, 강조. 흰 글자 8.02:1, 아이보리 위 7.18:1 */
+  --brand-hover: #174A31;
+  --brand-pressed: #123C28;
+  --brand-soft: #E4F1E8;       /* 선택된 칩 바탕, 강조 박스 */
+  --brand-fg: #FFFFFF;
+  --focus: #2F7A53;            /* 포커스 링(2px, offset 2px) */
+
+  /* ── 바탕·글자·선 ── */
+  --surface: #FBF9F4;          /* 앱 기본 바탕(아이보리보다 밝음) */
+  --surface-card: #FFFFFF;
+  --surface-sunken: #EFEBE3;   /* 입력 비활성, 스켈레톤 */
+  --text: #1C1F1D;             /* 14.9:1 (아이보리) */
+  --text-muted: #565D58;       /* 보조 글자. 흰 6.77, 아이보리 6.06, 베이지 5.12 */
+  --text-subtle: #636964;      /* 캡션·자리표시. 흰/아이보리 5.0 이상. 베이지 위에는 쓰지 않는다 */
+  --text-inverse: #FFFFFF;
+  --border: #E2DDD2;
+  --border-strong: #C9C2B4;    /* 입력 테두리 */
+  --scrim: rgba(20, 24, 22, 0.48);
+
+  /* ── 상태 색 (항상 Lucide 아이콘 + 글자와 함께) ── */
+  --pass: #1E6B43;      --pass-bg: #E4F1E8;      /* 통과 · CircleCheck   5.57:1 */
+  --question: #9A4A06;  --question-bg: #FCEEDC;  /* 확인 질문 · CircleHelp 5.48:1 */
+  --fail: #B42318;      --fail-bg: #FCEAE8;      /* 실패 · CircleX / 잠김 · Lock 5.66:1 */
+  --review: #6A5400;    --review-bg: #F6EECF;    /* 검토 대기 · Clock 6.27:1 */
+  --inperson: #2E3D8C;  --inperson-bg: #E7EAF7;  /* 대면 확인 · UserCheck 8.10:1 */
+  --seed: #5A4527;      --seed-bg: #F1EADD;      /* 시연용 데이터 배지 · Database 7.58:1 */
+  --info: #1E5B3D;      --info-bg: #E4F1E8;
+
+  /* ── 흐름 별칭 (기본 = 분실자) ── */
+  --flow-band: var(--band-lost);
+  --flow-band-fg: var(--text);
+  --flow-accent: var(--brand);
+
+  /* ── 모양 ── */
+  --radius-sm: 6px;            /* 배지, 칩 안쪽 */
+  --radius-md: 10px;           /* 버튼, 입력 */
+  --radius-lg: 14px;           /* 카드 */
+  --radius-xl: 20px;           /* 바텀시트 위 모서리 */
+  --radius-full: 999px;        /* 칩, 점 */
+  --shadow-card: 0 1px 2px rgba(28, 31, 29, 0.06), 0 0 0 1px var(--border);
+  --shadow-sheet: 0 -8px 24px rgba(28, 31, 29, 0.14);
+  --shadow-toast: 0 6px 20px rgba(28, 31, 29, 0.18);
+
+  /* ── 간격 (4px 단위) ── */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --gutter: 20px;              /* 360px 화면 좌우 여백 */
+  --touch: 44px;               /* 최소 터치 높이 */
+  --btn-h: 52px;               /* 주 버튼 높이 */
+  --input-h: 48px;
+  --header-h: 56px;
+  --tabbar-h: 64px;
+  --w-app: 480px;              /* PC에서 분실자·습득자 가운데 최대 폭 */
+  --w-admin: 1200px;           /* PC 관리자 넓은 목록 */
+
+  /* ── 글자 (Pretendard) ── */
+  --font-sans: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fs-caption: 12px;  --lh-caption: 16px;
+  --fs-small: 13px;    --lh-small: 18px;
+  --fs-body: 15px;     --lh-body: 22px;
+  --fs-body-lg: 17px;  --lh-body-lg: 24px;
+  --fs-title: 20px;    --lh-title: 28px;
+  --fs-headline: 24px; --lh-headline: 32px;
+  --fs-display: 28px;  --lh-display: 36px;   /* 첫 화면 띠 제목 */
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+  --tracking-tight: -0.02em;
+
+  /* ── 움직임 ── */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms; --dur-base: 200ms; --dur-reveal: 900ms;  /* L-10 잠금 해제 */
+}
+
+/* 흐름별 별칭 */
+[data-flow="finder"] { --flow-band: var(--band-finder); --flow-band-fg: var(--band-finder-fg); --flow-accent: var(--brand); }
+[data-flow="lost"]   { --flow-band: var(--band-lost);   --flow-band-fg: var(--text);           --flow-accent: var(--brand); }
+[data-flow="demo"]   { --flow-band: var(--band-lost);   --flow-band-fg: var(--text);           --flow-accent: var(--brand); }
+[data-flow="admin"]  { --flow-band: var(--band-admin);  --flow-band-fg: #FFFFFF;               --flow-accent: var(--brand); }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-reveal: 0ms; }
+}
+
+/*
+ * 찾음표 목업 공용 컴포넌트 CSS (batch*.html 에 그대로 들어간다)
+ * 토큰은 frontend/src/styles/tokens.css 와 같다. 이 파일은 "모양 명세"이고,
+ * 프론트는 같은 값을 Tailwind 클래스(shadcn/ui 컴포넌트)로 옮긴다. README 컴포넌트 표 참고.
+ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body.board {
+  font-family: var(--font-sans); color: var(--text); background: #DCD6CB;
+  -webkit-font-smoothing: antialiased; word-break: keep-all; padding: 32px;
+}
+.board-head { max-width: 1600px; margin: 0 0 24px; }
+.board-head h1 { font-size: 24px; line-height: 32px; margin: 0 0 4px; letter-spacing: var(--tracking-tight); }
+.board-head p { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 20px; }
+.board-section { margin: 40px 0 12px; font-size: 18px; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 32px 28px; align-items: flex-start; }
+.frame { width: 360px; flex: none; }
+.frame-label { font-size: 13px; line-height: 18px; margin: 0 0 8px; color: var(--text); }
+.frame-label b { font-weight: 700; margin-right: 6px; }
+.frame-label span { color: var(--text-muted); }
+.phone {
+  width: 360px; height: 740px; border-radius: 28px; overflow: hidden; position: relative;
+  background: var(--surface); box-shadow: 0 12px 32px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.06);
+  display: flex; flex-direction: column; font-size: var(--fs-body); line-height: var(--lh-body);
+}
+.phone.ivory { background: var(--band-lost); }
+.note { font-size: 12px; line-height: 17px; color: var(--text-muted); margin-top: 8px; }
+
+/* 아이콘 (Lucide, stroke 2) */
+.i { width: 20px; height: 20px; flex: none; stroke-width: 2; }
+.i-16 { width: 16px; height: 16px; } .i-14 { width: 14px; height: 14px; }
+.i-24 { width: 24px; height: 24px; } .i-32 { width: 32px; height: 32px; } .i-48 { width: 48px; height: 48px; stroke-width: 1.5; }
+
+/* ── 띠 머리 (흐름 색) ── */
+.bandhead { display: flex; align-items: center; gap: 4px; min-height: var(--header-h); padding: 0 8px; flex: none; }
+.bandhead .title { font-size: var(--fs-body-lg); line-height: var(--lh-body-lg); font-weight: 600; flex: 1; }
+.bandhead.finder { background: var(--band-finder); color: var(--band-finder-fg); }
+.bandhead.lost { background: var(--band-lost); color: var(--text); border-bottom: 1px solid var(--border); }
+.bandhead.demo { background: var(--band-demo); color: var(--text); }
+.bandhead.admin { background: var(--band-admin); color: #fff; }
+.iconbtn { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-md); color: inherit; position: relative; background: none; border: 0; }
+/* 큰 띠 머리: 흐름 첫 화면 */
+.bandhero { padding: 8px 8px 24px; flex: none; }
+.bandhero.finder { background: var(--band-finder); color: #fff; }
+.bandhero.lost { background: var(--band-lost); }
+.bandhero.demo { background: var(--band-demo); }
+.bandhero .wordmark { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; padding: 0 12px; }
+.bandhero h2 { margin: 8px 12px 4px; font-size: var(--fs-headline); line-height: var(--lh-headline); font-weight: 700; letter-spacing: var(--tracking-tight); }
+.bandhero p { margin: 0 12px; font-size: 14px; line-height: 20px; }
+.bandhero.finder p, .bandhero.finder .wordmark { color: var(--band-finder-sub); }
+.bandhero.demo p { color: var(--text-muted); }
+.stepnum { font-size: 13px; font-weight: 600; }
+
+/* 체험 모드 띠 (모든 체험 화면 맨 위) */
+.demostrip { height: 32px; flex: none; background: var(--band-demo); color: var(--band-demo-fg); display: flex; align-items: center; gap: 6px; padding: 0 16px; font-size: 13px; font-weight: 600; border-bottom: 1px solid #D9CDB7; }
+.demostrip .i { width: 16px; height: 16px; }
+.demostrip span { font-weight: 400; }
+
+/* ── 본문 ── */
+.body { flex: 1; overflow: hidden; padding: 20px var(--gutter); display: flex; flex-direction: column; gap: 16px; }
+.body.tight { gap: 12px; }
+.body.center { align-items: center; justify-content: center; text-align: center; }
+.foot { flex: none; padding: 12px var(--gutter) 20px; display: flex; flex-direction: column; gap: 8px; background: inherit; }
+.foot.line { border-top: 1px solid var(--border); background: var(--surface-card); }
+.h1 { font-size: var(--fs-title); line-height: var(--lh-title); font-weight: 700; margin: 0; letter-spacing: var(--tracking-tight); }
+.h2 { font-size: var(--fs-body-lg); line-height: var(--lh-body-lg); font-weight: 700; margin: 0; }
+.h-display { font-size: var(--fs-display); line-height: var(--lh-display); font-weight: 700; margin: 0; letter-spacing: var(--tracking-tight); }
+.p { margin: 0; color: var(--text-muted); }
+.small { font-size: var(--fs-small); line-height: var(--lh-small); color: var(--text-muted); margin: 0; }
+.caption { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--text-subtle); margin: 0; }
+.strong { color: var(--text); font-weight: 600; }
+.sec-label { font-size: 13px; line-height: 18px; font-weight: 700; color: var(--text-muted); margin: 0; }
+.divider { height: 1px; background: var(--border); border: 0; margin: 0; }
+.stack { display: flex; flex-direction: column; gap: 8px; }
+.hrow { display: flex; align-items: center; gap: 8px; }
+.spacer { flex: 1; }
+
+/* ── Button (shadcn Button) ── */
+.btn { height: var(--btn-h); width: 100%; border-radius: var(--radius-md); border: 1px solid transparent; font: inherit; font-size: 16px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; cursor: pointer; }
+.btn-primary { background: var(--brand); color: var(--brand-fg); }
+.btn-secondary { background: var(--surface-card); color: var(--brand); border-color: var(--border-strong); }
+.btn-danger { background: var(--fail); color: #fff; }
+.btn-danger-outline { background: var(--surface-card); color: var(--fail); border-color: #E7B7B2; }
+.btn-ghost { background: transparent; color: var(--brand); height: var(--touch); font-size: 15px; }
+.btn-onband { background: #fff; color: var(--band-finder); }
+.btn-sm { height: var(--touch); font-size: 15px; width: auto; }
+.btn[disabled], .btn.disabled { background: var(--surface-sunken); color: var(--text-subtle); border-color: transparent; }
+.btn.loading { opacity: 1; }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.link { color: var(--brand); font-weight: 600; padding: 0 8px; min-width: 44px; justify-content: center; text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; font-size: 14px; }
+
+/* ── Input / Textarea / Select ── */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 14px; line-height: 20px; font-weight: 600; }
+.label .opt { font-weight: 400; color: var(--text-subtle); margin-left: 4px; }
+.input { height: var(--input-h); border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-card); padding: 0 14px; display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.input .ph { color: var(--text-subtle); }
+.input.focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(30, 91, 61, .16); }
+.input.err { border-color: var(--fail); }
+.input.readonly { background: var(--surface-sunken); color: var(--text-muted); }
+.textarea { min-height: 120px; height: auto; align-items: flex-start; padding: 12px 14px; line-height: 24px; }
+.select { justify-content: space-between; }
+.hint { font-size: 13px; line-height: 18px; color: var(--text-muted); margin: 0; }
+.errtext { font-size: 13px; line-height: 18px; color: var(--fail); display: flex; gap: 4px; align-items: flex-start; margin: 0; font-weight: 500; }
+.errtext .i { width: 16px; height: 16px; margin-top: 1px; }
+.counter { font-size: 12px; color: var(--text-subtle); text-align: right; }
+.otp { display: flex; gap: 8px; }
+.otp div { width: 44px; height: 52px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; }
+.otp div.cur { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(30,91,61,.16); }
+
+/* ── Chip selector (ToggleGroup) ── */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { min-height: var(--touch); padding: 0 14px; border-radius: var(--radius-full); border: 1px solid var(--border-strong); background: var(--surface-card); display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: var(--text); }
+.chip .i { width: 18px; height: 18px; color: var(--text-muted); }
+.chip.on { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); font-weight: 700; }
+.chip.on .i { color: var(--brand); }
+/* 세그먼트 (2지선다) */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg > div { min-height: 64px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: #fff; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; justify-content: center; }
+.seg > div b { font-size: 15px; display: flex; align-items: center; gap: 6px; }
+.seg > div small { font-size: 12px; color: var(--text-muted); line-height: 16px; }
+.seg > div.on { border: 2px solid var(--brand); background: var(--brand-soft); padding: 9px 11px; }
+.seg > div.on b { color: var(--brand); }
+
+/* ── 선택 목록 (Radio list, 건물·보관처) ── */
+.opts { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-lg); background: #fff; overflow: hidden; }
+.opt-row { min-height: 56px; padding: 8px 14px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--border); }
+.opt-row:first-child { border-top: 0; }
+.opt-row .t { flex: 1; display: flex; flex-direction: column; }
+.opt-row .t b { font-weight: 600; font-size: 15px; }
+.opt-row .t small { font-size: 13px; color: var(--text-muted); line-height: 18px; }
+.radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-strong); flex: none; }
+.radio.on { border: 7px solid var(--brand); }
+.check { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border-strong); flex: none; display: inline-flex; align-items: center; justify-content: center; background: #fff; }
+.check.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.check.on .i { width: 16px; height: 16px; stroke-width: 3; }
+
+/* ── Card ── */
+.card { background: var(--surface-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.card.flat { box-shadow: 0 0 0 1px var(--border); }
+.card.soft { background: var(--brand-soft); box-shadow: none; }
+.kv { display: grid; grid-template-columns: 72px 1fr; gap: 8px 12px; font-size: 14px; line-height: 20px; margin: 0; }
+.kv dt { color: var(--text-muted); } .kv dd { margin: 0; font-weight: 600; }
+
+/* ── StatusBadge ── */
+.badge { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.badge .i { width: 14px; height: 14px; stroke-width: 2.4; }
+.b-pass { color: var(--pass); background: var(--pass-bg); }
+.b-question { color: var(--question); background: var(--question-bg); }
+.b-fail { color: var(--fail); background: var(--fail-bg); }
+.b-review { color: var(--review); background: var(--review-bg); }
+.b-inperson { color: var(--inperson); background: var(--inperson-bg); }
+.b-seed { color: var(--seed); background: var(--seed-bg); }
+.b-neutral { color: var(--text-muted); background: var(--surface-sunken); }
+/* 공개 근거 칩 (후보 카드) */
+.reason { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: var(--radius-full); background: var(--surface-sunken); color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.reason .i { width: 14px; height: 14px; }
+
+/* ── 결과 큰 아이콘 원 ── */
+.result-ic { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.result-ic .i { width: 36px; height: 36px; stroke-width: 2; }
+.r-pass { background: var(--pass-bg); color: var(--pass); }
+.r-question { background: var(--question-bg); color: var(--question); }
+.r-fail { background: var(--fail-bg); color: var(--fail); }
+.r-review { background: var(--review-bg); color: var(--review); }
+.r-inperson { background: var(--inperson-bg); color: var(--inperson); }
+.r-brand { background: var(--brand-soft); color: var(--brand); }
+.r-neutral { background: var(--surface-sunken); color: var(--text-muted); }
+
+/* ── 알림 박스 (Alert) ── */
+.alert { border-radius: var(--radius-md); padding: 12px 14px; display: flex; gap: 10px; font-size: 14px; line-height: 20px; align-items: flex-start; }
+.alert .i { margin-top: 0; }
+.alert b { display: block; font-weight: 700; }
+.a-info { background: var(--brand-soft); color: var(--text); } .a-info .i { color: var(--brand); }
+.a-warn { background: var(--question-bg); color: var(--text); } .a-warn .i { color: var(--question); }
+.a-fail { background: var(--fail-bg); color: var(--text); } .a-fail .i { color: var(--fail); }
+.a-review { background: var(--review-bg); color: var(--text); } .a-review .i { color: var(--review); }
+.a-inperson { background: var(--inperson-bg); color: var(--text); } .a-inperson .i { color: var(--inperson); }
+.a-plain { background: var(--surface-sunken); color: var(--text-muted); } .a-plain .i { color: var(--text-muted); }
+
+/* ── Stepper ── */
+.stepper { display: flex; gap: 6px; }
+.stepper i { height: 4px; flex: 1; border-radius: 2px; background: var(--border); display: block; }
+.stepper i.on { background: var(--brand); }
+.bandhero.finder .stepper i { background: rgba(255,255,255,.25); } .bandhero.finder .stepper i.on { background: #fff; }
+
+/* ── Skeleton ── */
+.sk { background: linear-gradient(90deg, var(--surface-sunken) 0%, #F6F3EC 50%, var(--surface-sunken) 100%); background-size: 200% 100%; border-radius: var(--radius-sm); animation: sk 1.4s ease-in-out infinite; }
+@keyframes sk { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* ── Progress (등록 중·판정 중) ── */
+.progress { height: 6px; border-radius: 3px; background: var(--surface-sunken); overflow: hidden; width: 100%; }
+.progress > i { display: block; height: 100%; background: var(--brand); border-radius: 3px; }
+.steps-v { display: flex; flex-direction: column; gap: 12px; text-align: left; width: 100%; }
+.steps-v div { display: flex; gap: 10px; align-items: center; font-size: 15px; min-height: 24px; }
+.steps-v .done { color: var(--text); } .steps-v .done .i { color: var(--pass); }
+.steps-v .now { color: var(--text); font-weight: 600; } .steps-v .now .i { color: var(--brand); }
+.steps-v .todo { color: var(--text-subtle); }
+
+/* ── Toast (sonner) ── */
+.toast { position: absolute; left: 16px; right: 16px; bottom: 88px; background: #1C1F1D; color: #fff; border-radius: var(--radius-md); padding: 12px 14px; display: flex; gap: 10px; align-items: center; font-size: 14px; line-height: 20px; box-shadow: var(--shadow-toast); }
+.toast .i { color: #8FD1A8; }
+.toast.err .i { color: #F4A79F; }
+
+/* ── BottomSheet (Drawer) ── */
+.scrim { position: absolute; inset: 0; background: var(--scrim); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface-card); border-radius: var(--radius-xl) var(--radius-xl) 0 0; box-shadow: var(--shadow-sheet); padding: 8px var(--gutter) 20px; display: flex; flex-direction: column; gap: 14px; }
+.grabber { width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto 4px; }
+
+/* ── 하단 탭 ── */
+.tabbar { height: var(--tabbar-h); flex: none; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--border); background: var(--surface-card); }
+.tabbar div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; color: var(--text-subtle); position: relative; }
+.tabbar div.on { color: var(--brand); font-weight: 700; }
+.tabbar .i { width: 24px; height: 24px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fail); position: absolute; }
+.tabbar .dot { top: 10px; left: calc(50% + 8px); }
+.iconbtn .dot { top: 10px; right: 10px; }
+
+/* ── CandidateCard ── */
+.cand { background: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.cand-top { display: flex; gap: 12px; }
+.thumb-blur { width: 72px; height: 72px; border-radius: var(--radius-md); flex: none; overflow: hidden; position: relative; background: #CFC8BB; }
+.thumb-blur > div { position: absolute; inset: -12px; filter: blur(14px); }
+.thumb-blur .i { position: absolute; right: 4px; bottom: 4px; width: 16px; height: 16px; color: #fff; filter: drop-shadow(0 0 2px rgba(0,0,0,.4)); }
+.thumb-none { width: 72px; height: 72px; border-radius: var(--radius-md); background: var(--surface-sunken); color: var(--text-muted); display: flex; align-items: center; justify-content: center; flex: none; }
+.cand-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cand-meta .cat { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 700; }
+.cand-meta .cat .i { color: var(--brand); }
+.cand-meta .sub { font-size: 13px; color: var(--text-muted); line-height: 18px; }
+.cand-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+.cand-foot { display: flex; align-items: center; gap: 8px; }
+.tries { font-size: 13px; color: var(--text-muted); flex: 1; display: flex; align-items: center; gap: 4px; }
+.tries b { color: var(--text); }
+.cand.locked { background: #FAF8F4; }
+
+/* ── NotificationItem ── */
+.noti { display: flex; gap: 12px; padding: 14px var(--gutter); min-height: 72px; border-bottom: 1px solid var(--border); background: #fff; position: relative; }
+.noti.unread { background: #FDFCF8; }
+.noti .ic { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; background: var(--brand-soft); color: var(--brand); }
+.noti .tx { flex: 1; font-size: 15px; line-height: 21px; }
+.noti .tx small { display: block; color: var(--text-subtle); font-size: 12px; margin-top: 2px; }
+.noti .dot { position: static; margin-top: 8px; background: var(--brand); flex: none; }
+.noti.read .tx { color: var(--text-muted); }
+
+/* ── EmptyState ── */
+.empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 32px 8px; }
+.empty .result-ic { width: 64px; height: 64px; }
+
+/* ── SeedBadge / 마스킹 ── */
+.mask { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+
+/* ── 사진 자리 ── */
+.photo { border-radius: var(--radius-lg); overflow: hidden; position: relative; background: #CFC8BB; }
+.photo .obj { position: absolute; }
+.camera-view { background: #1E2421; color: #fff; border-radius: var(--radius-lg); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+/* ── QR ── */
+.qr-card { background: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.qr { width: 232px; height: 232px; padding: 12px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); }
+
+/* ── Turnstile 자리 ── */
+.captcha { height: 65px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: #FAFAFA; display: flex; align-items: center; gap: 12px; padding: 0 14px; font-size: 14px; }
+.captcha .box { width: 26px; height: 26px; border: 2px solid #9AA09B; border-radius: 4px; background: #fff; display: flex; align-items: center; justify-content: center; }
+.captcha .box.ok { border-color: var(--pass); background: var(--pass); color: #fff; }
+.captcha small { margin-left: auto; font-size: 10px; color: var(--text-subtle); text-align: right; line-height: 12px; }
+
+/* ── 컴포넌트 시트 (보드 전용) ── */
+.sheetboard { background: var(--surface); border-radius: 20px; padding: 28px; box-shadow: 0 12px 32px rgba(0,0,0,.10); display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 28px; max-width: 1560px; }
+.sheetboard h3 { font-size: 14px; margin: 0 0 12px; color: var(--text-muted); font-weight: 700; }
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.sw { border-radius: 10px; height: 64px; padding: 8px; font-size: 11px; line-height: 14px; display: flex; flex-direction: column; justify-content: flex-end; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
+.phone.long { height: auto; min-height: 740px; }
+.phone.long .body { overflow: visible; flex: none; }
+
+/* 배치 1 전용 */
+.c01 { display: flex; flex-direction: column; height: 100%; }
+.c01 a { display: flex; flex-direction: column; text-decoration: none; color: inherit; padding: 20px 24px; position: relative; }
+.c01 .b1 { background: var(--band-finder); color: #fff; height: 262px; }
+.c01 .b2 { background: var(--band-lost); height: 246px; justify-content: center; }
+.c01 .b3 { background: var(--band-demo); flex: 1; justify-content: center; }
+.c01 .wm { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; color: var(--band-finder-sub); margin-bottom: auto; }
+.c01 .t { font-size: 28px; line-height: 36px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+.c01 .s { font-size: 14px; line-height: 20px; margin: 4px 0 0; }
+.c01 .b1 .s { color: var(--band-finder-sub); }
+.c01 .b2 .s, .c01 .b3 .s { color: var(--text-muted); }
+.c01 .go { position: absolute; right: 20px; bottom: 20px; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.c01 .b1 .go { background: rgba(255,255,255,.14); color: #fff; }
+.c01 .b2 .go { background: var(--brand); color: #fff; }
+.c01 .b3 .go { background: rgba(90,69,39,.12); color: var(--band-demo-fg); }
+.c01 .b2 .go, .c01 .b3 .go { bottom: auto; top: 50%; transform: translateY(-50%); }
+.c01 .b1 .ic, .c01 .b2 .ic, .c01 .b3 .ic { margin-bottom: 12px; }
+.c01 .b2 .ic { color: var(--brand); } .c01 .b3 .ic { color: var(--band-demo-fg); }
+.c01 .admin { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; }
+.c01 .admin span { font-size: 13px; color: var(--text-muted); text-decoration: underline; text-underline-offset: 3px; display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; }
+.c01 .tag { font-size: 12px; color: var(--band-demo-fg); font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+.dz { height: 220px; border-radius: var(--radius-lg); border: 2px dashed var(--border-strong); background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-muted); text-align: center; }
+.dz .i { color: var(--brand); }
+.tip { display: flex; gap: 10px; font-size: 14px; line-height: 20px; align-items: flex-start; }
+.tip .i { color: var(--brand); width: 18px; height: 18px; margin-top: 1px; }
+.prev { height: 260px; }
+.obj-earbud { left: 50%; top: 50%; width: 120px; height: 90px; margin: -45px 0 0 -60px; background: #F8F8F6; border-radius: 40px 40px 34px 34px; box-shadow: inset 0 -10px 18px rgba(0,0,0,.12), 0 14px 24px rgba(0,0,0,.18); }
+.obj-earbud::after { content: ""; position: absolute; left: 50%; top: 28px; width: 70px; height: 2px; margin-left: -35px; background: #D6D6D2; }
+.recbld { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius-lg); background: #fff; box-shadow: var(--shadow-card); }
+.recbld .t { flex: 1; } .recbld .t b { font-size: 17px; display: block; } .recbld .t small { font-size: 13px; color: var(--pass); display: flex; gap: 4px; align-items: center; font-weight: 600; }
+.recbld .t small .i { width: 14px; height: 14px; }
+.miniphoto { width: 56px; height: 56px; border-radius: var(--radius-md); flex: none; }
+.floor { display: flex; gap: 8px; overflow: hidden; }
+.floor .chip { min-width: 52px; justify-content: center; padding: 0 10px; }
+.same { font-size: 11px; font-weight: 700; color: var(--brand); background: var(--brand-soft); border-radius: 4px; padding: 2px 6px; margin-left: 6px; vertical-align: 1px; }
+</style>
+</head>
+<body class="board">
+<header class="board-head">
+  <h1>찾음표 · 배치 1 — 토큰·컴포넌트, C-01~C-03, F-01~F-04</h1>
+  <p>시안 11 "창구 띠". 360×740 기준. 값은 frontend/src/styles/tokens.css 와 같다. 설명은 docs/design/system/README.md.</p>
+</header>
+
+<!-- ───────────── 컴포넌트 시트 ───────────── -->
+<div class="board-section">토큰·컴포넌트</div>
+<div class="sheetboard shot" data-id="components">
+  <section>
+    <h3>흐름(띠) 색</h3>
+    <div class="swatches">
+      <div class="sw" style="background:var(--band-finder);color:#fff">band-finder<br>#1C4B34 · 습득자</div>
+      <div class="sw" style="background:var(--band-lost)">band-lost<br>#F6F2EA · 분실자</div>
+      <div class="sw" style="background:var(--band-demo);color:var(--band-demo-fg)">band-demo<br>#E8DFCF · 체험</div>
+      <div class="sw" style="background:var(--band-admin);color:#fff">band-admin<br>#22302A · 관리자</div>
+      <div class="sw" style="background:var(--brand);color:#fff">brand<br>#1E5B3D</div>
+      <div class="sw" style="background:var(--brand-soft)">brand-soft<br>#E4F1E8</div>
+      <div class="sw" style="background:var(--surface)">surface<br>#FBF9F4</div>
+      <div class="sw" style="background:var(--surface-sunken)">sunken<br>#EFEBE3</div>
+    </div>
+    <h3 style="margin-top:16px">상태 색 (아이콘+글자 필수)</h3>
+    <div class="swatches">
+      <div class="sw" style="background:var(--pass-bg);color:var(--pass)">pass<br>#1E6B43</div>
+      <div class="sw" style="background:var(--question-bg);color:var(--question)">question<br>#9A4A06</div>
+      <div class="sw" style="background:var(--fail-bg);color:var(--fail)">fail·locked<br>#B42318</div>
+      <div class="sw" style="background:var(--review-bg);color:var(--review)">review<br>#6A5400</div>
+      <div class="sw" style="background:var(--inperson-bg);color:var(--inperson)">in-person<br>#2E3D8C</div>
+      <div class="sw" style="background:var(--seed-bg);color:var(--seed)">seed<br>#5A4527</div>
+      <div class="sw" style="background:#fff;color:var(--text)">text<br>#1C1F1D</div>
+      <div class="sw" style="background:#fff;color:var(--text-muted)">muted<br>#565D58</div>
+    </div>
+  </section>
+  <section>
+    <h3>글자 (Pretendard)</h3>
+    <div class="stack" style="gap:6px">
+      <div style="font-size:28px;line-height:36px;font-weight:700;letter-spacing:-0.02em">display 28/36 물건을 주웠어요</div>
+      <div style="font-size:24px;line-height:32px;font-weight:700">headline 24/32 등록됐어요</div>
+      <div style="font-size:20px;line-height:28px;font-weight:700">title 20/28 후보 3개</div>
+      <div style="font-size:17px;line-height:24px;font-weight:600">body-lg 17/24 화면 제목</div>
+      <div style="font-size:15px;line-height:22px">body 15/22 본문 기본 크기예요.</div>
+      <div class="small">small 13/18 안내 문구, 보조 설명</div>
+      <div class="caption">caption 12/16 캡션, 시각</div>
+    </div>
+    <h3 style="margin-top:16px">모양</h3>
+    <p class="small">radius 6 배지 · 10 버튼·입력 · 14 카드 · 20 시트 / 간격 4단위, 화면 좌우 20 / 버튼 52, 입력 48, 칩·탭·아이콘 버튼 최소 44</p>
+  </section>
+  <section>
+    <h3>Button</h3>
+    <div class="stack">
+      <button class="btn btn-primary">primary · 등록하기</button>
+      <button class="btn btn-secondary">secondary · 앨범에서 고르기</button>
+      <button class="btn btn-danger">danger · 신고 닫기</button>
+      <button class="btn btn-ghost">ghost · 나중에 할게요</button>
+      <button class="btn" disabled>disabled · 동의하고 계속하기</button>
+      <button class="btn btn-primary"><svg class="i spin" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M21 12a9 9 0 1 1-6.219-8.56" /> </svg>loading · 등록하는 중</button>
+    </div>
+  </section>
+  <section>
+    <h3>Input · Textarea · Select</h3>
+    <div class="stack" style="gap:12px">
+      <div class="field"><label class="label">학교 이메일</label><div class="input"><span class="ph">아이디@skuniv.ac.kr</span></div></div>
+      <div class="field"><label class="label">학교 이메일</label><div class="input focus">st2024</div><p class="hint">@skuniv.ac.kr 메일만 받아요.</p></div>
+      <div class="field"><label class="label">학교 이메일</label><div class="input err">st2024@gmail.com</div><p class="errtext"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <line x1="12" x2="12" y1="8" y2="12" /> <line x1="12" x2="12.01" y1="16" y2="16" /> </svg>학교 이메일(@skuniv.ac.kr)만 쓸 수 있어요.</p></div>
+      <div class="field"><label class="label">층 <span class="opt">선택</span></label><div class="input select"><span>3층</span><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m6 9 6 6 6-6" /> </svg></div></div>
+    </div>
+  </section>
+  <section>
+    <h3>StatusBadge · 공개 근거 칩 · SeedBadge</h3>
+    <div class="chips" style="gap:6px">
+      <span class="badge b-pass"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /> </svg>통과</span>
+      <span class="badge b-question"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /> <path d="M12 17h.01" /> </svg>확인 질문</span>
+      <span class="badge b-fail"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <path d="m15 9-6 6" /> <path d="m9 9 6 6" /> </svg>일치하지 않음</span>
+      <span class="badge b-fail"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 10 0v4" /> </svg>잠김</span>
+      <span class="badge b-review"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /> </svg>검토 대기</span>
+      <span class="badge b-inperson"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <polyline points="16 11 18 13 22 9" /> </svg>대면 확인만</span>
+      <span class="badge b-seed"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <ellipse cx="12" cy="5" rx="9" ry="3" /> <path d="M3 5V19A9 3 0 0 0 21 19V5" /> <path d="M3 12A9 3 0 0 0 21 12" /> </svg>시연용 데이터</span>
+      <span class="badge b-neutral"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M21 12a9 9 0 1 1-6.219-8.56" /> </svg>분석 중</span>
+      <span class="badge b-pass"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /> </svg>등록됨</span>
+      <span class="badge b-neutral"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /> <circle cx="12" cy="12" r="3" /> </svg>열람됨</span>
+      <span class="badge b-neutral"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m16 16 2 2 4-4" /> <path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14" /> <path d="m7.5 4.27 9 5.15" /> <polyline points="3.29 7 12 12 20.71 7" /> <line x1="12" x2="12" y1="22" y2="12" /> </svg>수령 완료</span>
+      <span class="badge b-neutral"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <rect width="20" height="5" x="2" y="3" rx="1" /> <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" /> <path d="M10 12h4" /> </svg>기한 만료</span>
+    </div>
+    <div class="chips" style="gap:6px;margin-top:12px">
+      <span class="reason"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" /> <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /> </svg>같은 종류</span><span class="reason"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /> <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /> <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /> <path d="M10 6h4" /> <path d="M10 10h4" /> <path d="M10 14h4" /> <path d="M10 18h4" /> </svg>같은 건물</span><span class="reason"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /> </svg>잃어버린 뒤 2시간 안에 습득</span>
+    </div>
+    <h3 style="margin-top:16px">체험 모드 띠 (DemoBanner)</h3>
+    <div class="demostrip" style="border-radius:8px"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /> <path d="M8.5 2h7" /> <path d="M7 16h10" /> </svg>체험 모드 <span>· 시연용 데이터로 움직여요</span></div>
+    <h3 style="margin-top:16px">Stepper · Skeleton</h3>
+    <div class="stepper"><i class="on"></i><i class="on"></i><i></i></div>
+    <div class="stack" style="margin-top:12px"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:12px;width:90%"></div></div>
+  </section>
+  <section>
+    <h3>Chip selector (종류 24개 중 일부) · Segmented</h3>
+    <div class="chips">
+      <div class="chip on"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /> </svg>무선 이어폰</div><div class="chip"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /> <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /> </svg>지갑</div><div class="chip"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M16 10h2" /> <path d="M16 14h2" /> <path d="M6.17 15a3 3 0 0 1 5.66 0" /> <circle cx="9" cy="11" r="2" /> <rect x="2" y="5" width="20" height="14" rx="2" /> </svg>학생증·신분증</div><div class="chip"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M22 12a10.06 10.06 1 0 0-20 0Z" /> <path d="M12 12v8a2 2 0 0 0 4 0" /> <path d="M12 2v1" /> </svg>우산</div>
+    </div>
+    <div class="seg" style="margin-top:12px">
+      <div><b><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /> </svg>그 자리에 둠</b><small>발견한 곳에 그대로</small></div>
+      <div class="on"><b><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" /> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /> <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" /> <path d="M2 7h20" /> <path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7" /> </svg>보관처에 맡김</b><small>종합서비스센터 등</small></div>
+    </div>
+  </section>
+  <section>
+    <h3>CandidateCard</h3>
+    <div class="cand">
+      <div class="cand-top">
+        <div class="thumb-blur"><div style="background:radial-gradient(circle at 45% 50%,#F4F4F0 0 28%,#B9B2A4 60%)"></div><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /> <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /> <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /> <path d="m2 2 20 20" /> </svg></div>
+        <div class="cand-meta">
+          <div class="cat"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /> </svg>무선 이어폰</div>
+          <div class="sub">10월 24일(금) 습득 · 혜인관 3층</div>
+          <div class="cand-reasons" style="margin-top:6px"><span class="reason"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" /> <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /> </svg>같은 종류</span><span class="reason"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /> <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /> <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /> <path d="M10 6h4" /> <path d="M10 10h4" /> <path d="M10 14h4" /> <path d="M10 18h4" /> </svg>같은 건물</span></div>
+        </div>
+      </div>
+      <div class="cand-foot"><span class="tries"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /> </svg>확인 기회 <b>3번 중 3번</b> 남음</span><button class="btn btn-primary btn-sm" style="padding:0 14px">내 물건인지 확인</button></div>
+    </div>
+  </section>
+  <section>
+    <h3>NotificationItem · Toast · EmptyState</h3>
+    <div style="border-radius:12px;overflow:hidden;box-shadow:var(--shadow-card)">
+      <div class="noti unread"><div class="ic"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /> <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /> </svg></div><div class="tx">혜인관에서 무선 이어폰이 새로 등록됐어요.<small>10분 전</small></div><span class="dot"></span></div>
+    </div>
+    <div class="toast" style="position:static;margin-top:12px"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /> </svg>모두 읽음으로 바꿨어요.</div>
+    <div class="empty" style="padding:16px 0 0"><div class="result-ic r-neutral"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="11" cy="11" r="8" /> <path d="m21 21-4.3-4.3" /> </svg></div><p class="small">빈 화면: 아이콘 64 원 + 제목 + 한 줄 + 행동 버튼</p></div>
+  </section>
+</div>
+
+<!-- ───────────── 공통 ───────────── -->
+<div class="board-section">공통 C-01 ~ C-03</div>
+<div class="row">
+
+  <div class="frame" data-id="C-01">
+    <p class="frame-label"><b>C-01</b><span>첫 화면 · 창구 띠 3개</span></p>
+    <div class="phone">
+      <nav class="c01">
+        <a class="b1" href="#F-01">
+          <span class="wm">찾음표</span>
+          <span class="ic"><svg class="i i-32" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" /> </svg></span>
+          <h2 class="t">물건을 주웠어요</h2>
+          <p class="s">가입 없이 사진만</p>
+          <span class="go"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /> </svg></span>
+        </a>
+        <a class="b2" href="#L-01">
+          <span class="ic"><svg class="i i-32" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="11" cy="11" r="8" /> <path d="m21 21-4.3-4.3" /> </svg></span>
+          <h2 class="t">잃어버렸어요</h2>
+          <p class="s">로그인 · 회원가입</p>
+          <span class="go"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /> </svg></span>
+        </a>
+        <a class="b3" href="#C-03" style="padding-bottom:52px">
+          <span class="tag"><svg class="i i-14" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /> <path d="M8.5 2h7" /> <path d="M7 16h10" /> </svg>심사위원용</span>
+          <h2 class="t">체험해 보기</h2>
+          <p class="s">사진은 바로 올리고,<br>특징이 맞아야 위치가 열린다.</p>
+          <span class="go"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /> </svg></span>
+          <span class="admin"><span>관리자 로그인</span></span>
+        </a>
+      </nav>
+    </div>
+    <p class="note">띠 전체가 버튼(a). 초록 262 · 아이보리 246 · 베이지 나머지. 오른쪽 원 44px는 장식(띠 전체가 터치 영역).</p>
+  </div>
+
+  <div class="frame" data-id="C-02-finder">
+    <p class="frame-label"><b>C-02</b><span>동의 바텀시트 · 습득자·체험</span></p>
+    <div class="phone">
+      <div class="bandhero finder"><div class="hrow"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span></div><h2>물건을 주웠어요</h2><p>사진 한 장이면 끝나요.</p></div>
+      <div class="body"></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grabber"></div>
+        <h3 class="h1" style="font-size:19px">시작하기 전에 확인해 주세요</h3>
+        <div class="opt-row" style="border:0;padding:0;min-height:48px"><span class="check on"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span><b style="flex:1;font-size:16px">모두 동의해요</b></div>
+        <hr class="divider">
+        <div class="opt-row" style="border:0;padding:0;align-items:flex-start;min-height:44px">
+          <span class="check on" style="margin-top:2px"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span>
+          <div class="t"><b><span style="color:var(--brand)">[필수]</span> 사진 외부 AI 처리</b><small>물건의 종류·색·특징을 알아보려고 사진을 외부 AI 서비스로 보내요.</small></div>
+          <span class="iconbtn" style="margin:-10px -12px 0 0;color:var(--text-subtle)"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m9 18 6-6-6-6" /> </svg></span>
+        </div>
+        <div class="opt-row" style="border:0;padding:0;align-items:flex-start;min-height:44px">
+          <span class="check on" style="margin-top:2px"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span>
+          <div class="t"><b><span style="color:var(--text-muted)">[선택]</span> 위치 사용</b><small>가까운 건물을 고르는 데만 써요. 좌표는 서버로 보내지 않아요.</small></div>
+          <span class="iconbtn" style="margin:-10px -12px 0 0;color:var(--text-subtle)"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m9 18 6-6-6-6" /> </svg></span>
+        </div>
+        <button class="btn btn-primary">동의하고 계속하기</button>
+        <p class="caption" style="text-align:center">처음 한 번만 물어봐요 · 동의 버전 2026-10</p>
+      </div>
+    </div>
+    <p class="note">필수 항목을 끄면 버튼 비활성. 행 전체(체크+글자)가 터치 영역, 오른쪽 화살표는 전문 보기.</p>
+  </div>
+
+  <div class="frame" data-id="C-02-signup">
+    <p class="frame-label"><b>C-02</b><span>동의 바텀시트 · 회원가입 ③ (필수 미체크)</span></p>
+    <div class="phone ivory">
+      <div class="bandhead lost"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">회원가입</span></div>
+      <div class="body"></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grabber"></div>
+        <h3 class="h1" style="font-size:19px">시작하기 전에 확인해 주세요</h3>
+        <div class="opt-row" style="border:0;padding:0;min-height:48px"><span class="check"></span><b style="flex:1;font-size:16px">모두 동의해요</b></div>
+        <hr class="divider">
+        <div class="opt-row" style="border:0;padding:0;align-items:flex-start;min-height:44px">
+          <span class="check on" style="margin-top:2px"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span>
+          <div class="t"><b><span style="color:var(--brand)">[필수]</span> 학교 이메일 수집</b><small>로그인과 알림에만 써요. 받는 개인정보는 이메일뿐이에요.</small></div>
+          <span class="iconbtn" style="margin:-10px -12px 0 0;color:var(--text-subtle)"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m9 18 6-6-6-6" /> </svg></span>
+        </div>
+        <div class="opt-row" style="border:0;padding:0;align-items:flex-start;min-height:44px">
+          <span class="check" style="margin-top:2px"></span>
+          <div class="t"><b><span style="color:var(--brand)">[필수]</span> 사진 외부 AI 처리</b><small>분실 설명과 사진을 비교하려고 외부 AI 서비스를 써요.</small></div>
+          <span class="iconbtn" style="margin:-10px -12px 0 0;color:var(--text-subtle)"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m9 18 6-6-6-6" /> </svg></span>
+        </div>
+        <div class="opt-row" style="border:0;padding:0;align-items:flex-start;min-height:44px">
+          <span class="check" style="margin-top:2px"></span>
+          <div class="t"><b><span style="color:var(--text-muted)">[선택]</span> 위치 사용</b><small>가까운 건물을 고르는 데만 써요.</small></div>
+          <span class="iconbtn" style="margin:-10px -12px 0 0;color:var(--text-subtle)"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m9 18 6-6-6-6" /> </svg></span>
+        </div>
+        <button class="btn" disabled>동의하고 계속하기</button>
+        <p class="caption" style="text-align:center">필수 항목에 동의해야 가입할 수 있어요</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="C-03">
+    <p class="frame-label"><b>C-03</b><span>체험 시작 · 기본</span></p>
+    <div class="phone">
+      <div class="bandhero demo"><div class="hrow"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span></div><h2>체험해 보기</h2><p>체험 계정으로 잃어버린 물건을 찾는 과정을 끝까지 볼 수 있어요. 가입하지 않아도 돼요.</p></div>
+      <div class="body tight">
+        <p class="sec-label">이렇게 체험해요</p>
+        <div class="card flat" style="gap:14px">
+          <div class="tip"><span class="badge b-neutral" style="width:24px;justify-content:center;padding:0">1</span><span><b>분실 신고를 써요.</b> 시연용 습득물이 미리 등록돼 있어요.</span></div>
+          <div class="tip"><span class="badge b-neutral" style="width:24px;justify-content:center;padding:0">2</span><span><b>특징을 맞혀요.</b> 후보에서 내 물건인지 확인해요.</span></div>
+          <div class="tip"><span class="badge b-neutral" style="width:24px;justify-content:center;padding:0">3</span><span><b>위치가 열려요.</b> 사진을 보고 수령 QR을 받아요.</span></div>
+        </div>
+        <div class="opt-row" style="border:0;padding:0;min-height:44px"><span class="check on"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span><span style="flex:1;font-size:14px">사진 외부 AI 처리에 동의해요 <span style="color:var(--brand);font-weight:600">(필수)</span></span><span class="link">보기</span></div>
+        <div class="captcha"><span class="box ok"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span>사람인지 확인했어요<small>Cloudflare<br>Turnstile</small></div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-primary">체험 시작하기</button>
+        <p class="caption" style="text-align:center">체험 기록은 실제 물건 상태를 바꾸지 않아요.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="C-03-loading">
+    <p class="frame-label"><b>C-03</b><span>체험 시작 · 계정 만드는 중</span></p>
+    <div class="phone">
+      <div class="bandhero demo"><div class="hrow"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span></div><h2>체험해 보기</h2><p>체험 계정으로 잃어버린 물건을 찾는 과정을 끝까지 볼 수 있어요. 가입하지 않아도 돼요.</p></div>
+      <div class="body tight">
+        <p class="sec-label">이렇게 체험해요</p>
+        <div class="card flat" style="gap:14px">
+          <div class="tip"><span class="badge b-neutral" style="width:24px;justify-content:center;padding:0">1</span><span><b>분실 신고를 써요.</b> 시연용 습득물이 미리 등록돼 있어요.</span></div>
+          <div class="tip"><span class="badge b-neutral" style="width:24px;justify-content:center;padding:0">2</span><span><b>특징을 맞혀요.</b> 후보에서 내 물건인지 확인해요.</span></div>
+          <div class="tip"><span class="badge b-neutral" style="width:24px;justify-content:center;padding:0">3</span><span><b>위치가 열려요.</b> 사진을 보고 수령 QR을 받아요.</span></div>
+        </div>
+        <div class="opt-row" style="border:0;padding:0;min-height:44px"><span class="check on"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span><span style="flex:1;font-size:14px">사진 외부 AI 처리에 동의해요 <span style="color:var(--brand);font-weight:600">(필수)</span></span><span class="link">보기</span></div>
+        <div class="captcha"><span class="box ok"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span>사람인지 확인했어요<small>Cloudflare<br>Turnstile</small></div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-primary" aria-busy="true"><svg class="i spin" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M21 12a9 9 0 1 1-6.219-8.56" /> </svg>체험 계정을 만드는 중이에요</button>
+        <p class="caption" style="text-align:center">체험 기록은 실제 물건 상태를 바꾸지 않아요.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="C-03-error">
+    <p class="frame-label"><b>C-03</b><span>체험 시작 · 캡차 실패(400)·요청 제한(429)</span></p>
+    <div class="phone">
+      <div class="bandhero demo"><div class="hrow"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span></div><h2>체험해 보기</h2><p>체험 계정으로 잃어버린 물건을 찾는 과정을 끝까지 볼 수 있어요. 가입하지 않아도 돼요.</p></div>
+      <div class="body tight">
+        <div class="alert a-fail"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <line x1="12" x2="12" y1="8" y2="12" /> <line x1="12" x2="12.01" y1="16" y2="16" /> </svg><div><b>사람 확인에 실패했어요</b>아래 확인을 다시 눌러 주세요.</div></div>
+        <div class="alert a-review"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <line x1="10" x2="14" y1="2" y2="2" /> <line x1="12" x2="15" y1="14" y2="11" /> <circle cx="12" cy="14" r="8" /> </svg><div><b>잠시 후 다시 시도해 주세요</b>짧은 시간에 요청이 많았어요. (429일 때)</div></div>
+        <div class="opt-row" style="border:0;padding:0;min-height:44px"><span class="check on"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span><span style="flex:1;font-size:14px">사진 외부 AI 처리에 동의해요 <span style="color:var(--brand);font-weight:600">(필수)</span></span><span class="link">보기</span></div>
+        <div class="captcha"><span class="box"></span>사람인지 확인해 주세요<small>Cloudflare<br>Turnstile</small></div>
+      </div>
+      <div class="foot">
+        <button class="btn" disabled>체험 시작하기</button>
+        <p class="caption" style="text-align:center">두 알림은 같은 자리에 하나만 보여요.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── 습득자 ───────────── -->
+<div class="board-section">습득자 F-01 ~ F-04 (초록 흐름, 로그인 없음)</div>
+<div class="row">
+
+  <div class="frame" data-id="F-01">
+    <p class="frame-label"><b>F-01</b><span>사진 찍기 · 기본</span></p>
+    <div class="phone">
+      <div class="bandhero finder">
+        <div class="hrow"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="spacer"></span><span class="stepnum" style="color:var(--band-finder-sub);padding-right:12px">1 / 2</span></div>
+        <h2>물건을 주웠어요</h2><p>사진 한 장이면 끝나요. 가입하지 않아도 돼요.</p>
+        <div class="stepper" style="margin:16px 12px 0"><i class="on"></i><i></i></div>
+      </div>
+      <div class="body">
+        <div class="dz"><svg class="i i-48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" /> </svg><b style="color:var(--text);font-size:16px">물건 사진을 올려 주세요</b><span class="small">한 장만 올려요</span></div>
+        <div class="stack" style="gap:10px">
+          <div class="tip"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 7V5a2 2 0 0 1 2-2h2" /> <path d="M17 3h2a2 2 0 0 1 2 2v2" /> <path d="M21 17v2a2 2 0 0 1-2 2h-2" /> <path d="M7 21H5a2 2 0 0 1-2-2v-2" /> <path d="M7 12h10" /> </svg><span>물건 전체가 화면에 들어오게 찍어 주세요.</span></div>
+          <div class="tip"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" /> <path d="M20 3v4" /> <path d="M22 5h-4" /> <path d="M4 17v2" /> <path d="M5 18H3" /> </svg><span>밝은 곳에서, 배경이 단순할수록 잘 알아봐요.</span></div>
+          <div class="tip"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /> <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /> <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /> <path d="m2 2 20 20" /> </svg><span>학생증처럼 개인정보가 보이면 공개용 사진은 흐리게 처리돼요.</span></div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-primary"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" /> </svg>카메라로 찍기</button>
+        <button class="btn btn-secondary"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <rect width="18" height="18" x="3" y="3" rx="2" ry="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /> </svg>앨범에서 고르기</button>
+        <p class="caption" style="text-align:center">JPG·PNG·HEIC·WEBP · 10MB까지</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="F-01-picked">
+    <p class="frame-label"><b>F-01</b><span>사진 고른 뒤</span></p>
+    <div class="phone">
+      <div class="bandhero finder">
+        <div class="hrow"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="spacer"></span><span class="stepnum" style="color:var(--band-finder-sub);padding-right:12px">1 / 2</span></div>
+        <h2>이 사진으로 할까요?</h2><p>물건이 잘 보이면 다음으로 넘어가요.</p>
+        <div class="stepper" style="margin:16px 12px 0"><i class="on"></i><i></i></div>
+      </div>
+      <div class="body">
+        <div class="photo prev" style="background:linear-gradient(160deg,#D9D2C4,#BDB4A3)"><div class="obj obj-earbud"></div></div>
+        <p class="small" style="text-align:center">IMG_2041.HEIC · 3.2MB</p>
+      </div>
+      <div class="foot">
+        <button class="btn btn-primary">다음<svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /> </svg></button>
+        <button class="btn btn-secondary"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" /> </svg>다시 찍기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="F-02">
+    <p class="frame-label"><b>F-02</b><span>등록 정보 · 사진 위치로 건물 추천 · 그 자리에 둠</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">등록 정보</span><span class="stepnum" style="color:var(--band-finder-sub);padding-right:12px">2 / 2</span></div>
+      <div class="body">
+        <div class="field">
+          <span class="label">어디서 주웠나요?</span>
+          <div class="recbld">
+            <div class="photo miniphoto" style="background:linear-gradient(160deg,#D9D2C4,#BDB4A3)"></div>
+            <div class="t"><b>혜인관</b><small><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /> </svg>사진 위치로 골랐어요</small></div>
+            <button class="btn btn-secondary btn-sm" style="padding:0 14px">바꾸기</button>
+          </div>
+          <p class="hint">위치는 건물을 고르는 데만 쓰고 서버로 보내지 않아요.</p>
+        </div>
+        <div class="field">
+          <span class="label">층 <span class="opt">선택</span></span>
+          <div class="floor"><div class="chip">B1</div><div class="chip">1층</div><div class="chip">2층</div><div class="chip on">3층</div><div class="chip">4층</div><div class="chip">5층</div></div>
+        </div>
+        <div class="field">
+          <span class="label">물건은 지금 어디 있나요?</span>
+          <div class="seg">
+            <div class="on"><b><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /> </svg>그 자리에 둠</b><small>발견한 곳에 그대로</small></div>
+            <div><b><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" /> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /> <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" /> <path d="M2 7h20" /> <path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7" /> </svg>보관처에 맡김</b><small>센터·경비실에 전달</small></div>
+          </div>
+        </div>
+        <div class="captcha"><span class="box ok"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span>사람인지 확인했어요<small>Cloudflare<br>Turnstile</small></div>
+      </div>
+      <div class="foot line">
+        <button class="btn btn-primary">등록하기</button>
+      </div>
+    </div>
+    <p class="note">건물 추천 순서: 사진 EXIF GPS → (위치 동의 시) 브라우저 위치 → 직접 선택. 출처 문구만 바뀐다: "사진 위치로 골랐어요" / "지금 위치로 골랐어요".</p>
+  </div>
+
+  <div class="frame" data-id="F-02-handover">
+    <p class="frame-label"><b>F-02</b><span>보관처에 맡김 · 보관처 목록 (스크롤 전체)</span></p>
+    <div class="phone long">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">등록 정보</span><span class="stepnum" style="color:var(--band-finder-sub);padding-right:12px">2 / 2</span></div>
+      <div class="body">
+        <div class="field">
+          <span class="label">어디서 주웠나요?</span>
+          <div class="recbld">
+            <div class="photo miniphoto" style="background:linear-gradient(160deg,#D9D2C4,#BDB4A3)"></div>
+            <div class="t"><b>청운관</b><small><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /> </svg>지금 위치로 골랐어요</small></div>
+            <button class="btn btn-secondary btn-sm" style="padding:0 14px">바꾸기</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">층 <span class="opt">선택</span></span>
+          <div class="floor"><div class="chip on">B1</div><div class="chip">1층</div><div class="chip">2층</div><div class="chip">3층</div><div class="chip">4층</div><div class="chip">5층</div></div>
+        </div>
+        <div class="field">
+          <span class="label">물건은 지금 어디 있나요?</span>
+          <div class="seg">
+            <div><b><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /> </svg>그 자리에 둠</b><small>발견한 곳에 그대로</small></div>
+            <div class="on"><b><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" /> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /> <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" /> <path d="M2 7h20" /> <path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7" /> </svg>보관처에 맡김</b><small>센터·경비실에 전달</small></div>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">어느 보관처에 맡겼나요?</span>
+          <div class="opts">
+            <div class="opt-row"><span class="radio on"></span><div class="t"><b>청운관 경비실<span class="same">같은 건물</span></b><small>청운관 1층 엘리베이터 맞은편</small></div></div>
+            <div class="opt-row"><span class="radio"></span><div class="t"><b>종합서비스센터</b><small>혜인관 1층 정문 옆</small></div></div>
+            <div class="opt-row"><span class="radio"></span><div class="t"><b>북악관 경비실</b><small>북악관 1층 로비</small></div></div>
+          </div>
+          <p class="errtext" style="display:none"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <line x1="12" x2="12" y1="8" y2="12" /> <line x1="12" x2="12.01" y1="16" y2="16" /> </svg>맡긴 보관처를 골라 주세요.</p>
+        </div>
+        <div class="captcha"><span class="box ok"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 6 9 17l-5-5" /> </svg></span>사람인지 확인했어요<small>Cloudflare<br>Turnstile</small></div>
+      </div>
+      <div class="foot line">
+        <button class="btn btn-primary">등록하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="F-02-building">
+    <p class="frame-label"><b>F-02</b><span>건물 직접 고르기 (위치 없음·바꾸기)</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">등록 정보</span></div>
+      <div class="body"></div>
+      <div class="scrim"></div>
+      <div class="sheet" style="top:120px">
+        <div class="grabber"></div>
+        <h3 class="h2">어느 건물에서 주웠나요?</h3>
+        <div class="input"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="11" cy="11" r="8" /> <path d="m21 21-4.3-4.3" /> </svg><span class="ph">건물 이름 검색</span></div>
+        <div class="opts">
+          <div class="opt-row"><span class="radio on"></span><div class="t"><b>혜인관</b></div></div>
+          <div class="opt-row"><span class="radio"></span><div class="t"><b>청운관</b></div></div>
+          <div class="opt-row"><span class="radio"></span><div class="t"><b>북악관</b></div></div>
+          <div class="opt-row"><span class="radio"></span><div class="t"><b>한림관</b></div></div>
+          <div class="opt-row"><span class="radio"></span><div class="t"><b>학술정보관</b></div></div>
+        </div>
+        <button class="btn btn-primary">혜인관으로 할게요</button>
+      </div>
+    </div>
+    <p class="note">사진에 위치가 없고 위치 동의도 없으면 F-02 첫 칸이 "건물을 골라 주세요"(빈 Select)로 보이고 이 시트가 열린다.</p>
+  </div>
+
+  <div class="frame" data-id="F-03">
+    <p class="frame-label"><b>F-03</b><span>등록 중 (최대 10초)</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn" style="visibility:hidden"></span><span class="title">등록하는 중</span></div>
+      <div class="body center" style="gap:24px">
+        <div class="result-ic r-brand"><svg class="i spin" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M21 12a9 9 0 1 1-6.219-8.56" /> </svg></div>
+        <div><p class="h1">물건을 알아보고 있어요</p><p class="p" style="margin-top:4px">10초 안에 끝나요. 화면을 닫지 마세요.</p></div>
+        <div class="progress"><i style="width:55%"></i></div>
+        <div class="steps-v">
+          <div class="done"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /> </svg>사진 올리기</div>
+          <div class="now"><svg class="i spin" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M21 12a9 9 0 1 1-6.219-8.56" /> </svg>AI가 종류·특징 알아보기</div>
+          <div class="todo"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <circle cx="12" cy="12" r="1" /> </svg>등록 마무리</div>
+        </div>
+      </div>
+    </div>
+    <p class="note">진행 막대는 시간 기반(0→90% 10초, 응답 오면 100%). 뒤로가기 막음.</p>
+  </div>
+
+  <div class="frame" data-id="F-04-ok">
+    <p class="frame-label"><b>F-04</b><span>등록됨 · 보관처에 맡김</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M18 6 6 18" /> <path d="m6 6 12 12" /> </svg></span><span class="title">등록 결과</span></div>
+      <div class="body">
+        <div class="empty" style="padding:12px 0 0"><div class="result-ic r-pass"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /> </svg></div><p class="h1">등록됐어요</p><p class="p">잃어버린 분이 특징을 맞히면<br>보관 위치를 알려드려요.</p></div>
+        <div class="card">
+          <div class="hrow"><span class="badge b-pass"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /> </svg>등록됨</span><span class="caption">AI가 알아본 종류</span></div>
+          <dl class="kv"><dt>종류</dt><dd class="hrow" style="gap:6px"><svg class="i i-16" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /> </svg>무선 이어폰</dd><dt>주운 곳</dt><dd>혜인관 3층</dd><dt>보관</dt><dd>종합서비스센터<br><span class="small">혜인관 1층 정문 옆</span></dd></dl>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-primary"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" /> </svg>하나 더 등록하기</button>
+        <button class="btn btn-ghost">처음으로</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="F-04-advice">
+    <p class="frame-label"><b>F-04</b><span>등록됨 · 귀중품인데 그 자리에 둠 (handOverAdvice)</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M18 6 6 18" /> <path d="m6 6 12 12" /> </svg></span><span class="title">등록 결과</span></div>
+      <div class="body tight">
+        <div class="hrow" style="gap:12px"><div class="result-ic r-pass" style="width:48px;height:48px"><svg class="i i-24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /> </svg></div><div><p class="h1">등록됐어요</p><p class="small"><svg class="i i-14" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /> <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /> </svg> 지갑 · 혜인관 2층 · 그 자리에 둠</p></div></div>
+        <div class="alert a-warn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /> </svg><div><b>가까운 보관처에 맡겨 주세요</b>귀중품이에요. 잃어버린 사람이 안전하게 찾을 수 있게 가까운 보관처에 맡겨 주세요.</div></div>
+        <div class="opts">
+          <div class="opt-row"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" /> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /> <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" /> <path d="M2 7h20" /> <path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7" /> </svg><div class="t"><b>종합서비스센터<span class="same">같은 건물</span></b><small>혜인관 1층 정문 옆</small></div></div>
+          <div class="opt-row"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" /> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /> <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" /> <path d="M2 7h20" /> <path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7" /> </svg><div class="t"><b>청운관 경비실</b><small>청운관 1층 엘리베이터 맞은편</small></div></div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-primary">확인했어요</button>
+      </div>
+    </div>
+    <p class="note">안내 문구·보관처 목록은 응답의 handOverAdvice 그대로. 목록 행은 정보용(누름 없음).</p>
+  </div>
+
+  <div class="frame" data-id="F-04-review">
+    <p class="frame-label"><b>F-04</b><span>검토 대기 (AI 분석 실패)</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M18 6 6 18" /> <path d="m6 6 12 12" /> </svg></span><span class="title">등록 결과</span></div>
+      <div class="body">
+        <div class="empty" style="padding:12px 0 0"><div class="result-ic r-review"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /> </svg></div><p class="h1">접수됐어요</p><p class="p">분석이 늦어져서 관리자가 확인한 뒤 등록돼요.</p></div>
+        <div class="card">
+          <div class="hrow"><span class="badge b-review"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /> </svg>검토 대기</span></div>
+          <dl class="kv"><dt>주운 곳</dt><dd>북악관 1층</dd><dt>보관</dt><dd>그 자리에 둠</dd></dl>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-primary"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" /> </svg>하나 더 등록하기</button>
+        <button class="btn btn-ghost">처음으로</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="F-04-422">
+    <p class="frame-label"><b>F-04</b><span>물건이 안 보임 (422)</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">등록 결과</span></div>
+      <div class="body center">
+        <div class="result-ic r-neutral"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <line x1="2" x2="22" y1="2" y2="22" /> <path d="M10.41 10.41a2 2 0 1 1-2.83-2.83" /> <line x1="13.5" x2="6" y1="13.5" y2="21" /> <line x1="18" x2="21" y1="12" y2="15" /> <path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59" /> <path d="M21 15V5a2 2 0 0 0-2-2H9" /> </svg></div>
+        <p class="h1">사진에서 물건을 찾지 못했어요</p>
+        <p class="p">물건 전체가 보이게 다시 찍어 주세요.<br>입력한 건물·보관 정보는 그대로 있어요.</p>
+      </div>
+      <div class="foot">
+        <button class="btn btn-primary"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" /> </svg>다시 찍기</button>
+        <button class="btn btn-ghost">처음으로</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="F-04-429">
+    <p class="frame-label"><b>F-04</b><span>너무 잦음 (429)</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">등록 결과</span></div>
+      <div class="body center">
+        <div class="result-ic r-review"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <line x1="10" x2="14" y1="2" y2="2" /> <line x1="12" x2="15" y1="14" y2="11" /> <circle cx="12" cy="14" r="8" /> </svg></div>
+        <p class="h1">잠시 후 다시 시도해 주세요</p>
+        <p class="p">같은 기기에서는 10분에 5건까지<br>등록할 수 있어요.</p>
+      </div>
+      <div class="foot">
+        <button class="btn btn-secondary">처음으로</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame" data-id="F-04-413">
+    <p class="frame-label"><b>F-04</b><span>용량 초과 (413)</span></p>
+    <div class="phone">
+      <div class="bandhead finder"><span class="iconbtn"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m15 18-6-6 6-6" /> </svg></span><span class="title">등록 결과</span></div>
+      <div class="body center">
+        <div class="result-ic r-fail"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="12" cy="12" r="10" /> <line x1="12" x2="12" y1="8" y2="12" /> <line x1="12" x2="12.01" y1="16" y2="16" /> </svg></div>
+        <p class="h1">사진 용량이 너무 커요</p>
+        <p class="p">10MB 이하 사진으로 다시 골라 주세요.</p>
+      </div>
+      <div class="foot">
+        <button class="btn btn-primary"><svg class="i " aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <rect width="18" height="18" x="3" y="3" rx="2" ry="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /> </svg>다른 사진 고르기</button>
+        <button class="btn btn-ghost">처음으로</button>
+      </div>
+    </div>
+    <p class="note">프론트에서 올리기 전에 10MB를 먼저 검사하면 F-01에서 같은 문구를 인라인 오류로 보여 준다.</p>
+  </div>
+</div>
+</body>
+</html>

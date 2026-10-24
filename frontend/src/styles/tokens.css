@@ -1,0 +1,146 @@
+/*
+ * 찾음표 디자인 토큰 — 시안 11 "창구 띠"
+ * 출처: docs/design/system/README.md (원칙·컴포넌트), docs/design/system/screens/batch*.html (화면 명세)
+ * 소유: 디자인 작업. 값을 바꾸면 README의 대비 표도 같이 고친다.
+ *
+ * ── Tailwind 연결 방법 (tailwind.config.ts) ─────────────────────────────
+ *   import "./src/styles/tokens.css"  // main.tsx 또는 index.css 맨 위에서 @import
+ *
+ *   theme: {
+ *     extend: {
+ *       colors: {
+ *         band:    { finder: "var(--band-finder)", "finder-fg": "var(--band-finder-fg)",
+ *                    "finder-sub": "var(--band-finder-sub)",
+ *                    lost: "var(--band-lost)", demo: "var(--band-demo)", "demo-fg": "var(--band-demo-fg)" },
+ *         brand:   { DEFAULT: "var(--brand)", hover: "var(--brand-hover)", soft: "var(--brand-soft)",
+ *                    fg: "var(--brand-fg)" },
+ *         surface: { DEFAULT: "var(--surface)", card: "var(--surface-card)", sunken: "var(--surface-sunken)" },
+ *         ink:     { DEFAULT: "var(--text)", muted: "var(--text-muted)", subtle: "var(--text-subtle)",
+ *                    inverse: "var(--text-inverse)" },
+ *         line:    { DEFAULT: "var(--border)", strong: "var(--border-strong)" },
+ *         pass:     { DEFAULT: "var(--pass)", bg: "var(--pass-bg)" },
+ *         question: { DEFAULT: "var(--question)", bg: "var(--question-bg)" },
+ *         fail:     { DEFAULT: "var(--fail)", bg: "var(--fail-bg)" },   // 실패·잠김·위험 버튼
+ *         review:   { DEFAULT: "var(--review)", bg: "var(--review-bg)" },
+ *         inperson: { DEFAULT: "var(--inperson)", bg: "var(--inperson-bg)" },
+ *         seed:     { DEFAULT: "var(--seed)", bg: "var(--seed-bg)" },
+ *         // shadcn/ui 기본 이름도 같은 값으로 묶는다 (components.json cssVariables: true)
+ *         background: "var(--surface)", foreground: "var(--text)",
+ *         primary: { DEFAULT: "var(--brand)", foreground: "var(--brand-fg)" },
+ *         secondary: { DEFAULT: "var(--surface-card)", foreground: "var(--brand)" },
+ *         destructive: { DEFAULT: "var(--fail)", foreground: "#FFFFFF" },
+ *         muted: { DEFAULT: "var(--surface-sunken)", foreground: "var(--text-muted)" },
+ *         border: "var(--border)", input: "var(--border-strong)", ring: "var(--focus)",
+ *       },
+ *       borderRadius: { sm: "var(--radius-sm)", md: "var(--radius-md)", lg: "var(--radius-lg)",
+ *                       xl: "var(--radius-xl)" },
+ *       boxShadow: { card: "var(--shadow-card)", sheet: "var(--shadow-sheet)", toast: "var(--shadow-toast)" },
+ *       fontFamily: { sans: ["Pretendard", "Pretendard Variable", "-apple-system", "system-ui", "sans-serif"] },
+ *       fontSize: {  // [크기, 줄높이] — 클래스 text-title 등
+ *         caption: ["var(--fs-caption)", "var(--lh-caption)"], small: ["var(--fs-small)", "var(--lh-small)"],
+ *         body: ["var(--fs-body)", "var(--lh-body)"], "body-lg": ["var(--fs-body-lg)", "var(--lh-body-lg)"],
+ *         title: ["var(--fs-title)", "var(--lh-title)"], headline: ["var(--fs-headline)", "var(--lh-headline)"],
+ *         display: ["var(--fs-display)", "var(--lh-display)"],
+ *       },
+ *       spacing: { gutter: "var(--gutter)", touch: "var(--touch)" },
+ *       maxWidth: { app: "var(--w-app)", admin: "var(--w-admin)" },
+ *     },
+ *   }
+ *
+ * 흐름 색은 <body data-flow="finder|lost|demo|admin"> 로 바꾼다. --flow-* 만 쓰면 화면 코드는 그대로 둔다.
+ * Pretendard: index.html <link rel="stylesheet"
+ *   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+ */
+
+:root {
+  /* ── 띠(흐름) 색 ── */
+  --band-finder: #1C4B34;      /* 습득자 흐름 머리 띠. 흰 글자 9.97:1 */
+  --band-finder-fg: #FFFFFF;
+  --band-finder-sub: #C9DCCF;  /* 띠 위 보조 글자 6.94:1 */
+  --band-lost: #F6F2EA;        /* 분실자 흐름 바탕(아이보리) */
+  --band-demo: #E8DFCF;        /* 체험 띠·체험 모드 띠(베이지) */
+  --band-demo-fg: #5A4527;     /* 베이지 위 글자 6.86:1 */
+  --band-admin: #22302A;       /* 관리자 머리 띠(먹색 초록). 흰 글자 13:1 이상 */
+
+  /* ── 브랜드(팀 Figma oklch(0.42 0.1 155) 계열을 조금 눅인 값) ── */
+  --brand: #1E5B3D;            /* 주 버튼, 강조. 흰 글자 8.02:1, 아이보리 위 7.18:1 */
+  --brand-hover: #174A31;
+  --brand-pressed: #123C28;
+  --brand-soft: #E4F1E8;       /* 선택된 칩 바탕, 강조 박스 */
+  --brand-fg: #FFFFFF;
+  --focus: #2F7A53;            /* 포커스 링(2px, offset 2px) */
+
+  /* ── 바탕·글자·선 ── */
+  --surface: #FBF9F4;          /* 앱 기본 바탕(아이보리보다 밝음) */
+  --surface-card: #FFFFFF;
+  --surface-sunken: #EFEBE3;   /* 입력 비활성, 스켈레톤 */
+  --text: #1C1F1D;             /* 14.9:1 (아이보리) */
+  --text-muted: #565D58;       /* 보조 글자. 흰 6.77, 아이보리 6.06, 베이지 5.12 */
+  --text-subtle: #636964;      /* 캡션·자리표시. 흰/아이보리 5.0 이상. 베이지 위에는 쓰지 않는다 */
+  --text-inverse: #FFFFFF;
+  --border: #E2DDD2;
+  --border-strong: #C9C2B4;    /* 입력 테두리 */
+  --scrim: rgba(20, 24, 22, 0.48);
+
+  /* ── 상태 색 (항상 Lucide 아이콘 + 글자와 함께) ── */
+  --pass: #1E6B43;      --pass-bg: #E4F1E8;      /* 통과 · CircleCheck   5.57:1 */
+  --question: #9A4A06;  --question-bg: #FCEEDC;  /* 확인 질문 · CircleHelp 5.48:1 */
+  --fail: #B42318;      --fail-bg: #FCEAE8;      /* 실패 · CircleX / 잠김 · Lock 5.66:1 */
+  --review: #6A5400;    --review-bg: #F6EECF;    /* 검토 대기 · Clock 6.27:1 */
+  --inperson: #2E3D8C;  --inperson-bg: #E7EAF7;  /* 대면 확인 · UserCheck 8.10:1 */
+  --seed: #5A4527;      --seed-bg: #F1EADD;      /* 시연용 데이터 배지 · Database 7.58:1 */
+  --info: #1E5B3D;      --info-bg: #E4F1E8;
+
+  /* ── 흐름 별칭 (기본 = 분실자) ── */
+  --flow-band: var(--band-lost);
+  --flow-band-fg: var(--text);
+  --flow-accent: var(--brand);
+
+  /* ── 모양 ── */
+  --radius-sm: 6px;            /* 배지, 칩 안쪽 */
+  --radius-md: 10px;           /* 버튼, 입력 */
+  --radius-lg: 14px;           /* 카드 */
+  --radius-xl: 20px;           /* 바텀시트 위 모서리 */
+  --radius-full: 999px;        /* 칩, 점 */
+  --shadow-card: 0 1px 2px rgba(28, 31, 29, 0.06), 0 0 0 1px var(--border);
+  --shadow-sheet: 0 -8px 24px rgba(28, 31, 29, 0.14);
+  --shadow-toast: 0 6px 20px rgba(28, 31, 29, 0.18);
+
+  /* ── 간격 (4px 단위) ── */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --gutter: 20px;              /* 360px 화면 좌우 여백 */
+  --touch: 44px;               /* 최소 터치 높이 */
+  --btn-h: 52px;               /* 주 버튼 높이 */
+  --input-h: 48px;
+  --header-h: 56px;
+  --tabbar-h: 64px;
+  --w-app: 480px;              /* PC에서 분실자·습득자 가운데 최대 폭 */
+  --w-admin: 1200px;           /* PC 관리자 넓은 목록 */
+
+  /* ── 글자 (Pretendard) ── */
+  --font-sans: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fs-caption: 12px;  --lh-caption: 16px;
+  --fs-small: 13px;    --lh-small: 18px;
+  --fs-body: 15px;     --lh-body: 22px;
+  --fs-body-lg: 17px;  --lh-body-lg: 24px;
+  --fs-title: 20px;    --lh-title: 28px;
+  --fs-headline: 24px; --lh-headline: 32px;
+  --fs-display: 28px;  --lh-display: 36px;   /* 첫 화면 띠 제목 */
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+  --tracking-tight: -0.02em;
+
+  /* ── 움직임 ── */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms; --dur-base: 200ms; --dur-reveal: 900ms;  /* L-10 잠금 해제 */
+}
+
+/* 흐름별 별칭 */
+[data-flow="finder"] { --flow-band: var(--band-finder); --flow-band-fg: var(--band-finder-fg); --flow-accent: var(--brand); }
+[data-flow="lost"]   { --flow-band: var(--band-lost);   --flow-band-fg: var(--text);           --flow-accent: var(--brand); }
+[data-flow="demo"]   { --flow-band: var(--band-lost);   --flow-band-fg: var(--text);           --flow-accent: var(--brand); }
+[data-flow="admin"]  { --flow-band: var(--band-admin);  --flow-band-fg: #FFFFFF;               --flow-accent: var(--brand); }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-reveal: 0ms; }
+}
