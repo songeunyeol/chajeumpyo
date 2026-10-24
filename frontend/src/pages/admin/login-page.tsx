@@ -77,7 +77,7 @@ export function AdminLoginPage() {
         )}
         {login.isError && (
           <Alert role="alert" tone="fail" title={wrong ? "이메일이나 비밀번호가 맞지 않아요" : "로그인하지 못했어요"}>
-            {wrong ? "다시 확인해 주세요." : errorMessageOf(login.error)}
+            {wrong ? "관리자 계정이 아니면 들어올 수 없어요." : errorMessageOf(login.error)}
           </Alert>
         )}
         <Field label="관리자 이메일" htmlFor="admin-email" error={errors.email?.message}>

@@ -1,16 +1,5 @@
 import { CATEGORY_LABELS, type PickupScanResponse } from "@chajeumpyo/shared";
-import {
-  Ban,
-  CircleCheck,
-  IdCard,
-  Keyboard,
-  PackageCheck,
-  PackageX,
-  ScanLine,
-  SearchX,
-  Timer,
-  VideoOff,
-} from "lucide-react";
+import { Ban, IdCard, Keyboard, PackageCheck, PackageX, ScanLine, SearchX, Timer, VideoOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { AdminPage } from "@/components/layout/admin-shell";
@@ -28,10 +17,26 @@ import { formatDayTime } from "@/lib/format";
 /** 직접 입력한 수령 코드: 공백만 지운다(대소문자·기호는 그대로) */
 export const normalizeToken = (raw: string) => raw.replace(/\s+/g, "");
 
-const SCAN_ERRORS: Record<string, { title: string; tone: Tone; icon: typeof Timer }> = {
-  QR_EXPIRED: { title: "QR이 만료됐어요", tone: "review", icon: Timer },
-  ALREADY_CLAIMED: { title: "이미 수령된 물건이에요", tone: "neutral", icon: PackageX },
-  FORBIDDEN: { title: "다른 보관처의 물건이에요", tone: "fail", icon: Ban },
+/** 410·409·403은 직원이 할 일을 알려 준다 (batch3 A-05 오류) */
+const SCAN_ERRORS: Record<string, { title: string; tone: Tone; icon: typeof Timer; body?: string }> = {
+  QR_EXPIRED: {
+    title: "QR이 만료됐어요",
+    tone: "review",
+    icon: Timer,
+    body: "학생에게 앱에서 QR을 다시 받아 달라고 해 주세요.",
+  },
+  ALREADY_CLAIMED: {
+    title: "이미 수령된 물건이에요",
+    tone: "neutral",
+    icon: PackageX,
+    body: "같은 물건을 두 번 내줄 수 없어요. 수령 기록을 확인해 주세요.",
+  },
+  FORBIDDEN: {
+    title: "다른 보관처의 물건이에요",
+    tone: "fail",
+    icon: Ban,
+    body: '우리 보관처에 맡겨진 물건이 아니에요. 학생 앱의 "지금 여기 있어요"에 나온 보관처로 안내해 주세요.',
+  },
   NOT_FOUND: { title: "없는 QR이에요", tone: "neutral", icon: SearchX },
 };
 
@@ -119,7 +124,7 @@ export function AdminScanPage() {
   if (complete.isSuccess) {
     return (
       <AdminPage
-        title="수령 완료"
+        title="수령 확인"
         back={close}
         narrow
         bodyClassName="items-center justify-center text-center"
@@ -135,12 +140,12 @@ export function AdminScanPage() {
         }
       >
         <div role="status" className="flex flex-col items-center gap-3">
-          <ResultIcon tone="pass" icon={CircleCheck} />
-          <p className="m-0 text-title font-bold">수령 완료로 기록했어요</p>
+          <ResultIcon tone="pass" icon={PackageCheck} />
+          <p className="m-0 text-title font-bold">수령 처리했어요</p>
           <p className="m-0 text-ink-muted">
-            {found ? CATEGORY_LABELS[found.foundItem.category] : "물건"}을 넘겨 드리면 돼요.
+            {found ? `${CATEGORY_LABELS[found.foundItem.category]} · ${found.claimant.emailMasked}` : "물건"}
             <br />
-            학생 앱에도 수령 완료로 보여요.
+            {formatDayTime(complete.data.completedAt)}
           </p>
         </div>
       </AdminPage>
@@ -165,7 +170,7 @@ export function AdminScanPage() {
         <div role="alert" className="flex flex-col items-center gap-3" data-testid={`scan-error-${c ?? "other"}`}>
           <ResultIcon tone={e.tone} icon={e.icon} size={72} />
           <p className="m-0 text-title font-bold">{e.title}</p>
-          <p className="m-0 text-ink-muted">{errorMessageOf(scan.error)}</p>
+          <p className="m-0 text-ink-muted">{e.body ?? errorMessageOf(scan.error)}</p>
         </div>
       </AdminPage>
     );

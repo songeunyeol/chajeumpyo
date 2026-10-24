@@ -108,7 +108,7 @@ function Select({
         value={value}
         aria-invalid={invalid}
         onChange={(e) => onChange(e.target.value)}
-        className={cn(inputClass, "w-full appearance-none pr-10")}
+        className={cn(inputClass, "w-full appearance-none pr-10 read-only:bg-surface-card read-only:text-ink")}
       >
         {children}
       </select>

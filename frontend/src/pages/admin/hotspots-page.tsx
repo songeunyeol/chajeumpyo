@@ -22,7 +22,9 @@ export const lastDays = (n: number, now = Date.now()) => {
   const to = todayKst(now);
   return { from: addDays(to, -(n - 1)), to };
 };
-const md = (day: string) => `${Number(day.slice(5, 7))}월 ${Number(day.slice(8, 10))}일`;
+/** 올해면 "10월 25일", 다른 해면 "2024년 1월 1일" */
+const md = (day: string) =>
+  `${day.slice(0, 4) === todayKst().slice(0, 4) ? "" : `${day.slice(0, 4)}년 `}${Number(day.slice(5, 7))}월 ${Number(day.slice(8, 10))}일`;
 
 type Preset = 7 | 30 | 90 | "custom";
 type Row = { label: string; count: number };

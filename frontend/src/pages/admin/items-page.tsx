@@ -1,5 +1,5 @@
 import { ADMIN_PAGE_SIZE, type AdminFoundItemSummary, CATEGORY_LABELS, FoundStatus } from "@chajeumpyo/shared";
-import { ChevronLeft, ChevronRight, ImageOff, Inbox, ScanLine, UserCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, ImageOff, Inbox, ScanLine, UserCheck } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { AdminPage } from "@/components/layout/admin-shell";
 import { Button } from "@/components/ui/button";
@@ -128,11 +128,17 @@ export function AdminItemsPage() {
           ))}
         </div>
       )}
-      {d && d.items.length === 0 && (
-        <EmptyState icon={<ResultIcon tone="neutral" icon={Inbox} size={64} />} title="이 상태의 습득물이 없어요">
-          다른 상태를 골라 보세요.
-        </EmptyState>
-      )}
+      {d &&
+        d.items.length === 0 &&
+        (status === "REVIEW" ? (
+          <EmptyState icon={<ResultIcon tone="pass" icon={CircleCheck} size={64} />} title="검토할 물건이 없어요">
+            AI 분석이 실패한 물건이 생기면 여기에 모여요.
+          </EmptyState>
+        ) : (
+          <EmptyState icon={<ResultIcon tone="neutral" icon={Inbox} size={64} />} title="이 상태의 습득물이 없어요">
+            다른 상태를 골라 보세요.
+          </EmptyState>
+        ))}
       {d && d.items.length > 0 && (
         <>
           {/* 모바일: 줄 목록 */}
