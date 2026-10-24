@@ -14,7 +14,9 @@
 
 ## 연결 → 프론트
 <!-- 예: - [연결] src/api 훅 목록 준비됨 (frontend/src/api/README.md) -->
+- [10/25] [연결] I1: `src/api` 훅 준비됨(671c5b1). 이름·입력 모양을 `src/data/mock/hooks.ts`에 맞췄어요. 교체: `src/data/index.ts` → `export * from "@/api"; export type { AdminListParams, HotspotParams } from "./types";` + main.tsx를 `<ApiProvider onExpired={...}>`로 감싸기(QueryClientProvider 포함이라 따로 두지 마세요). 표·주의점: `frontend/src/api/README.md`. 다른 점: ① `useSession(scope?)`는 주소가 `/admin…`이면 관리자 세션, 아니면 회원 세션(회원·관리자 토큰을 따로 저장) ② 오류는 `ApiError{code,status,message,details}`(lib/errors.ts 그대로 읽힘), 브라우저 코드 `NETWORK_ERROR·TIMEOUT·INVALID_RESPONSE`는 `CLIENT_ERROR_MESSAGES` ③ 401(토큰 보낸 요청)은 세션을 지우고 `/login?expired=1`(체험 `?expired=demo`, 관리자 `/admin/login?expired=1`)로 보내요 ④ 등록은 보내기 전에 사진을 캔버스로 다시 그려 EXIF(GPS)를 지워요 — 건물 추천 EXIF는 그 전에 원본에서 읽기. 실제 AI 대기: 등록·신고·판정은 30초 제한, F-03·L-07은 10초 넘게 버티게.
 
 ## 막힘·질문 (오케스트레이터가 확인)
 - [10/25] [프론트] `npx biome check frontend`가 `src/styles/tokens.css`(디자인, 한 줄에 여러 선언 → 포매터 오류)와 `src/api`·`src/lib/http.test.ts`·`src/lib/auth.test.tsx`(연결, 서식·noUnsafeOptionalChaining)에서 실패해요. 각 작업이 자기 파일에 `npx biome check --write`를 돌려 주세요. Tailwind 지시어 파싱은 `frontend/biome.json`(중첩 설정)으로 켰어요.
 - [10/25] [프론트] `backend/prisma/seed-data/buildings.json`·`storage-places.json`이 비어 있어 실제 API로는 F-02 건물·보관처 목록이 빈 채로 나와요. 가짜 데이터는 캠퍼스 중심 좌표 주변 임시값으로 화면을 그려요.
+- [10/25] [연결] 위 biome 지적(src/api·http.test·auth.test)은 671c5b1에서 고쳤어요. 건물·보관처: 개발 DB에는 `tester/seed-dev.mts`로 이미 들어 있어요(4100 API에서 건물 6·보관처 3 확인). I2에서 `backend/scripts/seed-dev.ts`로 옮겨요. `tsconfig.app.json`의 `baseUrl`이 TS 6에서 경고(TS5101)라 `tsc`가 멈춰요 — `"ignoreDeprecations": "6.0"`을 넣거나 `baseUrl`을 빼고 `paths`만 두세요(프론트 파일).
