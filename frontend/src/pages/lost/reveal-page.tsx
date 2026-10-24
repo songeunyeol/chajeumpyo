@@ -1,6 +1,6 @@
 import { CATEGORY_LABELS, COLOR_LABELS, type Color, type FoundItemDetailResponse } from "@chajeumpyo/shared";
 import { Info, Lock, LockOpen, MapPin, PackageCheck, QrCode, Store, UserCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { BandHeader, Screen } from "@/components/layout/screen";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,10 @@ function useRevealPhase(id: string, ready: boolean): Phase {
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return "done";
     return "locked";
   });
+  const startLocked = useRef(phase === "locked");
+  // 준비되면 한 번만 돈다. phase를 의존성에 넣으면 "opening"으로 바뀔 때 정리 함수가 끝 타이머를 지워 멈춘다
   useEffect(() => {
-    if (!ready || phase !== "locked") return;
+    if (!ready || !startLocked.current) return;
     const t1 = setTimeout(() => setPhase("opening"), 200);
     const t2 = setTimeout(() => {
       setPhase("done");
@@ -46,7 +48,7 @@ function useRevealPhase(id: string, ready: boolean): Phase {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [ready, phase, id]);
+  }, [ready, id]);
   return phase;
 }
 
