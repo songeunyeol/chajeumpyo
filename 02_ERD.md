@@ -191,7 +191,7 @@ erDiagram
   CREATE UNIQUE INDEX pickup_one_completed_per_item
     ON pickup (found_item_id) WHERE status = 'COMPLETED' AND method <> 'DEMO';
   ```
-- **대면 확인 수령** (#29 후속): `claim_locked_at`이 있는 보관 중 물건만. 계정 없는 수령은 대면 확인만, 대면 확인은 처리 관리자·메모 필수(CHECK 제약 `pickup_in_person_check`). 메모는 개인정보라 다른 수령 기록과 같이 `purge_after`(30일 뒤)에 지운다.
+- **대면 확인 수령** (#29 후속): `claim_locked_at`이 있는 보관 중 물건만. 계정 없는 수령은 대면 확인만, 대면 확인은 처리 관리자·메모 필수(CHECK 제약 `pickup_in_person_check`). 메모는 개인정보라 다른 수령 기록과 같이 `purge_after`(30일 뒤)에 지운다. `claim_locked_at`은 수령 뒤에도 남긴다(잠겼던 기록).
 - **QR 재발급**: 같은 사람이 새 QR을 받으면 그 사람의 이전 `ISSUED` 건을 `EXPIRED`로 바꾼다. 완료 처리는 트랜잭션 안에서 물건 상태까지 확인한다.
 - **보관처 필수**: Prisma는 CHECK 제약을 표현하지 못해 초기 마이그레이션 SQL 끝에 직접 넣었다.
   ```sql
