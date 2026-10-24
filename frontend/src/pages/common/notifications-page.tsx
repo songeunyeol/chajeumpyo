@@ -56,7 +56,7 @@ export function NotificationsPage() {
       }
     >
       {isPending ? (
-        <div className="flex flex-col gap-3 p-gutter" aria-busy="true" aria-label="불러오는 중">
+        <div className="flex flex-col gap-3 p-gutter" role="status" aria-busy="true" aria-label="불러오는 중">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-14 w-full" />
           ))}

@@ -42,7 +42,7 @@ export function HomePage() {
     >
       <h2 className="m-0 text-title font-bold tracking-tight-ko">내 분실 신고</h2>
       {isPending ? (
-        <div className="flex flex-col gap-3" aria-busy="true" aria-label="불러오는 중">
+        <div className="flex flex-col gap-3" role="status" aria-busy="true" aria-label="불러오는 중">
           {[0, 1].map((i) => (
             <div key={i} className="flex gap-3 rounded-lg bg-white p-4 shadow-card">
               <Skeleton className="size-10 rounded-md" />

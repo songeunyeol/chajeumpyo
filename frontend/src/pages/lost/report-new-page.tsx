@@ -112,7 +112,7 @@ export function ReportNewPage() {
                   className="pl-11"
                 />
               </div>
-              <div className="flex flex-wrap gap-2" role="group" aria-label="물건 종류">
+              <fieldset className="m-0 flex flex-wrap gap-2 border-0 p-0" aria-label="물건 종류">
                 {chips.map((c) => (
                   <Chip
                     key={c}
@@ -127,7 +127,7 @@ export function ReportNewPage() {
                   </Chip>
                 ))}
                 {chips.length === 0 && <Hint>‘{q}’ 종류가 없어요. ‘기타’를 골라 주세요.</Hint>}
-              </div>
+              </fieldset>
             </>
           )}
           {errors.category && <ErrorText>{errors.category.message}</ErrorText>}
@@ -135,7 +135,7 @@ export function ReportNewPage() {
 
         <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
           <legend className="mb-2 p-0 text-[15px] font-bold">언제 잃어버렸나요?</legend>
-          <div className="flex gap-2" role="group" aria-label="시간 빠른 선택">
+          <fieldset className="m-0 flex gap-2 border-0 p-0" aria-label="시간 빠른 선택">
             {(
               [
                 ["today", "오늘"],
@@ -147,7 +147,7 @@ export function ReportNewPage() {
                 {l}
               </Chip>
             ))}
-          </div>
+          </fieldset>
           {when === "custom" && (
             <div className="flex items-center gap-2">
               <input

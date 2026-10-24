@@ -36,19 +36,19 @@ const cases: [string, RegExp, "none" | "member" | "admin"][] = [
   ["/found/new/details", /물건 사진을 올려 주세요/, "none"], // 사진 없으면 F-01로
   ["/found/new/uploading", /물건 사진을 올려 주세요/, "none"],
   ["/found/new/result", /물건 사진을 올려 주세요/, "none"],
-  ["/login", /L-01/, "none"],
-  ["/signup", /L-02/, "none"],
-  ["/home", /L-03/, "member"],
-  ["/reports/new", /L-04/, "member"],
-  [`/reports/${R}`, /L-05/, "member"],
-  [`/reports/${R}/edit`, /L-06/, "member"],
-  [`/reports/${R}/claim/${F}`, /L-07/, "member"],
-  ["/claims/at-1/question", /L-09/, "member"],
-  [`/items/${F}`, /L-10/, "member"],
-  [`/items/${F}/qr`, /L-11/, "member"],
-  [`/items/${F}/done`, /L-12/, "member"],
-  ["/notifications", /C-04/, "member"],
-  ["/me", /C-05/, "member"],
+  ["/login", /학교 이메일/, "none"],
+  ["/signup", /회원가입/, "none"],
+  ["/home", /분실 신고하기|잃어버린 물건/, "member"],
+  ["/reports/new", /분실 신고/, "member"],
+  [`/reports/${R}`, /후보 확인/, "member"],
+  [`/reports/${R}/edit`, /신고 상세/, "member"],
+  [`/reports/${R}/claim/${F}`, /설명과 물건을 비교하고 있어요/, "member"],
+  ["/claims/at-1/question", /확인 질문/, "member"],
+  [`/items/${F}`, /내 물건/, "member"],
+  [`/items/${F}/qr`, /수령 QR/, "member"],
+  [`/items/${F}/done`, /물건을 찾았어요/, "member"],
+  ["/notifications", /알림/, "member"],
+  ["/me", /내 정보/, "member"],
   ["/admin/login", /A-01/, "none"],
   ["/admin", /A-02/, "admin"],
   ["/admin/items", /A-03/, "admin"],
@@ -70,7 +70,7 @@ describe("가드", () => {
   it("로그인 안 한 분실자 화면은 L-01로 보낸다", async () => {
     setMockSession(null);
     renderAt("/home");
-    expect(await screen.findByText(/L-01/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/학교 이메일/))[0]).toBeInTheDocument();
   });
   it("관리자 화면은 A-01로 보낸다", async () => {
     setMockSession(MEMBER);

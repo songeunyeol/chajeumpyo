@@ -1,11 +1,24 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 import { DemoStartPage } from "@/pages/common/demo-start";
 import { LandingPage } from "@/pages/common/landing";
+import { MePage } from "@/pages/common/me-page";
+import { NotificationsPage } from "@/pages/common/notifications-page";
 import { FinderDetailsPage } from "@/pages/finder/details-page";
 import { FinderFlowLayout } from "@/pages/finder/flow-context";
 import { FinderPhotoPage } from "@/pages/finder/photo-page";
 import { FinderResultPage } from "@/pages/finder/result-page";
 import { FinderUploadingPage } from "@/pages/finder/uploading-page";
+import { CandidatesPage } from "@/pages/lost/candidates-page";
+import { ClaimPage } from "@/pages/lost/claim-page";
+import { HomePage } from "@/pages/lost/home-page";
+import { LoginPage } from "@/pages/lost/login-page";
+import { PickupDonePage } from "@/pages/lost/pickup-done-page";
+import { PickupQrPage } from "@/pages/lost/pickup-qr-page";
+import { QuestionPage } from "@/pages/lost/question-page";
+import { ReportEditPage } from "@/pages/lost/report-edit-page";
+import { ReportNewPage } from "@/pages/lost/report-new-page";
+import { RevealPage } from "@/pages/lost/reveal-page";
+import { SignupPage } from "@/pages/lost/signup-page";
 import { ScreenPlaceholder as P } from "@/pages/placeholder";
 import { RequireAdmin, RequireMember } from "./guards";
 
@@ -33,27 +46,27 @@ export const routes: RouteObject[] = [
   },
 
   // 분실자 (로그인 전)
-  { path: "/login", element: <P id="L-01" title="로그인" flow="lost" /> },
-  { path: "/signup", element: <P id="L-02" title="회원가입" flow="lost" /> },
+  { path: "/login", element: <LoginPage /> },
+  { path: "/signup", element: <SignupPage /> },
 
   // 분실자 (로그인 후)
   {
     element: <RequireMember />,
     children: [
-      { path: "/home", element: <P id="L-03" title="홈" flow="lost" tabs /> },
-      { path: "/notifications", element: <P id="C-04" title="알림" flow="lost" tabs /> },
-      { path: "/me", element: <P id="C-05" title="내 정보" flow="lost" tabs /> },
-      { path: "/reports/new", element: <P id="L-04" title="분실 신고" flow="lost" /> },
-      { path: "/reports/:reportId", element: <P id="L-05" title="후보 목록" flow="lost" /> },
-      { path: "/reports/:reportId/edit", element: <P id="L-06" title="신고 상세" flow="lost" /> },
+      { path: "/home", element: <HomePage /> },
+      { path: "/notifications", element: <NotificationsPage /> },
+      { path: "/me", element: <MePage /> },
+      { path: "/reports/new", element: <ReportNewPage /> },
+      { path: "/reports/:reportId", element: <CandidatesPage /> },
+      { path: "/reports/:reportId/edit", element: <ReportEditPage /> },
       {
         path: "/reports/:reportId/claim/:foundItemId",
-        element: <P id="L-07·L-08" title="판정" flow="lost" />,
+        element: <ClaimPage />,
       },
-      { path: "/claims/:attemptId/question", element: <P id="L-09" title="확인 질문" flow="lost" /> },
-      { path: "/items/:foundItemId", element: <P id="L-10" title="사진·위치" flow="lost" /> },
-      { path: "/items/:foundItemId/qr", element: <P id="L-11" title="수령 QR" flow="lost" /> },
-      { path: "/items/:foundItemId/done", element: <P id="L-12" title="수령 완료" flow="lost" /> },
+      { path: "/claims/:attemptId/question", element: <QuestionPage /> },
+      { path: "/items/:foundItemId", element: <RevealPage /> },
+      { path: "/items/:foundItemId/qr", element: <PickupQrPage /> },
+      { path: "/items/:foundItemId/done", element: <PickupDonePage /> },
     ],
   },
 

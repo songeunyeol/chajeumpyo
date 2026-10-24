@@ -307,10 +307,7 @@ function CodeStep({
           !dead && (
             <p id="otp-status" className="m-0 flex items-center gap-1 text-small text-ink-muted" aria-live="polite">
               <Timer className="size-4" aria-hidden />
-              남은 시간{" "}
-              <b className="text-brand" aria-label={`${formatCountdown(left)} 남음`}>
-                {formatCountdown(left)}
-              </b>
+              남은 시간 <b className="text-brand">{formatCountdown(left)}</b>
             </p>
           )
         )}

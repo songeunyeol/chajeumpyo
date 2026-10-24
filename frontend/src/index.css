@@ -172,3 +172,46 @@
     animation: none;
   }
 }
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+.animate-breathe {
+  animation: breathe 2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-breathe {
+    animation: none;
+  }
+}
+
+/* L-10 정보 줄이 60ms 간격으로 8px 아래에서 올라옴 */
+.reveal-rise > * {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+.reveal-rise.is-shown > * {
+  opacity: 1;
+  transform: none;
+}
+.reveal-rise.is-shown > :nth-child(2) {
+  transition-delay: 60ms;
+}
+.reveal-rise.is-shown > :nth-child(3) {
+  transition-delay: 120ms;
+}
+.reveal-rise.is-shown > :nth-child(4) {
+  transition-delay: 180ms;
+}
+.reveal-rise.is-shown > :nth-child(5) {
+  transition-delay: 240ms;
+}

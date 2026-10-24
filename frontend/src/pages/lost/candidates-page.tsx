@@ -47,7 +47,7 @@ export function CandidatesPage() {
       )}
 
       {candidates.isPending ? (
-        <div className="flex flex-col gap-3" aria-busy="true" aria-label="후보 불러오는 중">
+        <div className="flex flex-col gap-3" role="status" aria-busy="true" aria-label="후보 불러오는 중">
           <Skeleton className="h-5 w-32" />
           {[0, 1].map((i) => (
             <div key={i} className="flex gap-3 rounded-lg bg-white p-3.5 shadow-card">

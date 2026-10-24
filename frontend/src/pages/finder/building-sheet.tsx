@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { OptionList } from "@/components/ui/chips";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
+import { josa } from "@/lib/josa";
 
 /** 건물 직접 고르기 시트: 검색 + 라디오 목록 */
 export function BuildingSheet({
@@ -51,16 +52,8 @@ export function BuildingSheet({
         <p className="m-0 py-6 text-center text-ink-muted">‘{q}’ 건물을 찾지 못했어요.</p>
       )}
       <Button disabled={!picked} onClick={() => picked && onPick(picked.id)}>
-        {picked ? `${picked.name}${hasBatchim(picked.name) ? "으로" : "로"} 할게요` : "건물을 골라 주세요"}
+        {picked ? `${josa(picked.name, "으로/로")} 할게요` : "건물을 골라 주세요"}
       </Button>
     </Sheet>
   );
-}
-
-/** 마지막 글자에 받침이 있으면 true (ㄹ 받침은 "로") */
-function hasBatchim(word: string): boolean {
-  const c = word.charCodeAt(word.length - 1) - 0xac00;
-  if (c < 0 || c > 11171) return false;
-  const jong = c % 28;
-  return jong !== 0 && jong !== 8;
 }
