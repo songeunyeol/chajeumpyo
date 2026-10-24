@@ -56,21 +56,8 @@ test("체험 계정으로 신고 → 후보 → 통과 → 사진·위치 → �
   await expect(page).toHaveURL(/\/items\/[0-9a-f-]{36}$/);
   const photo = page.getByRole("img", { name: /무선 이어폰 사진/ });
   await expect(photo).toBeVisible();
-  // 잠금 해제 연출(200ms 열림 → 1s 끝)이 끝나면 블러가 풀린다. 연출이 멈추는 버그(HANDOFF 연결 → 프론트 I4)가
-  // 있으면 기록만 남기고, 연출을 건너뛰는 '움직임 줄이기'로 다시 열어 나머지 흐름을 확인한다.
-  const unblurred = await expect
-    .poll(() => photo.evaluate((el) => getComputedStyle(el).filter), { timeout: 4_000 })
-    .toBe("none")
-    .then(() => true)
-    .catch(() => false);
-  if (!unblurred) {
-    test.info().annotations.push({ type: "frontend-bug", description: "L-10 잠금 해제 연출이 opening에서 멈춤" });
-    await page.screenshot({ path: `${SHOTS}/b-04a-reveal-stuck.png` });
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.reload();
-    await expect(photo).toBeVisible();
-    await expect.poll(() => photo.evaluate((el) => getComputedStyle(el).filter)).toBe("none");
-  }
+  // 잠금 해제 연출(200ms 열림 → 1s 끝) 뒤 블러가 풀린다 (db5fce2 전에는 opening에서 멈췄다)
+  await expect.poll(() => photo.evaluate((el) => getComputedStyle(el).filter), { timeout: 5_000 }).toBe("none");
   await expect(photo).toHaveJSProperty("complete", true);
   expect(await photo.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   await expect(page.getByText("유담관 경비실").first()).toBeVisible();

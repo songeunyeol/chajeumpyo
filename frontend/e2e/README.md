@@ -78,7 +78,7 @@ npx vitest run src/lib/http.test.ts src/lib/auth.test.tsx src/api
   - (b) `b-demo-flow`: C-01 → C-03(AI 동의 + 개발 캡차) → L-03(체험 띠) → L-04 "흰 이어폰, 곰돌이 스티커" → L-05 후보 1개(≤3): 후보 영역 글에 저장 특징·색·브랜드·점수 없음, 신고 요약(내 설명)을 뺀 body HTML(속성 포함)에도 없음, 썸네일 computed `filter`에 `blur(14px)`·`grayscale(1)` → L-08 통과 → L-10 사진 로드(naturalWidth>0)·블러 풀림·"유담관 경비실" → L-11 → L-12 "시연: 보관처에서 수령 처리됨". 모든 요청 URL에 토큰·좌표 없음.
   - (c) `c-signup`: gmail → "학교 이메일(@skuniv.ac.kr)만 쓸 수 있어요."(요청 안 나감) → 학교 메일 → API 로그에서 코드 → 동의 시트 → 비밀번호 → L-03 회원(체험 띠 없음), 새로고침 뒤에도 로그인.
   - (d) `d-fail-question`: "빨간 이어폰, 고양이 키링" → FAIL 응답 키가 정확히 `attemptId·attemptsLeft·inPersonOnly·result·reused`, 화면 "3번 중 2번", body 글·HTML에 저장 특징 없음 → 설명 그대로 다시 → `reused:true`, 알림 "이전 결과예요…", 여전히 2번. "검정 이어폰, 곰돌이 스티커" → 질문 "흠집은 어느 쪽에 있나요?"(화면에 답 없음) → "오른쪽 아래" → 통과, 같은 토큰으로 두 번째 답 → 409 `ALREADY_ANSWERED`. 후보 화면에서 시연 이어폰 `claim_locked_at`을 SQL로 설정(이름 확인 후) → 확인 → 409 `IN_PERSON_REQUIRED` → "보관처에서 직접 확인해요", 목록 카드 "대면 확인만"·확인 버튼 없음. 끝나면 잠금 해제.
-- 찾은 프론트 버그(인계판에 전달): L-10 잠금 해제 연출이 `opening`에서 멈춰 사진이 흐린 채로 남음. e2e는 annotation `frontend-bug` + 스크린샷 `b-04a-reveal-stuck.png`로 기록하고 '움직임 줄이기'로 다시 열어 계속한다.
+- 찾은 프론트 버그: L-10 잠금 해제 연출이 `opening`에서 멈춰 사진이 흐린 채로 남음 → 프론트가 db5fce2에서 고침. 그 뒤 (b)는 연출 끝에 블러가 풀리는지 엄격하게 확인하고, 전체 7/7을 2번 더 통과(33.4s·33.4s).
 - 설정 고침: Vite를 `npx` 대신 `node ../node_modules/vite/bin/vite.js`로 띄움(npx 자식이 남아 다음 실행이 5174 충돌).
 - 백엔드 296개 통과(변경 없음), `npx biome check frontend backend packages` 깨끗, `tsc -p frontend/e2e` 통과.
 - 확인 안 한 것: 서버 쪽 `INVALID_EMAIL_DOMAIN`(화면이 먼저 막아 요청이 안 나감 — 계약 확인에서 따로 본다), 실제 QR 스캔 수령(L-11 회원 → A-05, 관리자 화면이 아직 자리표시).
