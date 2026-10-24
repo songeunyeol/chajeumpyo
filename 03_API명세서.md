@@ -33,7 +33,6 @@
 | 401 | `UNAUTHORIZED` | 토큰 없음·만료 |
 | 403 | `FORBIDDEN` | 권한 없음 (일치 판정을 통과하지 않은 습득물 상세 조회, 후보가 아닌 습득물에 판정 시도, 다른 보관처 물건 수령 처리 등) |
 | 404 | `NOT_FOUND` | 대상 없음 |
-| 409 | `EMAIL_TAKEN` | 이미 가입된 이메일 (가입 단계에서 동시에 가입한 경우만. 코드 요청 단계에서는 쓰지 않는다) |
 | 409 | `MATCH_LOCKED` | 시도 횟수 초과로 잠김 |
 | 409 | `ALREADY_CLAIMED` | 이미 수령 완료된 물건 |
 | 409 | `ALREADY_ANSWERED` | 이미 답한 확인 질문 |
@@ -174,6 +173,7 @@
 
 #### `POST /auth/signup` · 공개
 - 토큰이 만료됐거나 이미 가입에 쓴 토큰(`email_verification.consumed_at`이 있음)이면 `400 INVALID_CODE`.
+- 인증 뒤 그사이 같은 이메일로 가입이 끝났어도(동시에 가입) 같은 `400 INVALID_CODE`, 같은 메시지를 준다. 가입 여부를 드러내는 `409`는 쓰지 않는다.
 ```json
 // 요청
 { "verificationToken": "eyJ...", "password": "********" }

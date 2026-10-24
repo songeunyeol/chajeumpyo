@@ -54,8 +54,9 @@ registry.registerPath({
   request: { body: json(SignupRequest) },
   responses: {
     201: { description: "가입됨", ...json(AuthResponse) },
-    400: errorResponse("VALIDATION_ERROR, INVALID_CODE"),
-    409: errorResponse("EMAIL_TAKEN"),
+    400: errorResponse(
+      "VALIDATION_ERROR, INVALID_CODE: 인증 만료·이미 사용(그사이 같은 이메일로 가입된 경우도 같은 응답)",
+    ),
     429: errorResponse("RATE_LIMITED"),
   },
 });
