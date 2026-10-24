@@ -3,6 +3,9 @@
 // 습득물은 실제 API로 등록하므로 API 서버가 켜져 있어야 한다:
 //   npm run seed:dev -w backend            (PORT의 API, 기본 4000)
 //   PORT=4100 npm run seed:dev -w backend  (4100에 띄운 API)
+// 습득 시각은 지금 기준 최근(체험 시드·실제 이어폰은 오늘)이라 분실 신고 "오늘"에 후보로 잡힌다 (scripts/seed-dates.ts).
+// 날짜만 다시 최근으로: npm run seed:dev -w backend -- --refresh-dates
+//   이미 넣은 더미 습득물(아직 보관 중인 것)의 found_at·expires_at만 고친다. 지우거나 새로 넣지 않고, API 서버도 필요 없다.
 // 관리자: center@skuniv.ac.kr / guard@skuniv.ac.kr, 비밀번호 admin1234!
 import { CONSENT_VERSION } from "@chajeumpyo/shared";
 import sharp from "sharp";
@@ -15,6 +18,9 @@ if (process.env.NODE_ENV === "production" || dbName.endsWith("_test")) {
 // DB에 닿는 모듈은 확인을 마친 뒤에 불러온다 (정적 import는 위 확인보다 먼저 실행되므로)
 const { hashPassword } = await import("../src/lib/hash");
 const { prisma } = await import("../src/lib/prisma");
+const { uploaderFingerprint } = await import("../src/services/found-items");
+const { SAMPLE_AGES, seedDates } = await import("./seed-dates");
+const RETENTION_DAYS = Number(process.env.FOUND_ITEM_RETENTION_DAYS ?? 30);
 const API = process.env.SEED_API_BASE ?? `http://localhost:${process.env.PORT ?? 4000}/api/v1`;
 
 // 1) 건물·보관처·관리자 ------------------------------------------------------
@@ -58,6 +64,32 @@ for (const [email, place] of [
 }
 
 // 2) 습득물: API로 등록(가짜 AI는 늘 이어폰) → 관리자 수정으로 속성 바꾸기 --------------------
+// 더미 습득물은 User-Agent "seed-<순서>"로 등록해서, 등록자 지문으로 순서를 되찾는다 (로컬에서 돌리므로 IP는 루프백)
+const SEED_UA = (i: number) => `seed-${i}`;
+const seedIndexByFingerprint = new Map<string, number>();
+for (const ip of ["::1", "::ffff:127.0.0.1", "127.0.0.1"]) {
+  for (let i = 0; i < SAMPLE_AGES.length; i++) seedIndexByFingerprint.set(uploaderFingerprint(ip, SEED_UA(i)), i);
+}
+
+if (process.argv.includes("--refresh-dates")) {
+  const now = new Date();
+  const items = await prisma.foundItem.findMany({
+    where: {
+      uploaderFingerprint: { in: [...seedIndexByFingerprint.keys()] },
+      dataPurgedAt: null,
+      status: { in: ["REGISTERED", "REVEALED"] },
+    },
+    select: { id: true, uploaderFingerprint: true },
+  });
+  for (const item of items) {
+    const i = seedIndexByFingerprint.get(item.uploaderFingerprint ?? "") as number;
+    await prisma.foundItem.update({ where: { id: item.id }, data: seedDates(i, now, RETENTION_DAYS) });
+  }
+  console.log(`더미 습득물 ${items.length}개의 습득 시각을 지금 기준으로 고쳤어요.`);
+  await prisma.$disconnect();
+  process.exit(0);
+}
+
 if ((await prisma.foundItem.count()) > 0) {
   console.log("습득물이 이미 있어 건너뛰어요. (건물·보관처·관리자는 갱신함)");
   await prisma.$disconnect();
@@ -187,6 +219,8 @@ const photo = (rgb: [number, number, number]) =>
     .jpeg()
     .toBuffer();
 
+if (samples.length !== SAMPLE_AGES.length) throw new Error("samples와 seed-dates.ts SAMPLE_AGES 개수가 달라요");
+const seededAt = new Date();
 for (const [i, s] of samples.entries()) {
   const form = new FormData();
   form.append("image", new Blob([new Uint8Array(await photo(s.rgb))], { type: "image/jpeg" }), "sample.jpg");
@@ -197,7 +231,7 @@ for (const [i, s] of samples.entries()) {
   form.append("consentVersion", CONSENT_VERSION);
   form.append("consentExternalAi", "true");
   form.append("consentLocation", "false");
-  const res = await fetch(`${API}/found-items`, { method: "POST", body: form, headers: { "User-Agent": `seed-${i}` } });
+  const res = await fetch(`${API}/found-items`, { method: "POST", body: form, headers: { "User-Agent": SEED_UA(i) } });
   if (!res.ok) throw new Error(`등록 실패 ${res.status} ${await res.text()}`);
   const { id } = (await res.json()) as { id: string };
   if (s.patch) {
@@ -208,7 +242,10 @@ for (const [i, s] of samples.entries()) {
     });
     if (!p.ok) throw new Error(`속성 수정 실패 ${p.status} ${await p.text()}`);
   }
-  if (s.seed) await prisma.foundItem.update({ where: { id }, data: { isSeed: true } });
+  await prisma.foundItem.update({
+    where: { id },
+    data: { ...seedDates(i, seededAt, RETENTION_DAYS), ...(s.seed ? { isSeed: true } : {}) },
+  });
 }
 
 console.log(`건물 ${buildings.length}, 보관처 ${places.length}, 관리자 2, 습득물 ${samples.length}개를 넣었어요.`);
