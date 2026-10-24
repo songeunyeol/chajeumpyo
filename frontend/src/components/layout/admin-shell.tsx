@@ -112,6 +112,7 @@ export function AdminPage({
   tabs,
   footer,
   narrow,
+  dark,
   bodyClassName,
   children,
 }: {
@@ -124,11 +125,13 @@ export function AdminPage({
   footer?: React.ReactNode;
   /** PC에서도 480px 가운데 (확인·결과 화면) */
   narrow?: boolean;
+  /** 카메라 화면처럼 어두운 바탕 */
+  dark?: boolean;
   bodyClassName?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-dvh flex-1 flex-col">
+    <div className={cn("flex min-h-dvh flex-1 flex-col", dark && "bg-[#141A17]")}>
       <div className="lg:hidden">
         <BandHeader variant="admin" title={title} back={back} right={right} />
       </div>
@@ -145,7 +148,8 @@ export function AdminPage({
         {footer && (
           <div
             className={cn(
-              "sticky z-10 flex flex-col gap-2 bg-surface px-gutter pt-3",
+              "sticky z-10 flex flex-col gap-2 px-gutter pt-3",
+              dark ? "bg-[#141A17]" : "bg-surface",
               tabs ? "bottom-tabbar pb-5 lg:bottom-0" : "bottom-0 pb-[calc(20px+env(safe-area-inset-bottom))]",
             )}
           >

@@ -89,8 +89,14 @@ export const routes: RouteObject[] = [
             path: "/admin/items",
             lazy: async () => ({ Component: (await import("@/pages/admin/items-page")).AdminItemsPage }),
           },
-          { path: "/admin/items/:id", element: <P id="A-04" title="습득물 상세" flow="admin" /> },
-          { path: "/admin/scan", element: <P id="A-05" title="QR 스캔" flow="admin" /> },
+          {
+            path: "/admin/items/:id",
+            lazy: async () => ({ Component: (await import("@/pages/admin/item-detail-page")).AdminItemDetailPage }),
+          },
+          {
+            path: "/admin/scan",
+            lazy: async () => ({ Component: (await import("@/pages/admin/scan-page")).AdminScanPage }),
+          },
           { path: "/admin/hotspots", element: <P id="A-06" title="분실 다발 카드" flow="admin" /> },
         ],
       },
