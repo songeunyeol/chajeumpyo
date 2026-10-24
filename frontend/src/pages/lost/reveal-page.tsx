@@ -138,7 +138,7 @@ export function RevealPage() {
           />
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-2 text-ink-muted">
-            <span className="text-small">사진 링크가 만료됐어요.</span>
+            <span className="text-small">사진을 불러오지 못했어요.</span>
             <Button
               size="md"
               variant="secondary"
