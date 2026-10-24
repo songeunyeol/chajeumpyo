@@ -44,6 +44,8 @@ STORAGE_LOCAL_DIR=/절대/경로/chajeumpyo/backend/uploads npx tsx frontend/e2e
 - 포트·출처는 `DEV_API_PORT`, `DEV_CORS_ORIGIN`으로 바꾼다.
 - e2e(`start-api.mts`)는 e2e DB 전용 임시 폴더(`$TMPDIR/chajeumpyo-e2e-uploads`)를 쓴다. 바꾸려면 `E2E_STORAGE_DIR`(절대 경로).
 
+- 더미 습득물은 지금 기준 최근에 주운 것으로 들어간다(`backend/scripts/seed-dates.ts`). 개발 DB가 오래돼 '오늘' 신고에 후보가 안 나오면 `npm run seed:dev -w backend -- --refresh-dates` — 보관 중인 더미 습득물의 `found_at`·`expires_at`만 고친다(API 서버 불필요, 몇 번 돌려도 같음).
+
 ## 계약 확인·단위 테스트
 
 ```sh
