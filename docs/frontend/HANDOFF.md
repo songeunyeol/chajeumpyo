@@ -6,6 +6,7 @@
 ## 디자인 → 프론트
 <!-- 예: - [10/25 18:00] [디자인] 배치1 확정: C-01, C-02 ... (docs/design/system/screens/batch1.html) -->
 - [10/25] [디자인] D1(배치1) 준비됨, 오케스트레이터 검토 대기: 토큰 `frontend/src/styles/tokens.css`(맨 위 주석에 Tailwind·shadcn 연결법), 컴포넌트 표 `docs/design/system/README.md` §3, 화면 C-01·C-02(습득자/가입)·C-03(기본/로딩/오류)·F-01~F-04(결과 6종) (docs/design/system/screens/batch1.html, 클래스 모양은 docs/design/system/components.css)
+- [10/25] [디자인] D1 승인됨. D2(배치2) 준비됨, 검토 대기: L-01~L-12, C-04, C-05 (docs/design/system/screens/batch2.html, 노트·LockReveal 타이밍은 README §4 배치 2). 배치1 변경: C-02 문구는 `CONSENT_TEXTS`·`CONSENT_VERSION` import(하드코딩 금지), 후보 썸네일 CSS `blur(14px) grayscale(1)`, 예시 날짜 10월 23일(금). tokens.css는 biome 포맷 통과(값 변화 없음)
 
 ## 프론트 → 연결
 <!-- 예: - [프론트] F-01~F-04 화면 완성, API는 src/api 훅 이름 useRegisterFound 사용 -->
