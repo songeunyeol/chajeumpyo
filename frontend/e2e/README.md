@@ -29,6 +29,21 @@ npm run e2e -w frontend          # = playwright test (frontend 폴더)
 - 결과: `e2e/.artifacts/`(커밋 안 함) — `screens/*.png` 단계별 화면, `test-results/**/trace.zip`(실패 시), `report/`(HTML), `api.log`(서버 로그, 가입 코드 포함).
 - 크롬은 Blob이 든 multipart 본문을 Playwright에 주지 않는다(`request.postDataBuffer()`가 null). 그래서 등록 본문은 `captureFormData`(helpers.ts)가 페이지의 `fetch`를 감싸 **네트워크로 넘기기 직전의 FormData**(필드 이름·값·사진 바이트)를 기록해 검사한다.
 
+## 개발 API를 이 작업 폴더에서 띄우기 (사진 폴더)
+
+사진 파일은 DB가 아니라 `STORAGE_LOCAL_DIR`(기본 상대 경로 `uploads`, **그 서버의 `backend/` 기준**)에 있다. 그래서 git worktree처럼 다른 폴더에서 띄운 서버가 같은 개발 DB를 쓰면, 다른 폴더의 서버가 올린 사진은 `/files/*`에서 404가 난다.
+
+```sh
+# 레포 루트에서. 포트 4100, CORS 5173, PUBLIC_BASE_URL은 늘 http://localhost:4100 (셸·.env의 다른 값 무시)
+STORAGE_LOCAL_DIR=/절대/경로/chajeumpyo/backend/uploads npx tsx frontend/e2e/start-dev-api.mts
+# 이 폴더 사진만 쓸 때는 STORAGE_LOCAL_DIR 없이
+```
+
+- `STORAGE_LOCAL_DIR`는 절대 경로만 받는다(상대 경로면 멈춤). 경로는 커밋하지 말고 셸에서만 넘긴다.
+- 사진은 한 폴더에만 쌓인다. 폴더를 바꾸기 전에 이 서버로 올린 물건은 새 폴더에 사진이 없어 404가 날 수 있다.
+- 포트·출처는 `DEV_API_PORT`, `DEV_CORS_ORIGIN`으로 바꾼다.
+- e2e(`start-api.mts`)는 e2e DB 전용 임시 폴더(`$TMPDIR/chajeumpyo-e2e-uploads`)를 쓴다. 바꾸려면 `E2E_STORAGE_DIR`(절대 경로).
+
 ## 계약 확인·단위 테스트
 
 ```sh

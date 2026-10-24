@@ -27,7 +27,8 @@ const env = {
   AI_MODE: "mock",
   MAIL_MODE: "console",
   CAPTCHA_MODE: "off",
-  STORAGE_LOCAL_DIR: join(tmpdir(), "chajeumpyo-e2e-uploads"),
+  // e2e DB 전용 사진 폴더(절대 경로). 개발 사진과 섞이지 않게 기본은 임시 폴더
+  STORAGE_LOCAL_DIR: process.env.E2E_STORAGE_DIR ?? join(tmpdir(), "chajeumpyo-e2e-uploads"),
 };
 
 const tsx = (args: string[]): ChildProcess =>

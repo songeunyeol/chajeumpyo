@@ -15,6 +15,8 @@ npm run test -w frontend        # vitest + Testing Library
 npx biome check frontend
 ```
 
+실서버 API(4100)는 `npx tsx frontend/e2e/start-dev-api.mts`로 띄워요(레포 루트에서). 사진 링크 주소는 늘 `http://localhost:4100`으로 맞춰요. 개발 DB를 다른 폴더(본 체크아웃 등)의 서버와 같이 쓰면, 그 서버가 올린 사진은 그 폴더에 있으니 **절대 경로**로 알려 주세요: `STORAGE_LOCAL_DIR=/절대/경로/chajeumpyo/backend/uploads npx tsx frontend/e2e/start-dev-api.mts`. 경로는 커밋하지 말고 셸에서만 넘겨요. 자세한 것은 `frontend/e2e/README.md`.
+
 환경 변수는 `.env.example` 참고: `VITE_API_BASE`(기본 `http://localhost:4100/api/v1`), `VITE_TURNSTILE_SITE_KEY`, `VITE_NAVER_MAP_CLIENT_ID`.
 
 ## 구조
