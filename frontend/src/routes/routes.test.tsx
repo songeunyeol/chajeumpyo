@@ -30,7 +30,7 @@ const F = "11111111-1111-4111-8111-111111111111";
 const cases: [string, RegExp, "none" | "member" | "admin"][] = [
   ["/", /잃어버렸어요/, "none"],
   ["/demo", /이렇게 체험해요/, "none"],
-  ["/status/offline", /C-06/, "none"],
+  ["/status/offline", /인터넷 연결을 확인해 주세요/, "none"],
   ["/map", /C-07/, "none"],
   ["/found/new", /물건 사진을 올려 주세요/, "none"],
   ["/found/new/details", /물건 사진을 올려 주세요/, "none"], // 사진 없으면 F-01로
@@ -55,7 +55,7 @@ const cases: [string, RegExp, "none" | "member" | "admin"][] = [
   [`/admin/items/${F}`, /습득물 상세/, "admin"],
   ["/admin/scan", /QR 스캔/, "admin"],
   ["/admin/hotspots", /분실 다발 카드/, "admin"],
-  ["/no-such-page", /C-06/, "none"],
+  ["/no-such-page", /페이지를 찾을 수 없어요/, "none"],
 ];
 
 describe("라우트: 모든 화면 ID에 경로가 있다", () => {

@@ -2,6 +2,7 @@ import { Search } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { CandidateCard } from "@/components/candidate-card";
 import { BandHeader, Screen } from "@/components/layout/screen";
+import { QueryErrorView } from "@/components/status-view";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Alert, ResultIcon } from "@/components/ui/status";
@@ -61,9 +62,15 @@ export function CandidatesPage() {
           ))}
         </div>
       ) : candidates.isError ? (
-        <Alert role="alert" tone="fail" title="후보를 불러오지 못했어요">
-          {errorMessageOf(candidates.error)}
-        </Alert>
+        <QueryErrorView
+          error={candidates.error}
+          onRetry={() => candidates.refetch()}
+          fallback={
+            <Alert role="alert" tone="fail" title="후보를 불러오지 못했어요">
+              {errorMessageOf(candidates.error)}
+            </Alert>
+          }
+        />
       ) : list.length === 0 ? (
         <EmptyState icon={<ResultIcon tone="neutral" icon={Search} size={64} />} title="아직 비슷한 물건이 없어요">
           새 습득물이 등록되면 알림으로

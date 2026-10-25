@@ -1,11 +1,12 @@
 import { LoginRequest } from "@chajeumpyo/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Clock } from "lucide-react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import type { z } from "zod";
 import { BandHero, Screen } from "@/components/layout/screen";
 import { PasswordInput } from "@/components/password-input";
+import { SessionExpiredSheet } from "@/components/status-view";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ export function LoginPage() {
   const location = useLocation();
   const [params] = useSearchParams();
   const expired = params.get("expired");
+  const [expiredOpen, setExpiredOpen] = useState(expired === "1" || expired === "demo");
   const from = (location.state as { from?: string } | null)?.from;
   const login = useLogin();
   const {
@@ -68,19 +70,6 @@ export function LoginPage() {
       }
     >
       <form id="login-form" onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        {expired === "demo" && (
-          <Alert role="alert" tone="review" icon={Clock} title="체험 시간이 끝났어요">
-            체험 계정은 24시간 뒤 사라져요.{" "}
-            <Link to="/demo" className="font-semibold text-brand underline">
-              체험 다시 하기
-            </Link>
-          </Alert>
-        )}
-        {expired === "1" && !login.isError && (
-          <Alert role="alert" tone="review" icon={Clock} title="로그인이 만료됐어요">
-            다시 로그인해 주세요.
-          </Alert>
-        )}
         {login.isError && (
           <Alert role="alert" tone="fail" title={wrong ? "이메일이나 비밀번호가 맞지 않아요" : "로그인하지 못했어요"}>
             {wrong ? "다시 확인해 주세요." : errorMessageOf(login.error)}
@@ -107,6 +96,7 @@ export function LoginPage() {
           />
         </Field>
       </form>
+      <SessionExpiredSheet open={expiredOpen} demo={expired === "demo"} onClose={() => setExpiredOpen(false)} />
     </Screen>
   );
 }

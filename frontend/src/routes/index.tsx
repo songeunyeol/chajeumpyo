@@ -3,6 +3,7 @@ import { DemoStartPage } from "@/pages/common/demo-start";
 import { LandingPage } from "@/pages/common/landing";
 import { MePage } from "@/pages/common/me-page";
 import { NotificationsPage } from "@/pages/common/notifications-page";
+import { NotFoundPage, StatusPage } from "@/pages/common/status-page";
 import { FinderDetailsPage } from "@/pages/finder/details-page";
 import { FinderFlowLayout } from "@/pages/finder/flow-context";
 import { FinderPhotoPage } from "@/pages/finder/photo-page";
@@ -32,7 +33,7 @@ export const routes: RouteObject[] = [
   { path: "/", element: <LandingPage /> },
   { path: "/demo", element: <DemoStartPage /> },
   { path: "/map", element: <P id="C-07" title="캠퍼스 지도" flow="lost" /> },
-  { path: "/status/:kind", element: <P id="C-06" title="상태 화면" flow="lost" /> },
+  { path: "/status/:kind", element: <StatusPage /> },
 
   // 습득자
   {
@@ -115,7 +116,7 @@ export const routes: RouteObject[] = [
         },
       ]
     : []),
-  { path: "*", element: <P id="C-06" title="페이지를 찾을 수 없어요" flow="lost" /> },
+  { path: "*", element: <NotFoundPage /> },
 ];
 
 export const createRouter = () => createBrowserRouter(routes);

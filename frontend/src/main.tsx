@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router";
 import { Toaster } from "sonner";
+import { OfflineToast } from "@/components/status-view";
 import { ApiProvider } from "@/data";
 import { createRouter } from "./routes";
 
@@ -20,6 +21,7 @@ createRoot(root).render(
     >
       <RouterProvider router={router} />
       <Toaster position="bottom-center" offset={88} />
+      <OfflineToast />
     </ApiProvider>
   </StrictMode>,
 );

@@ -3,6 +3,7 @@ import { ChevronRight, CircleDot, Layers, PackageCheck, Plus, Search, X } from "
 import { Link, useNavigate } from "react-router";
 import { BellButton } from "@/components/bell-button";
 import { BandHeader, Screen } from "@/components/layout/screen";
+import { QueryErrorView } from "@/components/status-view";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/field";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
@@ -55,12 +56,18 @@ export function HomePage() {
           ))}
         </div>
       ) : isError ? (
-        <Alert role="alert" tone="fail" title="신고 목록을 불러오지 못했어요">
-          {errorMessageOf(error)}{" "}
-          <button type="button" onClick={() => refetch()} className="font-semibold text-brand underline">
-            다시 불러오기
-          </button>
-        </Alert>
+        <QueryErrorView
+          error={error}
+          onRetry={() => refetch()}
+          fallback={
+            <Alert role="alert" tone="fail" title="신고 목록을 불러오지 못했어요">
+              {errorMessageOf(error)}{" "}
+              <button type="button" onClick={() => refetch()} className="font-semibold text-brand underline">
+                다시 불러오기
+              </button>
+            </Alert>
+          }
+        />
       ) : reports.length === 0 ? (
         <EmptyState icon={<ResultIcon tone="info" icon={Search} size={64} />} title="아직 신고한 물건이 없어요">
           잃어버린 물건을 알려 주시면
