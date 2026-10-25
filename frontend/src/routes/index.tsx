@@ -1,6 +1,7 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 import { DemoStartPage } from "@/pages/common/demo-start";
 import { LandingPage } from "@/pages/common/landing";
+import { MapPage } from "@/pages/common/map-page";
 import { MePage } from "@/pages/common/me-page";
 import { NotificationsPage } from "@/pages/common/notifications-page";
 import { NotFoundPage, StatusPage } from "@/pages/common/status-page";
@@ -20,7 +21,6 @@ import { ReportEditPage } from "@/pages/lost/report-edit-page";
 import { ReportNewPage } from "@/pages/lost/report-new-page";
 import { RevealPage } from "@/pages/lost/reveal-page";
 import { SignupPage } from "@/pages/lost/signup-page";
-import { ScreenPlaceholder as P } from "@/pages/placeholder";
 import { RequireAdmin, RequireMember } from "./guards";
 
 /**
@@ -32,7 +32,7 @@ export const routes: RouteObject[] = [
   // 공통
   { path: "/", element: <LandingPage /> },
   { path: "/demo", element: <DemoStartPage /> },
-  { path: "/map", element: <P id="C-07" title="캠퍼스 지도" flow="lost" /> },
+  { path: "/map", element: <MapPage /> },
   { path: "/status/:kind", element: <StatusPage /> },
 
   // 습득자

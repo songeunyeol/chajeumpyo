@@ -31,7 +31,7 @@ const cases: [string, RegExp, "none" | "member" | "admin"][] = [
   ["/", /잃어버렸어요/, "none"],
   ["/demo", /이렇게 체험해요/, "none"],
   ["/status/offline", /인터넷 연결을 확인해 주세요/, "none"],
-  ["/map", /C-07/, "none"],
+  ["/map", /캠퍼스 지도/, "none"],
   ["/found/new", /물건 사진을 올려 주세요/, "none"],
   ["/found/new/details", /물건 사진을 올려 주세요/, "none"], // 사진 없으면 F-01로
   ["/found/new/uploading", /물건 사진을 올려 주세요/, "none"],

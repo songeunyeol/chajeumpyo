@@ -3,6 +3,7 @@ import { Info, Lock, LockOpen, MapPin, PackageCheck, QrCode, Store, UserCheck } 
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { BandHeader, Screen } from "@/components/layout/screen";
+import { PlaceMap } from "@/components/map/place-map";
 import { Button } from "@/components/ui/button";
 import { KeyValue } from "@/components/ui/card";
 import { SectionLabel } from "@/components/ui/field";
@@ -199,6 +200,7 @@ export function RevealPage() {
               <section className="flex flex-col gap-2">
                 <SectionLabel>지금 여기 있어요</SectionLabel>
                 <PlaceCard icon={Store} title={d.storagePlace.name} sub={d.storagePlace.guideText} />
+                <PlaceMap building={d.building} storagePlace={d.storagePlace} />
               </section>
             )}
             {d.pickupNotice && (
@@ -215,6 +217,7 @@ export function RevealPage() {
               title={where}
               sub={`${colorLabel(d.color) ? `색: ${colorLabel(d.color)} · ` : ""}${formatDayTime(d.foundAt)} 습득`}
             />
+            <PlaceMap building={d.building} storagePlace={null} />
             {d.pickupNotice && (
               <Alert tone="inperson" icon={UserCheck} title="직원이 한 번 더 확인해요">
                 {d.pickupNotice}
