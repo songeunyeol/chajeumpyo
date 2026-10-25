@@ -43,8 +43,7 @@
 ├── packages/shared/    # 프론트·백엔드가 같이 쓰는 zod 스키마와 타입 (API 계약)
 ├── frontend/           # 웹 프론트엔드 (예정)
 ├── docs/               # 조사·설계 문서, docs/api/openapi.json
-├── qa/                 # 테스트 데이터·평가 스크립트
-└── .env.example        # 환경 변수 템플릿 (실제 값은 .env에만, 커밋 금지)
+└── qa/                 # 테스트 데이터·평가 스크립트
 ```
 
 ## 로컬 실행 (백엔드)
@@ -53,7 +52,7 @@
 
 ```bash
 npm install                    # 워크스페이스 전체 설치 + Prisma 클라이언트 생성
-cp .env.example .env           # POSTGRES_PASSWORD·DATABASE_URL 비밀번호, JWT_SECRET(32자 이상)을 채운다 (AI_MODE=mock)
+# 루트에 .env를 만든다 (아래 "환경 변수" 참고)
 npm run db:up                  # PostgreSQL + pgvector (Docker)
 npm run db:deploy -w backend   # 마이그레이션 적용
 npm run db:seed -w backend     # 건물·보관처 (backend/prisma/seed-data)
@@ -81,4 +80,6 @@ npm run dev                    # http://localhost:4000, API 문서 /api/docs
 
 ## 환경 변수
 
-`.env.example`을 `.env`로 복사한 뒤 값을 채워주세요. `.env` 및 서비스 계정 키 파일은 절대 커밋하지 마세요.
+루트 `.env`의 값은 팀 내부로 따로 받는다. 변수 목록과 검증 규칙은 `backend/src/config/env.ts`에 있다. 처음 띄울 때 꼭 채울 것: `POSTGRES_PASSWORD`, `DATABASE_URL`(같은 비밀번호), `JWT_SECRET`(32자 이상), `ALLOWED_EMAIL_DOMAINS=skuniv.ac.kr`, `AI_MODE=mock`, `MAIL_MODE=console`.
+
+`.env` 및 서비스 계정 키 파일은 절대 커밋하지 마세요.
