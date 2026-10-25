@@ -15,7 +15,7 @@ export function LandingPage() {
     <div className="flex min-h-dvh flex-col bg-band-demo">
       <Band
         to="/found/new"
-        className="min-h-[262px] bg-band-finder text-white"
+        className="min-h-[262px] bg-band-finder text-white md:min-h-[300px]"
         inner="justify-between pt-6 pb-6"
         top={<span className="text-[13px] font-bold text-band-finder-sub">찾음표</span>}
         icon={Camera}
@@ -27,7 +27,7 @@ export function LandingPage() {
       />
       <Band
         to={lostTo}
-        className="min-h-[246px] bg-band-lost text-ink"
+        className="min-h-[246px] bg-band-lost text-ink md:min-h-[260px]"
         inner="py-6"
         icon={Search}
         iconClass="text-brand"
@@ -50,14 +50,13 @@ export function LandingPage() {
         sub={
           <>
             사진은 바로 올리고,
-            <br />
-            특징이 맞아야 위치가 열린다.
+            <br className="md:hidden" /> 특징이 맞아야 위치가 열린다.
           </>
         }
         subClass="text-ink-muted"
         arrowClass="bg-[#D9CDB7] text-band-demo-fg"
       />
-      <div className="mx-auto w-full max-w-app px-gutter pb-5 text-center">
+      <div className="mx-auto w-full max-w-app px-gutter pb-5 text-center md:max-w-[960px] md:px-12 md:text-right">
         <Link
           to="/admin/login"
           className="inline-flex min-h-touch min-w-touch items-center justify-center text-[14px] text-ink-muted underline underline-offset-4"
@@ -97,19 +96,21 @@ function Band({
 }) {
   return (
     <Link to={to} className={cn("group flex w-full focus-visible:-outline-offset-4", className)}>
-      <div className={cn("mx-auto flex w-full max-w-app flex-col px-6", inner)}>
+      <div className={cn("mx-auto flex w-full max-w-app flex-col px-6 md:max-w-[960px] md:px-12", inner)}>
         {top}
-        <div className={cn("flex items-end gap-3", top ? "mt-auto" : "my-auto")}>
+        <div className={cn("flex items-end gap-3 md:items-center", top ? "mt-auto" : "my-auto")}>
           <div className="flex min-w-0 flex-1 flex-col">
             {Icon && <Icon className={cn("mb-4 size-8", iconClass)} strokeWidth={2} aria-hidden />}
             {kicker && <span className="mb-2">{kicker}</span>}
-            <span className="text-display font-bold tracking-tight-ko">{title}</span>
-            <span className={cn("mt-1 text-[14px] leading-5", subClass)}>{sub}</span>
+            <span className="text-display font-bold tracking-tight-ko md:text-[40px] md:leading-[50px]">{title}</span>
+            <span className={cn("mt-1 text-[14px] leading-5 md:mt-2 md:text-[17px] md:leading-6", subClass)}>
+              {sub}
+            </span>
           </div>
           <span
             aria-hidden
             className={cn(
-              "mb-1 flex size-11 shrink-0 items-center justify-center rounded-full transition-transform group-hover:translate-x-0.5",
+              "mb-1 flex size-11 shrink-0 items-center justify-center rounded-full transition-transform group-hover:translate-x-0.5 md:mb-0 md:size-14",
               arrowClass,
             )}
           >

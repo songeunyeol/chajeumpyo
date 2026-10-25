@@ -16,7 +16,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="주요 메뉴"
-      className="safe-bottom sticky bottom-0 z-20 grid h-tabbar shrink-0 grid-cols-3 border-t border-line bg-surface-card"
+      className="safe-bottom sticky bottom-0 z-20 grid h-tabbar shrink-0 grid-cols-3 border-t border-line bg-surface-card md:hidden"
     >
       {tabs.map(({ to, label, icon: Icon }) => (
         <NavLink

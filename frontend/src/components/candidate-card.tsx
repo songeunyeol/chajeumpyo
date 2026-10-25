@@ -112,8 +112,8 @@ export function CandidateCard({
           </p>
         </>
       ) : (
-        <>
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="flex items-center gap-2 md:flex-1">
             <p className="m-0 flex flex-1 items-center gap-1 text-small text-ink-muted">
               <ShieldCheck className="size-4" aria-hidden />
               확인 기회{" "}
@@ -124,8 +124,10 @@ export function CandidateCard({
             </p>
             {c.isSeed && <SeedBadge />}
           </div>
-          <Button onClick={onClaim}>내 물건인지 확인</Button>
-        </>
+          <Button onClick={onClaim} className="md:h-11 md:w-auto md:px-4 md:text-[15px]">
+            내 물건인지 확인
+          </Button>
+        </div>
       )}
     </article>
   );
