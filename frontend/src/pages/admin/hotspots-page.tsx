@@ -66,9 +66,11 @@ function HBars({ title, rows }: { title: string; rows: Row[] }) {
   );
 }
 
-function HourBars({ rows }: { rows: HotspotResponse["byHour"] }) {
-  const hours = Array.from({ length: 13 }, (_, i) => i + 8);
+export function HourBars({ rows }: { rows: HotspotResponse["byHour"] }) {
   const byHour = new Map(rows.map((r) => [r.hour, r.count]));
+  // 보통은 8~20시만. 그 밖 시간에도 신고가 있으면 0~23시 전부 (요약 문장이 밤 시간을 말할 수 있어서)
+  const allDay = rows.some((r) => (r.hour < 8 || r.hour > 20) && r.count > 0);
+  const hours = allDay ? Array.from({ length: 24 }, (_, i) => i) : Array.from({ length: 13 }, (_, i) => i + 8);
   const counts = hours.map((h) => byHour.get(h) ?? 0);
   const max = Math.max(1, ...counts);
   const top = counts.indexOf(Math.max(...counts));
@@ -76,7 +78,7 @@ function HourBars({ rows }: { rows: HotspotResponse["byHour"] }) {
   return (
     <section aria-label="시간대별" className="flex flex-col gap-3 rounded-lg border border-line bg-surface-card p-4">
       <h2 className="m-0 text-body-lg font-bold">
-        시간대별 <span className="text-small font-normal text-ink-muted">(8~20시)</span>
+        시간대별 <span className="text-small font-normal text-ink-muted">({allDay ? "0~23시" : "8~20시"})</span>
       </h2>
       <div className="flex h-[150px] items-end gap-[2px] pt-6">
         {hours.map((h, i) => (
@@ -111,8 +113,8 @@ function HourBars({ rows }: { rows: HotspotResponse["byHour"] }) {
       </div>
       <div aria-hidden className="flex gap-[2px] text-caption text-ink-muted">
         {hours.map((h) => (
-          <span key={h} className="flex-1 text-center">
-            {h % 2 === 0 ? h : ""}
+          <span key={h} className="flex flex-1 justify-center whitespace-nowrap">
+            {h % (allDay ? 4 : 2) === 0 ? h : ""}
           </span>
         ))}
       </div>

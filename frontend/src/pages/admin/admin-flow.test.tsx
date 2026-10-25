@@ -9,6 +9,7 @@ import * as db from "@/data/mock/db";
 import { setMockSession } from "@/data/mock/hooks";
 import { routes } from "@/routes";
 import { buildUpdate, formFromDetail } from "./attribute-form";
+import { HourBars } from "./hotspots-page";
 import { showInPersonBlock } from "./item-detail-page";
 import { normalizeToken } from "./scan-page";
 
@@ -169,5 +170,22 @@ describe("A-06 분실 다발 카드", { timeout: 15000 }, () => {
     await user.type(from, "2024-01-01");
     await user.click(screen.getByRole("button", { name: "이 기간으로 보기" }));
     expect(await screen.findByText("기간은 1년 이내로 골라 주세요.")).toBeInTheDocument();
+  });
+
+  it("시간대 막대: 8~20시 밖에 신고가 있으면 0~23시 전부", () => {
+    const { unmount } = render(<HourBars rows={[{ hour: 13, count: 3 }]} />);
+    expect(screen.getByText("(8~20시)")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "1시 0건" })).toBeNull();
+    unmount();
+    render(
+      <HourBars
+        rows={[
+          { hour: 1, count: 5 },
+          { hour: 13, count: 2 },
+        ]}
+      />,
+    );
+    expect(screen.getByText("(0~23시)")).toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(24);
   });
 });
