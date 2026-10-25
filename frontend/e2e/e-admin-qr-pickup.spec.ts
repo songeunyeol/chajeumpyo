@@ -226,7 +226,7 @@ test("회원 QR 수령: L-11 코드 → 관리자 목록·상세·직접 입력 
   const d = await detail;
   expect(d.status()).toBe(409);
   expect((await d.json()).error.code).toBe("ALREADY_CLAIMED");
-  await expect(page.getByText("이미 주인이 찾아간 물건이에요.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "이미 주인이 찾아간 물건이에요" })).toBeVisible();
   await expect(page.getByRole("button", { name: /수령 QR 받기/ })).toHaveCount(0);
   await page.screenshot({ path: `${SHOTS}/e-09-student-claimed.png` });
   await page.goto("/home");
