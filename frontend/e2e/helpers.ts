@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
-import { expect, type Page, type Request } from "@playwright/test";
+import { type APIRequestContext, expect, type Page, type Request } from "@playwright/test";
 import pg from "pg";
 import sharp from "sharp";
+import { CONSENT_VERSION } from "../../packages/shared/src/api/consent.ts";
 import { E2E_DB_NAME, e2eDatabaseUrl } from "./e2e-db.mts";
 
 /** 유담관 좌표(개발 시드) 근처. 사진 EXIF GPS로 건물 추천이 되는지 본다 */
@@ -160,4 +161,63 @@ export async function withE2eDb<T>(fn: (db: pg.Client) => Promise<T>): Promise<T
   } finally {
     await db.end();
   }
+}
+
+// ---- 수령 흐름 (e)(f) ----
+
+export const API_LOG = "e2e/.artifacts/api.log";
+export const API_BASE = `http://localhost:${process.env.E2E_API_PORT ?? 4200}/api/v1`;
+export const ADMIN_PASSWORD = "admin1234!";
+/** 시드 관리자: 종합서비스센터 / 유담관 경비실 */
+export const CENTER_ADMIN = "center@skuniv.ac.kr";
+export const GUARD_ADMIN = "guard@skuniv.ac.kr";
+
+/** API로 학교 메일 회원을 만든다(코드는 API 로그에서). 화면 가입은 (c)가 본다 */
+export async function signupMemberViaApi(request: APIRequestContext): Promise<{ email: string; password: string }> {
+  const email = `e2e${Date.now()}${Math.floor(Math.random() * 1000)}@skuniv.ac.kr`;
+  const password = "e2e-pass-1234";
+  const headers = { "x-captcha-token": "dev-pass" };
+  const code = await request.post(`${API_BASE}/auth/email/code`, { headers, data: { email } });
+  expect(code.status(), await code.text()).toBe(204);
+  let six: string | null = null;
+  await expect.poll(() => (six = signupCodeFromLog(API_LOG, email))).toMatch(/^\d{6}$/);
+  const ver = await request.post(`${API_BASE}/auth/email/verify`, { headers, data: { email, code: six } });
+  expect(ver.status(), await ver.text()).toBe(200);
+  const { verificationToken } = (await ver.json()) as { verificationToken: string };
+  const consent = { version: CONSENT_VERSION, email: true, externalAi: true, location: false };
+  const up = await request.post(`${API_BASE}/auth/signup`, { headers, data: { verificationToken, password, consent } });
+  expect(up.status(), await up.text()).toBeLessThan(300);
+  return { email, password };
+}
+
+/** L-01 회원 로그인 → L-03 */
+export async function loginMember(page: Page, email: string, password: string) {
+  await page.goto("/login");
+  await page.getByLabel("학교 이메일").fill(email);
+  await page.getByLabel("비밀번호", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await expect(page).toHaveURL(/\/home$/);
+}
+
+/** A-01 관리자 로그인 → A-02 */
+export async function loginAdmin(page: Page, email: string) {
+  await page.goto("/admin/login");
+  await page.locator("#admin-email").fill(email);
+  await page.locator("#admin-password").fill(ADMIN_PASSWORD);
+  await page.getByRole("button", { name: "관리자 로그인" }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page.getByRole("heading", { name: "습득물 현황" })).toBeVisible();
+}
+
+/** A-05 직접 입력으로 코드를 넣는다(headless는 카메라가 없어 시트가 바로 열린다) */
+export async function enterPickupCode(page: Page, code: string) {
+  const input = page.getByLabel("수령 코드", { exact: true });
+  // 카메라 실패 → 시트가 저절로 열린다(조금 늦을 수 있다). 안 열리면 버튼으로 연다
+  const opened = await input.waitFor({ state: "visible", timeout: 5_000 }).then(
+    () => true,
+    () => false,
+  );
+  if (!opened) await page.getByRole("button", { name: "코드 직접 입력" }).click();
+  await input.fill(code);
+  await page.getByRole("button", { name: "확인", exact: true }).click();
 }
