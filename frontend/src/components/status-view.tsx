@@ -37,18 +37,25 @@ const mmss = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
-function RateLimitRetry({ seconds, onRetry }: { seconds: number; onRetry?: () => void }) {
-  const [until] = useState(() => Date.now() + seconds * 1000);
+function RateLimitRetry({
+  until,
+  onRetry,
+  show,
+}: {
+  until: number;
+  onRetry?: () => void;
+  show: "badge" | "button" | "both";
+}) {
   const left = useCountdown(until);
   return (
     <>
-      {left > 0 && (
+      {show !== "button" && left > 0 && (
         <p className="m-0 inline-flex items-center gap-1.5 self-center rounded-sm bg-review-bg px-2.5 py-1 text-small font-semibold text-review">
           <Timer className="size-4" aria-hidden />
           <span aria-live="off">{mmss(left)} 뒤에 다시 할 수 있어요</span>
         </p>
       )}
-      {onRetry && (
+      {show !== "badge" && onRetry && (
         <Button variant={left > 0 ? "secondary" : "primary"} disabled={left > 0} onClick={onRetry}>
           다시 시도하기
         </Button>
@@ -63,12 +70,20 @@ export function StatusView({
   onRetry,
   retryAfter = 30,
   home = "/",
+  part = "all",
+  until: untilProp,
 }: {
   kind: StatusKind;
   onRetry?: () => void;
   retryAfter?: number;
   home?: string;
+  /** all: 본문+버튼 / body: 본문만 / actions: 버튼만(전체 화면의 하단 고정 자리) */
+  part?: "all" | "body" | "actions";
+  /** 429 카운트다운 끝 시각(본문·버튼이 같은 시계를 쓰게) */
+  until?: number;
 }) {
+  const [ownUntil] = useState(() => Date.now() + retryAfter * 1000);
+  const until = untilProp ?? ownUntil;
   const homeLink = (
     <Button asChild variant="ghost" size="md">
       <Link to={home}>처음으로</Link>
@@ -106,7 +121,8 @@ export function StatusView({
       icon: <ResultIcon tone="review" icon={Timer} />,
       title: "잠시 후 다시 시도해 주세요",
       text: "짧은 시간에 요청이 많았어요.",
-      actions: <RateLimitRetry seconds={retryAfter} onRetry={onRetry} />,
+      badge: <RateLimitRetry until={until} show="badge" />,
+      actions: <RateLimitRetry until={until} onRetry={onRetry} show="button" />,
     },
     server: {
       icon: <ResultIcon tone="fail" icon={CircleAlert} />,
@@ -125,7 +141,14 @@ export function StatusView({
         </>
       ),
     },
-  }[kind];
+  }[kind] as {
+    icon: React.ReactNode;
+    title: string;
+    text: React.ReactNode;
+    actions?: React.ReactNode;
+    badge?: React.ReactNode;
+  };
+  if (part === "actions") return body.actions ? <>{body.actions}</> : null;
   return (
     <div
       role={kind === "notfound" ? undefined : "alert"}
@@ -136,20 +159,21 @@ export function StatusView({
         {body.icon}
         <h2 className="m-0 text-title font-bold">{body.title}</h2>
         <p className="m-0 text-ink-muted">{body.text}</p>
+        {body.badge}
       </div>
-      {body.actions && <div className="flex flex-col gap-2">{body.actions}</div>}
+      {part === "all" && body.actions && <div className="flex flex-col gap-2">{body.actions}</div>}
     </div>
   );
 }
 
-/** C-06 전체 화면 (404·요청 실패로 보여 줄 데이터가 없을 때) */
+/** C-06 전체 화면 (404·요청 실패로 보여 줄 데이터가 없을 때). 버튼은 아래 고정 자리 */
 export function StatusScreen({
   kind,
   flow = "lost",
   title,
   back = true,
   onRetry,
-  retryAfter,
+  retryAfter = 30,
   home,
 }: {
   kind: StatusKind;
@@ -160,9 +184,15 @@ export function StatusScreen({
   retryAfter?: number;
   home?: string;
 }) {
+  const [until] = useState(() => Date.now() + retryAfter * 1000);
+  const common = { kind, onRetry, retryAfter, home, until };
   return (
-    <Screen flow={flow} header={<BandHeader variant={flow === "demo" ? "lost" : flow} title={title} back={back} />}>
-      <StatusView kind={kind} onRetry={onRetry} retryAfter={retryAfter} home={home} />
+    <Screen
+      flow={flow}
+      header={<BandHeader variant={flow === "demo" ? "lost" : flow} title={title} back={back} />}
+      footer={<StatusView {...common} part="actions" />}
+    >
+      <StatusView {...common} part="body" />
     </Screen>
   );
 }
@@ -239,8 +269,10 @@ export function SessionExpiredSheet({ open, demo, onClose }: { open: boolean; de
       open={open}
       onOpenChange={(v) => !v && onClose()}
       title={
-        <span className="inline-flex items-center gap-2">
-          <LogIn className="size-6 text-brand" aria-hidden />
+        <span className="inline-flex items-center gap-3">
+          <span aria-hidden className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-soft">
+            <LogIn className="size-7 text-brand" />
+          </span>
           {demo ? "체험 시간이 끝났어요" : "다시 로그인해 주세요"}
         </span>
       }

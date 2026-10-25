@@ -1,5 +1,5 @@
 import type { BuildingListItem } from "@chajeumpyo/shared";
-import { Info, Search } from "lucide-react";
+import { Map as MapIcon, Search } from "lucide-react";
 import { useState } from "react";
 import { MapCard, type MapState, mapAvailable } from "@/components/map/map-card";
 import { Button } from "@/components/ui/button";
@@ -42,8 +42,8 @@ export function BuildingSheet({
       />
       {!mapOk && (
         <>
-          <p className="m-0 flex items-start gap-1.5 rounded-md bg-surface-sunken px-3 py-2.5 text-small text-ink-muted">
-            <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <p className="m-0 flex items-start gap-2.5 rounded-md bg-surface-sunken px-3.5 py-3 text-[14px] leading-5 text-ink-muted">
+            <MapIcon className="mt-0.5 size-5 shrink-0" aria-hidden />
             지도를 불러오지 못해서 건물 목록으로 보여 드려요.
           </p>
           <div className="relative">
