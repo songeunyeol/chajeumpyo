@@ -52,8 +52,21 @@ test("회원 QR 수령: L-11 코드 → 관리자 목록·상세·직접 입력 
 
   // 학생: 신고 → 통과 → L-10 → L-11
   await loginMember(page, member.email, member.password);
+  // 후보 중 유담관 경비실(관리자 guard)에 맡긴 일반 습득물을 고른다. (a)가 먼저 돌면 이어폰이 더 있어 순서가 바뀐다
+  const created = page.waitForResponse((r) => r.request().method() === "POST" && r.url().endsWith("/lost-reports"));
   await reportEarphone(page, "흰색 이어폰, 곰돌이 스티커");
-  await candidateCards(page).first().getByRole("button", { name: "내 물건인지 확인" }).click();
+  const { candidates } = (await (await created).json()) as { candidates: { foundItemId: string }[] };
+  const atGuard = await withE2eDb(async (db) => {
+    const r = await db.query<{ id: string }>(
+      `SELECT f.id FROM found_item f JOIN storage_place p ON p.id = f.storage_place_id
+       WHERE NOT f.is_seed AND f.storage_type = 'HANDED_OVER' AND p.name = '유담관 경비실'`,
+    );
+    return new Set(r.rows.map((x) => x.id));
+  });
+  const idx = candidates.findIndex((c) => atGuard.has(c.foundItemId));
+  expect(idx, "유담관 경비실 후보").toBeGreaterThanOrEqual(0);
+  await expect(candidateCards(page)).toHaveCount(candidates.length);
+  await candidateCards(page).nth(idx).getByRole("button", { name: "내 물건인지 확인" }).click();
   await expect(page.getByText("내 물건이 맞아요")).toBeVisible();
   await page.getByRole("button", { name: /사진과 위치 보기/ }).click();
   await expect(page).toHaveURL(/\/items\/[0-9a-f-]{36}$/);
