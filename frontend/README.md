@@ -124,3 +124,21 @@ npx biome check frontend
 | 8 | 360px 디자인 비교(batch3 PNG 14쌍) + 1280px A-03·A-04 | 통과 (고침: `cn`이 `px-gutter`·`text-caption` 같은 테마 이름 값을 몰라 `p-0`이 안 먹고 글자 크기가 색과 섞여 지워지던 문제 — `extendTailwindMerge`로 등록. 하단 탭 글자가 시안 크기로 돌아옴. 속성 폼 선택 상자가 `read-only` 회색이던 것 흰 바탕으로, 검토 대기 빈 화면 문구, 로그인 실패 문구) |
 | 9 | 터치 44px (A-01~A-06 9곳 자동 검사) | 통과, 예외 1: A-06 시간대 막대(폭 20px 이하). 같은 숫자를 [표로 보기]로 볼 수 있어(WCAG 2.5.8 같은 기능 예외) 그대로 둠 |
 | 10 | 실서버 관리자 흐름: center@skuniv.ac.kr 로그인 → A-02 → A-03 → A-04 고치고 저장(PATCH 200, 화면에 반영) → A-06 | 통과 (브랜드를 바꿨다가 원래 값 Apple로 되돌림) |
+
+### P5 배치 4 — C-06, C-07, PC 1280, PWA (2026-10-25)
+
+화면 확인용: `/status/loading|offline|notfound|expired|expired-demo|ratelimit|server`(C-06 미리보기), 없는 주소는 404, `/login?expired=1|demo`는 만료 시트, `/map`은 캠퍼스 지도. 지도는 `VITE_NAVER_MAP_CLIENT_ID`가 있을 때만 불러와요(없으면 건물 목록).
+
+| # | 기준 | 결과 |
+|---|---|---|
+| 1 | build·루트 typecheck·`npx biome check frontend`·vitest 전부 통과 | 통과 (vitest 122건. 고침: SVG 아이콘 3개 `<title>`, 쓸모없는 Fragment) |
+| 2 | `cn` 고친 뒤 P2·P3 학생 화면 다시 비교(이전 구현 55장과 픽셀 비교 + batch1·2 시안) | 통과 — 바뀐 곳은 글자 크기가 시안대로 돌아온 것뿐(하단 탭 글자, F-02 위치 안내, L-11 남은 시간 칩). 날짜·시각 차이 말고는 다른 차이 없음 |
+| 3 | C-06: 로딩 틀(300ms 안이면 안 보임, `aria-busy`), 오프라인(데이터 없으면 전체 화면, 있으면 토스트), 404, 로그인 만료 시트(체험이면 [체험 다시 시작하기]), 429 카운트다운 뒤 버튼 켜짐(Retry-After 없으면 30초), 500·502 | 통과 (`status-view.test.tsx` 7건. 고침: 버튼을 아래 고정 자리로, 본문·버튼이 같은 카운트다운) |
+| 4 | C-07: 네이버 지도 v3를 지도 화면에서만 지연 로드, 건물 핀만(사용자 위치·물건 좌표 없음), 키 없음·`navermap_authFailure`·3초 넘김이면 건물 목록 | 통과 (`map.test.tsx` 7건: 스크립트 한 번, 인증 실패·시간 초과 실패, 키 없으면 스크립트 없음, 길찾기 주소에 좌표 없음) |
+| 5 | C-07 위치: F-02 건물 시트(핀 ↔ 목록 양방향), L-10 작은 정적 지도(누르면 확대 시트) + 네이버 지도 길찾기, `/map` | 통과 (가짜 지도 스크립트로 핀 모양 확인. 보관처 건물은 안내 문구에 든 건물 이름으로 고름 — 질문 1) |
+| 6 | PC 1280: C-01 띠는 화면 끝까지·글은 가운데 960·제목 40/50·화살표 56, 분실자·습득자는 띠·바탕 끝까지 + 내용 가운데 480, 768px 이상 하단 탭 대신 머리 띠 알림·내 정보, 후보 카드 확인 버튼 오른쪽 | 통과 (시안 PC 3장 비교) |
+| 7 | PWA: `docs/design/system/icons` → `public/`, manifest 이름 찾음표·#1C4B34·#F6F2EA·maskable, apple-touch-icon 180, favicon svg·32 | 통과 (빌드한 `manifest.webmanifest` 확인) |
+| 8 | 서비스 워커가 API 응답·`/files` 서명 사진을 캐시하지 않음 | 통과 — precache는 빌드 결과물만, `runtimeCaching: []`, 탐색 대체에서 `/api/`·`/files/` 제외. 빌드한 `sw.js`의 경로 등록은 NavigationRoute 하나뿐 |
+| 9 | 덩어리 나누기: 관리자 화면·QR 리더·지도는 따로 | 통과 — 관리자·`@zxing`은 `assets/admin/`(학생 기기 precache에서도 뺌, 1.43MB → 0.92MB), 지도 `building-map` 4.3kB. 첫 화면 JS: index 573kB(gzip 179) + screen 262kB(gzip 82, 주로 zod 스키마) + utils 38kB + react-dom 4kB |
+| 10 | 터치 44px (C-06 5종·C-01·L-10 지도·/map·L-05·L-03, 360과 1280) | 통과 — 지도 핀은 머리+꼬리+점 전체가 버튼(46×51 이상) |
+| 11 | 연결 지적: A-04 기록 표 줄바꿈, 수령·만료 물건 속성 고치기 숨김, L-10 수령된 물건 안내 | 고침 |
