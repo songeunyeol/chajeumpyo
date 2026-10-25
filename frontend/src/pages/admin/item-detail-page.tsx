@@ -27,6 +27,10 @@ import { formatDayTime, formatFloor } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { type AttrForm, AttributeForm, buildUpdate, formFromDetail } from "./attribute-form";
 
+/** 수령·기한 만료로 정리된 물건(사진·특징을 지움)은 속성을 고치지 않는다 */
+export const isPurged = (d: Pick<AdminFoundItemDetailResponse, "status" | "originalImageUrl" | "publicImageUrl">) =>
+  d.status === "CLAIMED" || d.status === "EXPIRED" || (d.originalImageUrl === null && d.publicImageUrl === null);
+
 /** 대면 확인 후 수령 블록: 확인 실패가 쌓여 잠긴(claimLockedAt) 물건이 아직 수령 전(등록됨·열람됨)일 때만 */
 export const showInPersonBlock = (d: Pick<AdminFoundItemDetailResponse, "claimLockedAt" | "status">) =>
   !!d.claimLockedAt && (d.status === "REGISTERED" || d.status === "REVEALED");
@@ -43,6 +47,8 @@ const METHOD_LABEL: Record<PickupMethod, string> = {
   DEMO: "시연",
 };
 const PICKUP_STATUS: Record<PickupStatus, string> = { ISSUED: "발급", COMPLETED: "완료", EXPIRED: "만료" };
+/** 좁은 표에서 이메일이 @ 앞에서만 줄바꿈되게 */
+const breakAtSign = (email: string) => email.replace("@", "\u200B@");
 const short = (iso: string) => formatDayTime(iso).replace(/\(.\)/, "");
 
 function Photo({ src, label, blurred }: { src: string | null; label: string; blurred?: boolean }) {
@@ -137,7 +143,7 @@ function InPersonBlock({ d }: { d: AdminFoundItemDetailResponse }) {
 }
 
 function Records({ d }: { d: AdminFoundItemDetailResponse }) {
-  const th = "px-2 py-2 text-left text-[13px] font-semibold text-ink-muted";
+  const th = "px-2 py-2 text-left text-[13px] font-semibold whitespace-nowrap text-ink-muted";
   const td = "px-2 py-2.5 align-top";
   return (
     <div className="flex flex-col gap-5">
@@ -163,15 +169,15 @@ function Records({ d }: { d: AdminFoundItemDetailResponse }) {
             <tbody>
               {d.attempts.map((a) => (
                 <tr key={`${a.emailMasked}-${a.createdAt}`} className="border-b border-line">
-                  <td className={td}>{a.emailMasked}</td>
-                  <td className={td}>
-                    <span className="inline-flex items-center gap-1.5">
+                  <td className={td}>{breakAtSign(a.emailMasked)}</td>
+                  <td className={cn(td, "whitespace-nowrap")}>
+                    <span className="inline-flex flex-col items-start gap-0.5 lg:flex-row lg:items-center lg:gap-1.5">
                       <StatusBadge tone={RESULT_VIEW[a.result].tone}>{RESULT_VIEW[a.result].label}</StatusBadge>
                       {a.answerCorrect === false && <span className="text-small">오답</span>}
                       {a.answerCorrect === true && <span className="text-small">정답</span>}
                     </span>
                   </td>
-                  <td className={cn(td, "whitespace-nowrap")}>{short(a.createdAt)}</td>
+                  <td className={cn(td, "text-[13px] lg:whitespace-nowrap lg:text-[14px]")}>{short(a.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -218,7 +224,7 @@ function Records({ d }: { d: AdminFoundItemDetailResponse }) {
             <tbody>
               {d.pickups.map((p) => (
                 <tr key={p.id} className="border-b border-line">
-                  <td className={td}>{METHOD_LABEL[p.method]}</td>
+                  <td className={cn(td, "whitespace-nowrap")}>{METHOD_LABEL[p.method]}</td>
                   <td className={td}>
                     <div>{p.emailMasked ?? "계정 없음"}</div>
                     <div className="text-small text-ink-muted">
@@ -226,7 +232,7 @@ function Records({ d }: { d: AdminFoundItemDetailResponse }) {
                       {p.verificationNote && ` · 메모: ${p.verificationNote}`}
                     </div>
                   </td>
-                  <td className={td}>
+                  <td className={cn(td, "whitespace-nowrap")}>
                     <StatusBadge tone={p.status === "COMPLETED" ? "pass" : "neutral"} icon={PackageCheck}>
                       {PICKUP_STATUS[p.status]}
                     </StatusBadge>
@@ -369,9 +375,16 @@ export function AdminItemDetailPage() {
                   ["보관", storage],
                 ]}
               />
-              <Button variant="secondary" size="md" onClick={() => setForm(formFromDetail(d))}>
-                <Pencil aria-hidden /> 속성 고치기
-              </Button>
+              {isPurged(d) ? (
+                <p className="m-0 flex items-center gap-1.5 text-small text-ink-muted">
+                  <Info className="size-4 shrink-0" aria-hidden />
+                  수령·만료로 정보가 지워졌어요
+                </p>
+              ) : (
+                <Button variant="secondary" size="md" onClick={() => setForm(formFromDetail(d))}>
+                  <Pencil aria-hidden /> 속성 고치기
+                </Button>
+              )}
             </div>
           )}
         </div>

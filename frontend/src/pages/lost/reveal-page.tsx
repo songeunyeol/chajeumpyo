@@ -68,7 +68,9 @@ export function RevealPage() {
   const close = { close: () => navigate(-1) } as const;
 
   if (detail.isError) {
-    const forbidden = errorCodeOf(detail.error) === "FORBIDDEN";
+    const code = errorCodeOf(detail.error);
+    const forbidden = code === "FORBIDDEN";
+    const claimed = code === "ALREADY_CLAIMED";
     return (
       <Screen
         flow="lost"
@@ -80,12 +82,23 @@ export function RevealPage() {
           </Button>
         }
       >
-        <ResultIcon tone={forbidden ? "locked" : "neutral"} icon={forbidden ? Lock : Info} />
-        <p className="m-0 text-title font-bold">
-          {forbidden ? "확인을 통과해야 볼 수 있어요" : "물건을 불러오지 못했어요"}
-        </p>
+        <ResultIcon
+          tone={forbidden ? "locked" : claimed ? "pass" : "neutral"}
+          icon={forbidden ? Lock : claimed ? PackageCheck : Info}
+        />
+        <h2 className="m-0 text-title font-bold">
+          {forbidden
+            ? "확인을 통과해야 볼 수 있어요"
+            : claimed
+              ? "이미 주인이 찾아간 물건이에요"
+              : "물건을 불러오지 못했어요"}
+        </h2>
         <p className="m-0 text-ink-muted">
-          {forbidden ? "후보에서 내 물건인지 먼저 확인해 주세요." : errorMessageOf(detail.error)}
+          {forbidden
+            ? "후보에서 내 물건인지 먼저 확인해 주세요."
+            : claimed
+              ? "수령이 끝나서 사진과 위치는 더 볼 수 없어요."
+              : errorMessageOf(detail.error)}
         </p>
       </Screen>
     );

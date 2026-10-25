@@ -148,7 +148,7 @@ export function StatusView({
     actions?: React.ReactNode;
     badge?: React.ReactNode;
   };
-  if (part === "actions") return body.actions ? <>{body.actions}</> : null;
+  if (part === "actions") return body.actions ?? null;
   return (
     <div
       role={kind === "notfound" ? undefined : "alert"}

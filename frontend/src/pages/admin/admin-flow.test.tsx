@@ -99,7 +99,9 @@ describe("A-04 습득물 상세", { timeout: 15000 }, () => {
 
   it("수령 완료 물건엔 대면 확인 블록이 없다(잠김+수령 완료 조합은 위 조건 테스트)", async () => {
     renderAt(`/admin/items/${F_CLAIMED}`);
-    await screen.findByRole("button", { name: "속성 고치기" }, SLOW);
+    // 수령 완료면 속성 고치기 대신 안내
+    await screen.findByText("수령·만료로 정보가 지워졌어요", {}, SLOW);
+    expect(screen.queryByRole("button", { name: "속성 고치기" })).toBeNull();
     expect(screen.queryByRole("region", { name: "대면 확인 후 수령" })).toBeNull();
   });
 
