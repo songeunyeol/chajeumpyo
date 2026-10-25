@@ -99,3 +99,16 @@ npx vitest run src/lib/http.test.ts src/lib/auth.test.tsx src/api
 - 설정 고침: Vite를 `npx` 대신 `node ../node_modules/vite/bin/vite.js`로 띄움(npx 자식이 남아 다음 실행이 5174 충돌).
 - 백엔드 296개 통과(변경 없음), `npx biome check frontend backend packages` 깨끗, `tsc -p frontend/e2e` 통과.
 - 확인 안 한 것: 서버 쪽 `INVALID_EMAIL_DOMAIN`(화면이 먼저 막아 요청이 안 나감 — 계약 확인에서 따로 본다), 실제 QR 스캔 수령(L-11 회원 → A-05, 관리자 화면이 아직 자리표시).
+
+### I5 (10/25)
+
+- 새 e2e 2개(전체 9개). 공통 도우미(`helpers.ts`): `signupMemberViaApi`(API 가입, 코드는 api.log), `loginMember`(L-01), `loginAdmin`(A-01), `enterPickupCode`(A-05 직접 입력 — 카메라 실패 뒤 시트가 저절로 열리길 5초 기다리고, 안 열리면 "코드 직접 입력").
+  - (e) `e-admin-qr-pickup`: API로 만든 회원 → L-01 → 신고 "흰색 이어폰, 곰돌이 스티커" → 후보 중 **유담관 경비실에 맡긴 일반(비시드) 습득물**(POST /lost-reports 응답 + DB로 골라 그 카드) → 통과 → L-10 → L-11 QR·"코드 보기"(4자씩 띄움) → 관리자는 **다른 브라우저 컨텍스트**: guard 로그인 → A-03 목록의 모든 `<img>` src가 `/files/found/<id>/public.jpg?exp&sig`(원본·썸네일 없음), 사진 실제 로드 → A-04 "속성 고치기" 제목 바꿔 "저장" → PATCH 200·"저장했어요."·DB 반영 → A-05: 발급 건 `qr_expires_at`을 SQL로 잠시 과거로(이름 확인 뒤, 끝나면 되돌림) → 띄어 쓴 코드 그대로 입력 → 410 "QR이 만료됐어요" / center(종합서비스센터) 관리자 → 403 "다른 보관처의 물건이에요" / guard "다시 스캔" → 200, 가린 이메일(`e2****…@skuniv.ac.kr`)·"무선 이어폰"·원본 사진 로드, 원래 이메일은 화면에 없음 → "수령 완료" → "수령 처리했어요" → 같은 코드 → 409 `ALREADY_CLAIMED` "이미 수령된 물건이에요". DB: 물건 CLAIMED, 수령 CENTER_QR·COMPLETED·처리 guard. 학생 L-10 다시 열기 → `GET /found-items/:id/detail` 409 `ALREADY_CLAIMED` → "이미 주인이 찾아간 물건이에요.", L-03 신고 "찾음". 학생·관리자 요청 URL에 토큰·좌표 없음.
+  - (f) `f-in-person-pickup`: 보관 중 일반 습득물(이어폰 아님) 하나를 SQL로 잠금(`claim_locked_at`, 이름 확인 뒤) → center 로그인 → A-04 `region` "대면 확인 후 수령" → 빈 메모 "확인한 내용을 적어 주세요."(요청 없음) → 250자 입력이 200자로 잘림·"200 / 200" → 화면 우회로 201자 API 요청 → 400 `VALIDATION_ERROR` → 메모 적고 완료 → 200 IN_PERSON·COMPLETED, 토스트, 블록 사라짐, 수령 기록 행 "대면"·"계정 없음"·"처리 ce****@skuniv.ac.kr · 메모: …"·"완료", DB CLAIMED·처리 center·메모 그대로, 새로고침 뒤에도 블록 없음.
+- 고친 것: (e)가 처음엔 첫 후보를 눌렀는데, 전체 실행에서는 (a)가 등록한 이어폰(그 자리에 둔 것 포함)이 먼저 와서 실패 → 후보를 보관처로 골라 누르게 고침(8159f2a).
+- 최종 실행 (10/25):
+  - e2e **9/9 연속 2번 통과** (57.7s·57.9s, 벽시계 58s·59s). (e) 약 21s(직접 입력 시트 기다림 포함), (f) 약 2.3s.
+  - 그 전 한 번의 전체 실행에서 (d) 세 번째 테스트("확인 도중 대면 확인…")가 1번 실패(16.3s, 자세한 원인은 덮어써져 못 봄). 그 뒤 4번 연속 통과 — 드문 흔들림으로 기록만.
+  - 백엔드 299개 통과(변경 없음). `npm run typecheck` 통과, `tsc -p frontend/e2e` 통과.
+  - `npx biome check frontend backend packages`: 연결·백엔드·shared·e2e 깨끗. 남은 지적 4건은 프론트 P5 작업 중 파일(`frontend/public/favicon.svg`·`icon.svg`·`icon-maskable.svg` noSvgWithoutTitle, `frontend/src/components/status-view.tsx` noUselessFragments) → 인계판에 남김.
+- 화면·트레이스: `e2e/.artifacts/screens/e-01-l11-code.png` ~ `e-10-student-home.png`, `f-01-block.png` ~ `f-03-done.png`, 실패 시 `test-results/**/trace.zip`, HTML 보고서 `report/`.
