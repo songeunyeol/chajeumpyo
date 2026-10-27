@@ -20,7 +20,7 @@
 | 백엔드 | Express 5, zod 4, zod-to-openapi(+Swagger UI), multer, sharp, jsonwebtoken, bcryptjs, express-rate-limit, pino |
 | DB | PostgreSQL + pgvector, Prisma 7 (임베딩만 raw SQL), 로컬은 Docker |
 | 사진 저장 | S3 호환 스토리지 (Supabase Storage 또는 Cloudflare R2), 비공개 버킷 + 서명 URL |
-| AI | `@google/genai` — 속성 추출 Gemini 2.5 Flash-Lite(폴백 Flash), 임베딩 gemini-embedding-2 |
+| AI | `@google/genai` — 속성 추출 Gemini 3.6 Flash(폴백 3.5 Flash), 임베딩 gemini-embedding-2 |
 | 메일 | nodemailer + Gmail 앱 비밀번호 (도메인이 있으면 Resend) |
 | 배포 | 프론트 Vercel, 백엔드 상시 실행 서버 (Railway / Render 유료 / Fly.io 중 택1), DB Supabase 또는 Neon |
 | 품질 | Biome(린트·포맷), Vitest (매칭·판정 로직 단위 테스트) |
