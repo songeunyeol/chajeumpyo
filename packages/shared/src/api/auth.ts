@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Role } from "../enums";
+import { DemoConsent, MemberConsent } from "./consent";
 
 /** 앞뒤 공백 제거 + 소문자 */
 const Email = z
@@ -40,6 +41,8 @@ export type EmailVerifyResponse = z.infer<typeof EmailVerifyResponse>;
 export const SignupRequest = z.object({
   verificationToken: z.string().min(1),
   password: Password,
+  /** 동의 화면에서 받은 동의 (QA B15) */
+  consent: MemberConsent,
 });
 export type SignupRequest = z.infer<typeof SignupRequest>;
 
@@ -64,6 +67,10 @@ export const AdminAuthResponse = AuthResponse.extend({
   storagePlace: z.object({ id: z.number().int(), name: z.string() }).nullable(),
 });
 export type AdminAuthResponse = z.infer<typeof AdminAuthResponse>;
+
+/** POST /auth/demo */
+export const DemoLoginRequest = z.object({ consent: DemoConsent });
+export type DemoLoginRequest = z.infer<typeof DemoLoginRequest>;
 
 /** GET /me */
 export const MeResponse = AuthUser;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Category, FoundStatus, StorageType } from "../enums";
 import { BuildingSummary } from "./buildings";
+import { FinderConsentFields } from "./consent";
 
 /** 이미지 최대 용량(MB). 프론트는 업로드 전에 이보다 작게 줄인다. */
 export const MAX_IMAGE_MB = 10;
@@ -14,6 +15,7 @@ export const RegisterFoundItemFields = z
     /** 습득 층. 지하는 음수(B1 = -1), 모르면 비움 */
     floor: z.coerce.number<number>().int().min(-10).max(30).optional(),
   })
+  .extend(FinderConsentFields.shape)
   .superRefine((v, ctx) => {
     if (v.storageType === "HANDED_OVER" && v.storagePlaceId === undefined) {
       ctx.addIssue({ code: "custom", path: ["storagePlaceId"], message: "맡긴 보관처를 골라 주세요." });
@@ -48,5 +50,33 @@ export const RegisterFoundItemResponse = z.object({
   storagePlace: StoragePlaceSummary.nullable(),
   /** REVIEW일 때 안내 문구 */
   message: z.string().nullable(),
+  /** 고가품을 그 자리에 뒀을 때 보관처에 맡겨 달라는 안내와 가까운 보관처 (open-issues #32). 아니면 null */
+  handOverAdvice: z
+    .object({
+      message: z.string(),
+      storagePlaces: z.array(StoragePlaceSummary.extend({ building: BuildingSummary, sameBuilding: z.boolean() })),
+    })
+    .nullable(),
 });
 export type RegisterFoundItemResponse = z.infer<typeof RegisterFoundItemResponse>;
+
+export const FoundItemIdParams = z.object({ id: z.uuid() });
+
+/** GET /found-items/:id/detail: 일치 판정을 통과한 계정에게만 (F-10) */
+export const FoundItemDetailResponse = z.object({
+  id: z.string(),
+  category: Category,
+  color: z.string().nullable(),
+  /** 공개본(민감하면 블러) 서명 URL. 10분 뒤 만료 */
+  imageUrl: z.string(),
+  imageUrlExpiresAt: z.iso.datetime(),
+  building: BuildingSummary,
+  storageType: StorageType,
+  storagePlace: StoragePlaceSummary.nullable(),
+  status: FoundStatus,
+  foundAt: z.iso.datetime(),
+  isSeed: z.boolean(),
+  /** 고가품이면 보관처 대면 수령 안내 (QA W3). 아니면 null */
+  pickupNotice: z.string().nullable(),
+});
+export type FoundItemDetailResponse = z.infer<typeof FoundItemDetailResponse>;

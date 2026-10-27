@@ -11,6 +11,8 @@
 - **권한 표기**: `공개` 누구나 · `회원` 분실자·체험 계정 · `관리자` 관리자 계정
 - **시간**: ISO 8601, 한국 시간 기준으로 표시는 프론트에서 처리
 - **이미지 URL**: 비공개 사진은 만료 시간이 있는 서명 URL로 내려준다. (초안: 10분)
+- **캡차**: 습득물 등록, 체험 로그인, 인증 코드 요청은 Cloudflare Turnstile 토큰을 `X-Captcha-Token` 헤더로 보낸다. 없거나 틀리면 `400 CAPTCHA_FAILED`. 개발 환경에서는 `CAPTCHA_MODE=off`로 끌 수 있고 production에서는 끌 수 없다. (open-issues #38)
+- **동의**: 가입·체험 로그인·습득물 등록은 동의 화면 버전(`CONSENT_VERSION`, `packages/shared/src/api/consent.ts`)과 동의 항목을 같이 보낸다. 버전이 다르거나 필수 항목(가입: 이메일 수집·외부 AI 처리, 체험·등록: 외부 AI 처리)이 빠지면 `400 VALIDATION_ERROR`. 동의 문구도 같은 파일의 `CONSENT_TEXTS`를 쓴다. (QA B15, open-issues #35)
 
 ### 에러 응답 형식
 
@@ -30,13 +32,16 @@
 | 400 | `VALIDATION_ERROR` | 입력 형식 오류 |
 | 400 | `INVALID_EMAIL_DOMAIN` | 학교 이메일이 아님 |
 | 400 | `INVALID_CODE` | 인증 코드 불일치·만료 |
+| 400 | `CAPTCHA_FAILED` | 캡차 토큰이 없거나 틀림, 캡차 검증 서버 오류 |
 | 401 | `UNAUTHORIZED` | 토큰 없음·만료 |
 | 403 | `FORBIDDEN` | 권한 없음 (일치 판정을 통과하지 않은 습득물 상세 조회, 후보가 아닌 습득물에 판정 시도, 다른 보관처 물건 수령 처리 등) |
 | 404 | `NOT_FOUND` | 대상 없음 |
-| 409 | `MATCH_LOCKED` | 시도 횟수 초과로 잠김 |
+| 409 | `MATCH_LOCKED` | 이 계정의 시도 횟수(3회) 초과로 잠김 |
+| 409 | `IN_PERSON_REQUIRED` | 모든 계정의 실패가 10회가 되어 이 물건은 대면 확인만 됨 |
 | 409 | `ALREADY_CLAIMED` | 이미 수령 완료된 물건 |
 | 409 | `ALREADY_ANSWERED` | 이미 답한 확인 질문 |
 | 409 | `INVALID_STORAGE_TYPE` | 보관 위치와 맞지 않는 수령 방식 |
+| 409 | `NOT_IN_PERSON_ITEM` | 대면 확인으로 넘어간 보관 중 물건이 아니라 대면 확인 수령을 할 수 없음 |
 | 410 | `QR_EXPIRED` | 수령 QR 만료 |
 | 413 | `IMAGE_TOO_LARGE` | 사진 용량 초과 |
 | 422 | `NO_OBJECT_DETECTED` | 사진에서 물건을 찾지 못함 |
@@ -51,7 +56,6 @@
 | 메서드 | 경로 | 권한 | 기능 ID |
 | --- | --- | --- | --- |
 | GET | `/buildings` | 공개 | F-01 |
-| GET | `/buildings/nearest` | 공개 | F-01 |
 | GET | `/storage-places` | 공개 | F-01 |
 | GET | `/files/*` | 서명 URL | F-10, F-14 |
 | POST | `/found-items` | 공개 | F-01, F-02, F-03 |
@@ -70,14 +74,16 @@
 | GET | `/found-items/:id/detail` | 회원 | F-10, F-12 |
 | POST | `/found-items/:id/pickup-qr` | 회원 | F-11 |
 | POST | `/found-items/:id/self-pickup` | 회원 | F-11 |
-| GET | `/notifications` | 회원 | F-13 |
-| PATCH | `/notifications/:id/read` | 회원 | F-13 |
+| GET | `/notifications` | 회원·관리자 | F-13 |
+| PATCH | `/notifications/:id/read` | 회원·관리자 | F-13 |
+| PATCH | `/notifications/read-all` | 회원·관리자 | F-13 |
 | POST | `/admin/auth/login` | 공개 | F-14 |
 | POST | `/admin/pickups/scan` | 관리자 | F-11, F-14 |
 | POST | `/admin/pickups/:id/complete` | 관리자 | F-11, F-14 |
 | GET | `/admin/found-items` | 관리자 | F-14 |
 | GET | `/admin/found-items/:id` | 관리자 | F-14 |
 | PATCH | `/admin/found-items/:id` | 관리자 | F-14 |
+| POST | `/admin/found-items/:id/in-person-pickup` | 관리자 | F-11, F-14 |
 | GET | `/admin/stats/hotspots` | 관리자 | F-15 |
 
 ---
@@ -87,18 +93,13 @@
 ### 건물
 
 #### `GET /buildings` · 공개
-건물 목록. 위치 권한이 없을 때 선택지로 쓴다.
+건물 목록과 건물 중심 좌표(공개 정보).
 
 ```json
-{ "buildings": [ { "id": 1, "name": "혜인관" }, { "id": 2, "name": "청운관" } ] }
+{ "buildings": [ { "id": 1, "name": "혜인관", "lat": 37.615, "lng": 127.013 }, { "id": 2, "name": "청운관", "lat": 37.616, "lng": 127.012 } ] }
 ```
-
-#### `GET /buildings/nearest?lat=37.615&lng=127.013` · 공개
-가장 가까운 건물. 거리가 기준보다 멀면 `building`이 `null`이다.
-
-```json
-{ "building": { "id": 1, "name": "혜인관" }, "distanceM": 42 }
-```
+- **사용자 좌표는 서버로 보내지 않는다** (open-issues #34, QA B14). 프론트가 사진 GPS(EXIF) → 브라우저 위치 순으로 좌표를 얻어 `packages/shared`의 `nearestBuilding()`으로 브라우저 안에서 건물을 고르고(300m 넘으면 목록에서 고름), 좌표는 버린다. 업로드 전 canvas로 다시 인코딩해 EXIF를 지운다.
+- 예전 `GET /buildings/nearest`는 없앴다.
 
 #### `GET /storage-places?buildingId=1` · 공개
 활성 보관처 목록. `buildingId`를 주면 그 건물 보관처가 앞에 온다(`sameBuilding: true`).
@@ -135,7 +136,8 @@
   "floor": 2,
   "storageType": "HANDED_OVER",
   "storagePlace": { "id": 3, "name": "혜인관 경비실", "guideText": "혜인관 1층 정문 옆 경비실" },
-  "message": null
+  "message": null,
+  "handOverAdvice": null
 }
 ```
 - 응답에는 공개 정보만 담는다. 색·특징·`categoryAlt`는 습득자에게도 돌려주지 않는다.
@@ -146,6 +148,8 @@
 - 사진은 JPG·PNG·WEBP·HEIC, 10MB 이하. 아니면 `400` / `413 IMAGE_TOO_LARGE`. 서버는 회전을 적용하고 위치(GPS)를 포함한 EXIF를 모두 지운 뒤 긴 변 1600px로 저장한다. 사진은 세 가지로 저장한다: 원본(관리자만), 공개본(판정 통과 후, 1024px, 개인정보 영역만 블러. 민감한데 영역을 모르면 전체 블러), 후보용 블러본(판정 전 후보 카드, 320px, 항상 강한 블러).
 - 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안)
 - AI 분석은 호출마다 제한 시간(기본 8초)이 있고 실패하면 한 번 재시도한다. AI 실패로 민감 여부를 모르면 공개본은 블러 처리한다.
+- 동의 필드: `consentVersion`, `consentExternalAi`(`"true"` 필수), `consentLocation`(`"true"`/`"false"`). 물건에 버전과 위치 동의 여부를 남긴다.
+- **고가품 안내**: AI가 고가품으로 본 물건을 `IN_PLACE`로 등록하면 `handOverAdvice`에 "보관처에 맡겨 주세요" 문구와 가까운 보관처 최대 3곳(같은 건물 먼저)을 준다. 아니면 `null`. 등록 단계 차단은 P1. (open-issues #32)
 - AI 응답이 4장의 형식과 다르면(허용 밖 색·종류·특징 키, 특징 5개 이상, 사진 밖 영역, 임베딩 차원 불일치) 실패로 보고 `REVIEW`로 저장한다.
 
 ### 인증
@@ -176,7 +180,7 @@
 - 인증 뒤 그사이 같은 이메일로 가입이 끝났어도(동시에 가입) 같은 `400 INVALID_CODE`, 같은 메시지를 준다. 가입 여부를 드러내는 `409`는 쓰지 않는다.
 ```json
 // 요청
-{ "verificationToken": "eyJ...", "password": "********" }
+{ "verificationToken": "eyJ...", "password": "********", "consent": { "version": "2026-10-12", "email": true, "externalAi": true, "location": true } }
 // 응답 201
 { "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
 ```
@@ -196,6 +200,7 @@
 #### `POST /auth/demo` · 공개
 호출할 때마다 **새 체험 계정**을 만들어 로그인시킨다. 체험 계정은 시드 습득물만 후보로 보고, 판정·열람·수령해도 시드 상태가 바뀌지 않는다. 24시간 뒤 삭제된다.
 - 같은 IP에서 과도하게 만들면 `429 RATE_LIMITED`. (초안: 10분에 5개)
+- 요청: `{ "consent": { "version": "2026-10-12", "externalAi": true, "location": false } }`, 헤더 `X-Captcha-Token`.
 ```json
 { "accessToken": "...", "expiresAt": "2026-10-14T14:00:00+09:00", "user": { "id": "u_...", "email": "demo-7f3a@demo.local", "role": "DEMO" } }
 ```
@@ -233,6 +238,7 @@
       "reasons": ["SAME_CATEGORY", "SAME_BUILDING", "FOUND_SOON_AFTER"],
       "attemptsLeft": 3,
       "locked": false,
+      "inPersonOnly": false,
       "isSeed": false
     }
   ]
@@ -306,11 +312,17 @@
 
 **실패**
 ```json
-{ "attemptId": "m_...", "result": "FAIL", "reused": false, "attemptsLeft": 2 }
+{ "attemptId": "m_...", "result": "FAIL", "reused": false, "attemptsLeft": 2, "inPersonOnly": false }
 ```
 
 - 점수 숫자는 응답에 넣지 않는다. 맞은 항목(`matchedFields`)은 **통과했을 때만** 보여준다. 실패·경계 응답에는 어떤 항목이 맞았는지 넣지 않는다.
-- 계정·습득물별 실패 3회면 `409 MATCH_LOCKED`. (초안)
+- `matchedFields` 값: `feature:<특징 key>`, `color`, `brand`, `place`(같은 건물), `time`(분실 후 24시간 안 습득).
+- 이미 통과한 물건은 다른 신고로 시도해도 그 결과를 `reused: true`로 돌려준다.
+- 경계인데 신고에 적지 않은 질문 가능한 특징이 없으면 실패로 처리한다(모순된 특징을 다시 묻지 않음).
+- 같은 물건의 동시 요청은 계정이 달라도 하나씩 처리한다. 특징 대조 AI가 실패하면 `502 AI_UNAVAILABLE`(시도 기록 없음).
+- 계정·습득물별 실패 3회면 `409 MATCH_LOCKED`.
+- 물건 하나에 모든 계정의 실패(판정 실패 + 질문 오답)가 10회가 되면 그 물건은 대면 확인만 된다: 10번째 실패 응답은 `attemptsLeft: 0, inPersonOnly: true`, 이후 새 판정은 `409 IN_PERSON_REQUIRED`(AI 호출·시도 기록 없음). 맡은 관리자에게 `CLAIM_LOCKED` 알림을 한 번 보낸다. 이미 통과한 계정은 그대로 통과. 체험용 시드는 물건 단위로 막지 않는다. (#29)
+- 후보 목록의 `locked`는 이 계정이 횟수를 다 썼거나 대면 확인만 되는 물건이면 `true`, `inPersonOnly`는 대면 확인만 되는 물건.
 - 체험 계정이 시드가 아닌 습득물에 시도하면 `403 FORBIDDEN`.
 
 #### `POST /claims/:attemptId/answer` · 회원
@@ -320,10 +332,12 @@
 // 응답 200 (통과)
 { "result": "PASS", "foundItemId": "6a1f..." }
 // 응답 200 (실패)
-{ "result": "FAIL", "attemptsLeft": 1 }
+{ "result": "FAIL", "attemptsLeft": 1, "inPersonOnly": false }
 ```
 - 질문 하나당 답변은 한 번만 받는다. 이미 답한 시도면 `409 ALREADY_ANSWERED`.
-- 정답 판정: 공백·조사·문장부호를 정리하고 질문에 나온 단어를 뺀 답변이 2글자 이상이며 저장 값에 포함되면 정답. 아니면 LLM이 `MATCH`/`NO_MATCH`로 판정한다(온도 0).
+- 답하기 전에 물건이 대면 확인으로 넘어갔으면 `409 IN_PERSON_REQUIRED`(답 저장 안 함).
+- 답변은 1~50자. 넘으면 `400 VALIDATION_ERROR`.
+- 정답 판정: 문장부호·조사를 정리하고 질문에 나온 낱말을 뺀 뒤, 남은 낱말이 모두 저장 값의 낱말과 낱말 단위로 같고 2글자 이상 낱말이 있으면 정답(부분 문자열은 아님). 아니면 LLM이 `MATCH`/`NO_MATCH`로 판정한다(온도 0, 입력은 태그로 감싼 데이터, 지시 무시).
 
 ### 습득물 상세와 수령
 
@@ -334,23 +348,30 @@
 {
   "id": "6a1f...",
   "category": "EARPHONE",
-  "color": "흰색",
-  "imageUrl": "https://...signed... (블러본, 10분 만료)",
+  "color": "WHITE",
+  "imageUrl": "https://...signed... (개인정보 영역만 가린 공개본, 10분 만료)",
   "building": { "id": 1, "name": "혜인관" },
   "storageType": "HANDED_OVER",
   "storagePlace": { "id": 3, "name": "혜인관 경비실", "guideText": "혜인관 1층 정문 옆 경비실" },
-  "status": "REVEALED"
+  "status": "REVEALED",
+  "pickupNotice": "귀중품은 보관처에서 직원이 한 번 더 확인한 뒤 돌려드려요. 학생증을 가져가 주세요(저장하지 않아요)."
 }
 ```
+- `pickupNotice`: 고가품(지갑·카드·노트북·태블릿·이어폰, 분류 확정 후 휴대폰·시계 등 추가)이면 보관처 대면 수령 안내, 아니면 `null`. (QA W3)
+- 수령·기한 만료로 지운 물건은 수령됨이면 `409 ALREADY_CLAIMED`, 만료면 `404`.
 - 체험 계정이 열람해도 시드 습득물의 `status`는 바뀌지 않는다.
+- 확인 질문 정답(`BORDERLINE` + 정답)도 통과로 본다. 통과하지 않았으면 `403`, 없는 물건 `404`.
+- 응답 필드: `id`, `category`, `color`, `imageUrl`(공개본 서명 URL), `imageUrlExpiresAt`, `building`, `storageType`, `storagePlace`, `status`, `foundAt`, `isSeed`, `pickupNotice`. 브랜드·특징·설명은 주지 않는다.
+- 다른 일반 계정이 이미 열람한 물건을 새 계정이 처음 열람하면, 맡은 관리자(보관처 관리자, 없으면 종합서비스센터 관리자)에게 `MULTI_REVEAL` 알림을 만든다. 체험 계정은 세지 않는다.
 
 #### `POST /found-items/:id/pickup-qr` · 회원
 `storageType`이 `HANDED_OVER`일 때만. 아니면 `409 INVALID_STORAGE_TYPE`. 이미 수령 완료된 물건이면 `409 ALREADY_CLAIMED`.
 ```json
-{ "pickupId": "p_...", "qrToken": "pk_...", "expiresAt": "2026-10-14T14:00:00+09:00" }
+{ "method": "CENTER_QR", "pickupId": "p_...", "qrToken": "pk_...", "status": "ISSUED", "expiresAt": "2026-10-14T14:00:00+09:00" }
 ```
 - 프론트가 `qrToken`을 QR 이미지로 그린다. 서버에는 해시만 저장한다.
 - 같은 계정이 다시 발급받으면 이전 `ISSUED` QR은 `EXPIRED`가 된다.
+- 응답에 `method`가 있다: 일반 계정 `CENTER_QR`(QR 발급), 체험 계정 `DEMO`(바로 완료).
 - **체험 계정**은 QR 없이 바로 완료된다. 프론트는 "시연: 보관처에서 수령 처리됨" 화면을 보여준다.
 ```json
 { "pickupId": "p_...", "method": "DEMO", "status": "COMPLETED", "completedAt": "..." }
@@ -374,8 +395,15 @@
 }
 ```
 
-#### `PATCH /notifications/:id/read` · 회원
+#### `PATCH /notifications/:id/read` · 회원·관리자
+응답 204. 이미 읽었으면 그대로 204. 남의 알림이면 `404`.
+
+#### `PATCH /notifications/read-all` · 회원·관리자
 응답 204.
+
+- 알림 목록·읽음 처리는 관리자 계정도 쓸 수 있다(자기 알림만, open-issues #13).
+- 목록은 최신순 최대 50개.
+- 새 후보 알림(`NEW_CANDIDATE`)은 습득물이 `REGISTERED`가 될 때, 그 물건이 실제로 후보(상위 5개)에 들어가는 열린 신고에만 만든다. 신고·물건 조합당 한 번. 알림 생성이 실패해도 등록은 성공한다.
 
 ### 관리자
 
@@ -400,25 +428,46 @@
 ```
 - 만료면 `410 QR_EXPIRED`, 이미 처리됐으면 `409 ALREADY_CLAIMED`.
 - 물건의 보관처가 관리자의 소속 보관처(`user.storage_place_id`)와 다르면 `403 FORBIDDEN`.
+- 없는 QR은 `404`. 같은 사람이 새 QR을 받아 만료된 이전 QR도 `410 QR_EXPIRED`.
 
 #### `POST /admin/pickups/:id/complete` · 관리자
-상태를 `COMPLETED`, 습득물을 `CLAIMED`로 바꾸고 처리 관리자를 기록한다. `purge_after`를 30일 뒤로 설정한다. (초안)
+상태를 `COMPLETED`, 습득물을 `CLAIMED`로 바꾸고 처리 관리자를 기록한다. `purge_after`를 30일 뒤로 설정한다. 완료 직후 사진(원본·공개본·후보용 블러본)과 비공개 정보·임베딩을 지운다(open-issues #33). 삭제가 실패해도 수령은 완료되고 정기 작업이 다시 지운다.
 - 한 트랜잭션 안에서 물건 상태까지 확인한다. 다른 사람의 수령이 먼저 완료됐으면 `409 ALREADY_CLAIMED`. 다른 보관처 물건이면 `403 FORBIDDEN`.
+- 완료되면 수령한 계정의 신고를 `RESOLVED`로 바꾸고, 같은 물건의 다른 사람 QR은 `EXPIRED`로 바꾼다.
 ```json
 { "pickupId": "p_...", "status": "COMPLETED", "completedAt": "..." }
 ```
 
 #### `GET /admin/found-items?status=REVIEW&page=1` · 관리자
-습득물 목록. P0에서는 `REVIEW`(검토 대기) 확인용으로 쓴다.
+습득물 목록. P0에서는 `REVIEW`(검토 대기) 확인용으로 쓴다. 20개씩 습득 시각 최신순, `total`과 상태별 개수(`counts`)를 함께 준다. 항목마다 AI가 만든 관리자용 제목(`title`, 비공개 정보 포함)과 층(`floor`)이 있다. 확인 실패가 쌓여 대면 확인만 되는 물건은 `claimLockedAt`(시각, 아니면 `null`)이 있다(목록·상세 모두, #29).
+- 관리 범위(open-issues #18 추천안): 경비실 관리자는 자기 보관처 물건만, 종합서비스센터 관리자와 보관처가 없는 관리자는 전체. 범위 밖 물건의 상세·수정은 `403`.
 
 #### `GET /admin/found-items/:id` · 관리자
-공개·비공개 정보와 원본 사진, 열람·수령 기록 전체.
+공개·비공개 정보와 원본·공개본·후보용 블러본 사진 링크(10분), 시도·열람·수령 기록 전체. 수령·기한 만료로 지운 물건은 사진 링크가 `null`이다. 기록의 이메일은 가린다(`st****@skuniv.ac.kr`).
+- 수령 기록마다 처리 관리자(`processedByEmailMasked`, 가림)와 대면 확인 메모(`verificationNote`)가 있다. 대면 확인 수령은 계정이 없어 `emailMasked: null`.
 
 #### `PATCH /admin/found-items/:id` · 관리자
-검토 대기 습득물의 속성을 직접 고치고 `REGISTERED`로 바꾼다.
+검토 대기 습득물의 속성을 직접 고치고 `REGISTERED`로 바꾼다. 등록된 물건의 속성 수정에도 쓴다(상태는 그대로).
+- `status: "REGISTERED"`는 검토 대기 물건에만, 종류·설명이 있어야 한다. 등록하면 새 후보 알림을 보낸다.
+- 설명이 바뀌거나 등록하면 임베딩을 다시 만든다. 실패하면 아무것도 바꾸지 않고 `502 AI_UNAVAILABLE`.
+- 형식은 AI 응답과 같다: `color`는 12색 키, `features`는 정해진 키로 최대 4개, `brand` 40자, `title` 60자. 어기면 `400`.
 ```json
-{ "category": "UMBRELLA", "color": "검정", "features": ["손잡이 금이 감"], "status": "REGISTERED" }
+{ "category": "UMBRELLA", "color": "BLACK", "features": [{ "key": "pattern", "value": "체크무늬" }], "title": "검정 체크무늬 우산", "status": "REGISTERED" }
 ```
+
+#### `POST /admin/found-items/:id/in-person-pickup` · 관리자
+모든 계정의 확인 실패가 10회에 닿아 온라인 확인이 막힌 물건(`claimLockedAt` 있음)을, 관리자가 찾으러 온 사람의 신분을 직접 확인하고 수령 완료로 바꾼다 (#29 후속).
+```json
+{ "verificationNote": "학생증 이름·학번 확인, 스티커 위치 설명 일치" }
+```
+```json
+{ "pickupId": "p_...", "method": "IN_PERSON", "status": "COMPLETED", "completedAt": "..." }
+```
+- 메모는 앞뒤 공백을 빼고 1~200자. 신분증 번호 전체는 적지 않는다. 어기면 `400`.
+- 처리 관리자·시각·메모를 수령 기록으로 남기고(계정 없음), 물건을 `CLAIMED`로 바꾼다. 다른 사람이 받아 둔 QR은 `EXPIRED`. 신고는 누구 것인지 몰라 그대로 둔다.
+- 완료 직후 사진·비공개 정보를 지우고, 기록(메모 포함)은 30일 뒤 지운다. 다른 수령과 같다.
+- `claimLockedAt`은 지우지 않고 그대로 둔다. 물건이 `CLAIMED`라 더 이상 판정·후보 대상이 아니고, "잠겼다가 대면으로 수령됨"을 관리자 화면과 통계에서 구분하는 기록으로 쓴다.
+- 관리 범위 밖이면 `403`, 이미 수령됐으면 `409 ALREADY_CLAIMED`, 잠기지 않았거나 보관 중(`REGISTERED`·`REVEALED`)이 아니면 `409 NOT_IN_PERSON_ITEM`. 같은 물건은 하나씩 처리해 동시에 눌러도 한 번만 완료된다.
 
 #### `GET /admin/stats/hotspots?from=2026-10-01&to=2026-10-31` · 관리자
 ```json
@@ -430,7 +479,11 @@
   "topInsight": "학술정보관에서 오후 1~3시에 충전기 분실이 가장 많아요."
 }
 ```
-- 시드 데이터가 섞이면 `isSeedData: true`, 화면에 "시드 집계"를 표시한다.
+- 실제 데이터만 집계한다. 기간 안에 실제 데이터가 없으면 시드 데이터로 집계하고 `isSeedData: true`, 화면에 "시드 집계"를 표시한다.
+- 기간은 한국 날짜(양 끝 포함), 생략하면 오늘까지 최근 30일, 최대 1년. 시간대는 한국 시간 0~23시.
+- `byBuilding`·`byHour`·`byCategory`는 많은 순(같으면 이름순). 응답에 `from`, `to`, `total`도 있다.
+- `topInsight`는 건물·2시간 창(1시간씩 밀어 가며)·종류 조합 중 가장 많은 것. 2건 미만이면 "데이터가 적다"는 안내.
+- 개인정보가 없는 집계라 모든 관리자가 캠퍼스 전체를 본다.
 
 ---
 

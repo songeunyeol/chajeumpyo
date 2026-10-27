@@ -53,3 +53,27 @@ export const LostReportExtraction = FoundItemExtraction.omit({
   title: true,
 });
 export type LostReportExtraction = z.infer<typeof LostReportExtraction>;
+
+/** 특징 하나를 대조한 결과 (기능 명세서 F-08) */
+export const FeatureVerdict = z.enum(["MATCH", "CONTRADICT", "UNKNOWN"]);
+export type FeatureVerdict = z.infer<typeof FeatureVerdict>;
+
+/** 신고 속성과 습득물 비공개 속성 대조 결과. 서버 내부 전용. */
+export const FeatureComparison = z.object({
+  /** 신고에 적힌 특징마다 하나씩 */
+  features: z.array(
+    z.object({
+      reportedKey: z.string(),
+      verdict: FeatureVerdict,
+      /** 대조한 습득물 특징의 key. 확인 불가면 null */
+      storedKey: z.string().nullable(),
+    }),
+  ),
+  color: FeatureVerdict,
+  brand: FeatureVerdict,
+});
+export type FeatureComparison = z.infer<typeof FeatureComparison>;
+
+/** 확인 질문 답변 판정 (F-09) */
+export const AnswerVerdict = z.enum(["MATCH", "NO_MATCH"]);
+export type AnswerVerdict = z.infer<typeof AnswerVerdict>;

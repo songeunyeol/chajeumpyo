@@ -1,11 +1,18 @@
 import { logger } from "../lib/logger";
+import { expireUnclaimedItems, purgeClaimedItems } from "../services/data-purge";
 import { cleanupExpiredDemoAccounts } from "./demo-cleanup";
+import { purgeExpiredRecords } from "./record-purge";
 
 const HOUR = 3600_000;
 
 type Job = { name: string; everyMs: number; run: () => Promise<unknown> };
 
-const jobs: Job[] = [{ name: "체험 계정 정리", everyMs: HOUR, run: cleanupExpiredDemoAccounts }];
+const jobs: Job[] = [
+  { name: "체험 계정 정리", everyMs: HOUR, run: cleanupExpiredDemoAccounts },
+  { name: "수령 물건 사진·비공개 정보 삭제(재시도)", everyMs: HOUR, run: purgeClaimedItems },
+  { name: "보관 기한 만료", everyMs: HOUR, run: expireUnclaimedItems },
+  { name: "수령·만료 후 기록 삭제", everyMs: HOUR, run: purgeExpiredRecords },
+];
 
 /** 서버가 켜져 있는 동안 정기 작업을 돌린다. 서버 시작 직후 한 번 바로 실행한다. */
 export function startScheduler() {

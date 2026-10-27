@@ -6,7 +6,7 @@ import { EnvSchema } from "../../src/config/env";
 import { cleanupExpiredDemoAccounts } from "../../src/jobs/demo-cleanup";
 import { sentMails } from "../../src/lib/mailer";
 import { signSignupToken } from "../../src/lib/tokens";
-import { createAdmin, demoLogin, lastCodeFor, signupUser } from "../helpers/auth";
+import { createAdmin, demoLogin, lastCodeFor, memberConsent, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
 
 let app: ReturnType<typeof createApp>;
@@ -215,7 +215,7 @@ describe("기준 6. 정상 가입 흐름", () => {
     const { body } = await verifyCode(EMAIL, lastCodeFor(EMAIL)).expect(200);
     const res = await request(app)
       .post(api("/auth/signup"))
-      .send({ verificationToken: body.verificationToken, password: "short" });
+      .send({ verificationToken: body.verificationToken, password: "short", consent: memberConsent() });
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 });
@@ -230,21 +230,24 @@ describe("기준 7. 가입용 토큰은 한 번만, 위조·만료 토큰 거부
     const token = await verifiedToken();
     await request(app)
       .post(api("/auth/signup"))
-      .send({ verificationToken: token, password: "password123" })
+      .send({ verificationToken: token, password: "password123", consent: memberConsent() })
       .expect(201);
     const res = await request(app)
       .post(api("/auth/signup"))
-      .send({ verificationToken: token, password: "password123" });
+      .send({ verificationToken: token, password: "password123", consent: memberConsent() });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("INVALID_CODE");
   });
 
   it("인증 뒤 그사이 같은 이메일로 가입됐어도 이미 쓴 토큰과 같은 응답 (가입 여부를 드러내지 않음)", async () => {
     const used = await verifiedToken();
-    await request(app).post(api("/auth/signup")).send({ verificationToken: used, password: "password123" }).expect(201);
+    await request(app)
+      .post(api("/auth/signup"))
+      .send({ verificationToken: used, password: "password123", consent: memberConsent() })
+      .expect(201);
     const reused = await request(app)
       .post(api("/auth/signup"))
-      .send({ verificationToken: used, password: "password123" });
+      .send({ verificationToken: used, password: "password123", consent: memberConsent() });
 
     await prisma.user.deleteMany();
     await ageVerification(10); // 재발송 대기 넘기기
@@ -252,7 +255,7 @@ describe("기준 7. 가입용 토큰은 한 번만, 위조·만료 토큰 거부
     await prisma.user.create({ data: { email: EMAIL, passwordHash: "x", role: "USER" } }); // 다른 요청이 먼저 가입
     const raced = await request(app)
       .post(api("/auth/signup"))
-      .send({ verificationToken: token, password: "password123" });
+      .send({ verificationToken: token, password: "password123", consent: memberConsent() });
     expect(raced.status).toBe(400);
     expect(raced.body).toEqual(reused.body);
     expect(await prisma.user.count({ where: { email: EMAIL } })).toBe(1);
@@ -262,7 +265,9 @@ describe("기준 7. 가입용 토큰은 한 번만, 위조·만료 토큰 거부
     const token = await verifiedToken();
     const results = await Promise.all(
       Array.from({ length: 5 }, () =>
-        request(app).post(api("/auth/signup")).send({ verificationToken: token, password: "password123" }),
+        request(app)
+          .post(api("/auth/signup"))
+          .send({ verificationToken: token, password: "password123", consent: memberConsent() }),
       ),
     );
     expect(results.filter((r) => r.status === 201)).toHaveLength(1);
@@ -275,22 +280,26 @@ describe("기준 7. 가입용 토큰은 한 번만, 위조·만료 토큰 거부
     const { token } = signSignupToken(EMAIL, v.id); // 서버 키로 서명됐지만 verified_at 없음
     const res = await request(app)
       .post(api("/auth/signup"))
-      .send({ verificationToken: token, password: "password123" });
+      .send({ verificationToken: token, password: "password123", consent: memberConsent() });
     expect(res.body.error.code).toBe("INVALID_CODE");
   });
 
   it("가입 요청은 같은 IP에서 10분에 10번까지", async () => {
     for (let i = 0; i < 10; i++) {
-      await request(app).post(api("/auth/signup")).send({ verificationToken: "x", password: "password123" });
+      await request(app)
+        .post(api("/auth/signup"))
+        .send({ verificationToken: "x", password: "password123", consent: memberConsent() });
     }
-    const res = await request(app).post(api("/auth/signup")).send({ verificationToken: "x", password: "password123" });
+    const res = await request(app)
+      .post(api("/auth/signup"))
+      .send({ verificationToken: "x", password: "password123", consent: memberConsent() });
     expect(res.status).toBe(429);
   });
 
   it("엉터리 토큰은 400 INVALID_CODE", async () => {
     const res = await request(app)
       .post(api("/auth/signup"))
-      .send({ verificationToken: "abc.def.ghi", password: "password123" });
+      .send({ verificationToken: "abc.def.ghi", password: "password123", consent: memberConsent() });
     expect(res.body.error.code).toBe("INVALID_CODE");
   });
 });
@@ -344,6 +353,8 @@ describe("기준 9. 인증 미들웨어, 민감 정보, 운영 설정", () => {
 
   it("production에서는 API 문서를 닫는다", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("CAPTCHA_MODE", "turnstile"); // production에서는 캡차를 끌 수 없다
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "test-secret");
     vi.resetModules();
     try {
       const { createApp: createProdApp } = await import("../../src/app");

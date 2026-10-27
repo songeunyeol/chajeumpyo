@@ -1,6 +1,7 @@
 import {
   AdminAuthResponse,
   AuthResponse,
+  DemoLoginRequest,
   EmailCodeRequest,
   EmailVerifyRequest,
   EmailVerifyResponse,
@@ -10,6 +11,7 @@ import {
 } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { getAuth, requireMember } from "../middlewares/auth";
+import { requireCaptcha } from "../middlewares/captcha";
 import { ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
@@ -31,7 +33,7 @@ registry.registerPath({
   request: { body: json(EmailCodeRequest) },
   responses: {
     204: { description: "발송함 (가입 여부와 관계없이 같은 응답)" },
-    400: errorResponse("VALIDATION_ERROR, INVALID_EMAIL_DOMAIN"),
+    400: errorResponse("VALIDATION_ERROR, INVALID_EMAIL_DOMAIN, CAPTCHA_FAILED"),
     429: errorResponse("RATE_LIMITED"),
   },
 });
@@ -73,8 +75,14 @@ registry.registerPath({
   path: "/auth/demo",
   tags: ["인증"],
   summary: "체험 로그인 (F-05)",
-  description: "호출할 때마다 새 체험 계정. 24시간 뒤 삭제. 같은 IP에서 10분에 5개까지.",
-  responses: { 201: { description: "체험 계정", ...json(AuthResponse) }, 429: errorResponse("RATE_LIMITED") },
+  description:
+    "호출할 때마다 새 체험 계정. 24시간 뒤 삭제. 같은 IP에서 10분에 5개까지. 동의(외부 AI 처리)와 캡차(X-Captcha-Token) 필요.",
+  request: { body: json(DemoLoginRequest) },
+  responses: {
+    201: { description: "체험 계정", ...json(AuthResponse) },
+    400: errorResponse("VALIDATION_ERROR, CAPTCHA_FAILED"),
+    429: errorResponse("RATE_LIMITED"),
+  },
 });
 registry.registerPath({
   method: "get",
@@ -121,11 +129,18 @@ export function createAuthRouter() {
     message: "체험 계정을 너무 많이 만들었어요. 잠시 후 다시 시도해 주세요.",
   });
 
-  router.post("/auth/email/code", codeLimit, codeDailyLimit, validate("body", EmailCodeRequest), async (_req, res) => {
-    const body: EmailCodeRequest = res.locals.body;
-    await auth.sendSignupCode(body.email);
-    res.status(204).end();
-  });
+  router.post(
+    "/auth/email/code",
+    codeLimit,
+    codeDailyLimit,
+    requireCaptcha(),
+    validate("body", EmailCodeRequest),
+    async (_req, res) => {
+      const body: EmailCodeRequest = res.locals.body;
+      await auth.sendSignupCode(body.email);
+      res.status(204).end();
+    },
+  );
 
   router.post("/auth/email/verify", loginLimit, validate("body", EmailVerifyRequest), async (_req, res) => {
     const body: EmailVerifyRequest = res.locals.body;
@@ -135,7 +150,7 @@ export function createAuthRouter() {
 
   router.post("/auth/signup", signupLimit, validate("body", SignupRequest), async (_req, res) => {
     const body: SignupRequest = res.locals.body;
-    const result: AuthResponse = await auth.signup(body.verificationToken, body.password);
+    const result: AuthResponse = await auth.signup(body.verificationToken, body.password, body.consent);
     res.status(201).json(result);
   });
 
@@ -145,8 +160,9 @@ export function createAuthRouter() {
     res.json(result);
   });
 
-  router.post("/auth/demo", demoLimit, async (_req, res) => {
-    const result: AuthResponse = await auth.createDemoAccount();
+  router.post("/auth/demo", demoLimit, requireCaptcha(), validate("body", DemoLoginRequest), async (_req, res) => {
+    const body: DemoLoginRequest = res.locals.body;
+    const result: AuthResponse = await auth.createDemoAccount(body.consent);
     res.status(201).json(result);
   });
 

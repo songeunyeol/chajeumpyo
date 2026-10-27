@@ -69,9 +69,12 @@ export const Candidate = z.object({
   thumbnailUrl: z.string().nullable(),
   /** 공개 정보로만 만든 근거. 점수나 순위는 담지 않는다 */
   reasons: z.array(CandidateReason),
-  /** 이 물건에 남은 확인 시도 횟수 */
+  /** 이 물건에 남은 확인 시도 횟수 (이 계정 기준). 대면 확인만 되면 0 */
   attemptsLeft: z.number().int().min(0),
+  /** 온라인 확인 불가 (이 계정이 횟수를 다 썼거나, 물건이 대면 확인으로 넘어감) */
   locked: z.boolean(),
+  /** 모든 계정의 실패가 쌓여 대면 확인만 되는 물건 (#29) */
+  inPersonOnly: z.boolean(),
   isSeed: z.boolean(),
 });
 export type Candidate = z.infer<typeof Candidate>;

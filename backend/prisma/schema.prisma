@@ -24,15 +24,29 @@ enum StorageOrg {
 }
 
 enum Category {
-  EARPHONE
-  CHARGER
-  UMBRELLA
-  CARD
   WALLET
+  ID_CARD
+  DRIVER_LICENSE
+  PAYMENT_CARD
+  TRANSIT_CARD
+  OTHER_CARD
+  PHONE
+  EARPHONE
+  SMARTWATCH
+  TABLET
+  LAPTOP
+  CHARGER
+  BAG
+  CLOTHING
+  HAT
+  BOOK
+  GLASSES
+  ACCESSORY
+  CASH
+  UMBRELLA
   TUMBLER
-  PENCIL_CASE
-  LAPTOP_TABLET
-  CLOTHING_BAG
+  KEY
+  STATIONERY
   ETC
 }
 
@@ -65,6 +79,8 @@ enum MatchResult {
 enum PickupMethod {
   CENTER_QR
   SELF_REPORT
+  /// 온라인 확인이 막힌 물건(#29)을 관리자가 신분을 직접 확인하고 내준 경우. 계정 없이 관리자 기록만 남는다
+  IN_PERSON
   DEMO
 }
 
@@ -77,24 +93,29 @@ enum PickupStatus {
 enum NotificationType {
   NEW_CANDIDATE
   MULTI_REVEAL
+  CLAIM_LOCKED
   SYSTEM
 }
 
 model User {
-  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email          String         @unique
-  passwordHash   String         @map("password_hash")
-  role           Role           @default(USER)
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String         @unique
+  passwordHash    String         @map("password_hash")
+  role            Role           @default(USER)
   /// 관리자만. 자기 보관처의 물건만 수령 처리한다.
-  storagePlace   StoragePlace?  @relation(fields: [storagePlaceId], references: [id])
-  storagePlaceId Int?           @map("storage_place_id")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  lostReports    LostReport[]
-  attempts       MatchAttempt[]
-  reveals        RevealLog[]
-  pickups        Pickup[]       @relation("PickupUser")
-  processed      Pickup[]       @relation("PickupAdmin")
-  notifications  Notification[]
+  storagePlace    StoragePlace?  @relation(fields: [storagePlaceId], references: [id])
+  storagePlaceId  Int?           @map("storage_place_id")
+  /// 동의 화면 버전과 시각 (QA B15). 관리자 계정은 null
+  consentVersion  String?        @map("consent_version")
+  consentedAt     DateTime?      @map("consented_at")
+  locationConsent Boolean        @default(false) @map("location_consent")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  lostReports     LostReport[]
+  attempts        MatchAttempt[]
+  reveals         RevealLog[]
+  pickups         Pickup[]       @relation("PickupUser")
+  processed       Pickup[]       @relation("PickupAdmin")
+  notifications   Notification[]
 
   @@map("user")
 }
@@ -161,6 +182,13 @@ model FoundItem {
   uploaderFingerprint String?          @map("uploader_fingerprint")
   foundAt             DateTime         @default(now()) @map("found_at")
   expiresAt           DateTime?        @map("expires_at")
+  /// 습득자가 등록할 때 동의한 동의 화면 버전과 위치 동의 여부 (QA B15)
+  consentVersion      String?          @map("consent_version")
+  locationConsent     Boolean          @default(false) @map("location_consent")
+  /// 수령·기한 만료로 사진과 비공개 정보를 지운 시각 (open-issues #33)
+  dataPurgedAt        DateTime?        @map("data_purged_at")
+  /// 모든 계정의 확인 실패 합계가 한도(10회)에 닿아 온라인 확인을 막은 시각. 이후엔 대면 확인만 (#29)
+  claimLockedAt       DateTime?        @map("claim_locked_at")
   detail              FoundItemDetail?
   attempts            MatchAttempt[]
   reveals             RevealLog[]
@@ -176,9 +204,10 @@ model FoundItem {
 model FoundItemDetail {
   foundItem        FoundItem                    @relation(fields: [foundItemId], references: [id], onDelete: Cascade)
   foundItemId      String                       @id @map("found_item_id") @db.Uuid
-  imageOriginalKey String                       @map("image_original_key")
+  /// 수령·만료로 지우면 null
+  imageOriginalKey String?                      @map("image_original_key")
   /// 판정 통과 후 공개본: 개인정보 영역만 가린 선명본(1024px)
-  imagePublicKey   String                       @map("image_public_key")
+  imagePublicKey   String?                      @map("image_public_key")
   /// 후보 카드용 강한 블러본. 숨은 특징을 알아볼 수 없을 정도
   imageThumbKey    String?                      @map("image_thumb_key")
   isSensitive      Boolean                      @default(false) @map("is_sensitive")
@@ -238,7 +267,7 @@ model MatchAttempt {
   answerCorrect      Boolean?    @map("answer_correct")
   answeredAt         DateTime?   @map("answered_at")
   createdAt          DateTime    @default(now()) @map("created_at")
-  reveal             RevealLog?
+  reveals            RevealLog[]
 
   @@index([userId, foundItemId])
   @@map("match_attempt")
@@ -251,10 +280,12 @@ model RevealLog {
   foundItem      FoundItem     @relation(fields: [foundItemId], references: [id])
   foundItemId    String        @map("found_item_id") @db.Uuid
   matchAttempt   MatchAttempt? @relation(fields: [matchAttemptId], references: [id])
-  matchAttemptId String?       @unique @map("match_attempt_id") @db.Uuid
+  /// 열람할 때마다 한 줄씩 남기므로 같은 시도로 여러 줄이 생길 수 있다
+  matchAttemptId String?       @map("match_attempt_id") @db.Uuid
   revealedAt     DateTime      @default(now()) @map("revealed_at")
 
   @@index([foundItemId])
+  @@index([userId, foundItemId])
   @@map("reveal_log")
 }
 
@@ -263,14 +294,17 @@ model Pickup {
   id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   foundItem          FoundItem    @relation(fields: [foundItemId], references: [id])
   foundItemId        String       @map("found_item_id") @db.Uuid
-  user               User         @relation("PickupUser", fields: [userId], references: [id])
-  userId             String       @map("user_id") @db.Uuid
+  /// IN_PERSON이면 null (찾으러 온 사람의 계정을 모를 수 있음). 마이그레이션 SQL의 CHECK 제약
+  user               User?        @relation("PickupUser", fields: [userId], references: [id], onDelete: Restrict)
+  userId             String?      @map("user_id") @db.Uuid
   method             PickupMethod
   status             PickupStatus @default(ISSUED)
   qrTokenHash        String?      @map("qr_token_hash")
   qrExpiresAt        DateTime?    @map("qr_expires_at")
   processedBy        User?        @relation("PickupAdmin", fields: [processedByAdminId], references: [id])
   processedByAdminId String?      @map("processed_by_admin_id") @db.Uuid
+  /// IN_PERSON일 때 관리자가 남긴 신분 확인 메모 (개인정보). 수령 기록과 함께 30일 뒤 지운다 (F-12)
+  verificationNote   String?      @map("verification_note")
   createdAt          DateTime     @default(now()) @map("created_at")
   completedAt        DateTime?    @map("completed_at")
   purgeAfter         DateTime?    @map("purge_after")

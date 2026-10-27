@@ -88,7 +88,7 @@ describe("기준 2. 입력 검증과 권한", () => {
   it("없는 건물, 너무 짧은 설명, 없는 종류는 400", async () => {
     expect((await post(report({ buildingId: 9999 }))).status).toBe(400);
     expect((await post(report({ description: "폰" }))).status).toBe(400);
-    expect((await post(report({ category: "PHONE" }))).status).toBe(400);
+    expect((await post(report({ category: "CARD" }))).status).toBe(400);
     expect(await prisma.lostReport.count()).toBe(0);
   });
 
@@ -156,7 +156,7 @@ describe("기준 5. 종류: 같은 종류, 2순위 종류, 연관 묶음, 기타
   it("관련 없는 종류만 빠진다", async () => {
     const alt = await createFoundItem({
       buildingId: A,
-      category: "PENCIL_CASE",
+      category: "STATIONERY",
       categoryAlt: "EARPHONE",
       foundAt: hoursAgo(1),
     });
@@ -182,7 +182,7 @@ describe("기준 6. 점수로 최대 3개를 고른다", () => {
     const otherBldg = await createFoundItem({ buildingId: B, category: "EARPHONE", foundAt: t(1.3) });
     const alt = await createFoundItem({
       buildingId: A,
-      category: "PENCIL_CASE",
+      category: "STATIONERY",
       categoryAlt: "EARPHONE",
       foundAt: t(1.2),
     });
@@ -221,6 +221,7 @@ describe("기준 7. 순서는 습득 시각 최신순, 응답에 비공개 정�
       "floor",
       "foundAt",
       "foundItemId",
+      "inPersonOnly",
       "isSeed",
       "locked",
       "reasons",
