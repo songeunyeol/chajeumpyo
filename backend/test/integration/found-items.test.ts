@@ -7,6 +7,7 @@ import { resetAiClient, setAiClient } from "../../src/ai";
 import { mockAiClient } from "../../src/ai/mock";
 import { EMBEDDING_DIM } from "../../src/ai/types";
 import { createApp } from "../../src/app";
+import { resetPremasker, setPremasker } from "../../src/privacy/premask";
 import { storage } from "../../src/storage";
 import { readLocalFile } from "../../src/storage/local";
 import { finderConsentFields } from "../helpers/auth";
@@ -62,7 +63,10 @@ beforeEach(async () => {
   ).id;
 });
 
-afterEach(() => resetAiClient());
+afterEach(() => {
+  resetAiClient();
+  resetPremasker();
+});
 
 describe("기준 1. 정상 등록은 201, 응답에는 공개 정보만", () => {
   it("보관처에 맡김", async () => {
@@ -390,5 +394,53 @@ describe("기준 10. 사진은 서명된 링크로만 볼 수 있다", () => {
     const res = await request(app).get(url.pathname + url.search);
     expect(res.status).toBeGreaterThanOrEqual(403);
     expect(res.text).not.toContain("JWT_SECRET");
+  });
+});
+
+describe("기준 11. AI에는 얼굴·글자를 가린 사본만 보낸다 (QA B3)", () => {
+  it("가린 사본이 AI로 가고, 공개본도 가린 사본으로 만든다. 원본은 관리자용으로만 남는다", async () => {
+    const masked = await sharp({ create: { width: 400, height: 300, channels: 3, background: "#6b6b6b" } })
+      .jpeg()
+      .toBuffer();
+    let premaskInput: Buffer | null = null;
+    setPremasker(async (jpeg) => {
+      premaskInput = jpeg;
+      return { image: masked, faces: 1, texts: 2 };
+    });
+    let aiInput: Buffer | null = null;
+    setAiClient({
+      ...mockAiClient,
+      extractFoundItem: async (image) => {
+        aiInput = image;
+        return { ...SENSITIVE, isSensitive: false, category: "EARPHONE" };
+      },
+    });
+    const res = await register(inPlace(), await noisyJpeg());
+    expect(res.status).toBe(201);
+    expect(aiInput).toBe(masked);
+    const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: res.body.id } });
+    // 원본은 가리기 전 사진(정규화본), 공개본은 단색인 가린 사본에서 나와 거의 평평하다
+    expect(await readLocalFile(d.imageOriginalKey as string)).toEqual(premaskInput);
+    expect(await sharpness((await readLocalFile(d.imagePublicKey as string)) as Buffer)).toBeLessThan(3);
+  });
+
+  it("가리기가 실패하면 원본을 AI로 보내지 않고 검토 대기로, 공개본은 전체를 흐린다", async () => {
+    setPremasker(async () => {
+      throw new Error("모델 없음");
+    });
+    let aiCalls = 0;
+    useExtraction(async () => {
+      aiCalls++;
+      return SENSITIVE;
+    });
+    const res = await register(inPlace(), await noisyJpeg());
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ status: "REVIEW", category: null });
+    expect(aiCalls).toBe(0);
+    const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: res.body.id } });
+    expect(d.isSensitive).toBe(true);
+    const original = (await readLocalFile(d.imageOriginalKey as string)) as Buffer;
+    const pub = (await readLocalFile(d.imagePublicKey as string)) as Buffer;
+    expect(await sharpness(pub)).toBeLessThan((await sharpness(original)) / 2);
   });
 });
