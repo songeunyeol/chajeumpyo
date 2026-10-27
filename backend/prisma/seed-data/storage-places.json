@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "name": "종합서비스센터",
+    "building": "본관",
+    "guideText": "(임시) 위치 확정 전이에요. 평일 9~18시",
+    "org": "CENTER"
+  },
+  {
+    "name": "유담관 경비실",
+    "building": "유담관",
+    "guideText": "(임시) 위치 확정 전이에요. 1층 경비실",
+    "org": "GUARD"
+  },
+  {
+    "name": "청운관 경비실",
+    "building": "청운관",
+    "guideText": "(임시) 위치 확정 전이에요. 1층 경비실",
+    "org": "GUARD"
+  }
+]
