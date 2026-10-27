@@ -172,6 +172,8 @@ model FoundItem {
   category            Category?
   /// 2순위 종류. 후보 검색에만 쓰고 응답에 넣지 않는다.
   categoryAlt         Category?        @map("category_alt")
+  /// 세부 종류 (packages/shared SUB_CATEGORIES). category에 속한 값만, 값 검증은 zod에서. 공개 정보
+  subCategory         String?          @map("sub_category")
   /// 두 단계 등록에서 확정 전(ANALYZING)이면 null
   storageType         StorageType?     @map("storage_type")
   /// storage_type = HANDED_OVER면 필수 (마이그레이션 SQL의 CHECK 제약)

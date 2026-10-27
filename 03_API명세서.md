@@ -532,6 +532,7 @@
   "hasObject": true,
   "category": "EARPHONE",
   "categoryAlt": "CHARGER",
+  "subCategory": "WIRELESS_EARBUDS",
   "color": "WHITE",
   "brand": "Apple",
   "features": [
@@ -546,6 +547,7 @@
 ```
 
 - `categoryAlt`: 2순위 종류. 확신이 높으면 `null`. 후보 검색에만 쓴다.
+- `subCategory`: 세부 종류. 큰 종류 24개는 그대로 두고 일부 종류에만 한 단계 더 붙인다(`packages/shared/src/enums.ts`의 `SUB_CATEGORIES`, 예: `CHARGER` → `MOUSE`, `POWER_BANK`; `BAG` → `BACKPACK`). `category`에 속하지 않는 값이 오면 `null`로 바꾼다(실패로 보지 않는다). 공개 정보라 등록·분석 응답, 후보, 상세에 `subCategory`로 내려가고, 화면 이름은 세부 종류가 있으면 그 이름(`SUB_CATEGORY_LABELS`)을 쓴다. 후보 점수에서 큰 종류가 같아도 신고와 습득물의 세부 종류가 둘 다 있고 다르면 종류 점수를 1 → 0.6으로 깎는다. 분실 신고도 설명에서 같은 방식으로 읽는다.
 - `color`: 기본 12색 키 중 하나(`WHITE`, `BLACK`, `GRAY_SILVER`, `RED`, `ORANGE_CORAL`, `YELLOW`, `GREEN`, `BLUE_TEAL`, `PURPLE`, `PINK_MAGENTA`, `BROWN`, `OTHER`) 또는 `null`. LOST112 색 코드 묶음은 `docs/api/LOST112.md`, 이웃 색(헷갈리는 색)은 판정에서 모순이 아니라 확인 불가.
 - `features`: 최대 4개. `key`는 `sticker`, `scratch`, `case`, `keyring`, `contents`, `text`, `pattern`, `other` 중 하나, `value`는 40자 이하.
 - `sensitiveRegions`: 개인정보가 보이는 영역(사진 크기 대비 0~1 비율, `x`·`y`·`width`·`height`). 이 영역만 가린 공개본을 만든다.

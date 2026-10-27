@@ -155,3 +155,40 @@ describe("영역 좌표 변환", () => {
     expect(boxesToRegions(undefined)).toEqual([]);
   });
 });
+
+describe("세부 종류 (큰 종류 24개 + 한 단계 더)", () => {
+  it("큰 종류에 속한 세부 종류는 그대로, 다른 종류의 세부 종류는 null로 바꾼다 (실패로 보지 않는다)", async () => {
+    const mouse = fakeModels({ lite: { ...GOOD, category: "CHARGER", subCategory: "MOUSE" } });
+    expect((await createGeminiClient(mouse.models, CONFIG).extractFoundItem(image, "image/jpeg")).subCategory).toBe(
+      "MOUSE",
+    );
+    const wrong = fakeModels({ lite: { ...GOOD, category: "EARPHONE", subCategory: "MOUSE" } });
+    const out = await createGeminiClient(wrong.models, CONFIG).extractFoundItem(image, "image/jpeg");
+    expect(out.category).toBe("EARPHONE");
+    expect(out.subCategory).toBeNull();
+    expect(wrong.calls).toHaveLength(1);
+  });
+
+  it("지시문과 응답 형식에 세부 종류 목록이 들어간다", async () => {
+    const { models, calls } = fakeModels({ lite: GOOD });
+    await createGeminiClient(models, CONFIG).extractFoundItem(image, "image/jpeg");
+    const config = calls[0]?.params.config;
+    expect(String(config?.systemInstruction)).toContain("MOUSE(마우스)");
+    expect(JSON.stringify(config?.responseJsonSchema)).toContain("POWER_BANK");
+  });
+
+  it("분실 신고 분석도 세부 종류를 읽는다", async () => {
+    const { models } = fakeModels({
+      lite: {
+        category: "CHARGER",
+        subCategory: "MOUSE",
+        color: "BLACK",
+        brand: null,
+        features: [],
+        description: "검은 마우스",
+      },
+    });
+    const out = await createGeminiClient(models, CONFIG).extractLostReport("검은 마우스");
+    expect(out.subCategory).toBe("MOUSE");
+  });
+});

@@ -199,6 +199,31 @@ describe("기준 6. 점수로 최대 3개를 고른다", () => {
   });
 });
 
+describe("세부 종류: 큰 종류가 같아도 세부 종류가 다르면 뒤로", () => {
+  it("마우스 신고에는 더 최근에 들어온 보조배터리 3개보다 마우스가 후보에 든다", async () => {
+    useExtraction(async (description) => ({
+      category: "CHARGER",
+      subCategory: "MOUSE",
+      color: null,
+      brand: null,
+      features: [],
+      description,
+    }));
+    const mouse = await createFoundItem({
+      buildingId: A,
+      category: "CHARGER",
+      subCategory: "MOUSE",
+      foundAt: hoursAgo(1.5),
+    });
+    for (const h of [1.4, 1.3, 1.2])
+      await createFoundItem({ buildingId: A, category: "CHARGER", subCategory: "POWER_BANK", foundAt: hoursAgo(h) });
+    const res = await post(report({ category: "CHARGER", description: "검은색 무선 마우스" }));
+    expect(res.status).toBe(201);
+    const found = res.body.candidates.find((c: { foundItemId: string }) => c.foundItemId === mouse.id);
+    expect(found).toMatchObject({ category: "CHARGER", subCategory: "MOUSE" });
+  });
+});
+
 describe("기준 7. 순서는 습득 시각 최신순, 응답에 비공개 정보·점수 없음", () => {
   it("점수가 가장 높은 물건이 맨 앞에 오지 않는다", async () => {
     const best = await createFoundItem({
@@ -225,6 +250,7 @@ describe("기준 7. 순서는 습득 시각 최신순, 응답에 비공개 정�
       "isSeed",
       "locked",
       "reasons",
+      "subCategory",
       "thumbnailUrl",
     ]);
   });

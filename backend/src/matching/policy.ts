@@ -18,6 +18,9 @@ export const ATTR_WEIGHTS = { category: 0.6, color: 0.2, brand: 0.2 } as const;
 /** 종류 일치 정도 (#10): 정확히 같은 종류가 가장 높다 */
 export const CATEGORY_SCORE = { exact: 1, alt: 0.7, related: 0.4, etc: 0.3 } as const;
 
+/** 큰 종류는 같은데 세부 종류가 둘 다 있고 서로 다를 때 (예: 마우스 신고 ↔ 보조배터리). 한쪽이라도 모르면 exact */
+export const SUB_CATEGORY_MISMATCH_SCORE = 0.6;
+
 /** 장소: 같은 건물 1, 신고에 건물이 없으면 중간값, 다른 건물 0 (인접 건물 표가 생기면 추가) */
 export const PLACE_SCORE = { same: 1, unknown: 0.5, other: 0 } as const;
 

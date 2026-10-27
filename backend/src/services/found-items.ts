@@ -7,6 +7,7 @@ import {
   FoundItemExtraction,
   type RegisterFoundItemFields,
   type RegisterFoundItemResponse,
+  subCategoryWithin,
   VALUABLE_CATEGORIES,
 } from "@chajeumpyo/shared";
 import { ai, EMBEDDING_DIM } from "../ai";
@@ -172,7 +173,7 @@ async function processPhoto(image: Buffer): Promise<ProcessedPhoto> {
 /** 저장한 사진과 AI 결과로 습득물 행을 만든다. 실패하면 올린 사진을 지운다 */
 async function createFoundItem(
   photo: ProcessedPhoto,
-  data: Omit<Prisma.FoundItemUncheckedCreateInput, "id" | "category" | "categoryAlt" | "detail">,
+  data: Omit<Prisma.FoundItemUncheckedCreateInput, "id" | "category" | "categoryAlt" | "subCategory" | "detail">,
   locationDetail: string | null,
 ) {
   const { id, keys, analysis, sensitive } = photo;
@@ -185,6 +186,7 @@ async function createFoundItem(
           id,
           category: ex?.category ?? null,
           categoryAlt: ex?.categoryAlt && ex.categoryAlt !== ex.category ? ex.categoryAlt : null,
+          subCategory: ex ? subCategoryWithin(ex.category, ex.subCategory) : null,
           detail: {
             create: {
               imageOriginalKey: keys.original,
@@ -247,6 +249,7 @@ export async function registerFoundItem(input: {
     id: photo.id,
     status,
     category,
+    subCategory: subCategoryWithin(category, photo.analysis?.extraction.subCategory),
     building,
     floor: fields.floor ?? null,
     storageType: fields.storageType,
@@ -291,6 +294,7 @@ export async function analyzeFoundItem(input: {
     id: photo.id,
     confirmToken,
     category,
+    subCategory: subCategoryWithin(category, photo.analysis?.extraction.subCategory),
     isValuable: category !== null && VALUABLE_CATEGORIES.includes(category),
     message: photo.analysis ? null : REVIEW_MESSAGE,
     confirmBy: confirmBy.toISOString(),
@@ -314,7 +318,7 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
         expiresAt: { gt: foundAt },
         dataPurgedAt: null,
       },
-      select: { category: true },
+      select: { category: true, subCategory: true },
     });
     if (!draft) {
       // 확정 버튼을 두 번 눌렀을 때. 확정한 물건의 id는 후보 목록에 공개되므로 알려 줘도 된다
@@ -344,7 +348,7 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
       where: { foundItemId: id },
       data: { locationDetail: body.locationDetail ?? null },
     });
-    return { status, category: draft.category };
+    return { status, category: draft.category, subCategory: subCategoryWithin(draft.category, draft.subCategory) };
   });
 
   if (item.status === "REGISTERED") await alertNewCandidateSafely(id);
@@ -353,6 +357,7 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
     id,
     status: item.status,
     category: item.category,
+    subCategory: item.subCategory,
     building,
     floor: body.floor ?? null,
     storageType: body.storageType,
