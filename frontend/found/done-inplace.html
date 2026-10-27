@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>그 자리에 둠 · 찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+</head>
+<body>
+<main class="screen">
+  <header class="bar"><a class="back" href="register.html">←</a></header>
+  <h1>올려 두었어요</h1>
+  <div class="thanks-box">
+    분실물을 지나치지 않고 올려 주셔서 감사해요.<br>덕분에 주인이 소중한 물건을 다시 찾을 수 있어요.
+  </div>
+
+  <div class="done-photo" role="img" aria-label="업로드한 분실물 사진">
+    <img id="doneImg" alt="업로드한 분실물 사진" hidden>
+    <svg id="doneFallback" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="320" height="200" fill="#e6dfd2"/>
+      <ellipse cx="160" cy="158" rx="64" ry="12" fill="rgba(28,25,21,0.10)"/>
+      <rect x="104" y="52" width="112" height="104" rx="36" fill="#ffffff" stroke="#d5cbbd" stroke-width="2"/>
+      <line x1="106" y1="96" x2="214" y2="96" stroke="#e4ddd2" stroke-width="2"/>
+      <rect x="146" y="91" width="28" height="10" rx="5" fill="#d5cbbd"/>
+      <circle cx="160" cy="124" r="4" fill="#1e5b3d"/>
+    </svg>
+  </div>
+
+  <table class="kv">
+    <tr><th>보관</th><td>그 자리에 둠</td></tr>
+    <tr id="doneDetailRow" hidden><th>상세 설명</th><td id="doneDetail"></td></tr>
+    <tr><th>시각</th><td id="doneTime"></td></tr>
+  </table>
+  <p class="note">이 사진 링크는 10분 뒤 닫혀요.</p>
+
+  <div class="dock">
+    <a class="btn" href="../index.html">처음 화면</a>
+  </div>
+</main>
+<script>
+  function formatKoreanTime(d) {
+    const days = ["일", "월", "화", "수", "목", "금", "토"];
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const dow = days[d.getDay()];
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${m}월 ${day}일(${dow}) ${hh}:${mm}`;
+  }
+
+  const doneTimeEl = document.getElementById("doneTime");
+  doneTimeEl.textContent = formatKoreanTime(new Date());
+
+  try {
+    const saved = sessionStorage.getItem("foundPhoto");
+    if (saved) {
+      const img = document.getElementById("doneImg");
+      const fb = document.getElementById("doneFallback");
+      img.src = saved;
+      img.hidden = false;
+      fb.style.display = "none";
+    }
+    const savedTime = sessionStorage.getItem("registeredAt");
+    if (savedTime) {
+      doneTimeEl.textContent = savedTime;
+    }
+    const savedDetail = sessionStorage.getItem("locationDetail");
+    if (savedDetail) {
+      document.getElementById("doneDetail").textContent = savedDetail;
+      document.getElementById("doneDetailRow").hidden = false;
+    }
+  } catch (_) {}
+</script>
+</body>
+</html>
