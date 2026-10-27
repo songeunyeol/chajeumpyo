@@ -265,9 +265,9 @@
     {
       "foundItemId": "6a1f...",
       "category": "EARPHONE",
+      "subCategory": "WIRELESS_EARBUDS",
       "foundAt": "2026-10-13T14:20:00+09:00",
       "building": { "id": 1, "name": "혜인관" },
-      "floor": 2,
       "thumbnailUrl": "https://.../files/found/6a1f.../thumb.jpg?exp=...&sig=... (강한 블러본, 10분 만료)",
       "reasons": ["SAME_CATEGORY", "SAME_BUILDING", "FOUND_SOON_AFTER"],
       "attemptsLeft": 3,
@@ -279,7 +279,7 @@
 }
 ```
 - `buildingId`는 선택. 모르면 생략한다.
-- 후보에는 **공개 정보만** 담는다. 색, 특징, 2순위 종류, 점수는 넣지 않는다.
+- 후보에는 **공개 정보만** 담는다. 색, 특징, 2순위 종류, 점수는 넣지 않는다. **층도 넣지 않는다**: 그 자리에 둔 물건의 자리를 확인 전에 좁혀 주지 않기 위해서다. 층과 자세한 위치는 판정 통과 후 상세(`GET /found-items/:id/detail`)에서만 준다.
 - 사진은 숨은 특징을 알아볼 수 없을 만큼 강하게 흐린 후보용 사본(`thumbnailUrl`)만 준다. 선명한 공개본은 판정 통과 후에만. (10/12 결정, open-issues #29)
 - `reasons`는 공개 정보와 신고자가 적은 값으로만 만든 근거다: `SAME_CATEGORY`(공개 종류가 같음), `RELATED_CATEGORY`(공개 종류가 연관 묶음), `SAME_BUILDING`, `FOUND_SOON_AFTER`(잃어버린 뒤 2시간 안에 습득). 2순위 종류로만 걸린 물건에는 종류 근거를 붙이지 않는다. (open-issues #28)
 - 후보는 서버가 점수로 고른 **최대 5개**이고, **`foundAt` 최신순**으로 내려준다. 배열 순서는 점수와 관계없다.
@@ -312,6 +312,7 @@
 ### 일치 판정
 
 #### `POST /lost-reports/:id/claims` · 회원
+- 계정·물건별 잠금과 별개로 같은 IP는 10분에 20번까지. 넘으면 `429 RATE_LIMITED`.
 ```json
 // 요청
 { "foundItemId": "6a1f..." }
@@ -360,6 +361,7 @@
 - 체험 계정이 시드가 아닌 습득물에 시도하면 `403 FORBIDDEN`.
 
 #### `POST /claims/:attemptId/answer` · 회원
+- 같은 IP는 10분에 20번까지. 넘으면 `429 RATE_LIMITED`.
 ```json
 // 요청
 { "answer": "곰돌이" }

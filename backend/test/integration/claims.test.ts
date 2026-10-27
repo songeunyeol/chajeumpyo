@@ -368,3 +368,16 @@ describe("기준 10. 동시 요청과 체험 계정", () => {
     expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: seed.id } })).status).toBe("REGISTERED");
   });
 });
+
+describe("IP 요청 제한 (계정을 바꿔 가며 몰아치기 방지, 위협 모델 T2)", () => {
+  it("판정 요청과 답변 요청은 같은 IP에서 10분에 20번까지, 21번째는 429", async () => {
+    const missing = "00000000-0000-0000-0000-000000000000";
+    for (let i = 0; i < 20; i++) expect((await claim(missing, missing)).status).not.toBe(429);
+    const over = await claim(missing, missing);
+    expect(over.status).toBe(429);
+    expect(over.body.error.code).toBe("RATE_LIMITED");
+
+    for (let i = 0; i < 20; i++) expect((await answer(missing, "곰돌이")).status).not.toBe(429);
+    expect((await answer(missing, "곰돌이")).status).toBe(429);
+  });
+});

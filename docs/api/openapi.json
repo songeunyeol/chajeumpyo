@@ -6750,12 +6750,6 @@
                               "name"
                             ]
                           },
-                          "floor": {
-                            "type": [
-                              "integer",
-                              "null"
-                            ]
-                          },
                           "thumbnailUrl": {
                             "type": [
                               "string",
@@ -6794,7 +6788,6 @@
                           "subCategory",
                           "foundAt",
                           "building",
-                          "floor",
                           "thumbnailUrl",
                           "reasons",
                           "attemptsLeft",
@@ -7355,12 +7348,6 @@
                               "name"
                             ]
                           },
-                          "floor": {
-                            "type": [
-                              "integer",
-                              "null"
-                            ]
-                          },
                           "thumbnailUrl": {
                             "type": [
                               "string",
@@ -7399,7 +7386,6 @@
                           "subCategory",
                           "foundAt",
                           "building",
-                          "floor",
                           "thumbnailUrl",
                           "reasons",
                           "attemptsLeft",
@@ -7658,12 +7644,6 @@
                               "name"
                             ]
                           },
-                          "floor": {
-                            "type": [
-                              "integer",
-                              "null"
-                            ]
-                          },
                           "thumbnailUrl": {
                             "type": [
                               "string",
@@ -7702,7 +7682,6 @@
                           "subCategory",
                           "foundAt",
                           "building",
-                          "floor",
                           "thumbnailUrl",
                           "reasons",
                           "attemptsLeft",

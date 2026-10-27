@@ -67,7 +67,7 @@ export const Candidate = z.object({
   foundAt: z.iso.datetime(),
   /** 주운 건물. 보관처에 맡겼고 주운 곳을 모르면 null */
   building: BuildingSummary.nullable(),
-  floor: z.number().int().nullable(),
+  /** 층은 넣지 않는다: 확인 전에 그 자리에 둔 물건의 자리를 좁혀 주지 않게. 층은 판정 통과 후 상세에서만 */
   /** 숨은 특징을 알아볼 수 없을 만큼 강하게 흐린 사진 (서명 URL, 10분). 사진이 없으면 null */
   thumbnailUrl: z.string().nullable(),
   /** 공개 정보로만 만든 근거. 점수나 순위는 담지 않는다 */
