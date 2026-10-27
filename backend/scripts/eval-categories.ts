@@ -60,11 +60,13 @@ function buildLookup(): Map<string, Expected> {
 
 /** "마우스_1.jpg" → "마우스" (밑줄·하이픈·괄호·숫자 앞까지) */
 function nameOf(file: string): string {
-  return file
-    .slice(0, -extname(file).length)
-    .split(/[_\-(]/)[0]!
-    .replace(/\d+$/, "")
-    .trim();
+  return (
+    file
+      .slice(0, -extname(file).length)
+      .split(/[_\-(]/)[0]
+      ?.replace(/\d+$/, "")
+      .trim() ?? ""
+  );
 }
 
 const dir = process.argv[2] ?? join(homedir(), "Desktop", "chajeumpyo-test-photos");
