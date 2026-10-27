@@ -239,6 +239,28 @@ describe("기준 7. 가입용 토큰은 한 번만, 위조·만료 토큰 거부
     expect(res.body.error.code).toBe("INVALID_CODE");
   });
 
+  it("인증 뒤 그사이 같은 이메일로 가입됐어도 이미 쓴 토큰과 같은 응답 (가입 여부를 드러내지 않음)", async () => {
+    const used = await verifiedToken();
+    await request(app)
+      .post(api("/auth/signup"))
+      .send({ verificationToken: used, password: "password123", consent: memberConsent() })
+      .expect(201);
+    const reused = await request(app)
+      .post(api("/auth/signup"))
+      .send({ verificationToken: used, password: "password123", consent: memberConsent() });
+
+    await prisma.user.deleteMany();
+    await ageVerification(10); // 재발송 대기 넘기기
+    const token = await verifiedToken();
+    await prisma.user.create({ data: { email: EMAIL, passwordHash: "x", role: "USER" } }); // 다른 요청이 먼저 가입
+    const raced = await request(app)
+      .post(api("/auth/signup"))
+      .send({ verificationToken: token, password: "password123", consent: memberConsent() });
+    expect(raced.status).toBe(400);
+    expect(raced.body).toEqual(reused.body);
+    expect(await prisma.user.count({ where: { email: EMAIL } })).toBe(1);
+  });
+
   it("같은 토큰으로 동시에 가입해도 계정은 하나", async () => {
     const token = await verifiedToken();
     const results = await Promise.all(
