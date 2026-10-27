@@ -71,7 +71,7 @@ async function lockItemIfExhausted(tx: Prisma.TransactionClient, foundItemId: st
     {
       type: "CLAIM_LOCKED",
       foundItemId,
-      message: `${item.building.name}의 ${label} 확인에 ${total}번 실패해서 온라인 확인을 막았어요. 찾으러 오는 분은 직접 본인 확인을 해 주세요.`,
+      message: `${item.building ? `${item.building.name}의 ` : ""}${label} 확인에 ${total}번 실패해서 온라인 확인을 막았어요. 찾으러 오는 분은 직접 본인 확인을 해 주세요.`,
     },
     tx,
   );

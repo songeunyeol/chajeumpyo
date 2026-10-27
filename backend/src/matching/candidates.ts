@@ -34,7 +34,7 @@ const SOON_AFTER_HOURS = 2;
 /** 공개 정보와 신고자 본인이 적은 값만으로 근거를 만든다. 2순위 종류(비공개)는 쓰지 않는다 */
 export function publicReasons(
   report: Pick<ReportForMatching, "category" | "buildingId" | "lostFrom" | "lostTo">,
-  item: { category: Candidate["category"]; buildingId: number; foundAt: Date },
+  item: { category: Candidate["category"]; buildingId: number | null; foundAt: Date },
 ): CandidateReason[] {
   const reasons: CandidateReason[] = [];
   if (item.category === report.category) reasons.push("SAME_CATEGORY");

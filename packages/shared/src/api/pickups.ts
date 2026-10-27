@@ -38,7 +38,8 @@ export const PickupScanResponse = z.object({
   foundItem: z.object({
     id: z.string(),
     category: Category,
-    building: z.string(),
+    /** 주운 건물 이름. 모르면 null */
+    building: z.string().nullable(),
     /** 원본 사진 서명 URL (관리자 확인용) */
     imageUrl: z.string().nullable(),
   }),

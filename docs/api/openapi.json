@@ -129,7 +129,10 @@
                             ]
                           },
                           "building": {
-                            "type": "object",
+                            "type": [
+                              "object",
+                              "null"
+                            ],
                             "properties": {
                               "id": {
                                 "type": "integer"
@@ -150,10 +153,14 @@
                             ]
                           },
                           "storageType": {
-                            "type": "string",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
                             "enum": [
                               "IN_PLACE",
-                              "HANDED_OVER"
+                              "HANDED_OVER",
+                              null
                             ]
                           },
                           "storagePlace": {
@@ -279,6 +286,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -410,7 +418,10 @@
                       ]
                     },
                     "building": {
-                      "type": "object",
+                      "type": [
+                        "object",
+                        "null"
+                      ],
                       "properties": {
                         "id": {
                           "type": "integer"
@@ -431,10 +442,14 @@
                       ]
                     },
                     "storageType": {
-                      "type": "string",
+                      "type": [
+                        "string",
+                        "null"
+                      ],
                       "enum": [
                         "IN_PLACE",
-                        "HANDED_OVER"
+                        "HANDED_OVER",
+                        null
                       ]
                     },
                     "storagePlace": {
@@ -761,6 +776,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -831,6 +847,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1108,7 +1125,10 @@
                       ]
                     },
                     "building": {
-                      "type": "object",
+                      "type": [
+                        "object",
+                        "null"
+                      ],
                       "properties": {
                         "id": {
                           "type": "integer"
@@ -1129,10 +1149,14 @@
                       ]
                     },
                     "storageType": {
-                      "type": "string",
+                      "type": [
+                        "string",
+                        "null"
+                      ],
                       "enum": [
                         "IN_PLACE",
-                        "HANDED_OVER"
+                        "HANDED_OVER",
+                        null
                       ]
                     },
                     "storagePlace": {
@@ -1459,6 +1483,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1529,6 +1554,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1599,6 +1625,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1669,6 +1696,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1822,6 +1850,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1892,6 +1921,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1962,6 +1992,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2032,6 +2063,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2259,6 +2291,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2360,6 +2393,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2430,6 +2464,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2556,6 +2591,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2742,6 +2778,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2812,6 +2849,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2882,6 +2920,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3032,6 +3071,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3200,6 +3240,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3270,6 +3311,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3386,6 +3428,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3555,6 +3598,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3764,6 +3808,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3980,6 +4025,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4050,6 +4096,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4120,6 +4167,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4190,6 +4238,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4260,6 +4309,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4428,6 +4478,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4498,6 +4549,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4568,6 +4620,882 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/found-items/analyze": {
+      "post": {
+        "tags": [
+          "습득물"
+        ],
+        "summary": "두 단계 등록 1: 사진 분석 (F-01, F-02, F-03)",
+        "description": "사진만 먼저 받아 가리기·AI 분석을 하고 확정 전(ANALYZING)으로 저장한다. 응답의 category로 등록 화면에 물건 이름을 보여 준다. 60분 안에 confirm하지 않으면 사진까지 지운다. 확정 전에는 후보·알림에 나오지 않는다. AI가 실패하면 category가 null이고 confirm하면 검토 대기(REVIEW)가 된다. 동의와 캡차(X-Captcha-Token 헤더)가 필요하다.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "사진 1장"
+                  },
+                  "consentVersion": {
+                    "type": "string",
+                    "description": "동의 화면 버전 (CONSENT_VERSION)"
+                  },
+                  "consentExternalAi": {
+                    "type": "string",
+                    "enum": [
+                      "true"
+                    ],
+                    "description": "사진의 외부 AI 처리 동의 (필수)"
+                  },
+                  "consentLocation": {
+                    "type": "string",
+                    "enum": [
+                      "true",
+                      "false"
+                    ],
+                    "description": "위치 사용 동의"
+                  }
+                },
+                "required": [
+                  "image",
+                  "consentVersion",
+                  "consentExternalAi"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "분석됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "confirmToken": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "WALLET",
+                        "ID_CARD",
+                        "DRIVER_LICENSE",
+                        "PAYMENT_CARD",
+                        "TRANSIT_CARD",
+                        "OTHER_CARD",
+                        "PHONE",
+                        "EARPHONE",
+                        "SMARTWATCH",
+                        "TABLET",
+                        "LAPTOP",
+                        "CHARGER",
+                        "BAG",
+                        "CLOTHING",
+                        "HAT",
+                        "BOOK",
+                        "GLASSES",
+                        "ACCESSORY",
+                        "CASH",
+                        "UMBRELLA",
+                        "TUMBLER",
+                        "KEY",
+                        "STATIONERY",
+                        "ETC",
+                        null
+                      ]
+                    },
+                    "isValuable": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "confirmBy": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "confirmToken",
+                    "category",
+                    "isValuable",
+                    "message",
+                    "confirmBy"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, CAPTCHA_FAILED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "IMAGE_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "NO_OBJECT_DETECTED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/found-items/{id}/confirm": {
+      "post": {
+        "tags": [
+          "습득물"
+        ],
+        "summary": "두 단계 등록 2: 위치·보관 방식 확정",
+        "description": "analyze 응답의 confirmToken과 위치를 보내 등록을 끝낸다. 응답은 POST /found-items와 같다.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "buildingId": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "storageType": {
+                    "type": "string",
+                    "enum": [
+                      "IN_PLACE",
+                      "HANDED_OVER"
+                    ]
+                  },
+                  "storagePlaceId": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "floor": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": -10,
+                    "maximum": 30
+                  },
+                  "locationDetail": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "confirmToken": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "storageType",
+                  "confirmToken"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "등록됨 (REGISTERED 또는 REVIEW)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ANALYZING",
+                        "REVIEW",
+                        "REGISTERED",
+                        "REVEALED",
+                        "CLAIMED",
+                        "EXPIRED"
+                      ]
+                    },
+                    "category": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "WALLET",
+                        "ID_CARD",
+                        "DRIVER_LICENSE",
+                        "PAYMENT_CARD",
+                        "TRANSIT_CARD",
+                        "OTHER_CARD",
+                        "PHONE",
+                        "EARPHONE",
+                        "SMARTWATCH",
+                        "TABLET",
+                        "LAPTOP",
+                        "CHARGER",
+                        "BAG",
+                        "CLOTHING",
+                        "HAT",
+                        "BOOK",
+                        "GLASSES",
+                        "ACCESSORY",
+                        "CASH",
+                        "UMBRELLA",
+                        "TUMBLER",
+                        "KEY",
+                        "STATIONERY",
+                        "ETC",
+                        null
+                      ]
+                    },
+                    "building": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ]
+                    },
+                    "floor": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "storageType": {
+                      "type": "string",
+                      "enum": [
+                        "IN_PLACE",
+                        "HANDED_OVER"
+                      ]
+                    },
+                    "storagePlace": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "guideText": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "guideText"
+                      ]
+                    },
+                    "message": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "handOverAdvice": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        },
+                        "storagePlaces": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "guideText": {
+                                "type": "string"
+                              },
+                              "building": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name"
+                                ]
+                              },
+                              "sameBuilding": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "guideText",
+                              "building",
+                              "sameBuilding"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "message",
+                        "storagePlaces"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "category",
+                    "building",
+                    "floor",
+                    "storageType",
+                    "storagePlace",
+                    "message",
+                    "handOverAdvice"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: 없거나, 토큰이 틀리거나, 확정 시간이 지남",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ALREADY_CONFIRMED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "EMAIL_TAKEN",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4619,8 +5547,8 @@
         "tags": [
           "습득물"
         ],
-        "summary": "습득물 등록 (F-01, F-02, F-03)",
-        "description": "로그인 없이 등록한다. 응답에는 공개 정보만 담는다. AI 분석이 실패해도 201로 응답하고 status가 REVIEW다. 사진은 10MB 이하 JPG·PNG·WEBP·HEIC. 같은 기기·IP는 10분에 5건까지. 동의(외부 AI 처리)와 캡차(X-Captcha-Token 헤더)가 필요하다. 고가품을 그 자리에 두면 handOverAdvice로 보관처를 안내한다.",
+        "summary": "습득물 한 번에 등록 (F-01, F-02, F-03)",
+        "description": "로그인 없이 사진과 위치를 한 번에 등록한다. 물건 이름을 먼저 보여 주려면 analyze → confirm 두 단계를 쓴다. 응답에는 공개 정보만 담는다. AI 분석이 실패해도 201로 응답하고 status가 REVIEW다. 사진은 10MB 이하 JPG·PNG·WEBP·HEIC. 같은 기기·IP는 10분에 5건까지. 동의(외부 AI 처리)와 캡차(X-Captcha-Token 헤더)가 필요하다. 고가품을 그 자리에 두면 handOverAdvice로 보관처를 안내한다.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -4633,7 +5561,8 @@
                     "description": "사진 1장"
                   },
                   "buildingId": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "주운 건물. IN_PLACE면 필수, HANDED_OVER면 모를 때 비움"
                   },
                   "storageType": {
                     "type": "string",
@@ -4649,6 +5578,11 @@
                   "floor": {
                     "type": "integer",
                     "description": "습득 층, 지하는 음수"
+                  },
+                  "locationDetail": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "자세한 위치. 판정 통과 후에만 보인다"
                   },
                   "consentVersion": {
                     "type": "string",
@@ -4672,7 +5606,6 @@
                 },
                 "required": [
                   "image",
-                  "buildingId",
                   "storageType",
                   "consentVersion",
                   "consentExternalAi"
@@ -4737,7 +5670,10 @@
                       ]
                     },
                     "building": {
-                      "type": "object",
+                      "type": [
+                        "object",
+                        "null"
+                      ],
                       "properties": {
                         "id": {
                           "type": "integer"
@@ -4892,6 +5828,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4962,6 +5899,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5032,6 +5970,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5102,6 +6041,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5225,7 +6165,10 @@
                       "format": "date-time"
                     },
                     "building": {
-                      "type": "object",
+                      "type": [
+                        "object",
+                        "null"
+                      ],
                       "properties": {
                         "id": {
                           "type": "integer"
@@ -5237,6 +6180,18 @@
                       "required": [
                         "id",
                         "name"
+                      ]
+                    },
+                    "floor": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "locationDetail": {
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     },
                     "storageType": {
@@ -5300,6 +6255,8 @@
                     "imageUrl",
                     "imageUrlExpiresAt",
                     "building",
+                    "floor",
+                    "locationDetail",
                     "storageType",
                     "storagePlace",
                     "status",
@@ -5338,6 +6295,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5408,6 +6366,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5478,6 +6437,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5660,7 +6620,10 @@
                             "format": "date-time"
                           },
                           "building": {
-                            "type": "object",
+                            "type": [
+                              "object",
+                              "null"
+                            ],
                             "properties": {
                               "id": {
                                 "type": "integer"
@@ -5764,6 +6727,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5834,6 +6798,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5904,6 +6869,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6097,6 +7063,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6216,7 +7183,10 @@
                             "format": "date-time"
                           },
                           "building": {
-                            "type": "object",
+                            "type": [
+                              "object",
+                              "null"
+                            ],
                             "properties": {
                               "id": {
                                 "type": "integer"
@@ -6318,6 +7288,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6470,7 +7441,10 @@
                             "format": "date-time"
                           },
                           "building": {
-                            "type": "object",
+                            "type": [
+                              "object",
+                              "null"
+                            ],
                             "properties": {
                               "id": {
                                 "type": "integer"
@@ -6574,6 +7548,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6644,6 +7619,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6714,6 +7690,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6874,6 +7851,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6973,6 +7951,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7163,6 +8142,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7233,6 +8213,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7303,6 +8284,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7441,6 +8423,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7511,6 +8494,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7635,7 +8619,10 @@
                           ]
                         },
                         "building": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "imageUrl": {
                           "type": [
@@ -7704,6 +8691,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7774,6 +8762,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7844,6 +8833,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7914,6 +8904,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8041,6 +9032,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8111,6 +9103,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8181,6 +9174,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8251,6 +9245,7 @@
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
                             "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
                             "QR_EXPIRED",
                             "IMAGE_TOO_LARGE",
                             "NO_OBJECT_DETECTED",

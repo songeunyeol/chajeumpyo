@@ -34,7 +34,8 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
       storagePlace: { select: { id: true, name: true, guideText: true } },
     },
   });
-  if (!item?.detail || !item.category) throw new AppError("NOT_FOUND", "물건을 찾을 수 없어요.");
+  // 확정 전(두 단계 등록의 초안)은 판정 대상이 아니다
+  if (!item?.detail || !item.category || !item.storageType) throw new AppError("NOT_FOUND", "물건을 찾을 수 없어요.");
   // 수령·기한 만료로 사진과 비공개 정보를 지운 물건 (#33)
   const publicKey = item.detail.imagePublicKey;
   if (item.dataPurgedAt || !publicKey) {
@@ -71,7 +72,7 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
           {
             type: "MULTI_REVEAL",
             foundItemId,
-            message: `${item.building.name}의 ${label}을(를) ${others.length + 1}개 계정이 확인했어요. 수령할 때 본인 확인에 주의해 주세요.`,
+            message: `${item.building ? `${item.building.name}의 ` : ""}${label}을(를) ${others.length + 1}개 계정이 확인했어요. 수령할 때 본인 확인에 주의해 주세요.`,
           },
           tx,
         );
@@ -88,6 +89,8 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
     imageUrl: await storage.signedUrl(publicKey, DETAIL_IMAGE_TTL_SECONDS),
     imageUrlExpiresAt: imageUrlExpiresAt.toISOString(),
     building: item.building,
+    floor: item.floor,
+    locationDetail: item.detail.locationDetail,
     storageType: item.storageType,
     storagePlace: item.storagePlace,
     status,

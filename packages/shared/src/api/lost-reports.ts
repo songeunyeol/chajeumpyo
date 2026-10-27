@@ -63,7 +63,8 @@ export const Candidate = z.object({
   foundItemId: z.string(),
   category: Category,
   foundAt: z.iso.datetime(),
-  building: BuildingSummary,
+  /** 주운 건물. 보관처에 맡겼고 주운 곳을 모르면 null */
+  building: BuildingSummary.nullable(),
   floor: z.number().int().nullable(),
   /** 숨은 특징을 알아볼 수 없을 만큼 강하게 흐린 사진 (서명 URL, 10분). 사진이 없으면 null */
   thumbnailUrl: z.string().nullable(),

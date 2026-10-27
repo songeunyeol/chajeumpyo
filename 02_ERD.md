@@ -70,10 +70,10 @@ erDiagram
     }
     FOUND_ITEM {
         uuid id PK
-        int building_id FK
+        int building_id FK "주운 건물, 맡겼고 모르면 null"
         enum category "공개"
         enum category_alt "2순위, 비공개"
-        enum storage_type "IN_PLACE | HANDED_OVER"
+        enum storage_type "IN_PLACE | HANDED_OVER, 확정 전 null"
         int storage_place_id FK "HANDED_OVER일 때 필수"
         int floor "습득 층, 지하는 음수, nullable"
         enum status "ANALYZING | REVIEW | REGISTERED | REVEALED | CLAIMED | EXPIRED"
@@ -85,6 +85,7 @@ erDiagram
         datetime claim_locked_at "모든 계정 실패 10회로 온라인 확인을 막은 시각"
         string consent_version "습득자 동의 화면 버전"
         boolean location_consent
+        string confirm_token_hash "두 단계 등록 확정 토큰 HMAC, 확정하면 null"
     }
     FOUND_ITEM_DETAIL {
         uuid found_item_id PK, FK
@@ -97,6 +98,7 @@ erDiagram
         json features "비공개 특징 목록, 최대 4개"
         text description
         string title "관리자 목록용 제목"
+        text location_detail "습득자가 적은 자세한 위치, 판정 통과 후 공개"
         vector embedding
         json raw_ai_response
     }
@@ -197,6 +199,11 @@ erDiagram
   ```sql
   ALTER TABLE found_item ADD CONSTRAINT found_item_storage_place_required
     CHECK (storage_type <> 'HANDED_OVER' OR storage_place_id IS NOT NULL);
+  ```
+- **그 자리에 둔 물건은 건물 필수**: 보관처에 맡긴 물건은 주운 건물을 몰라도 되지만(`building_id` null), 그 자리에 둔 물건은 찾으러 갈 건물이 있어야 한다. 두 단계 등록의 확정 전(`ANALYZING`)에는 `storage_type`이 null이다.
+  ```sql
+  ALTER TABLE found_item ADD CONSTRAINT found_item_in_place_building_check
+    CHECK (storage_type IS DISTINCT FROM 'IN_PLACE' OR building_id IS NOT NULL);
   ```
 - **체험 계정**: 체험 계정의 판정·열람·수령은 `found_item.status`를 바꾸지 않는다. 24시간이 지난 체험 계정은 하루 한 번 배치로 `notification`, `pickup`, `reveal_log`, `match_attempt`, `lost_report`, `user` 순서로 지운다. 일반 계정 기록이 실수로 지워지지 않도록 FK에 CASCADE를 걸지 않고 배치에서 명시적으로 지운다.
 - **인덱스**

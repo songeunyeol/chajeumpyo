@@ -14,7 +14,7 @@ export type ItemSide = {
   category: Category | null;
   categoryAlt: Category | null;
   foundAt: Date;
-  buildingId: number;
+  buildingId: number | null;
   color: string | null;
   brand: string | null;
 };
@@ -40,8 +40,8 @@ function sameText(a: string | null, b: string | null): boolean {
   return x.length > 0 && y.length > 0 && (x.includes(y) || y.includes(x));
 }
 
-export function placeScore(reportBuildingId: number | null, itemBuildingId: number): number {
-  if (reportBuildingId === null) return PLACE_SCORE.unknown;
+export function placeScore(reportBuildingId: number | null, itemBuildingId: number | null): number {
+  if (reportBuildingId === null || itemBuildingId === null) return PLACE_SCORE.unknown;
   return reportBuildingId === itemBuildingId ? PLACE_SCORE.same : PLACE_SCORE.other;
 }
 

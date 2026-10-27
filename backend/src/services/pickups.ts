@@ -179,7 +179,7 @@ export async function scanPickup(admin: Admin, qrToken: string): Promise<PickupS
     foundItem: {
       id: item.id,
       category: item.category,
-      building: item.building.name,
+      building: item.building?.name ?? null,
       imageUrl: item.detail.imageOriginalKey
         ? await storage.signedUrl(item.detail.imageOriginalKey, ADMIN_IMAGE_TTL_SECONDS)
         : null,
