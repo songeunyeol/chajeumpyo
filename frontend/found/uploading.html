@@ -66,6 +66,7 @@
     </div>
   </div>
 </main>
+<script src="api.js"></script>
 <script>
   const mover = document.getElementById("ticketMover");
   const flipper = document.getElementById("ticketFlipper");
@@ -142,13 +143,29 @@
     }
   }
 
-  // 실제 API 연동 전 기본 시뮬레이션 (약 2.4초)
-  const mockUploadTask = wait(2400).then(() => ({
-    itemClass: "wireless_earbuds (0.98)",
-    itemLabel: "무선 이어폰"
-  }));
+  // POST /found-items/analyze. 결과(초안 id·확정 토큰·종류)는 등록 화면이 쓴다
+  let photo = null;
+  try { photo = sessionStorage.getItem("foundPhoto"); } catch (_) {}
+  const locationConsent = (() => { try { return sessionStorage.getItem("locationConsent") !== "denied"; } catch (_) { return true; } })();
+  const uploadTask = photo
+    ? FoundApi.analyze(photo, locationConsent).then((r) => {
+        FoundApi.store.set("foundDraft", r);
+        return {
+          itemClass: r.category ? (r.subCategory || r.category).toLowerCase() : "review (관리자 확인)",
+          itemLabel: r.category ? FoundApi.itemLabel(r.category, r.subCategory) : "확인 중인 물건",
+        };
+      })
+    : Promise.reject(new FoundApi.ApiError(400, { error: { message: "사진을 먼저 골라 주세요." } }));
 
-  runUploadFlow(mockUploadTask);
+  runUploadFlow(uploadTask).catch((err) => {
+    statusEl.textContent = "FAILED";
+    pageTitle.textContent = err.code === "NO_OBJECT_DETECTED" ? "다시 찍어 주세요" : "올리지 못했어요";
+    pageLead.textContent = err.message;
+    const dock = document.createElement("div");
+    dock.className = "dock";
+    dock.innerHTML = '<a class="btn" href="photo.html">사진 다시 고르기</a>';
+    document.querySelector("main.screen").appendChild(dock);
+  });
 </script>
 </body>
 </html>
