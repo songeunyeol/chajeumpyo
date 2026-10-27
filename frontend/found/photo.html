@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>사진 · 찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+</head>
+<body>
+<main class="screen">
+  <header class="bar"><a class="back" href="consent.html">←</a></header>
+  <h1>물건을 찍어 주세요</h1>
+  <p class="lead">한 장이면 돼요.</p>
+
+  <input type="file" id="photoInput" accept="image/*" hidden>
+
+  <div class="upload-box" id="uploadBox" role="button" tabindex="0" aria-label="분실물 사진 업로드">
+    <div class="upload-empty">
+      <div class="upload-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+          <circle cx="12" cy="13" r="3.5"/>
+        </svg>
+      </div>
+      <b>사진 찍기 · 앨범에서 선택</b>
+      <span>눌러서 분실물 사진을 올려 주세요</span>
+    </div>
+
+    <img class="upload-preview" id="uploadPreview" alt="업로드된 분실물 사진">
+    <div class="upload-sample" aria-label="업로드된 분실물 사진 미리보기">
+      <svg viewBox="0 0 320 224" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
+        <rect width="320" height="224" fill="#e6dfd2"/>
+        <ellipse cx="160" cy="172" rx="64" ry="12" fill="rgba(28,25,21,0.10)"/>
+        <rect x="104" y="64" width="112" height="104" rx="36" fill="#ffffff" stroke="#d5cbbd" stroke-width="2"/>
+        <line x1="106" y1="108" x2="214" y2="108" stroke="#e4ddd2" stroke-width="2"/>
+        <rect x="146" y="103" width="28" height="10" rx="5" fill="#d5cbbd"/>
+        <circle cx="160" cy="136" r="4" fill="#1e5b3d"/>
+      </svg>
+    </div>
+
+    <div class="upload-reselect" id="uploadReselect">
+      <button type="button" class="reselect-btn" id="reselectBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        다시 선택
+      </button>
+    </div>
+  </div>
+
+  <div class="dock">
+    <a class="btn" href="uploading.html">이 사진으로</a>
+  </div>
+</main>
+<script>
+  const box = document.getElementById("uploadBox");
+  const input = document.getElementById("photoInput");
+  const preview = document.getElementById("uploadPreview");
+  const reselectBtn = document.getElementById("reselectBtn");
+  let currentUrl = null;
+
+  function setUploadedFile(file) {
+    if (currentUrl) URL.revokeObjectURL(currentUrl);
+    currentUrl = URL.createObjectURL(file);
+    preview.src = currentUrl;
+    box.classList.remove("is-sample", "show-reselect");
+    box.classList.add("has-photo", "is-file");
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try { sessionStorage.setItem("foundPhoto", reader.result); } catch (_) {}
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function setSamplePhoto() {
+    box.classList.remove("is-file", "show-reselect");
+    box.classList.add("has-photo", "is-sample");
+    try { sessionStorage.removeItem("foundPhoto"); } catch (_) {}
+  }
+
+  function resetToUploadBox() {
+    if (currentUrl) {
+      URL.revokeObjectURL(currentUrl);
+      currentUrl = null;
+    }
+    preview.removeAttribute("src");
+    input.value = "";
+    box.classList.remove("has-photo", "is-file", "is-sample", "show-reselect");
+    try { sessionStorage.removeItem("foundPhoto"); } catch (_) {}
+  }
+
+  box.addEventListener("click", (e) => {
+    if (e.target.closest("#reselectBtn")) return;
+    if (!box.classList.contains("has-photo")) {
+      input.click();
+    } else {
+      box.classList.toggle("show-reselect");
+    }
+  });
+
+  box.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      box.click();
+    }
+  });
+
+  input.addEventListener("change", () => {
+    if (input.files && input.files[0]) {
+      setUploadedFile(input.files[0]);
+    }
+  });
+
+  input.addEventListener("cancel", () => {
+    if (!box.classList.contains("has-photo")) {
+      setSamplePhoto();
+    }
+  });
+
+  reselectBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    resetToUploadBox();
+    input.click();
+  });
+</script>
+</body>
+</html>

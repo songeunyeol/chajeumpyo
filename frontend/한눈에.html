@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>찾음표 한눈에</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  :root {
+    --paper: #f3efe6;
+    --ink: #1c1915;
+    --mute: #9a948c;
+    --line: #e4ddd2;
+    --green: #1e5b3d;
+    --white: #fff;
+    --font: "Pretendard Variable", Pretendard, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e7e1d4; color: var(--ink); font-family: var(--font); }
+  .bar {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; gap: 8px; align-items: center;
+    padding: 12px 20px;
+    background: rgba(243, 239, 230, .94);
+    border-bottom: 1px solid var(--line);
+  }
+  .bar b { font-size: 15px; margin-right: 8px; }
+  .bar button, .bar span { font: 500 13px/1 var(--font); }
+  .bar button {
+    height: 32px; padding: 0 12px; border: 0; border-radius: 8px;
+    background: var(--white); color: var(--ink); cursor: pointer;
+  }
+  .bar button.on { background: var(--green); color: var(--paper); }
+  .bar span { color: var(--mute); }
+  .board { zoom: .46; padding: 28px 32px 80px; }
+  .row { margin: 0 0 40px; }
+  .row h2 { margin: 0 0 14px; font-size: 18px; }
+  .phones { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .shot h3 { margin: 0 0 8px; font-size: 13px; font-weight: 650; }
+  .shot h3 a { color: var(--ink); text-decoration: none; }
+  .shot h3 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .phone {
+    width: 390px; height: 844px; overflow: hidden;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    box-shadow: 0 2px 16px rgba(28, 25, 21, .08);
+  }
+  .phone iframe { width: 390px; height: 844px; border: 0; display: block; background: var(--paper); }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <b>찾음표</b>
+    <button type="button" id="fit" class="on">한눈에</button>
+    <button type="button" id="full">실제 크기</button>
+    <span>제목을 누르면 그 화면만 열립니다.</span>
+  </div>
+  <div class="board" id="board">
+    <section class="row">
+      <h2>첫 화면</h2>
+      <div class="phones">
+        <article class="shot"><h3><a href="index.html" target="_blank">메인</a></h3><div class="phone"><iframe src="index.html" title="메인" loading="lazy"></iframe></div></article>
+      </div>
+    </section>
+    <section class="row">
+      <h2>찾은 사람</h2>
+      <div class="phones">
+        <article class="shot"><h3><a href="found/consent.html" target="_blank">1 동의</a></h3><div class="phone"><iframe src="found/consent.html" title="동의" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="found/photo.html" target="_blank">2 사진</a></h3><div class="phone"><iframe src="found/photo.html" title="사진" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="found/uploading.html" target="_blank">3 올리는 중</a></h3><div class="phone"><iframe src="found/uploading.html?preview=1" title="올리는 중" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="found/register.html" target="_blank">4 등록</a></h3><div class="phone"><iframe src="found/register.html" title="등록" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="found/done-inplace.html" target="_blank">5 그 자리에 둠</a></h3><div class="phone"><iframe src="found/done-inplace.html" title="그 자리에 둠" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="found/done-handover.html" target="_blank">6 보관처에 맡김</a></h3><div class="phone"><iframe src="found/done-handover.html" title="보관처에 맡김" loading="lazy"></iframe></div></article>
+      </div>
+    </section>
+    <section class="row">
+      <h2>잃어버린 사람</h2>
+      <div class="phones">
+        <article class="shot"><h3><a href="lost/login.html" target="_blank">로그인</a></h3><div class="phone"><iframe src="lost/login.html" title="로그인" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/signup.html" target="_blank">회원가입</a></h3><div class="phone"><iframe src="lost/signup.html" title="회원가입" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/code.html" target="_blank">인증 코드</a></h3><div class="phone"><iframe src="lost/code.html" title="인증 코드" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/consent-mail.html" target="_blank">동의 · 이메일</a></h3><div class="phone"><iframe src="lost/consent-mail.html" title="동의 이메일" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/consent-social.html" target="_blank">동의 · 간편가입</a></h3><div class="phone"><iframe src="lost/consent-social.html" title="동의 간편가입" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/home.html" target="_blank">홈</a></h3><div class="phone"><iframe src="lost/home.html" title="홈" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/report.html" target="_blank">분실 신고</a></h3><div class="phone"><iframe src="lost/report.html" title="분실 신고" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/building.html" target="_blank">건물 고치기</a></h3><div class="phone"><iframe src="lost/building.html" title="건물 고치기" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/candidates.html" target="_blank">후보</a></h3><div class="phone"><iframe src="lost/candidates.html" title="후보" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/question.html" target="_blank">확인 질문</a></h3><div class="phone"><iframe src="lost/question.html" title="확인 질문" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/fail.html" target="_blank">실패</a></h3><div class="phone"><iframe src="lost/fail.html" title="실패" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/lock.html" target="_blank">잠금</a></h3><div class="phone"><iframe src="lost/lock.html" title="잠금" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/pass.html" target="_blank">통과</a></h3><div class="phone"><iframe src="lost/pass.html" title="통과" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/item.html" target="_blank">내 물건 · 그 자리</a></h3><div class="phone"><iframe src="lost/item.html" title="내 물건 그 자리" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/item-handover.html" target="_blank">내 물건 · 보관처</a></h3><div class="phone"><iframe src="lost/item-handover.html" title="내 물건 보관처" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/qr.html" target="_blank">수령 QR</a></h3><div class="phone"><iframe src="lost/qr.html" title="수령 QR" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/counter.html" target="_blank">센터에서 확인</a></h3><div class="phone"><iframe src="lost/counter.html" title="센터에서 확인" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/alerts.html" target="_blank">알림</a></h3><div class="phone"><iframe src="lost/alerts.html" title="알림" loading="lazy"></iframe></div></article>
+        <article class="shot"><h3><a href="lost/me.html" target="_blank">내 정보</a></h3><div class="phone"><iframe src="lost/me.html" title="내 정보" loading="lazy"></iframe></div></article>
+      </div>
+    </section>
+  </div>
+  <script>
+    var board = document.getElementById("board");
+    var fit = document.getElementById("fit");
+    var full = document.getElementById("full");
+    function setZoom(z, active) {
+      board.style.zoom = z;
+      fit.className = active === fit ? "on" : "";
+      full.className = active === full ? "on" : "";
+    }
+    fit.onclick = function () { setZoom("0.46", fit); };
+    full.onclick = function () { setZoom("1", full); };
+  </script>
+</body>
+</html>

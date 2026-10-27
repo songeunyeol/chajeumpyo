@@ -1,0 +1,54 @@
+# PR 검사 (QA B16): 키 유출 검사(Gitleaks) + 타입·린트·테스트
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: 키 유출 검사 (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # PR의 모든 커밋을 검사
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test:
+    name: 타입·린트·테스트
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: chajeumpyo
+          POSTGRES_PASSWORD: ci-only-password # CI 컨테이너 안에서만 쓰는 값
+          POSTGRES_DB: chajeumpyo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chajeumpyo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # 테스트는 DB 이름만 chajeumpyo_test로 바꿔 쓴다 (backend/test/helpers/test-db.ts)
+      DATABASE_URL: postgresql://chajeumpyo:ci-only-password@localhost:5432/chajeumpyo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # docs/design의 내려받은 디자인 파일은 검사하지 않는다
+      - run: npx biome check backend packages
+      - run: npm test
