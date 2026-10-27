@@ -10,6 +10,7 @@ import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
 import { setFoundItemEmbedding } from "../repositories/embedding";
 import { storage } from "../storage";
+import { alertNewCandidateSafely } from "./candidate-alerts";
 
 /** 비회원 등록 제한: 같은 지문으로 10분에 5건 (초안, F-01) */
 export const REGISTER_LIMIT = { windowMinutes: 10, count: 5 };
@@ -152,7 +153,7 @@ export async function registerFoundItem(input: {
     throw err;
   }
 
-  // TODO(F-13): 등록되면 조건이 맞는 열린 신고에 알림 만들기
+  if (status === "REGISTERED") await alertNewCandidateSafely(id);
 
   return {
     id,
