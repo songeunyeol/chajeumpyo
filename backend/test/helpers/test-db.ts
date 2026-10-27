@@ -11,7 +11,7 @@ function resolveTestDatabaseUrl(): string {
     }
   }
   const base = process.env.DATABASE_URL;
-  if (!base) throw new Error("루트 .env에 DATABASE_URL을 넣어 주세요. (.env.example 참고)");
+  if (!base) throw new Error("루트 .env에 DATABASE_URL을 넣어 주세요.");
   const url = new URL(base);
   url.pathname = "/chajeumpyo_test";
   return url.toString();

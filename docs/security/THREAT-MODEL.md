@@ -43,6 +43,5 @@
 - [ ] Secret scanning + Push protection (키 넣기 전)
 - [ ] main 브랜치 보호, PR로만 머지
 - [ ] `.gitignore`: `.env*`, 서비스 계정 JSON, 업로드 폴더
-- [ ] `.env.example`에는 이름만 (`DATA_GO_KR_SERVICE_KEY=`, `GEMINI_API_KEY=`)
 - [ ] Gitleaks·Semgrep PR 워크플로
 - [ ] Vercel Deployment Protection, 미리보기엔 개발용 키
