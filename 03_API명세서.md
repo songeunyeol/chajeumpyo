@@ -11,7 +11,7 @@
 - **권한 표기**: `공개` 누구나 · `회원` 분실자·체험 계정 · `관리자` 관리자 계정
 - **시간**: ISO 8601, 한국 시간 기준으로 표시는 프론트에서 처리
 - **이미지 URL**: 비공개 사진은 만료 시간이 있는 서명 URL로 내려준다. (초안: 10분)
-- **캡차**: 습득물 등록, 체험 로그인, 인증 코드 요청은 Cloudflare Turnstile 토큰을 `X-Captcha-Token` 헤더로 보낸다. 없거나 틀리면 `400 CAPTCHA_FAILED`. 개발 환경에서는 `CAPTCHA_MODE=off`로 끌 수 있고 production에서는 끌 수 없다. (open-issues #38)
+- **캡차**: 습득물 등록, 체험 로그인, 인증 코드 요청은 Cloudflare Turnstile 토큰을 `X-Captcha-Token` 헤더로 보낸다. 없거나 틀리면 `400 CAPTCHA_FAILED`. 서버는 Turnstile 검증 결과의 `success`뿐 아니라 `hostname`(허용 호스트: `TURNSTILE_HOSTNAMES`, 없으면 `PUBLIC_BASE_URL`의 호스트. production이 아니고 localhost면 생략)과 위젯 `action`(습득물 분석·등록 `found-analyze`, 인증 코드 요청 `email-code`, 체험 로그인 `demo-login`)도 확인해, 다르면 같은 오류를 낸다. 개발 환경에서는 `CAPTCHA_MODE=off`로 끌 수 있고 production에서는 끌 수 없다. 위젯에 쓸 사이트 키와 캡차 방식은 `GET /config`로 받는다. (open-issues #38)
 - **동의**: 가입·체험 로그인·습득물 등록은 동의 화면 버전(`CONSENT_VERSION`, `packages/shared/src/api/consent.ts`)과 동의 항목을 같이 보낸다. 버전이 다르거나 필수 항목(가입: 이메일 수집·외부 AI 처리, 체험·등록: 외부 AI 처리)이 빠지면 `400 VALIDATION_ERROR`. 동의 문구도 같은 파일의 `CONSENT_TEXTS`를 쓴다. (QA B15, open-issues #35)
 
 ### 에러 응답 형식
@@ -56,6 +56,7 @@
 
 | 메서드 | 경로 | 권한 | 기능 ID |
 | --- | --- | --- | --- |
+| GET | `/config` | 공개 | F-01, F-04, F-05 (캡차 설정) |
 | GET | `/buildings` | 공개 | F-01 |
 | GET | `/storage-places` | 공개 | F-01 |
 | GET | `/files/*` | 서명 URL | F-10, F-14 |
@@ -92,6 +93,20 @@
 ---
 
 ## 3. 상세
+
+### 공개 설정
+
+#### `GET /config` · 공개
+프론트가 화면을 그리기 전에 읽는 공개 설정. 지금은 캡차 설정만 있다.
+
+```json
+{ "captcha": { "mode": "turnstile", "siteKey": "0x4AAAAAAA..." } }
+```
+- `mode`: `off`(개발. 서버가 토큰을 검사하지 않음) 또는 `turnstile`(Cloudflare Turnstile).
+- `siteKey`: Turnstile 위젯용 **공개** 사이트 키(`TURNSTILE_SITE_KEY`). `off`면 `null`. 비밀 키(`TURNSTILE_SECRET_KEY`)는 내려주지 않는다.
+- 프론트 동작: `turnstile`일 때만 `https://challenges.cloudflare.com/turnstile/v0/api.js`를 불러 위젯을 그리고, 받은 토큰을 `X-Captcha-Token`으로 보낸다. 토큰은 한 번만 쓸 수 있고 약 5분 뒤 만료되므로 만료되면 위젯이 새로 받는다. `off`면 스크립트를 부르지 않고 개발용 토큰 `dev-pass`를 보낸다.
+- `CAPTCHA_MODE=turnstile`이면 `TURNSTILE_SECRET_KEY`와 `TURNSTILE_SITE_KEY`가 둘 다 있어야 서버가 뜬다.
+- 응답은 `Cache-Control: public, max-age=60`.
 
 ### 건물
 
@@ -233,6 +248,7 @@
 
 #### `POST /auth/demo` · 공개
 호출할 때마다 **새 체험 계정**을 만들어 로그인시킨다. 체험 계정은 시드 습득물만 후보로 보고, 판정·열람·수령해도 시드 상태가 바뀌지 않는다. 24시간 뒤 삭제된다.
+- 시드 습득물은 `npm run seed:demo -w backend`로 넣는다(여러 번 돌려도 늘지 않음). 물건별 숨은 특징과 체험 순서는 [체험 시나리오](./docs/demo-scenario.md).
 - 같은 IP에서 과도하게 만들면 `429 RATE_LIMITED`. (초안: 10분에 5개)
 - 요청: `{ "consent": { "version": "2026-10-12", "externalAi": true, "location": false } }`, 헤더 `X-Captcha-Token`.
 ```json

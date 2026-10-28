@@ -1,5 +1,6 @@
 import { logger } from "../lib/logger";
 import { expireUnclaimedItems, purgeClaimedItems } from "../services/data-purge";
+import { refreshDemoSeedDates } from "../services/demo-seed";
 import { cleanupExpiredDemoAccounts } from "./demo-cleanup";
 import { purgeExpiredRecords } from "./record-purge";
 
@@ -12,6 +13,8 @@ const jobs: Job[] = [
   { name: "수령 물건 사진·비공개 정보 삭제(재시도)", everyMs: HOUR, run: purgeClaimedItems },
   { name: "보관 기한 만료", everyMs: HOUR, run: expireUnclaimedItems },
   { name: "수령·만료 후 기록 삭제", everyMs: HOUR, run: purgeExpiredRecords },
+  // 시드가 며칠 지나 "오늘 잃어버렸어요" 신고의 후보에서 빠지지 않게 (F-05)
+  { name: "체험 시드 습득 시각 갱신", everyMs: HOUR, run: () => refreshDemoSeedDates() },
 ];
 
 /** 서버가 켜져 있는 동안 정기 작업을 돌린다. 서버 시작 직후 한 번 바로 실행한다. */

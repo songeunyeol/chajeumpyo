@@ -11,7 +11,7 @@ import {
 } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { getAuth, requireMember } from "../middlewares/auth";
-import { requireCaptcha } from "../middlewares/captcha";
+import { CAPTCHA_ACTIONS, requireCaptcha } from "../middlewares/captcha";
 import { ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
@@ -133,7 +133,7 @@ export function createAuthRouter() {
     "/auth/email/code",
     codeLimit,
     codeDailyLimit,
-    requireCaptcha(),
+    requireCaptcha(CAPTCHA_ACTIONS.emailCode),
     validate("body", EmailCodeRequest),
     async (_req, res) => {
       const body: EmailCodeRequest = res.locals.body;
@@ -160,11 +160,17 @@ export function createAuthRouter() {
     res.json(result);
   });
 
-  router.post("/auth/demo", demoLimit, requireCaptcha(), validate("body", DemoLoginRequest), async (_req, res) => {
-    const body: DemoLoginRequest = res.locals.body;
-    const result: AuthResponse = await auth.createDemoAccount(body.consent);
-    res.status(201).json(result);
-  });
+  router.post(
+    "/auth/demo",
+    demoLimit,
+    requireCaptcha(CAPTCHA_ACTIONS.demoLogin),
+    validate("body", DemoLoginRequest),
+    async (_req, res) => {
+      const body: DemoLoginRequest = res.locals.body;
+      const result: AuthResponse = await auth.createDemoAccount(body.consent);
+      res.status(201).json(result);
+    },
+  );
 
   router.get("/me", requireMember(), async (_req, res) => {
     const result: MeResponse = await auth.getMe(getAuth(res).userId);

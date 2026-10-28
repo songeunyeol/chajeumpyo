@@ -178,8 +178,38 @@
     });
   }
 
+  // 캡차 (Cloudflare Turnstile). 사이트 키는 GET /config에서 받는다(코드에 박지 않음).
+  // 위젯은 사진 화면(captcha.js)이 그리고 토큰을 sessionStorage에 둔다. 등록 요청이 꺼내 쓴다.
+  // 토큰은 한 번만 쓸 수 있고 약 300초 뒤 만료라, 쓰면 지우고 오래된 건 버린다.
+  const CAPTCHA_KEY = "captchaToken";
+  const CAPTCHA_MAX_AGE_MS = 270_000;
+  let configPromise = null;
+  /** GET /config. 연결이 안 되면 off로 보고 다음에 다시 묻는다(서버가 켰다면 등록 때 CAPTCHA_FAILED로 안내된다) */
+  function config() {
+    if (!configPromise) {
+      configPromise = call("/config").catch(() => {
+        configPromise = null;
+        return { captcha: { mode: "off", siteKey: null } };
+      });
+    }
+    return configPromise;
+  }
+
+  /** 아직 유효한 토큰을 꺼내고 지운다(한 번만 쓸 수 있음). off면 개발용 토큰 */
+  async function takeCaptchaToken() {
+    const { captcha } = await config();
+    if (captcha.mode !== "turnstile") return DEV_CAPTCHA_TOKEN;
+    const saved = store.get(CAPTCHA_KEY);
+    try {
+      sessionStorage.removeItem(CAPTCHA_KEY);
+    } catch (_) {}
+    return saved && Date.now() - saved.at < CAPTCHA_MAX_AGE_MS ? saved.token : null;
+  }
+
   window.FoundApi = {
     API_BASE,
+    CAPTCHA_KEY,
+    config,
     CATEGORY_LABELS,
     itemLabel,
     ApiError,
@@ -190,7 +220,8 @@
       call(`/storage-places${buildingId ? `?buildingId=${buildingId}` : ""}`).then((r) => r.storagePlaces),
 
     /** POST /found-items/analyze. 사진(dataURL)과 동의를 보내고 { id, confirmToken, category, isValuable, message } */
-    analyze(photoDataUrl, locationConsent) {
+    async analyze(photoDataUrl, locationConsent) {
+      const token = await takeCaptchaToken();
       const form = new FormData();
       form.append("image", dataUrlToBlob(photoDataUrl), "photo.jpg");
       form.append("consentVersion", CONSENT_VERSION);
@@ -198,7 +229,8 @@
       form.append("consentLocation", locationConsent ? "true" : "false");
       return call("/found-items/analyze", {
         method: "POST",
-        headers: { "X-Captcha-Token": DEV_CAPTCHA_TOKEN },
+        // 토큰이 없거나 만료됐으면 헤더 없이 보내고, 서버의 CAPTCHA_FAILED를 화면이 안내한다
+        headers: token ? { "X-Captcha-Token": token } : {},
         body: form,
       });
     },

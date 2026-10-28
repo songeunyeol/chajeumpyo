@@ -25,7 +25,12 @@ const Env = z.object({
   MAIL_DAILY_LIMIT: z.coerce.number().int().positive().default(300),
   /** turnstile: 등록·체험·인증 코드 요청에 Cloudflare Turnstile 캡차. off는 개발용 (production에서는 금지) */
   CAPTCHA_MODE: z.enum(["off", "turnstile"]).default("off"),
+  /** 서버에서 토큰을 검증할 때만 쓰는 비밀 키. 응답·로그로 내보내지 않는다 */
   TURNSTILE_SECRET_KEY: z.string().optional(),
+  /** 위젯을 그릴 때 쓰는 공개 사이트 키. GET /api/v1/config로 프론트에 내려 준다 */
+  TURNSTILE_SITE_KEY: z.string().optional(),
+  /** 캡차 위젯이 그려진 프론트 페이지의 호스트(쉼표로 여러 개). 없으면 PUBLIC_BASE_URL의 호스트. 프론트와 API 주소가 다르면 꼭 넣는다 */
+  TURNSTILE_HOSTNAMES: z.string().optional(),
   /** true면 production에서도 /api/docs, /api/openapi.json을 연다 */
   API_DOCS_ENABLED: z
     .enum(["true", "false"])
@@ -80,8 +85,15 @@ export const EnvSchema = Env.superRefine((v, ctx) => {
   if (v.CAPTCHA_MODE === "turnstile" && !v.TURNSTILE_SECRET_KEY) {
     fail("TURNSTILE_SECRET_KEY", "CAPTCHA_MODE=turnstile이면 필요합니다.");
   }
+  // 사이트 키가 없으면 프론트가 위젯을 못 그려 모든 등록이 CAPTCHA_FAILED로 막힌다. 켜는 순간 같이 요구한다
+  if (v.CAPTCHA_MODE === "turnstile" && !v.TURNSTILE_SITE_KEY) {
+    fail("TURNSTILE_SITE_KEY", "CAPTCHA_MODE=turnstile이면 필요합니다.");
+  }
   if (v.NODE_ENV === "production" && v.CAPTCHA_MODE === "off") {
-    fail("CAPTCHA_MODE", "production에서는 캡차를 끌 수 없어요. turnstile과 TURNSTILE_SECRET_KEY를 넣어 주세요.");
+    fail(
+      "CAPTCHA_MODE",
+      "production에서는 캡차를 끌 수 없어요. turnstile과 TURNSTILE_SECRET_KEY·TURNSTILE_SITE_KEY를 넣어 주세요.",
+    );
   }
   if (v.MAIL_MODE === "smtp" && !(v.SMTP_HOST && v.SMTP_USER && v.SMTP_PASS)) {
     fail("MAIL_MODE", "MAIL_MODE=smtp이면 SMTP_HOST, SMTP_USER, SMTP_PASS가 필요합니다.");
