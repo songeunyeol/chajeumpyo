@@ -11,7 +11,13 @@ const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const VERIFY_TIMEOUT_MS = 5000;
 
 /** siteverify 응답 중 서버가 확인하는 값 */
-export type CaptchaVerifyResult = { success: boolean; hostname?: string; action?: string };
+export type CaptchaVerifyResult = {
+  success: boolean;
+  hostname?: string;
+  action?: string;
+  /** Cloudflare 테스트 키로 받은 결과(metadata.result_with_testing_key). 테스트 키는 action을 돌려주지 않는다 */
+  testingKey?: boolean;
+};
 export type CaptchaVerifier = (input: { secret: string; token: string; ip: string }) => Promise<CaptchaVerifyResult>;
 
 /** Turnstile 검증 API 호출. 오류·시간 초과는 실패로 본다(막는 쪽이 기본) */
@@ -22,11 +28,17 @@ const turnstileVerifier: CaptchaVerifier = async ({ secret, token, ip }) => {
     signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Turnstile 응답 ${res.status}`);
-  const body = (await res.json()) as { success?: unknown; hostname?: unknown; action?: unknown };
+  const body = (await res.json()) as {
+    success?: unknown;
+    hostname?: unknown;
+    action?: unknown;
+    metadata?: { result_with_testing_key?: unknown };
+  };
   return {
     success: body.success === true,
     hostname: typeof body.hostname === "string" ? body.hostname : undefined,
     action: typeof body.action === "string" ? body.action : undefined,
+    testingKey: body.metadata?.result_with_testing_key === true,
   };
 };
 
@@ -87,8 +99,12 @@ export function requireCaptcha(...expectedActions: CaptchaAction[]): RequestHand
       const result = await verifier({ secret: env.TURNSTILE_SECRET_KEY as string, token, ip: req.ip ?? "" });
       const hosts = allowedHostnames();
       const hostOk = !hosts || (!!result.hostname && hosts.has(result.hostname.toLowerCase()));
+      // 로컬에서 Cloudflare 테스트 키로 흐름을 확인할 수 있게, production이 아닐 때만 테스트 키 결과의 action 확인을 건너뛴다
+      const testKeyInDev = result.testingKey === true && env.NODE_ENV !== "production";
       const actionOk =
-        expectedActions.length === 0 || (!!result.action && (expectedActions as string[]).includes(result.action));
+        expectedActions.length === 0 ||
+        testKeyInDev ||
+        (!!result.action && (expectedActions as string[]).includes(result.action));
       ok = result.success && hostOk && actionOk;
       if (result.success && !ok) {
         logger.warn(
