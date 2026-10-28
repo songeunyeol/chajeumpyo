@@ -178,6 +178,7 @@ describe("기준 9. 여러 계정이 열람하면 맡은 관리자에게 알린�
     const notes = await prisma.notification.findMany();
     expect(notes).toHaveLength(1);
     expect(notes[0]).toMatchObject({ userId: guard.id, type: "MULTI_REVEAL", foundItemId: item.id });
+    expect(notes[0]?.message).toContain("혜인관의 무선 이어폰을 2개 계정이 확인했어요.");
     expect(notes[0]?.message).not.toMatch(/흰색|Apple|곰돌이/);
   });
 

@@ -7,6 +7,7 @@ import { mockAiClient } from "../../src/ai/mock";
 import { createApp } from "../../src/app";
 import { EnvSchema, env } from "../../src/config/env";
 import { type CaptchaVerifier, resetCaptchaVerifier, setCaptchaVerifier } from "../../src/middlewares/captcha";
+import { VALUABLE_IN_PLACE_NOTICE, VALUABLE_PICKUP_NOTICE } from "../../src/services/reveal";
 import { demoConsent, finderConsentFields, lastCodeFor, memberConsent, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
 import { createAttempt, createBuilding, createFoundItem, createStoragePlace, hoursAgo } from "../helpers/fixtures";
@@ -225,11 +226,17 @@ describe("기준 9. 고가품이 아니거나, 맡겼거나, AI가 실패하면 
 });
 
 describe("기준 10. 공개 화면은 고가품이면 대면 수령 안내", () => {
-  it("지갑은 안내, 우산은 null", async () => {
+  it("보관처에 맡긴 지갑은 대면 안내, 그 자리에 둔 지갑은 그 자리 안내, 우산은 null", async () => {
     const user = await signupUser(app);
+    const place = await createStoragePlace("혜인관 경비실", A);
     const notices: (string | null)[] = [];
-    for (const category of ["WALLET", "UMBRELLA"] as const) {
-      const item = await createFoundItem({ buildingId: A, category, foundAt: hoursAgo(1) });
+    const cases = [
+      { category: "WALLET", storageType: "HANDED_OVER", storagePlaceId: place.id },
+      { category: "WALLET", storageType: "IN_PLACE", storagePlaceId: null },
+      { category: "UMBRELLA", storageType: "HANDED_OVER", storagePlaceId: place.id },
+    ] as const;
+    for (const c of cases) {
+      const item = await createFoundItem({ buildingId: A, foundAt: hoursAgo(1), ...c });
       await prisma.foundItemDetail.update({
         where: { foundItemId: item.id },
         data: { imagePublicKey: `found/${item.id}/public.jpg` },
@@ -241,7 +248,10 @@ describe("기준 10. 공개 화면은 고가품이면 대면 수령 안내", () 
         .expect(200);
       notices.push(res.body.pickupNotice);
     }
-    expect(notices[0]).toContain("보관처에서");
-    expect(notices[1]).toBeNull();
+    expect(notices[0]).toBe(VALUABLE_PICKUP_NOTICE);
+    // 직원이 맡고 있지 않으니 "직원이 한 번 더 확인"을 약속하지 않는다
+    expect(notices[1]).toBe(VALUABLE_IN_PLACE_NOTICE);
+    expect(notices[1]).not.toContain("직원");
+    expect(notices[2]).toBeNull();
   });
 });
