@@ -375,6 +375,8 @@ describe("기준 10. 사진은 서명된 링크로만 볼 수 있다", () => {
     const res = await request(app).get(pathOf(await storage.signedUrl(d.imagePublicKey as string, 60)));
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toBe("image/jpeg");
+    // 화면이 다른 주소(정적 사이트)에서 열려도 <img>로 보여야 한다
+    expect(res.headers["cross-origin-resource-policy"]).toBe("cross-origin");
   });
 
   it("서명 없음·틀림·만료·다른 파일 서명은 403", async () => {

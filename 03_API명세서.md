@@ -459,7 +459,7 @@
 // 응답 200
 {
   "pickupId": "p_...",
-  "foundItem": { "id": "6a1f...", "category": "EARPHONE", "building": "혜인관", "imageUrl": "...(원본)" },
+  "foundItem": { "id": "6a1f...", "category": "EARPHONE", "subCategory": "WIRELESS_EARBUDS", "building": "혜인관", "imageUrl": "...(원본)" },
   "claimant": { "emailMasked": "st****@skuniv.ac.kr" },
   "expiresAt": "..."
 }
@@ -488,6 +488,7 @@
 검토 대기 습득물의 속성을 직접 고치고 `REGISTERED`로 바꾼다. 등록된 물건의 속성 수정에도 쓴다(상태는 그대로).
 - `status: "REGISTERED"`는 검토 대기 물건에만, 종류·설명이 있어야 한다. 등록하면 새 후보 알림을 보낸다.
 - 설명이 바뀌거나 등록하면 임베딩을 다시 만든다. 실패하면 아무것도 바꾸지 않고 `502 AI_UNAVAILABLE`.
+- `subCategory`는 세부 종류 키로, `category`(바꾸면 바꾼 값)에 속해야 한다. 속하지 않으면 `400`, `null`이면 지운다. 생략하고 `category`만 바꾸면 새 종류에 속하지 않는 세부 종류는 지운다. 목록·상세에도 `subCategory`가 있다.
 - 형식은 AI 응답과 같다: `color`는 12색 키, `features`는 정해진 키로 최대 4개, `brand` 40자, `title` 60자. 어기면 `400`.
 ```json
 { "category": "UMBRELLA", "color": "BLACK", "features": [{ "key": "pattern", "value": "체크무늬" }], "title": "검정 체크무늬 우산", "status": "REGISTERED" }

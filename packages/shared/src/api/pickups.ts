@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Category, PickupMethod, PickupStatus } from "../enums";
+import { Category, PickupMethod, PickupStatus, SubCategory } from "../enums";
 
 /** POST /found-items/:id/pickup-qr: 보관처에 맡긴 물건의 수령 QR (체험 계정은 바로 완료) */
 export const PickupQrResponse = z.discriminatedUnion("method", [
@@ -38,6 +38,8 @@ export const PickupScanResponse = z.object({
   foundItem: z.object({
     id: z.string(),
     category: Category,
+    /** 세부 종류. 없으면 null */
+    subCategory: SubCategory.nullable(),
     /** 주운 건물 이름. 모르면 null */
     building: z.string().nullable(),
     /** 원본 사진 서명 URL (관리자 확인용) */
