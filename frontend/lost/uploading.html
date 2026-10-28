@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>올리는 중 · 찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+</head>
+<body>
+<main class="screen">
+  <header class="bar"></header>
+  <h1 id="pageTitle">올리고 있어요</h1>
+  <p class="lead" id="pageLead">비슷한 물건을 찾는 중이에요.</p>
+
+  <div class="upload-stage" aria-live="polite">
+    <div class="ticket-mover is-enter" id="ticketMover">
+      <div class="ticket-flipper" id="ticketFlipper">
+        <!-- 앞면: 찾음표 티켓 -->
+        <div class="ticket-face front">
+          <svg class="ticket-svg" viewBox="0 0 320 168" aria-hidden="true">
+            <path fill="#1e5b3d" d="M40 12H280a16 16 0 0 1 16 16v30a28 28 0 0 0 0 52v30a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16v-30a28 28 0 0 0 0-52V28a16 16 0 0 1 16-16z"/>
+            <g fill="#f3efe6">
+              <circle cx="78" cy="18" r="3.2"/>
+              <circle cx="78" cy="36" r="3.2"/>
+              <circle cx="78" cy="54" r="3.2"/>
+              <circle cx="78" cy="72" r="3.2"/>
+              <circle cx="78" cy="90" r="3.2"/>
+              <circle cx="78" cy="108" r="3.2"/>
+              <circle cx="78" cy="126" r="3.2"/>
+              <circle cx="78" cy="144" r="3.2"/>
+            </g>
+          </svg>
+          <img class="ticket-leaf" src="../leaf-white.png" alt="">
+        </div>
+
+        <!-- 뒷면: AI 매칭 메모장 -->
+        <div class="ticket-face back">
+          <svg class="ticket-svg" viewBox="0 0 320 168" aria-hidden="true">
+            <path fill="#1e5b3d" d="M40 12H280a16 16 0 0 1 16 16v30a28 28 0 0 0 0 52v30a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16v-30a28 28 0 0 0 0-52V28a16 16 0 0 1 16-16z"/>
+            <g fill="#f3efe6">
+              <circle cx="242" cy="18" r="3.2"/>
+              <circle cx="242" cy="36" r="3.2"/>
+              <circle cx="242" cy="54" r="3.2"/>
+              <circle cx="242" cy="72" r="3.2"/>
+              <circle cx="242" cy="90" r="3.2"/>
+              <circle cx="242" cy="108" r="3.2"/>
+              <circle cx="242" cy="126" r="3.2"/>
+              <circle cx="242" cy="144" r="3.2"/>
+            </g>
+          </svg>
+          <div class="ticket-pad" aria-hidden="true">
+            <div class="pad-head">
+              <span><i class="pad-dot"></i>AI MATCH NOTE</span>
+              <span id="padStatus">MATCHING</span>
+            </div>
+            <div class="pad-rows">
+              <div class="pad-row"><span id="line0"></span></div>
+              <div class="pad-row"><span id="line1"></span></div>
+              <div class="pad-row"><span id="line2"></span></div>
+              <div class="pad-row"><span id="line3"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+  const mover = document.getElementById("ticketMover");
+  const flipper = document.getElementById("ticketFlipper");
+  const statusEl = document.getElementById("padStatus");
+  const pageTitle = document.getElementById("pageTitle");
+  const pageLead = document.getElementById("pageLead");
+  const lineEls = [
+    document.getElementById("line0"),
+    document.getElementById("line1"),
+    document.getElementById("line2"),
+    document.getElementById("line3")
+  ];
+
+  const cursor = document.createElement("span");
+  cursor.className = "pad-cursor";
+
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  async function typeLine(el, text, speed = 18) {
+    for (let i = 1; i <= text.length; i++) {
+      el.textContent = text.slice(0, i);
+      el.appendChild(cursor);
+      await wait(speed);
+    }
+  }
+
+  let report = null;
+  try {
+    report = JSON.parse(sessionStorage.getItem("lostReport") || "null");
+  } catch (_) {}
+
+  async function runReportUploadFlow() {
+    await wait(720);
+    flipper.classList.add("is-back");
+    await wait(580);
+
+    await typeLine(lineEls[0], "> req : lost_report [SAVED]", 16);
+    await wait(90);
+    await typeLine(lineEls[1], "> loc : campus_bldg [FILTER]", 16);
+    await wait(90);
+    await typeLine(lineEls[2], "> time: window_range [MATCH]", 16);
+    await wait(90);
+    await typeLine(lineEls[3], "> hit : 3 candidates ready", 16);
+
+    statusEl.textContent = "REGISTERED";
+    pageTitle.textContent = "다 올렸어요";
+    pageLead.textContent = (report?.item || "무선 이어폰") + " 분실 신고가 등록되었어요.";
+    await wait(240);
+
+    flipper.classList.remove("is-back");
+    flipper.classList.add("is-front-again");
+    await wait(680);
+
+    mover.classList.remove("is-enter");
+    mover.classList.add("is-exit");
+    await wait(620);
+
+    if (!new URLSearchParams(window.location.search).has("preview")) {
+      window.location.href = "home.html";
+    } else {
+      await wait(1200);
+      window.location.reload();
+    }
+  }
+
+  runReportUploadFlow();
+</script>
+</body>
+</html>

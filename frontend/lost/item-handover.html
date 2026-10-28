@@ -6,21 +6,74 @@
 <title>내 물건 · 보관처 · 찾음표</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="../palette.css">
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
 </head>
 <body>
-<main class="screen">
-  <header class="bar"><a class="back" href="pass.html">←</a><h2>내 물건</h2></header>
-  <div class="photo" role="img" aria-label="확인 뒤에 열린 물건 사진"></div>
-  <h1>무선 이어폰</h1>
-  <table class="kv">
-    <tr><th>주운 곳</th><td>혜인관</td></tr>
-    <tr><th>보관</th><td>보관처에 맡김</td></tr>
-    <tr><th>맡긴 곳</th><td>종합서비스센터<br>혜인관</td></tr>
-  </table>
-  <p class="note">이 사진 링크는 10분 뒤 닫혀요.</p>
-  <div class="dock">
-    <a class="btn" href="qr.html">수령 QR 받기</a>
+<main class="screen" style="overflow:hidden">
+  <header class="bar"><a class="back" href="candidates.html">←</a><h2 id="barTitle">확인 결과</h2></header>
+
+  <div class="pass-to-item-viewport" id="passToItemViewport">
+    <!-- 1단계: 먼저 나타났다가 위로 올라가며 사라지는 통과 문구 -->
+    <section class="pass-intro" id="passIntro" aria-live="polite">
+      <div class="pass-intro-inner">
+        <span class="pass-badge">✓ 확인 질문 3/3 통과</span>
+        <h1>내 물건이 맞아요</h1>
+        <p class="lead" style="margin-bottom:0">설명한 특징이 물건과 모두 맞았어요.</p>
+      </div>
+    </section>
+
+    <!-- 2단계: 통과 문구가 위로 올라가면서 아래에서 올라오는 내 물건 상세 화면 -->
+    <section class="item-reveal" id="itemReveal">
+      <div class="done-photo" role="img" aria-label="확인 뒤에 열린 물건 사진" style="margin-top:14px">
+        <img id="itemPhotoImg" alt="습득물 사진" hidden>
+        <svg id="itemFallbackSvg" viewBox="0 0 360 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#efe8dc"/>
+              <stop offset="100%" stop-color="#d5cbbd"/>
+            </linearGradient>
+          </defs>
+          <rect width="360" height="200" fill="url(#bgGrad)"/>
+          <rect x="121" y="68" width="118" height="72" rx="26" fill="#ffffff" stroke="#d0c6b6" stroke-width="2"/>
+          <line x1="123" y1="100" x2="237" y2="100" stroke="#e2d9ca" stroke-width="2"/>
+          <rect x="166" y="76" width="14" height="10" rx="3" fill="#1e5b3d" opacity="0.85"/>
+          <circle cx="152" cy="58" r="15" fill="#1c1915"/>
+          <circle cx="208" cy="58" r="15" fill="#1c1915"/>
+        </svg>
+      </div>
+      <h1 id="itemTitle">무선 이어폰</h1>
+      <table class="kv">
+        <tr><th>주운 곳</th><td id="itemBuilding">혜인관</td></tr>
+        <tr><th>보관</th><td>보관처에 맡김</td></tr>
+        <tr><th>맡긴 곳</th><td>종합서비스센터<br>혜인관</td></tr>
+      </table>
+      <p class="note">이 사진 링크는 10분 뒤 닫혀요.</p>
+      <div class="dock">
+        <a class="btn" href="home.html">확인했어요</a>
+      </div>
+    </section>
   </div>
 </main>
+<script>
+  const viewport = document.getElementById("passToItemViewport");
+  const barTitle = document.getElementById("barTitle");
+  const itemPhotoImg = document.getElementById("itemPhotoImg");
+  const itemFallbackSvg = document.getElementById("itemFallbackSvg");
+
+  try {
+    const savedPhoto = sessionStorage.getItem("foundPhoto");
+    if (savedPhoto) {
+      itemPhotoImg.src = savedPhoto;
+      itemPhotoImg.hidden = false;
+      itemFallbackSvg.setAttribute("hidden", "");
+    }
+  } catch (_) {}
+
+  setTimeout(() => {
+    viewport.classList.add("is-shifted");
+    barTitle.textContent = "내 물건";
+  }, 950);
+</script>
 </body>
 </html>

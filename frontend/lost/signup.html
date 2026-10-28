@@ -6,17 +6,81 @@
 <title>회원가입 · 찾음표</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="../palette.css">
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
 </head>
 <body>
 <main class="screen">
   <header class="bar"><a class="back" href="login.html">←</a></header>
   <h1>학교 이메일로 가입</h1>
   <p class="lead">서경대 이메일만 받아요. 이름은 받지 않아요.</p>
-  <label class="field"><span>학교 이메일</span><input type="email" placeholder="아이디@skuniv.ac.kr" autocomplete="email"></label>
-  <label class="field"><span>비밀번호</span><input type="password" placeholder="8자 이상" autocomplete="new-password"></label>
+
+  <label class="field">
+    <span>학교 이메일</span>
+    <input id="signupEmail" type="email" placeholder="아이디@skuniv.ac.kr" autocomplete="email">
+  </label>
+  <label class="field">
+    <span>비밀번호</span>
+    <input id="signupPw" type="password" placeholder="8자 이상" autocomplete="new-password">
+  </label>
+  <label class="field">
+    <span>비밀번호 확인</span>
+    <input id="signupPwConfirm" type="password" placeholder="비밀번호를 한 번 더 입력" autocomplete="new-password">
+  </label>
+  <p class="note danger" id="signupErr" hidden style="margin-top:-6px;margin-bottom:4px"></p>
+
   <div class="dock">
-    <a class="btn" href="code.html">코드 받기</a>
+    <button type="button" class="btn" id="signupBtn" style="width:100%;cursor:pointer">코드 받기</button>
   </div>
 </main>
+<script>
+  const emailInput = document.getElementById("signupEmail");
+  const pwInput = document.getElementById("signupPw");
+  const pwConfirmInput = document.getElementById("signupPwConfirm");
+  const signupErr = document.getElementById("signupErr");
+  const signupBtn = document.getElementById("signupBtn");
+
+  function clearErrors() {
+    emailInput.classList.remove("is-invalid");
+    pwInput.classList.remove("is-invalid");
+    pwConfirmInput.classList.remove("is-invalid");
+    signupErr.hidden = true;
+  }
+
+  emailInput.addEventListener("input", clearErrors);
+  pwInput.addEventListener("input", clearErrors);
+  pwConfirmInput.addEventListener("input", clearErrors);
+
+  signupBtn.addEventListener("click", () => {
+    clearErrors();
+    const email = emailInput.value.trim();
+    const pw = pwInput.value;
+    const pwConfirm = pwConfirmInput.value;
+
+    if (!/^[^\s@]+@skuniv\.ac\.kr$/i.test(email)) {
+      emailInput.classList.add("is-invalid");
+      signupErr.textContent = "서경대 이메일(@skuniv.ac.kr)을 정확히 입력해 주세요.";
+      signupErr.hidden = false;
+      return;
+    }
+    if (pw.length < 8) {
+      pwInput.classList.add("is-invalid");
+      signupErr.textContent = "비밀번호는 8자 이상이어야 해요.";
+      signupErr.hidden = false;
+      return;
+    }
+    if (pw !== pwConfirm) {
+      pwConfirmInput.classList.add("is-invalid");
+      signupErr.textContent = "비밀번호와 비밀번호 확인이 일치하지 않아요.";
+      signupErr.hidden = false;
+      return;
+    }
+
+    try {
+      sessionStorage.setItem("signupEmail", email);
+    } catch (_) {}
+    window.location.href = "code.html";
+  });
+</script>
 </body>
 </html>
