@@ -9,9 +9,7 @@
 //   1) ?api=https://.../api/v1 로 한 번 주면 이 탭(sessionStorage)에서 기억한다 (found/api.js와 같은 키 "apiBase")
 //   2) 정적 개발 서버(5500 포트)로 열었으면 같은 호스트의 4100 포트 (휴대폰에서 PC IP로 열어도 맞게)
 //   3) 그 밖에는 같은 출처의 /api/v1 (배포)
-(function () {
-  "use strict";
-
+(() => {
   // ── API 주소 ──────────────────────────────────────────────
   const params = new URLSearchParams(location.search);
   try {
@@ -197,7 +195,8 @@
    */
   function friendlyMessage(err) {
     if (!(err instanceof ApiError)) return "알 수 없는 문제가 생겼어요. 다시 시도해 주세요.";
-    if (err.code === "VALIDATION_ERROR") return err.details[0]?.message || err.message || ERROR_MESSAGES.VALIDATION_ERROR;
+    if (err.code === "VALIDATION_ERROR")
+      return err.details[0]?.message || err.message || ERROR_MESSAGES.VALIDATION_ERROR;
     if (err.code === "RATE_LIMITED" && err.message) return err.message;
     return ERROR_MESSAGES[err.code] || err.message;
   }
@@ -277,13 +276,7 @@
   }
 
   // ── 요청 기록 (_tester.html) ───────────────────────────────
-  const SECRET_KEYS = new Set([
-    "accessToken",
-    "verificationToken",
-    "confirmToken",
-    "qrToken",
-    "password",
-  ]);
+  const SECRET_KEYS = new Set(["accessToken", "verificationToken", "confirmToken", "qrToken", "password"]);
   /** 비밀 값은 앞 4글자만 남긴다. 서명 URL은 서명을 가린다 */
   function mask(value) {
     if (value === null || value === undefined) return value;
@@ -340,7 +333,12 @@
       log({ method, path, status: 0, ms: Date.now() - started, body: "연결 실패", request: mask(opts.body) });
       throw new ApiError(0, { error: { code: "NETWORK", message: ERROR_MESSAGES.NETWORK } });
     }
-    const body = res.status === 204 ? null : await res.json().catch(() => null);
+    // 204(본문 없음)도 본문을 끝까지 읽어 연결을 정리한다. JSON이 아니면 null
+    const text = await res.text().catch(() => "");
+    let body = null;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch (_) {}
     log({ method, path, status: res.status, ms: Date.now() - started, body: mask(body), request: mask(opts.body) });
     if (!res.ok) {
       const err = new ApiError(res.status, body);
@@ -503,6 +501,14 @@
     KEYS,
     itemLabel,
     colorLabel: (c) => (c && COLOR_LABELS[c]) || "",
+    /** "abcd@skuniv.ac.kr" → "ab***@skuniv.ac.kr" (인증 코드 화면, 내 정보) */
+    maskEmail: (email) => {
+      const [id, domain] = String(email || "").split("@");
+      if (!domain) return "";
+      return `${id.slice(0, 2)}***@${domain}`;
+    },
+    /** 건물 이름. 모르면(null) 대신 쓸 말 */
+    buildingName: (b, fallback = "건물 모름") => b?.name || fallback,
     /** 층 표시: -1 → "지하 1층", 3 → "3층", null → "" */
     floorLabel: (f) => (f === null || f === undefined ? "" : f < 0 ? `지하 ${-f}층` : `${f}층`),
     ApiError,
@@ -540,7 +546,11 @@
     },
     /** POST /auth/email/verify → { verificationToken, expiresAt(10분) }. 저장해 두고 동의 화면에서 signup */
     async verifyCode(email, code) {
-      const r = await call("/auth/email/verify", { method: "POST", body: { email, code: String(code).trim() }, auth: false });
+      const r = await call("/auth/email/verify", {
+        method: "POST",
+        body: { email, code: String(code).trim() },
+        auth: false,
+      });
       store.set(KEYS.verification, r);
       return r;
     },
@@ -581,6 +591,21 @@
     /** GET /me → { id, email, role } */
     me: () => call("/me"),
 
+    /**
+     * GET /config → { captcha: { mode: "off"|"turnstile", siteKey|null } }.
+     * 이 엔드포인트가 없는 서버(404)면 캡차 끔으로 본다. Turnstile을 붙일 때:
+     *   const cfg = await LostApi.config();
+     *   if (cfg.captcha.mode === "turnstile") { ...위젯 렌더...; LostApi.setCaptchaProvider(() => turnstile.getResponse(id)); }
+     */
+    async config() {
+      try {
+        return await call("/config", { auth: false });
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return { captcha: { mode: "off", siteKey: null } };
+        throw e;
+      }
+    },
+
     // ── 건물 ──
     /** GET /buildings → [{ id, name, lat, lng }] */
     buildings: () => call("/buildings", { auth: false }).then((r) => r.buildings),
@@ -601,13 +626,18 @@
     },
     /** GET /lost-reports → [{ id, category, status, description, lostFrom, lostTo, building, candidateCount, createdAt }] */
     reports: () => call("/lost-reports").then((r) => r.reports),
-    /** GET /lost-reports/:id/candidates → Candidate[] (최대 5개, 습득 최신순). 닫힌 신고는 [] */
+    /**
+     * GET /lost-reports/:id/candidates → Candidate[] (습득 최신순). 닫힌 신고는 [].
+     * 개수는 서버 정책(backend/src/matching/policy.ts CANDIDATE_LIMIT, 지금 3개. 명세서는 "최대 5개").
+     * 후보는 부를 때마다 서버가 다시 고른다: 새 물건이 들어오면 보던 후보가 빠질 수 있고, 그 물건에 claim하면 403 FORBIDDEN.
+     */
     candidates: (reportId = store.get(KEYS.reportId)) =>
       call(`/lost-reports/${reportId}/candidates`).then((r) => r.candidates),
     /** PATCH /lost-reports/:id { status: "CLOSED" } */
     closeReport: (reportId) => call(`/lost-reports/${reportId}`, { method: "PATCH", body: { status: "CLOSED" } }),
     /** PATCH /lost-reports/:id { description } → 다시 분석하고 후보를 다시 고른다 (502면 안 바뀜) */
-    editReport: (reportId, description) => call(`/lost-reports/${reportId}`, { method: "PATCH", body: { description } }),
+    editReport: (reportId, description) =>
+      call(`/lost-reports/${reportId}`, { method: "PATCH", body: { description } }),
 
     // ── 일치 판정 ──
     /**
@@ -624,7 +654,8 @@
     /** POST /claims/:attemptId/answer { answer(1~50자) } → PASS { foundItemId } | FAIL { attemptsLeft, inPersonOnly } */
     async answer(attemptId, answer) {
       const r = await call(`/claims/${attemptId}/answer`, { method: "POST", body: { answer } });
-      store.set(KEYS.claim, r);
+      // 답 응답에는 attemptId가 없어 붙여서 저장한다 (실패 화면에서 어떤 시도였는지 알 수 있게)
+      store.set(KEYS.claim, { ...r, attemptId });
       if (r.result === "PASS") store.set(KEYS.foundItemId, r.foundItemId);
       return r;
     },
