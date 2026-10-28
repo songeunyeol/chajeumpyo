@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>잃어버린 사람 흐름 점검 · 찾음표 (개발용)</title>
+<!--
+  개발용 점검 화면. 실제 화면이 아니다. LostApi(api.js)로 잃어버린 사람 흐름 전체를 한 단계씩 눌러 보고
+  서버 응답 원문을 본다. 화면 연결(WIRING.md)할 때 응답 모양을 확인하는 데 쓴다.
+  열기: 정적 서버(5500)로 frontend/를 열고 /lost/_flow.html. 다른 백엔드는 ?api=http://.../api/v1
+-->
+<link rel="stylesheet" href="../palette.css">
+<style>
+  body { background: var(--paper); color: var(--ink); font-family: var(--font); margin: 0; }
+  .flow { max-width: 760px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .flow h1 { font-size: 20px; margin: 0; }
+  .flow h2 { font-size: 15px; margin: 0 0 8px; }
+  .step { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+  .row label { font-size: 13px; color: var(--mute); }
+  input, select, textarea { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
+  textarea { width: 100%; min-height: 56px; box-sizing: border-box; }
+  button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--green); background: var(--green); color: var(--white); cursor: pointer; }
+  button.sub { background: var(--white); color: var(--green); }
+  button:disabled { opacity: .45; cursor: default; }
+  pre { white-space: pre-wrap; word-break: break-all; font: 12px/1.45 ui-monospace, Menlo, monospace; background: var(--paper); border-radius: 8px; padding: 8px; margin: 6px 0 0; max-height: 280px; overflow: auto; }
+  .msg { font-size: 13px; margin-top: 6px; }
+  .msg.bad { color: var(--danger); }
+  .msg.ok { color: var(--green); }
+  .cands { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+  .cand { border: 1px solid var(--line); border-radius: 12px; padding: 8px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+  .cand img, .detail-img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: var(--line); }
+  .detail-img { max-width: 260px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 99px; background: var(--soft); color: var(--green-deep); margin: 1px; }
+  .tag.warn { background: var(--warn); color: var(--ink); }
+  #qrBox { background: #fff; padding: 8px; display: inline-block; border-radius: 8px; }
+  #log { max-height: 320px; overflow: auto; font: 12px/1.45 ui-monospace, Menlo, monospace; }
+  #log details { border-top: 1px solid var(--line); padding: 4px 0; }
+  .s2 { color: var(--green); } .s4 { color: #9a6700; } .s5, .s0 { color: var(--danger); }
+  .muted { color: var(--mute); font-size: 12px; }
+</style>
+</head>
+<body>
+<main class="flow">
+  <div>
+    <h1>잃어버린 사람 흐름 점검 (개발용)</h1>
+    <div class="muted">API: <code id="apiBase"></code> · 로그인: <span id="who">-</span></div>
+  </div>
+
+  <!-- 1. 로그인 -->
+  <section class="step" id="step-login">
+    <h2>1. 로그인</h2>
+    <div class="row">
+      <button type="button" id="btnDemo">체험 로그인</button>
+      <label><input type="checkbox" id="demoLoc"> 위치 동의</label>
+      <button type="button" class="sub" id="btnMe">내 정보 (GET /me)</button>
+      <button type="button" class="sub" id="btnLogout">로그아웃</button>
+    </div>
+    <div class="row">
+      <input id="email" type="email" placeholder="학번@skuniv.ac.kr" size="22">
+      <input id="password" type="password" placeholder="비밀번호 8자 이상" size="14">
+      <button type="button" class="sub" id="btnLogin">회원 로그인</button>
+    </div>
+    <div class="row">
+      <button type="button" class="sub" id="btnCode">인증 코드 받기</button>
+      <input id="code" inputmode="numeric" maxlength="6" placeholder="코드 6자리" size="8">
+      <button type="button" class="sub" id="btnVerify">코드 확인</button>
+      <label><input type="checkbox" id="signupLoc"> 위치 동의</label>
+      <button type="button" class="sub" id="btnSignup">동의하고 가입</button>
+    </div>
+    <div class="muted">개발 서버(MAIL_MODE=console)는 인증 코드를 백엔드 로그에 찍어요. 동의 버전 <code id="consentVersion"></code></div>
+    <div class="msg" id="loginMsg"></div>
+    <pre id="loginOut" hidden></pre>
+  </section>
+
+  <!-- 2. 분실 신고 -->
+  <section class="step" id="step-report">
+    <h2>2. 분실 신고</h2>
+    <div class="row">
+      <select id="category"></select>
+      <input id="lostDate" type="date">
+      <input id="lostFrom" type="time" value="09:00">~<input id="lostTo" type="time" value="23:59">
+      <select id="building"><option value="">건물 모름</option></select>
+    </div>
+    <textarea id="description" placeholder="기억나는 점 (5~500자)">흰색 에어팟 케이스, 곰돌이 스티커, 오른쪽 아래 긁힘</textarea>
+    <div class="row">
+      <button type="button" id="btnReport">신고하기</button>
+      <button type="button" class="sub" id="btnEdit">설명 고치기 (다시 분석)</button>
+      <button type="button" class="sub" id="btnReports">내 신고 목록</button>
+      <button type="button" class="sub" id="btnClose">이 신고 닫기</button>
+      <span class="muted">신고 id <code id="reportId">-</code></span>
+    </div>
+    <div class="msg" id="reportMsg"></div>
+    <pre id="reportOut" hidden></pre>
+  </section>
+
+  <!-- 3. 후보 -->
+  <section class="step" id="step-cands">
+    <h2>3. 후보</h2>
+    <div class="row"><button type="button" id="btnCands">후보 다시 불러오기</button></div>
+    <div class="cands" id="cands"></div>
+    <div class="msg" id="candsMsg"></div>
+    <pre id="candsOut" hidden></pre>
+  </section>
+
+  <!-- 4. 판정 -->
+  <section class="step" id="step-claim">
+    <h2>4. 확인 (판정)</h2>
+    <div class="muted">후보 카드의 "내 물건인지 확인"을 누르면 여기에 결과가 나와요. 다음 화면: <b id="nextScreen">-</b></div>
+    <div id="questionBox" hidden>
+      <div class="row"><b id="question"></b></div>
+      <div class="row">
+        <input id="answer" maxlength="50" placeholder="답 (1~50자)" size="24">
+        <button type="button" id="btnAnswer">답하기</button>
+      </div>
+    </div>
+    <div class="msg" id="claimMsg"></div>
+    <pre id="claimOut" hidden></pre>
+  </section>
+
+  <!-- 5. 상세 -->
+  <section class="step" id="step-detail">
+    <h2>5. 내 물건 (상세)</h2>
+    <div class="row">
+      <button type="button" id="btnDetail">상세 보기</button>
+      <span class="muted">물건 id <code id="foundItemId">-</code></span>
+    </div>
+    <div id="detailBox" hidden>
+      <img class="detail-img" id="detailImg" alt="물건 사진">
+      <div id="detailKv" class="msg"></div>
+    </div>
+    <div class="msg" id="detailMsg"></div>
+    <pre id="detailOut" hidden></pre>
+  </section>
+
+  <!-- 6. 수령 -->
+  <section class="step" id="step-pickup">
+    <h2>6. 수령</h2>
+    <div class="row">
+      <button type="button" id="btnQr">수령 QR 받기 (보관처)</button>
+      <button type="button" class="sub" id="btnSelf">확인했어요 (그 자리)</button>
+    </div>
+    <div id="qrWrap" hidden>
+      <div id="qrBox"></div>
+      <div class="muted" id="qrInfo"></div>
+    </div>
+    <div class="msg" id="pickupMsg"></div>
+    <pre id="pickupOut" hidden></pre>
+  </section>
+
+  <!-- 7. 알림 -->
+  <section class="step" id="step-alerts">
+    <h2>7. 알림</h2>
+    <div class="row">
+      <button type="button" id="btnAlerts">알림 불러오기</button>
+      <button type="button" class="sub" id="btnReadAll">모두 읽음</button>
+    </div>
+    <div class="msg" id="alertsMsg"></div>
+    <pre id="alertsOut" hidden></pre>
+  </section>
+
+  <!-- 요청 기록 -->
+  <section class="step">
+    <h2>요청 기록 (토큰·코드는 가림)</h2>
+    <div id="log"></div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="api.js"></script>
+<script>
+(() => {
+  "use strict";
+  const A = window.LostApi;
+  const $ = (id) => document.getElementById(id);
+  const current = { candidate: null, attemptId: null };
+
+  $("apiBase").textContent = A.API_BASE;
+  $("consentVersion").textContent = A.CONSENT_VERSION;
+
+  // ── 공통 ──
+  function show(prefix, data) {
+    const pre = $(`${prefix}Out`);
+    pre.hidden = data === undefined;
+    pre.textContent = data === undefined ? "" : JSON.stringify(A.mask(data), null, 2);
+  }
+  function say(prefix, text, kind = "") {
+    const el = $(`${prefix}Msg`);
+    el.textContent = text || "";
+    el.className = `msg ${kind}`;
+  }
+  /** 버튼 하나의 동작. 오류는 friendlyMessage와 코드로 보여 준다 */
+  function on(id, prefix, fn) {
+    $(id).addEventListener("click", async () => {
+      $(id).disabled = true;
+      say(prefix, "…");
+      try {
+        await fn();
+      } catch (e) {
+        const code = e instanceof A.ApiError ? ` [${e.status} ${e.code}]` : "";
+        say(prefix, A.friendlyMessage(e) + code, "bad");
+        if (e instanceof A.ApiError) show(prefix, { error: { code: e.code, message: e.message, details: e.details } });
+        else console.warn(e);
+      } finally {
+        $(id).disabled = false;
+        refreshWho();
+      }
+    });
+  }
+  function refreshWho() {
+    const s = A.session();
+    $("who").textContent = s ? `${s.user.email} (${s.user.role}${A.isDemo() ? ", 체험" : ""})` : "안 함";
+    $("reportId").textContent = A.store.get(A.KEYS.reportId) || "-";
+    $("foundItemId").textContent = A.store.get(A.KEYS.foundItemId) || "-";
+  }
+
+  // ── 요청 기록 ──
+  A.onLog((e) => {
+    const d = document.createElement("details");
+    const s = document.createElement("summary");
+    const st = document.createElement("span");
+    st.className = `s${String(e.status)[0]}`;
+    st.textContent = e.status;
+    s.append(st, ` ${e.method} ${e.path} · ${e.ms}ms`);
+    const pre = document.createElement("pre");
+    pre.textContent = JSON.stringify({ request: e.request, response: e.body }, null, 2);
+    d.append(s, pre);
+    $("log").prepend(d);
+  });
+
+  // ── 1. 로그인 ──
+  on("btnDemo", "login", async () => {
+    const r = await A.demoLogin({ location: $("demoLoc").checked });
+    show("login", r);
+    say("login", "체험 계정으로 로그인했어요.", "ok");
+  });
+  on("btnLogin", "login", async () => {
+    const r = await A.login($("email").value, $("password").value);
+    show("login", r);
+    say("login", "로그인했어요.", "ok");
+  });
+  on("btnCode", "login", async () => {
+    await A.requestCode($("email").value);
+    show("login", { status: 204 });
+    say("login", `${A.maskEmail($("email").value)}로 코드를 보냈어요. 5분 안에 넣어 주세요.`, "ok");
+  });
+  on("btnVerify", "login", async () => {
+    const r = await A.verifyCode($("email").value, $("code").value);
+    show("login", r);
+    say("login", "인증했어요. 비밀번호를 넣고 가입해요.", "ok");
+  });
+  on("btnSignup", "login", async () => {
+    const r = await A.signup({ password: $("password").value, location: $("signupLoc").checked });
+    show("login", r);
+    say("login", "가입하고 로그인했어요.", "ok");
+  });
+  on("btnMe", "login", async () => {
+    const r = await A.me();
+    show("login", r);
+    say("login", `${A.maskEmail(r.email)} · ${r.role}`, "ok");
+  });
+  on("btnLogout", "login", async () => {
+    A.logout();
+    show("login");
+    say("login", "로그아웃했어요.");
+  });
+
+  // ── 2. 신고 ──
+  for (const c of A.CATEGORIES) $("category").add(new Option(A.CATEGORY_LABELS[c], c));
+  $("category").value = "EARPHONE";
+  $("lostDate").value = A.kstParts().date;
+  A.buildings()
+    .then((list) => {
+      for (const b of list) $("building").add(new Option(b.name, b.id));
+    })
+    .catch((e) => say("report", `건물 목록을 못 불러왔어요: ${A.friendlyMessage(e)}`, "bad"));
+
+  on("btnReport", "report", async () => {
+    const range = A.lostRange($("lostDate").value, $("lostFrom").value, $("lostTo").value);
+    const r = await A.createReport({
+      category: $("category").value,
+      ...range,
+      buildingId: $("building").value || null,
+      description: $("description").value,
+    });
+    show("report", { request: range, response: r });
+    say("report", `신고했어요. 후보 ${r.candidates.length}개`, "ok");
+    renderCandidates(r.candidates);
+  });
+  on("btnEdit", "report", async () => {
+    const r = await A.editReport(A.store.get(A.KEYS.reportId), $("description").value);
+    show("report", r);
+    say("report", `설명을 고쳤어요. 후보 ${r.candidates.length}개`, "ok");
+    renderCandidates(r.candidates);
+  });
+  on("btnReports", "report", async () => {
+    const list = await A.reports();
+    show("report", list);
+    say("report", list.map((r) => `${A.itemLabel(r.category)} ${A.formatRange(r.lostFrom, r.lostTo)} · ${A.buildingName(r.building)} · ${A.REPORT_STATUS_LABELS[r.status]} · 후보 ${r.candidateCount}`).join(" / ") || "신고가 없어요.", "ok");
+  });
+  on("btnClose", "report", async () => {
+    const r = await A.closeReport(A.store.get(A.KEYS.reportId));
+    show("report", r);
+    say("report", "신고를 닫았어요.", "ok");
+  });
+
+  // ── 3. 후보 ──
+  function renderCandidates(list) {
+    const box = $("cands");
+    box.replaceChildren();
+    show("cands", list);
+    if (!list.length) {
+      say("cands", "아직 비슷한 물건이 없어요. 새로 들어오면 알림으로 알려 줘요.");
+      return;
+    }
+    say("cands", `비슷한 물건 ${list.length}개 (습득 최신순, 사진은 흐림)`, "ok");
+    for (const c of list) {
+      const card = document.createElement("div");
+      card.className = "cand";
+      card.dataset.id = c.foundItemId;
+      const img = document.createElement("img");
+      img.alt = "흐린 후보 사진";
+      A.setImage(img, c.thumbnailUrl);
+      const title = document.createElement("b");
+      title.textContent = A.itemLabel(c.category, c.subCategory);
+      const meta = document.createElement("div");
+      meta.textContent = `${A.formatKst(c.foundAt, { time: false })} 습득 · ${A.buildingName(c.building)}`;
+      const tags = document.createElement("div");
+      for (const r of c.reasons) {
+        const t = document.createElement("span");
+        t.className = "tag";
+        t.textContent = A.REASON_LABELS[r] || r;
+        tags.append(t);
+      }
+      if (c.isSeed) {
+        const t = document.createElement("span");
+        t.className = "tag warn";
+        t.textContent = "시연용";
+        tags.append(t);
+      }
+      const state = A.candidateState(c);
+      const info = document.createElement("div");
+      info.className = "muted";
+      info.textContent =
+        state === "open" ? `확인 기회 ${c.attemptsLeft}번 남음` : state === "locked" ? "잠김 · 확인 기회를 모두 썼어요" : "대면 확인만";
+      const btn = document.createElement("button");
+      btn.textContent = state === "open" ? "내 물건인지 확인" : "찾는 방법 보기";
+      btn.disabled = state !== "open";
+      btn.className = "claim";
+      btn.addEventListener("click", () => doClaim(c, btn));
+      card.append(img, title, meta, tags, info, btn);
+      box.append(card);
+    }
+  }
+  on("btnCands", "cands", async () => renderCandidates(await A.candidates()));
+
+  // ── 4. 판정 ──
+  function showClaim(r) {
+    const next = A.claimScreen(r);
+    $("nextScreen").textContent = next || "-";
+    $("questionBox").hidden = next !== "question";
+    if (r.attemptId) current.attemptId = r.attemptId;
+    if (next === "question") $("question").textContent = r.question;
+    const text = {
+      pass: "내 물건이 맞아요. 상세를 볼 수 있어요.",
+      question: "확인 질문에 답해 주세요. (맞는 항목은 알려 주지 않아요)",
+      fail: `아니에요. ${r.attemptsLeft}번 남았어요.`,
+      lock: A.ERROR_MESSAGES.MATCH_LOCKED,
+      counter: A.ERROR_MESSAGES.IN_PERSON_REQUIRED,
+    }[next];
+    say("claim", (text || "") + (r.reused ? " (설명이 같아 이전 결과를 다시 보여 줘요)" : ""), next === "pass" ? "ok" : "");
+    show("claim", r);
+    refreshWho();
+  }
+  async function doClaim(c, btn) {
+    btn.disabled = true;
+    current.candidate = c;
+    A.store.set(A.KEYS.candidate, c);
+    say("claim", "…");
+    try {
+      showClaim(await A.claim(A.store.get(A.KEYS.reportId), c.foundItemId));
+    } catch (e) {
+      const next = A.claimScreen(e);
+      $("nextScreen").textContent = next || "-";
+      say("claim", `${A.friendlyMessage(e)} [${e.status} ${e.code}]`, "bad");
+      if (e instanceof A.ApiError) show("claim", { error: { code: e.code, message: e.message } });
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  on("btnAnswer", "claim", async () => showClaim(await A.answer(current.attemptId, $("answer").value)));
+
+  // ── 5. 상세 ──
+  on("btnDetail", "detail", async () => {
+    const d = await A.detail();
+    show("detail", d);
+    $("detailBox").hidden = false;
+    await A.setImage($("detailImg"), d.imageUrl);
+    const rows = [
+      ["물건", A.itemLabel(d.category, d.subCategory)],
+      ["색", A.colorLabel(d.color)],
+      ["주운 곳", [A.buildingName(d.building), A.floorLabel(d.floor)].filter(Boolean).join(" ")],
+      ["자세한 위치", d.locationDetail || "-"],
+      ["보관", A.STORAGE_TYPE_LABELS[d.storageType]],
+      ["맡긴 곳", d.storagePlace ? `${d.storagePlace.name} · ${d.storagePlace.guideText || ""}` : "-"],
+      ["습득", A.formatKst(d.foundAt)],
+      ["사진 링크", `${A.remaining(d.imageUrlExpiresAt)}`],
+      ["안내", d.pickupNotice || "-"],
+    ];
+    $("detailKv").replaceChildren(
+      ...rows.map(([k, v]) => {
+        const div = document.createElement("div");
+        div.textContent = `${k}: ${v}`;
+        return div;
+      }),
+    );
+    say("detail", d.storageType === "HANDED_OVER" ? "보관처 물건 → 수령 QR" : "그 자리 물건 → 확인했어요", "ok");
+  });
+
+  // ── 6. 수령 ──
+  on("btnQr", "pickup", async () => {
+    const r = await A.pickupQr();
+    show("pickup", r);
+    $("qrWrap").hidden = r.method !== "CENTER_QR";
+    $("qrBox").replaceChildren();
+    if (r.method === "CENTER_QR") {
+      if (window.QRCode) new QRCode($("qrBox"), { text: r.qrToken, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+      else $("qrBox").textContent = "QR 라이브러리를 못 불러왔어요.";
+      $("qrInfo").textContent = `${A.remaining(r.expiresAt)} · 다시 받으면 지금 QR은 바로 쓸 수 없어요.`;
+      say("pickup", "센터 직원에게 QR을 보여 주세요.", "ok");
+    } else {
+      say("pickup", `체험 계정이라 바로 수령 완료됐어요 (${A.formatKst(r.completedAt)}).`, "ok");
+    }
+  });
+  on("btnSelf", "pickup", async () => {
+    const r = await A.selfPickup();
+    show("pickup", r);
+    say("pickup", `수령을 기록했어요 (${A.formatKst(r.completedAt)}).`, "ok");
+  });
+
+  // ── 7. 알림 ──
+  on("btnAlerts", "alerts", async () => {
+    const r = await A.notifications();
+    show("alerts", r);
+    say("alerts", `알림 ${r.notifications.length}개 · 안 읽음 ${r.unreadCount}`, "ok");
+  });
+  on("btnReadAll", "alerts", async () => {
+    await A.readAllNotifications();
+    say("alerts", "모두 읽음으로 바꿨어요.", "ok");
+  });
+
+  refreshWho();
+})();
+</script>
+</body>
+</html>
