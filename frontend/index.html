@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  :root {
+    --paper: #f3efe6;
+    --ink: #1c1915;
+    --green: #1e5b3d;
+    --green-deep: #143828;
+    --white: #ffffff;
+    --ease-rubber: cubic-bezier(0.2, 1.4, 0.32, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    color: var(--ink);
+    font-family: Pretendard Variable, Pretendard, sans-serif;
+    background-color: var(--paper);
+    background-image: url("paper.svg"), url("paper.svg");
+    background-size: 220px 220px, 540px 540px;
+    background-blend-mode: multiply, multiply;
+  }
+  .page {
+    width: min(100%, 480px);
+    height: 100svh;
+    margin: 0 auto;
+    display: grid;
+    grid-template-rows: 25svh 1fr 25svh;
+    padding: 0 clamp(16px, 5vw, 24px);
+  }
+  .title { display: flex; flex-direction: row; align-items: flex-end; gap: clamp(8px, 2vw, 14px); padding-top: clamp(16px, 3svh, 28px); }
+  .lead {
+    margin: 0 0 clamp(4px, 1svh, 8px);
+    flex: 1;
+    min-width: 0;
+    font-size: clamp(12px, min(3.4vw, 2.1svh), 16px);
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1.4;
+    color: #9a948c;
+  }
+  .js .lead { opacity: 0; }
+  .js.is-said .lead { animation: lead-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+  h1 {
+    margin: 0;
+    font-size: clamp(40px, min(13.5vw, 8.5svh), 76px);
+    flex: 0 1 auto;
+    min-width: 0;
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    line-height: 1;
+  }
+  .caret {
+    display: inline-block;
+    width: 3px;
+    height: 0.82em;
+    margin-left: 4px;
+    background: var(--ink);
+    vertical-align: -0.05em;
+    animation: blink 1.06s steps(1) infinite;
+  }
+  .title.is-done .caret { display: none; }
+  .mark-wrap {
+    display: grid;
+    place-items: center;
+    perspective: 1400px;
+    min-height: 0;
+  }
+  .bob { animation: bob 2.4s ease-in-out infinite; }
+  .tilt { transform: rotateX(22deg); }
+  .card {
+    position: relative;
+    width: min(78vw, 340px);
+    height: 168px;
+    border: 0;
+    padding: 0;
+    background: none;
+    cursor: grab;
+    touch-action: none;
+  }
+  .card:active { cursor: grabbing; }
+  .card:focus-visible { outline: 3px solid var(--green); outline-offset: 8px; }
+  .ticket { width: 100%; height: 100%; display: block; }
+  .leaf {
+    position: absolute;
+    left: 52%;
+    top: 50%;
+    width: 58%;
+    height: 82%;
+    object-fit: contain;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.8, 1.08);
+  }
+  .actions {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(6px, 1svh, 10px);
+    padding-bottom: clamp(8px, 1.6svh, 16px);
+    justify-content: flex-end;
+    min-height: 0;
+  }
+  .door {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: clamp(6px, 2vw, 10px);
+    width: 80%;
+    height: clamp(48px, 9svh, 76px);
+    padding: 0 clamp(12px, 4vw, 20px);
+    border-radius: clamp(12px, 2svh, 16px);
+    text-decoration: none;
+    font-size: clamp(16px, min(4.6vw, 2.8svh), 24px);
+    font-weight: 650;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .door svg { width: 1.55em; height: 1.55em; flex: none; }
+  .door-find svg { width: 2.05em; height: 2.05em; }
+  .door-find { align-self: flex-end; background: var(--green); color: var(--white); justify-content: flex-end; }
+  .door-find:active { background: var(--green-deep); }
+  .door-lost { align-self: flex-start; background: var(--white); color: var(--ink); }
+  .door:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .js .door { opacity: 0; pointer-events: none; }
+    .js.is-in .door-find { animation: in-left 820ms var(--ease-rubber) both; pointer-events: auto; }
+    .js.is-in .door-lost { animation: in-right 820ms var(--ease-rubber) 120ms both; pointer-events: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bob { animation: none; }
+    .js .lead { opacity: 1; }
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes lead-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(5px); }
+    50% { transform: translateY(-7px); }
+  }
+  @keyframes in-left {
+    0% { opacity: 0; transform: translateX(-115%); }
+    45% { opacity: 1; }
+    64% { opacity: 1; transform: translateX(16px); }
+    84% { transform: translateX(-6px); }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes in-right {
+    0% { opacity: 0; transform: translateX(115%); }
+    45% { opacity: 1; }
+    64% { opacity: 1; transform: translateX(-16px); }
+    84% { transform: translateX(6px); }
+    100% { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <header class="title">
+      <h1><span id="typed"></span><span class="caret" aria-hidden="true"></span></h1>
+      <p class="lead">분실물을 찍어 올려 찾아주세요</p>
+      <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">찾음표. 분실물을 찍어올려 찾아주세요</span>
+    </header>
+    <div class="mark-wrap">
+      <div class="bob">
+        <div class="tilt">
+          <button class="card" id="card" type="button" aria-label="찾음표. 드래그하면 표가 돌아갑니다.">
+            <svg class="ticket" viewBox="0 0 320 168" aria-hidden="true">
+              <path fill="#1e5b3d" d="M40 12H280a16 16 0 0 1 16 16v30a28 28 0 0 0 0 52v30a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16v-30a28 28 0 0 0 0-52V28a16 16 0 0 1 16-16z"/>
+              <g fill="#f3efe6">
+                <circle cx="78" cy="18" r="3.2"/>
+                <circle cx="78" cy="36" r="3.2"/>
+                <circle cx="78" cy="54" r="3.2"/>
+                <circle cx="78" cy="72" r="3.2"/>
+                <circle cx="78" cy="90" r="3.2"/>
+                <circle cx="78" cy="108" r="3.2"/>
+                <circle cx="78" cy="126" r="3.2"/>
+                <circle cx="78" cy="144" r="3.2"/>
+              </g>
+            </svg>
+            <img class="leaf" src="leaf-white.png" alt="">
+          </button>
+        </div>
+      </div>
+    </div>
+    <nav class="actions" aria-label="시작">
+      <a class="door door-find" href="found/consent.html">찾은 사람
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="12" cy="12" r="7.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M17.2 17.2 25.4 25.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <g transform="translate(12 12) scale(-1 1) rotate(-38) scale(0.74)" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round">
+            <path d="M-2.15 -4.7h4.3V1.5h-4.3z"/>
+            <path d="M-2.15 1.5 0 4.7 2.15 1.5"/>
+            <path d="M-2.15 -3.05h4.3"/>
+            <path d="M-1.25 -4.7v-1.35h2.5v1.35"/>
+          </g>
+        </svg>
+      </a>
+      <a class="door door-lost" href="lost/login.html">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="12" cy="12" r="7.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M17.2 17.2 25.4 25.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M10.15 10.15a2.15 2.15 0 1 1 3.15 1.9c-.7.4-1.15.9-1.15 1.85" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <circle cx="12.15" cy="15.55" r="0.85" fill="currentColor"/>
+        </svg>
+        잃어버린 사람
+      </a>
+    </nav>
+  </main>
+  <script>
+    document.documentElement.classList.add("js");
+    const steps = ["ㅊ", "차", "찾", "찾ㅇ", "찾으", "찾음", "찾음ㅍ", "찾음표"];
+    const typed = document.getElementById("typed");
+    const title = document.querySelector(".title");
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const showButtons = () => document.documentElement.classList.add("is-in");
+    const showCopy = () => {
+      document.documentElement.classList.add("is-said");
+      setTimeout(showButtons, reduce ? 0 : 380);
+    };
+    if (reduce) {
+      typed.textContent = "찾음표";
+      title.classList.add("is-done");
+      showCopy();
+    } else {
+      let i = 0;
+      const tick = () => {
+        typed.textContent = steps[i];
+        i += 1;
+        if (i < steps.length) setTimeout(tick, 120);
+        else {
+          title.classList.add("is-done");
+          setTimeout(showCopy, 180);
+        }
+      };
+      setTimeout(tick, 280);
+    }
+
+    const card = document.getElementById("card");
+    let ry = 18;
+    let dragging = false;
+    let lastX = 0;
+    let vel = reduce ? 0 : 0.15;
+    const paint = () => { card.style.transform = "rotateY(" + ry + "deg)"; };
+    card.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      lastX = e.clientX;
+      vel = 0;
+      card.setPointerCapture(e.pointerId);
+    });
+    card.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - lastX;
+      lastX = e.clientX;
+      ry += dx * 0.55;
+      vel = dx * 0.08;
+      paint();
+    });
+    const release = () => { dragging = false; };
+    card.addEventListener("pointerup", release);
+    card.addEventListener("pointercancel", release);
+    const frame = () => {
+      if (!dragging && !reduce) {
+        ry += vel;
+        vel += (0.15 - vel) * 0.015;
+        paint();
+      }
+      requestAnimationFrame(frame);
+    };
+    paint();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

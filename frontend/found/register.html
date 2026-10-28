@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>등록 · 찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+</head>
+<body>
+<main class="screen">
+  <header class="bar" style="justify-content:space-between">
+    <a class="back" href="photo.html">←</a>
+    <button type="button" class="loc-chip" id="locPermToggle" title="테스트용: 위치 권한 허용/미허용 상태 전환">
+      위치 권한 허용됨
+    </button>
+  </header>
+  <h1>어디에 두었나요</h1>
+
+  <label class="field">
+    <span>물건</span>
+    <input value="무선 이어폰" readonly>
+  </label>
+
+  <div class="manual-loc-panel" id="manualLocPanel">
+    <div class="field">
+      <div class="field-head">
+        <label for="foundBuildingSelect"><span>주운 위치 (건물)</span></label>
+        <span class="loc-chip is-manual" style="cursor:default">위치 권한 없음 · 직접 선택</span>
+      </div>
+      <select id="foundBuildingSelect" aria-label="주운 건물 선택">
+        <option value="" selected>주운 건물을 선택해 주세요</option>
+        <option value="혜인관">혜인관</option>
+        <option value="유담관">유담관</option>
+        <option value="청운관">청운관</option>
+        <option value="북악관">북악관</option>
+        <option value="본관">본관</option>
+        <option value="한림관">한림관</option>
+        <option value="중앙도서관">중앙도서관</option>
+        <option value="학생회관">학생회관</option>
+      </select>
+    </div>
+
+    <label class="field" style="margin-bottom:8px">
+      <span>자세한 위치 설명</span>
+      <textarea id="locationDetail" class="compact" rows="2" placeholder="예: 3층 엘리베이터 앞 벤치 위, 204호 강의실 뒤쪽 책상"></textarea>
+    </label>
+    <p class="note" style="margin-top:0;margin-bottom:4px">위치 권한이 없어 주운 건물을 직접 고르고 자세한 위치 설명을 적어 주세요.</p>
+  </div>
+
+  <p class="section">보관</p>
+  <button type="button" class="choice on" id="choiceInplace" style="width:100%;border:0;cursor:pointer;text-align:left">
+    <span>그 자리에 둠</span>
+  </button>
+  <button type="button" class="choice" id="choiceHandover" style="width:100%;border:0;cursor:pointer;text-align:left">
+    <span>보관처에 맡김</span>
+  </button>
+
+  <div class="handover-panel" id="handoverPanel">
+    <label class="field" style="margin-bottom:0">
+      <span>맡긴 건물 선택</span>
+      <select id="handoverSelect" aria-label="보관처 건물 선택">
+        <option value="혜인관 · 종합서비스센터">혜인관 · 종합서비스센터</option>
+        <option value="유담관 보관처">유담관 보관처</option>
+        <option value="청운관 보관처">청운관 보관처</option>
+        <option value="북악관 보관처">북악관 보관처</option>
+        <option value="본관 보관처">본관 보관처</option>
+        <option value="한림관 보관처">한림관 보관처</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="dock">
+    <button type="button" class="btn" id="submitBtn" style="width:100%;cursor:pointer">등록 완료</button>
+  </div>
+</main>
+<script>
+  const manualLocPanel = document.getElementById("manualLocPanel");
+  const foundBuildingSelect = document.getElementById("foundBuildingSelect");
+  const locationDetail = document.getElementById("locationDetail");
+  const locPermToggle = document.getElementById("locPermToggle");
+  const choiceInplace = document.getElementById("choiceInplace");
+  const choiceHandover = document.getElementById("choiceHandover");
+  const handoverPanel = document.getElementById("handoverPanel");
+  const handoverSelect = document.getElementById("handoverSelect");
+  const submitBtn = document.getElementById("submitBtn");
+
+  let mode = "inplace";
+  let hasLocationPermission = true;
+
+  function formatKoreanTime(d) {
+    const days = ["일", "월", "화", "수", "목", "금", "토"];
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const dow = days[d.getDay()];
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${m}월 ${day}일(${dow}) ${hh}:${mm}`;
+  }
+
+  function syncPanels() {
+    const showManual = !hasLocationPermission && mode === "inplace";
+    manualLocPanel.classList.toggle("is-open", showManual);
+    handoverPanel.classList.toggle("is-open", mode === "handover");
+
+    if (hasLocationPermission) {
+      locPermToggle.textContent = "위치 권한 허용됨";
+      locPermToggle.classList.remove("is-manual");
+    } else {
+      locPermToggle.textContent = "위치 권한 없음";
+      locPermToggle.classList.add("is-manual");
+    }
+  }
+
+  try {
+    if (sessionStorage.getItem("locationConsent") === "denied") {
+      hasLocationPermission = false;
+    }
+  } catch (_) {}
+
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: "geolocation" }).then((res) => {
+      if (res.state === "denied") {
+        hasLocationPermission = false;
+        syncPanels();
+      }
+    }).catch(() => {});
+  }
+
+  syncPanels();
+
+  locPermToggle.addEventListener("click", () => {
+    hasLocationPermission = !hasLocationPermission;
+    try {
+      sessionStorage.setItem("locationConsent", hasLocationPermission ? "granted" : "denied");
+    } catch (_) {}
+    syncPanels();
+  });
+
+  foundBuildingSelect.addEventListener("change", () => {
+    foundBuildingSelect.style.boxShadow = "";
+  });
+
+  choiceInplace.addEventListener("click", () => {
+    mode = "inplace";
+    choiceInplace.classList.add("on");
+    choiceHandover.classList.remove("on");
+    syncPanels();
+  });
+
+  choiceHandover.addEventListener("click", () => {
+    mode = "handover";
+    choiceHandover.classList.add("on");
+    choiceInplace.classList.remove("on");
+    syncPanels();
+  });
+
+  submitBtn.addEventListener("click", () => {
+    const needManualLoc = !hasLocationPermission && mode === "inplace";
+    if (needManualLoc && !foundBuildingSelect.value) {
+      foundBuildingSelect.style.boxShadow = "inset 0 0 0 2px var(--danger)";
+      foundBuildingSelect.focus();
+      return;
+    }
+
+    try {
+      sessionStorage.setItem("registeredAt", formatKoreanTime(new Date()));
+      if (needManualLoc) {
+        sessionStorage.setItem("foundBuilding", foundBuildingSelect.value);
+        sessionStorage.setItem("locationDetail", locationDetail.value.trim());
+      } else {
+        sessionStorage.setItem("foundBuilding", "혜인관");
+        sessionStorage.removeItem("locationDetail");
+      }
+      if (mode === "handover") {
+        sessionStorage.setItem("handoverBuilding", handoverSelect.value);
+      }
+    } catch (_) {}
+
+    if (mode === "handover") {
+      window.location.href = "done-handover.html";
+    } else {
+      window.location.href = "done-inplace.html";
+    }
+  });
+</script>
+</body>
+</html>

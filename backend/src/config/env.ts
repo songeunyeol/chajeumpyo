@@ -11,9 +11,9 @@ const Env = z.object({
   /** mock이면 Gemini를 호출하지 않고 고정 계약 형식의 가짜 응답을 쓴다 */
   AI_MODE: z.enum(["mock", "gemini"]).default("mock"),
   GEMINI_API_KEY: z.string().optional(),
-  /** 속성 추출 기본 모델과, 실패할 때 쓰는 대체 모델 */
-  GEMINI_MODEL: z.string().default("gemini-2.5-flash-lite"),
-  GEMINI_FALLBACK_MODEL: z.string().default("gemini-2.5-flash"),
+  /** 속성 추출 기본 모델과, 실패할 때 쓰는 대체 모델. 2.5 계열은 새 키에서 막혀(10/26 확인) 3.x를 쓴다 */
+  GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
+  GEMINI_FALLBACK_MODEL: z.string().default("gemini-3.5-flash"),
   /** 임베딩 모델. 출력 차원은 src/ai/types.ts의 EMBEDDING_DIM */
   GEMINI_EMBED_MODEL: z.string().default("gemini-embedding-001"),
   DATA_GO_KR_SERVICE_KEY: z.string().optional(),
