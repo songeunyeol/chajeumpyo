@@ -13,6 +13,8 @@ COPY packages/shared/package.json packages/shared/
 # postinstall(prisma generate)은 스키마가 있어야 해서 설치 때는 건너뛰고 아래에서 따로 돌린다.
 # sharp·onnxruntime-node는 linux x64 바이너리가 패키지에 들어 있어 설치 스크립트 없이도 동작한다.
 RUN npm ci --ignore-scripts
+# backend·shared tsconfig가 루트 tsconfig.base.json을 extends한다 (prisma.config.ts 로드·tsc 빌드에 필요)
+COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY backend backend
 RUN npm run db:generate -w backend && npm run build -w backend
@@ -31,7 +33,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 # 시드·관리자 만들기(tsx)와 migrate deploy(prisma CLI)를 railway ssh로 돌릴 수 있게 개발 의존성도 남긴다
 COPY --from=build /app/node_modules node_modules
-COPY --from=build /app/package.json /app/package-lock.json ./
+COPY --from=build /app/package.json /app/package-lock.json /app/tsconfig.base.json ./
 COPY --from=build /app/packages/shared packages/shared
 COPY --from=build /app/backend/package.json /app/backend/prisma.config.ts /app/backend/tsconfig.json backend/
 COPY --from=build /app/backend/dist backend/dist

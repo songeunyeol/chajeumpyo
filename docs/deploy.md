@@ -54,6 +54,7 @@ DB는 **pgvector가 들어 있는 이미지**로 만든다. Railway 기본 Postg
 | `CAPTCHA_MODE` | `turnstile` | production에서 `off`면 서버가 뜨지 않는다 | 필수 |
 | `TURNSTILE_SECRET_KEY` | `<Turnstile 비밀 키>` | Cloudflare 대시보드 → Turnstile → 사이트 추가 (아래 참고) | 필수 |
 | `TURNSTILE_SITE_KEY` | `<Turnstile 사이트 키>` | 같은 곳에서 받는 공개 키. `CAPTCHA_MODE=turnstile`이면 없을 때 서버가 뜨지 않고(PR #47), 화면은 `GET /api/v1/config`로 받아 위젯을 띄운다 | 필수 |
+| `TURNSTILE_HOSTNAMES` | (보통 넣지 않음) | Turnstile 토큰을 받아 줄 호스트 이름(쉼표 목록). 비우면 `PUBLIC_BASE_URL`의 호스트. 단일 서비스라 보통 같지만, 커스텀 도메인과 `*.up.railway.app`을 함께 열어 두면 둘 다 넣는다(PR #47) | 조건부 |
 | `AI_MODE` | `gemini` | 시연용으로 AI 없이 띄우려면 `mock` | 권장 |
 | `GEMINI_API_KEY` | `<Gemini 키>` | Google AI Studio. `AI_MODE=gemini`이면 필수 | 조건부 |
 | `GEMINI_MODEL` / `GEMINI_FALLBACK_MODEL` / `GEMINI_EMBED_MODEL` | 기본값 | 바꿀 때만 | 선택 |
