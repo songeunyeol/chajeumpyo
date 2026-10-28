@@ -12,8 +12,8 @@
 <body>
 <main class="screen">
   <header class="bar"><a class="back" href="register.html">←</a></header>
-  <h1>올려 두었어요</h1>
-  <div class="thanks-box">
+  <h1 style="margin-top:10px">올려 두었어요</h1>
+  <div class="thanks-box" style="margin-bottom:12px">
     분실물을 지나치지 않고 올려 주셔서 감사해요.<br>덕분에 주인이 소중한 물건을 다시 찾을 수 있어요.
   </div>
 
@@ -29,17 +29,21 @@
     </svg>
   </div>
 
+  <!-- 등록한 물건 위치가 표시되는 네이버 지도 -->
+  <div class="map-box" id="doneMapBox" aria-label="등록한 물건 위치 지도"></div>
+
   <table class="kv">
     <tr><th>보관</th><td>그 자리에 둠</td></tr>
     <tr id="doneDetailRow" hidden><th>상세 설명</th><td id="doneDetail"></td></tr>
     <tr><th>시각</th><td id="doneTime"></td></tr>
   </table>
-  <p class="note">이 사진 링크는 10분 뒤 닫혀요.</p>
+  <p class="note">이 사진과 위치는 10분 뒤 닫혀요.</p>
 
   <div class="dock">
     <a class="btn" href="../index.html">처음 화면</a>
   </div>
 </main>
+<script src="../naver-map.js"></script>
 <script>
   function formatKoreanTime(d) {
     const days = ["일", "월", "화", "수", "목", "금", "토"];
@@ -53,6 +57,7 @@
 
   const doneTimeEl = document.getElementById("doneTime");
   doneTimeEl.textContent = formatKoreanTime(new Date());
+  let buildingName = "혜인관";
 
   try {
     const saved = sessionStorage.getItem("foundPhoto");
@@ -72,24 +77,19 @@
       document.getElementById("doneDetail").textContent = savedDetail;
       document.getElementById("doneDetailRow").hidden = false;
     }
-  } catch (_) {}
-  // 서버 등록 결과 (register.html이 저장): 주운 건물, 검토 대기·귀중품 안내
-  try {
+    const savedBuilding = sessionStorage.getItem("foundBuilding");
+    if (savedBuilding) {
+      buildingName = savedBuilding;
+    }
     const result = JSON.parse(sessionStorage.getItem("foundResult") || "null");
-    if (result) {
-      const table = document.querySelector("table.kv");
-      const row = table.insertRow(0);
-      row.innerHTML = "<th>주운 곳</th><td></td>";
-      row.cells[1].textContent = result.building ? result.building.name : "모름";
-      const notes = [result.message, result.handOverAdvice && result.handOverAdvice.message].filter(Boolean);
-      for (const text of notes) {
-        const p = document.createElement("p");
-        p.className = "note";
-        p.textContent = text;
-        table.after(p);
-      }
+    if (result && result.building && result.building.name) {
+      buildingName = result.building.name;
     }
   } catch (_) {}
+
+  if (window.NaverCampusMap) {
+    window.NaverCampusMap.mount(document.getElementById("doneMapBox"), { buildingName });
+  }
 </script>
 </body>
 </html>

@@ -11,22 +11,192 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="signup.html">←</a></header>
+  <header class="bar" style="justify-content:space-between">
+    <a class="back" href="signup.html">←</a>
+    <span class="loc-chip" style="cursor:default">테스트 코드: 123456</span>
+  </header>
   <h1>코드를 보냈어요</h1>
-  <p class="lead">ab***@skuniv.ac.kr 로 보낸 숫자 6개를 입력해요. 5분이 지나면 다시 받아야 해요.</p>
-  <div class="codes" aria-label="인증 코드 6자리">
-    <input inputmode="numeric" maxlength="1" aria-label="1">
-    <input inputmode="numeric" maxlength="1" aria-label="2">
-    <input inputmode="numeric" maxlength="1" aria-label="3">
-    <input inputmode="numeric" maxlength="1" aria-label="4">
-    <input inputmode="numeric" maxlength="1" aria-label="5">
-    <input inputmode="numeric" maxlength="1" aria-label="6">
+  <p class="lead"><span id="maskedEmail">ab***@skuniv.ac.kr</span> 로 보낸 숫자 6개를 입력해요. 5분이 지나면 다시 받아야 해요.</p>
+
+  <div class="codes is-enter" id="codeTiles" aria-label="인증 코드 6자리">
+    <input style="--i:0" inputmode="numeric" maxlength="1" aria-label="1">
+    <input style="--i:1" inputmode="numeric" maxlength="1" aria-label="2">
+    <input style="--i:2" inputmode="numeric" maxlength="1" aria-label="3">
+    <input style="--i:3" inputmode="numeric" maxlength="1" aria-label="4">
+    <input style="--i:4" inputmode="numeric" maxlength="1" aria-label="5">
+    <input style="--i:5" inputmode="numeric" maxlength="1" aria-label="6">
   </div>
-  <p class="timer">4분 32초 · 5번 틀리면 코드는 버려져요</p>
+
+  <p class="timer" id="timerLine">
+    <span id="timerText">5분 00초</span> · <span id="attemptText">5번 틀리면 코드는 버려져요</span>
+  </p>
+  <button type="button" class="resend-btn" id="resendBtn">다시 보내기</button>
+
   <div class="dock">
-    <a class="btn" href="consent-mail.html">확인</a>
-    <p class="sublinks"><a href="code.html">다시 보내기</a></p>
+    <button type="button" class="btn" id="verifyBtn" style="width:100%;cursor:pointer">확인</button>
   </div>
 </main>
+<script>
+  const CORRECT_CODE = "123456";
+  const maskedEmailEl = document.getElementById("maskedEmail");
+  const codeTiles = document.getElementById("codeTiles");
+  const inputs = Array.from(codeTiles.querySelectorAll("input"));
+  const timerLine = document.getElementById("timerLine");
+  const timerText = document.getElementById("timerText");
+  const attemptText = document.getElementById("attemptText");
+  const resendBtn = document.getElementById("resendBtn");
+  const verifyBtn = document.getElementById("verifyBtn");
+
+  // 1. 회원가입에서 작성한 이메일을 마스킹해서 표시 (예: song12@skuniv.ac.kr -> so***@skuniv.ac.kr)
+  function maskEmail(email) {
+    if (!email || !email.includes("@")) return "ab***@skuniv.ac.kr";
+    const [local, domain] = email.split("@");
+    const visible = local.length >= 2 ? local.slice(0, 2) : local.slice(0, 1);
+    return `${visible}***@${domain}`;
+  }
+
+  try {
+    const savedEmail = sessionStorage.getItem("signupEmail");
+    if (savedEmail) {
+      maskedEmailEl.textContent = maskEmail(savedEmail);
+    }
+  } catch (_) {}
+
+  // 2. 실시간 5분 타이머 및 다시 보내기 초기화 + 깜박임
+  let remainingSeconds = 300;
+  let remainingAttempts = 5;
+  let isTransitioning = false;
+
+  function renderTimer() {
+    const m = Math.floor(remainingSeconds / 60);
+    const s = String(remainingSeconds % 60).padStart(2, "0");
+    timerText.textContent = `${m}분 ${s}초`;
+  }
+
+  renderTimer();
+
+  const timerId = setInterval(() => {
+    if (remainingSeconds > 0) {
+      remainingSeconds--;
+      renderTimer();
+      if (remainingSeconds === 0) {
+        attemptText.textContent = "시간이 만료됐어요. 다시 보내기를 눌러 주세요";
+      }
+    }
+  }, 1000);
+
+  // 처음 타일 등장 애니메이션 종료 후 is-enter 제거 (이후 흔들림/퇴장 애니메이션 간섭 방지)
+  setTimeout(() => {
+    codeTiles.classList.remove("is-enter");
+  }, 850);
+
+  resendBtn.addEventListener("click", () => {
+    if (isTransitioning) return;
+    remainingSeconds = 300;
+    remainingAttempts = 5;
+    renderTimer();
+    attemptText.textContent = "5번 틀리면 코드는 버려져요";
+
+    timerLine.classList.remove("is-blink");
+    void timerLine.offsetWidth;
+    timerLine.classList.add("is-blink");
+    setTimeout(() => timerLine.classList.remove("is-blink"), 1000);
+
+    inputs.forEach((inp) => {
+      inp.value = "";
+      inp.disabled = false;
+    });
+    codeTiles.classList.remove("is-wrong", "is-exit-right", "is-enter");
+    void codeTiles.offsetWidth;
+    codeTiles.classList.add("is-enter");
+    setTimeout(() => {
+      codeTiles.classList.remove("is-enter");
+      inputs[0].focus();
+    }, 850);
+  });
+
+  // 3. 인증코드 맞을 때(오른쪽 타일부터 오른쪽으로 하나씩 날아가고 다음 페이지 이동) / 틀릴 때(흔들림 + 빨간 테두리)
+  let wrongTimer = null;
+
+  function triggerWrong() {
+    if (remainingAttempts > 0) remainingAttempts--;
+    if (remainingAttempts > 0) {
+      attemptText.textContent = `${remainingAttempts}번 더 틀리면 코드는 버려져요`;
+    } else {
+      attemptText.textContent = "5번 틀려서 코드가 버려졌어요. 다시 받아 주세요";
+      inputs.forEach((inp) => { inp.disabled = true; });
+    }
+
+    codeTiles.classList.remove("is-enter", "is-wrong");
+    void codeTiles.offsetWidth;
+    codeTiles.classList.add("is-wrong");
+    if (wrongTimer) clearTimeout(wrongTimer);
+    wrongTimer = setTimeout(() => {
+      codeTiles.classList.remove("is-wrong");
+    }, 850);
+  }
+
+  function triggerSuccess() {
+    if (isTransitioning) return;
+    isTransitioning = true;
+    clearInterval(timerId);
+    codeTiles.classList.remove("is-enter", "is-wrong");
+    codeTiles.classList.add("is-exit-right");
+    setTimeout(() => {
+      window.location.href = "consent-mail.html";
+    }, 700);
+  }
+
+  function verifyCode() {
+    if (isTransitioning) return;
+    if (remainingSeconds <= 0 || remainingAttempts <= 0) {
+      triggerWrong();
+      return;
+    }
+    const code = inputs.map((i) => i.value.trim()).join("");
+    if (code === CORRECT_CODE) {
+      triggerSuccess();
+    } else {
+      triggerWrong();
+    }
+  }
+
+  inputs.forEach((inp, idx) => {
+    inp.addEventListener("input", () => {
+      inp.value = inp.value.replace(/\D/g, "").slice(-1);
+      if (inp.value && idx < inputs.length - 1) {
+        inputs[idx + 1].focus();
+      }
+      const fullCode = inputs.map((i) => i.value).join("");
+      if (fullCode.length === 6) {
+        verifyCode();
+      }
+    });
+
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !inp.value && idx > 0) {
+        inputs[idx - 1].focus();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        verifyCode();
+      }
+    });
+
+    inp.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const digits = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 6);
+      digits.split("").forEach((ch, i) => {
+        if (inputs[i]) inputs[i].value = ch;
+      });
+      if (digits.length === 6) {
+        verifyCode();
+      } else if (inputs[digits.length]) {
+        inputs[digits.length].focus();
+      }
+    });
+  });
+
+  verifyBtn.addEventListener("click", verifyCode);
+</script>
 </body>
 </html>

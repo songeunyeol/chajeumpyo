@@ -1,5 +1,5 @@
 // 찾은 사람 화면 ↔ 백엔드 연결 (테스트 연동용).
-// API 주소: ?api=... 로 한 번 주면 기억한다. 없으면 이 페이지를 연 호스트의 4100 포트(휴대폰에서 PC IP로 열어도 맞게).
+// API 주소: ?api=... 로 한 번 주면 기억한다. 없으면 이 페이지를 연 호스트의 4000 포트(휴대폰에서 PC IP로 열어도 맞게).
 (function () {
   const params = new URLSearchParams(location.search);
   try {
@@ -9,7 +9,7 @@
   try {
     saved = sessionStorage.getItem("apiBase");
   } catch (_) {}
-  const API_BASE = saved || `${location.protocol}//${location.hostname}:4100/api/v1`;
+  const API_BASE = saved || `${location.protocol}//${location.hostname}:4000/api/v1`;
 
   /** 동의 화면 버전 (packages/shared/src/api/consent.ts의 CONSENT_VERSION) */
   const CONSENT_VERSION = "2026-10-12";

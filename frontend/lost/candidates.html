@@ -12,46 +12,309 @@
 <body>
 <main class="screen">
   <header class="bar"><a class="back" href="home.html">←</a><h2>후보</h2></header>
-  <h1>비슷한 물건 3개</h1>
-  <p class="lead">확인 전에는 사진이 흐려요.<br>이유만 공개돼요.</p>
-  <article class="card">
-    <div class="item">
-      <div class="thumb" aria-hidden="true"></div>
-      <div>
-        <h3>무선 이어폰</h3>
-        <p class="meta">10월 23일 습득 · 혜인관</p>
+  <h1 id="candHeading">비슷한 물건 3개</h1>
+  <p class="lead">확인 전에는 사진이 모자이크로 가려져요.<br>일치하는 이유만 먼저 공개돼요.</p>
+
+  <div class="candidate-list is-animating" id="candidateList"></div>
+
+  <div class="dock">
+    <button type="button" class="btn white" id="refreshBtn" style="width:100%;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)">
+      후보 새로고침 (5/5 남음)
+    </button>
+  </div>
+
+  <!-- 새로고침 재확인 모달 카드 -->
+  <div class="modal-backdrop" id="refreshModal" role="dialog" aria-modal="true" aria-labelledby="refreshModalTitle">
+    <div class="modal-card">
+      <span class="chip warn" id="modalRemainChip">새로고침 5번 중 5번 남음</span>
+      <h3 id="refreshModalTitle">후보를 새로고침할까요?</h3>
+      <p>잘못 새로고침하면 지금 보이는 물건을 다시 찾지 못할 수도 있어요. 신중히 확인해 주세요.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn gray" id="cancelRefreshBtn">취소</button>
+        <button type="button" class="btn" id="confirmRefreshBtn">새로고침</button>
       </div>
     </div>
-    <div class="chips">
-      <span class="chip">같은 건물</span>
-      <span class="chip">같은 종류</span>
-      <span class="chip">잃어버린 뒤 2시간 안</span>
-    </div>
-    <p class="meta" style="margin-top:10px">확인 기회 3번 중 3번 남음</p>
-    <a class="btn" style="margin-top:12px" href="question.html">내 물건인지 확인</a>
-  </article>
-  <article class="card">
-    <div class="item">
-      <div class="thumb dim" aria-hidden="true"></div>
-      <div>
-        <h3>무선 이어폰</h3>
-        <p class="meta">10월 22일 습득 · 청운관</p>
-      </div>
-    </div>
-    <div class="chips"><span class="chip danger">잠김</span></div>
-    <p class="meta" style="margin-top:10px">확인 기회를 모두 썼어요. 학생증을 가지고 종합서비스센터에 문의해요.</p>
-  </article>
-  <article class="card">
-    <div class="item">
-      <div class="thumb" aria-hidden="true"></div>
-      <div>
-        <h3>충전기</h3>
-        <p class="meta">10월 21일 습득 · 혜인관</p>
-      </div>
-    </div>
-    <div class="chips"><span class="chip warn">대면 확인만</span></div>
-    <a class="btn line" style="margin-top:12px" href="counter.html">찾는 방법 보기</a>
-  </article>
+  </div>
 </main>
+<script>
+  const candidateList = document.getElementById("candidateList");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const refreshModal = document.getElementById("refreshModal");
+  const modalRemainChip = document.getElementById("modalRemainChip");
+  const cancelRefreshBtn = document.getElementById("cancelRefreshBtn");
+  const confirmRefreshBtn = document.getElementById("confirmRefreshBtn");
+
+  let uploadedPhoto = null;
+  let lostReport = null;
+  let refreshLeft = 5;
+  let candChances = [3, 3, 3];
+
+  try {
+    uploadedPhoto = sessionStorage.getItem("foundPhoto");
+    lostReport = JSON.parse(sessionStorage.getItem("lostReport") || "null");
+    const savedRefresh = sessionStorage.getItem("refreshLeft");
+    if (savedRefresh !== null) refreshLeft = Math.max(0, Math.min(5, Number(savedRefresh)));
+    const savedChances = JSON.parse(sessionStorage.getItem("candChances") || "null");
+    if (Array.isArray(savedChances) && savedChances.length === 3) {
+      candChances = savedChances.map((n) => Math.max(0, Math.min(3, Number(n))));
+    }
+  } catch (_) {}
+
+  function formatDateOffset(offsetDays) {
+    const days = ["일", "월", "화", "수", "목", "금", "토"];
+    const d = new Date();
+    d.setDate(d.getDate() - offsetDays);
+    return `${d.getMonth() + 1}월 ${d.getDate()}일(${days[d.getDay()]}) 습득`;
+  }
+
+  const refreshPool = [
+    [
+      { title: "무선 이어폰", meta: (lostReport?.date ? `${lostReport.date} 습득` : formatDateOffset(0)), chips: ["같은 건물", "같은 종류", "잃어버린 뒤 2시간 안"] },
+      { title: "무선 이어폰", meta: formatDateOffset(0), chips: ["같은 건물", "같은 종류", "비슷한 시간대"] },
+      { title: "무선 이어폰", meta: formatDateOffset(1), chips: ["같은 건물", "같은 종류", "하루 안 습득"] }
+    ],
+    [
+      { title: "무선 이어폰", meta: formatDateOffset(0), chips: ["같은 건물", "같은 종류", "잃어버린 뒤 2시간 안"] },
+      { title: "무선 이어폰", meta: formatDateOffset(1), chips: ["같은 건물", "같은 종류", "비슷한 시간대"] },
+      { title: "무선 이어폰", meta: formatDateOffset(2), chips: ["같은 건물", "같은 종류", "이틀 안 습득"] }
+    ],
+    [
+      { title: "무선 이어폰", meta: formatDateOffset(0), chips: ["같은 건물", "같은 종류", "잃어버린 뒤 2시간 안"] },
+      { title: "무선 이어폰", meta: formatDateOffset(0), chips: ["같은 건물", "같은 종류", "비슷한 시간대"] },
+      { title: "무선 이어폰", meta: formatDateOffset(3), chips: ["같은 건물", "같은 종류", "사흘 안 습득"] }
+    ]
+  ];
+
+  function drawMosaicFromSource(canvas, drawHighResFn) {
+    const SRC_SIZE = 144;
+    const MOSAIC_BLOCKS = 13;
+
+    const srcCanvas = document.createElement("canvas");
+    srcCanvas.width = SRC_SIZE;
+    srcCanvas.height = SRC_SIZE;
+    const sctx = srcCanvas.getContext("2d");
+    drawHighResFn(sctx, SRC_SIZE, SRC_SIZE);
+
+    const tiny = document.createElement("canvas");
+    tiny.width = MOSAIC_BLOCKS;
+    tiny.height = MOSAIC_BLOCKS;
+    const tctx = tiny.getContext("2d");
+    tctx.imageSmoothingEnabled = true;
+    tctx.drawImage(srcCanvas, 0, 0, SRC_SIZE, SRC_SIZE, 0, 0, MOSAIC_BLOCKS, MOSAIC_BLOCKS);
+
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(tiny, 0, 0, MOSAIC_BLOCKS, MOSAIC_BLOCKS, 0, 0, canvas.width, canvas.height);
+  }
+
+  function renderSampleScene(sctx, w, h, seed, round = 0) {
+    const scenes = [
+      () => {
+        const bg = sctx.createLinearGradient(0, 0, w, h);
+        bg.addColorStop(0, "#d9ccb8");
+        bg.addColorStop(0.5, "#c5b49b");
+        bg.addColorStop(1, "#a69276");
+        sctx.fillStyle = bg;
+        sctx.fillRect(0, 0, w, h);
+
+        sctx.fillStyle = "rgba(28, 22, 16, 0.28)";
+        sctx.beginPath();
+        sctx.ellipse(76, 92, 42, 26, 0.15, 0, Math.PI * 2);
+        sctx.fill();
+
+        sctx.fillStyle = "#fbf9f5";
+        sctx.beginPath();
+        sctx.roundRect(34, 46, 76, 56, 22);
+        sctx.fill();
+
+        sctx.strokeStyle = "#d5cec2";
+        sctx.lineWidth = 3;
+        sctx.beginPath();
+        sctx.moveTo(36, 70);
+        sctx.lineTo(108, 70);
+        sctx.stroke();
+
+        sctx.fillStyle = "#1e5b3d";
+        sctx.beginPath();
+        sctx.arc(72, 58, 8, 0, Math.PI * 2);
+        sctx.fill();
+
+        sctx.fillStyle = "#221f1b";
+        sctx.beginPath();
+        sctx.arc(54, 36, 12, 0, Math.PI * 2);
+        sctx.arc(90, 36, 12, 0, Math.PI * 2);
+        sctx.fill();
+      },
+      () => {
+        const bg = sctx.createRadialGradient(w * 0.4, h * 0.4, 10, w * 0.5, h * 0.5, w * 0.8);
+        bg.addColorStop(0, "#cfc5b4");
+        bg.addColorStop(1, "#8f8372");
+        sctx.fillStyle = bg;
+        sctx.fillRect(0, 0, w, h);
+
+        sctx.fillStyle = "rgba(0,0,0,0.25)";
+        sctx.beginPath();
+        sctx.ellipse(74, 88, 38, 24, -0.08, 0, Math.PI * 2);
+        sctx.fill();
+
+        sctx.fillStyle = "#f4f1ea";
+        sctx.beginPath();
+        sctx.roundRect(38, 44, 68, 56, 22);
+        sctx.fill();
+
+        sctx.fillStyle = "#2b2824";
+        sctx.beginPath();
+        sctx.arc(56, 36, 11, 0, Math.PI * 2);
+        sctx.arc(88, 36, 11, 0, Math.PI * 2);
+        sctx.fill();
+      },
+      () => {
+        const bg = sctx.createLinearGradient(0, 0, 0, h);
+        bg.addColorStop(0, "#e5ddd0");
+        bg.addColorStop(1, "#bfb29e");
+        sctx.fillStyle = bg;
+        sctx.fillRect(0, 0, w, h);
+
+        sctx.fillStyle = "rgba(28,25,21,0.22)";
+        sctx.beginPath();
+        sctx.ellipse(72, 90, 40, 22, 0, 0, Math.PI * 2);
+        sctx.fill();
+
+        sctx.fillStyle = "#ffffff";
+        sctx.beginPath();
+        sctx.roundRect(36, 46, 72, 54, 20);
+        sctx.fill();
+
+        sctx.fillStyle = "#3a5a78";
+        sctx.beginPath();
+        sctx.arc(72, 68, 9, 0, Math.PI * 2);
+        sctx.fill();
+
+        sctx.fillStyle = "#1c1915";
+        sctx.beginPath();
+        sctx.arc(54, 38, 11, 0, Math.PI * 2);
+        sctx.arc(90, 38, 11, 0, Math.PI * 2);
+        sctx.fill();
+      }
+    ];
+    scenes[(seed + round) % scenes.length]();
+  }
+
+  function renderCards(round = 0) {
+    const set = refreshPool[round % refreshPool.length];
+    candidateList.innerHTML = "";
+
+    set.forEach((item, idx) => {
+      const chance = candChances[idx] ?? 3;
+      const isLocked = chance <= 0;
+      const titleText = lostReport?.item || item.title;
+
+      const article = document.createElement("article");
+      article.className = "card";
+      article.style.setProperty("--idx", String(idx));
+
+      if (isLocked) {
+        article.innerHTML = `
+          <div class="item">
+            <canvas class="thumb-mosaic dim" width="72" height="72" data-seed="${idx}" aria-label="모자이크 처리된 습득물 사진"></canvas>
+            <div>
+              <h3 class="cand-title">${titleText}</h3>
+              <p class="meta cand-meta">${item.meta}</p>
+            </div>
+          </div>
+          <div class="chips"><span class="chip danger">잠김</span></div>
+          <p class="meta" style="margin-top:10px">확인 기회를 모두 썼어요. 학생증을 가지고 종합서비스센터에 문의해요.</p>
+        `;
+      } else {
+        const chipsHtml = item.chips.map((c) => `<span class="chip">${c}</span>`).join("");
+        article.innerHTML = `
+          <div class="item">
+            <canvas class="thumb-mosaic" width="72" height="72" data-seed="${idx}" aria-label="모자이크 처리된 습득물 사진"></canvas>
+            <div>
+              <h3 class="cand-title">${titleText}</h3>
+              <p class="meta cand-meta">${item.meta}</p>
+            </div>
+          </div>
+          <div class="chips">${chipsHtml}</div>
+          <p class="meta" style="margin-top:10px">확인 기회 3번 중 ${chance}번 남음</p>
+          <a class="btn" style="margin-top:12px" href="question.html?cand=${idx}">내 물건인지 확인</a>
+        `;
+      }
+
+      candidateList.appendChild(article);
+    });
+
+    const canvases = candidateList.querySelectorAll(".thumb-mosaic");
+    canvases.forEach((canvas, idx) => {
+      const seed = Number(canvas.dataset.seed || idx);
+      if (idx === 0 && uploadedPhoto) {
+        const img = new Image();
+        img.onload = () => {
+          drawMosaicFromSource(canvas, (sctx, w, h) => {
+            sctx.drawImage(img, 0, 0, w, h);
+          });
+        };
+        img.onerror = () => {
+          drawMosaicFromSource(canvas, (sctx, w, h) => renderSampleScene(sctx, w, h, seed, round));
+        };
+        img.src = uploadedPhoto;
+      } else {
+        drawMosaicFromSource(canvas, (sctx, w, h) => renderSampleScene(sctx, w, h, seed, round));
+      }
+    });
+  }
+
+  function syncRefreshUI() {
+    modalRemainChip.textContent = `새로고침 5번 중 ${refreshLeft}번 남음`;
+    if (refreshLeft <= 0) {
+      refreshBtn.textContent = "새로고침 기회를 모두 썼어요 (0/5)";
+      refreshBtn.disabled = true;
+      refreshBtn.style.opacity = "0.55";
+      refreshBtn.style.cursor = "not-allowed";
+    } else {
+      refreshBtn.textContent = `후보 새로고침 (${refreshLeft}/5 남음)`;
+      refreshBtn.disabled = false;
+      refreshBtn.style.opacity = "1";
+      refreshBtn.style.cursor = "pointer";
+    }
+  }
+
+  refreshBtn.addEventListener("click", () => {
+    if (refreshLeft <= 0) return;
+    syncRefreshUI();
+    refreshModal.classList.add("is-open");
+  });
+
+  cancelRefreshBtn.addEventListener("click", () => {
+    refreshModal.classList.remove("is-open");
+  });
+
+  refreshModal.addEventListener("click", (e) => {
+    if (e.target === refreshModal) refreshModal.classList.remove("is-open");
+  });
+
+  confirmRefreshBtn.addEventListener("click", () => {
+    if (refreshLeft <= 0) return;
+    refreshLeft -= 1;
+    candChances = [3, 3, 3];
+    try {
+      sessionStorage.setItem("refreshLeft", String(refreshLeft));
+      sessionStorage.setItem("candChances", JSON.stringify(candChances));
+    } catch (_) {}
+    refreshModal.classList.remove("is-open");
+    syncRefreshUI();
+
+    const round = 5 - refreshLeft;
+    renderCards(round);
+
+    candidateList.classList.remove("is-animating");
+    void candidateList.offsetWidth;
+    candidateList.classList.add("is-animating");
+  });
+
+  renderCards(5 - refreshLeft);
+  syncRefreshUI();
+</script>
 </body>
 </html>

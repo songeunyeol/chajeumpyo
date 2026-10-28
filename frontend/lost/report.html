@@ -14,14 +14,157 @@
   <header class="bar"><a class="back" href="home.html">←</a><h2>분실 신고</h2></header>
   <h1>무엇을 잃어버렸나요</h1>
   <p class="lead">확인에 쓰는 특징은 나중에 질문으로만 나와요.</p>
-  <label class="field"><span>물건</span><input placeholder="무선 이어폰"></label>
-  <label class="field"><span>언제</span><input placeholder="10월 23일 오후 1시~3시"></label>
-  <p class="section">어디</p>
-  <a class="choice on" href="building.html"><span>혜인관<small>한 번 누르면 건물을 고쳐요</small></span>고치기</a>
-  <label class="field"><span>기억나는 점</span><textarea placeholder="공개 목록에는 이 문장만 보여요."></textarea></label>
+
+  <label class="field">
+    <span>물건</span>
+    <input id="lostItemInput" placeholder="무선 이어폰">
+  </label>
+
+  <div class="field">
+    <span>언제</span>
+    <div class="when-stack">
+      <select id="lostDateSelect" aria-label="잃어버린 날짜 선택"></select>
+      <div class="time-range-grid">
+        <select id="lostStartHour" aria-label="시작 시간 선택"></select>
+        <span class="time-range-sep">~</span>
+        <select id="lostEndHour" aria-label="종료 시간 선택"></select>
+      </div>
+    </div>
+  </div>
+
+  <label class="field">
+    <span>어디 (건물)</span>
+    <select id="lostBuildingSelect" aria-label="잃어버린 건물 선택">
+      <option value="혜인관" selected>혜인관</option>
+      <option value="유담관">유담관</option>
+      <option value="청운관">청운관</option>
+      <option value="북악관">북악관</option>
+      <option value="본관">본관</option>
+      <option value="한림관">한림관</option>
+      <option value="중앙도서관">중앙도서관</option>
+      <option value="학생회관">학생회관</option>
+      <option value="잘 모르겠음">잘 모르겠음 (캠퍼스 전체)</option>
+    </select>
+  </label>
+
+  <div class="field">
+    <div class="field-head">
+      <label for="memoInput"><span>기억나는 점</span></label>
+      <span class="loc-chip" id="memoCount" style="cursor:default">0 / 200자</span>
+    </div>
+    <textarea id="memoInput" class="auto-grow" maxlength="200" placeholder="공개 목록에는 이 문장만 보여요."></textarea>
+  </div>
+
   <div class="dock">
-    <a class="btn" href="candidates.html">신고하기</a>
+    <button type="button" class="btn" id="reportSubmitBtn" style="width:100%;cursor:pointer">신고하기</button>
   </div>
 </main>
+<script>
+  const dateSelect = document.getElementById("lostDateSelect");
+  const startSelect = document.getElementById("lostStartHour");
+  const endSelect = document.getElementById("lostEndHour");
+  const itemInput = document.getElementById("lostItemInput");
+  const buildingSelect = document.getElementById("lostBuildingSelect");
+  const memoInput = document.getElementById("memoInput");
+  const memoCount = document.getElementById("memoCount");
+  const submitBtn = document.getElementById("reportSubmitBtn");
+
+  // 1. 당일 기준 날짜 셀렉트 생성
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  const today = new Date();
+  for (let offset = 0; offset < 7; offset++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - offset);
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const dow = days[d.getDay()];
+    const baseText = `${m}월 ${day}일(${dow})`;
+    const label = offset === 0 ? `오늘 · ${baseText}` : offset === 1 ? `어제 · ${baseText}` : baseText;
+    const opt = new Option(label, baseText, offset === 0, offset === 0);
+    dateSelect.add(opt);
+  }
+  dateSelect.add(new Option("일주일 이전", "일주일 이전"));
+
+  // 2. 몇 시부터 ~ 몇 시까지 시간 셀렉트 생성
+  for (let h = 0; h <= 23; h++) {
+    const hh = String(h).padStart(2, "0") + ":00";
+    startSelect.add(new Option(`${hh} 부터`, String(h), h === 13, h === 13));
+  }
+  for (let h = 1; h <= 24; h++) {
+    const hh = String(h).padStart(2, "0") + ":00";
+    endSelect.add(new Option(`${hh} 까지`, String(h), h === 15, h === 15));
+  }
+
+  startSelect.addEventListener("change", () => {
+    const sh = Number(startSelect.value);
+    const eh = Number(endSelect.value);
+    if (eh <= sh) {
+      endSelect.value = String(Math.min(24, sh + 2));
+    }
+  });
+
+  endSelect.addEventListener("change", () => {
+    const sh = Number(startSelect.value);
+    const eh = Number(endSelect.value);
+    if (eh <= sh) {
+      startSelect.value = String(Math.max(0, eh - 1));
+    }
+  });
+
+  // 3. 기억나는 점 글자수 비례 자동 크기 조절 (하한 72px ~ 상한 200px)
+  const MIN_H = 72;
+  const MAX_H = 200;
+
+  function syncMemoSize() {
+    const len = memoInput.value.length;
+    memoCount.textContent = `${len} / 200자`;
+
+    const prevH = memoInput.offsetHeight || MIN_H;
+    memoInput.style.transition = "none";
+    memoInput.style.height = "0px";
+    const scrollH = memoInput.scrollHeight;
+    const charStepHeight = MIN_H + Math.floor(len / 16) * 22;
+    const rawHeight = len === 0 ? MIN_H : Math.max(scrollH, charStepHeight);
+    const clampedHeight = Math.min(MAX_H, Math.max(MIN_H, rawHeight));
+
+    memoInput.style.height = prevH + "px";
+    void memoInput.offsetHeight;
+    memoInput.style.transition = "height 140ms var(--ease)";
+    memoInput.style.height = clampedHeight + "px";
+  }
+
+  memoInput.addEventListener("input", syncMemoSize);
+  syncMemoSize();
+
+  // 4. 신고하기 -> 분실신고 목록(lostReports)에 추가 후 올리는 중 페이지(lost/uploading.html)로 이동
+  submitBtn.addEventListener("click", () => {
+    const sh = String(startSelect.value).padStart(2, "0") + ":00";
+    const eh = String(endSelect.value).padStart(2, "0") + ":00";
+    const reportData = {
+      id: "rep-" + Date.now(),
+      item: itemInput.value.trim() || "무선 이어폰",
+      date: dateSelect.value,
+      timeRange: `${sh}~${eh}`,
+      building: buildingSelect.value,
+      memo: memoInput.value.trim(),
+      status: "active",
+      createdAt: Date.now()
+    };
+    try {
+      let list = JSON.parse(sessionStorage.getItem("lostReports") || "null");
+      if (!Array.isArray(list)) {
+        list = [];
+      }
+      list.unshift(reportData);
+      sessionStorage.setItem("lostReports", JSON.stringify(list));
+      sessionStorage.setItem("activeReportId", reportData.id);
+      sessionStorage.setItem("lostReport", JSON.stringify(reportData));
+      sessionStorage.setItem("refreshLeft", "5");
+      sessionStorage.setItem("candChances", JSON.stringify([3, 3, 3]));
+      sessionStorage.setItem("quizChance", "3");
+    } catch (_) {}
+    window.location.href = "uploading.html";
+  });
+</script>
 </body>
 </html>
