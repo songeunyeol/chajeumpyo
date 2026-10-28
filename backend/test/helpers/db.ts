@@ -2,6 +2,7 @@ import { prisma } from "../../src/lib/prisma";
 
 const TABLES = [
   "notification",
+  "candidate_exposure",
   "pickup",
   "reveal_log",
   "match_attempt",

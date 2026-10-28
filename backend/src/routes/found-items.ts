@@ -13,7 +13,7 @@ import multer from "multer";
 import { z } from "zod";
 import { AppError } from "../lib/errors";
 import { getAuth, requireMember } from "../middlewares/auth";
-import { requireCaptcha } from "../middlewares/captcha";
+import { CAPTCHA_ACTIONS, requireCaptcha } from "../middlewares/captcha";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import {
@@ -171,7 +171,7 @@ export function createFoundItemsRouter() {
 
   router.post(
     "/found-items",
-    requireCaptcha(),
+    requireCaptcha(CAPTCHA_ACTIONS.foundAnalyze),
     uploadImage,
     validate("body", RegisterFoundItemFields),
     async (req, res) => {
@@ -189,7 +189,7 @@ export function createFoundItemsRouter() {
 
   router.post(
     "/found-items/analyze",
-    requireCaptcha(),
+    requireCaptcha(CAPTCHA_ACTIONS.foundAnalyze),
     uploadImage,
     validate("body", AnalyzeFoundItemFields),
     async (req, res) => {

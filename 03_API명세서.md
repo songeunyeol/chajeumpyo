@@ -11,7 +11,7 @@
 - **권한 표기**: `공개` 누구나 · `회원` 분실자·체험 계정 · `관리자` 관리자 계정
 - **시간**: ISO 8601, 한국 시간 기준으로 표시는 프론트에서 처리
 - **이미지 URL**: 비공개 사진은 만료 시간이 있는 서명 URL로 내려준다. (초안: 10분)
-- **캡차**: 습득물 등록, 체험 로그인, 인증 코드 요청은 Cloudflare Turnstile 토큰을 `X-Captcha-Token` 헤더로 보낸다. 없거나 틀리면 `400 CAPTCHA_FAILED`. 개발 환경에서는 `CAPTCHA_MODE=off`로 끌 수 있고 production에서는 끌 수 없다. (open-issues #38)
+- **캡차**: 습득물 등록, 체험 로그인, 인증 코드 요청은 Cloudflare Turnstile 토큰을 `X-Captcha-Token` 헤더로 보낸다. 없거나 틀리면 `400 CAPTCHA_FAILED`. 서버는 Turnstile 검증 결과의 `success`뿐 아니라 `hostname`(허용 호스트: `TURNSTILE_HOSTNAMES`, 없으면 `PUBLIC_BASE_URL`의 호스트. production이 아니고 localhost면 생략)과 위젯 `action`(습득물 분석·등록 `found-analyze`, 인증 코드 요청 `email-code`, 체험 로그인 `demo-login`)도 확인해, 다르면 같은 오류를 낸다. 개발 환경에서는 `CAPTCHA_MODE=off`로 끌 수 있고 production에서는 끌 수 없다. 위젯에 쓸 사이트 키와 캡차 방식은 `GET /config`로 받는다. (open-issues #38)
 - **동의**: 가입·체험 로그인·습득물 등록은 동의 화면 버전(`CONSENT_VERSION`, `packages/shared/src/api/consent.ts`)과 동의 항목을 같이 보낸다. 버전이 다르거나 필수 항목(가입: 이메일 수집·외부 AI 처리, 체험·등록: 외부 AI 처리)이 빠지면 `400 VALIDATION_ERROR`. 동의 문구도 같은 파일의 `CONSENT_TEXTS`를 쓴다. (QA B15, open-issues #35)
 
 ### 에러 응답 형식
@@ -57,6 +57,7 @@
 
 | 메서드 | 경로 | 권한 | 기능 ID |
 | --- | --- | --- | --- |
+| GET | `/config` | 공개 | F-01, F-04, F-05 (캡차 설정) |
 | GET | `/buildings` | 공개 | F-01 |
 | GET | `/storage-places` | 공개 | F-01 |
 | GET | `/files/*` | 서명 URL | F-10, F-14 |
@@ -93,6 +94,20 @@
 ---
 
 ## 3. 상세
+
+### 공개 설정
+
+#### `GET /config` · 공개
+프론트가 화면을 그리기 전에 읽는 공개 설정. 지금은 캡차 설정만 있다.
+
+```json
+{ "captcha": { "mode": "turnstile", "siteKey": "0x4AAAAAAA..." } }
+```
+- `mode`: `off`(개발. 서버가 토큰을 검사하지 않음) 또는 `turnstile`(Cloudflare Turnstile).
+- `siteKey`: Turnstile 위젯용 **공개** 사이트 키(`TURNSTILE_SITE_KEY`). `off`면 `null`. 비밀 키(`TURNSTILE_SECRET_KEY`)는 내려주지 않는다.
+- 프론트 동작: `turnstile`일 때만 `https://challenges.cloudflare.com/turnstile/v0/api.js`를 불러 위젯을 그리고, 받은 토큰을 `X-Captcha-Token`으로 보낸다. 토큰은 한 번만 쓸 수 있고 약 5분 뒤 만료되므로 만료되면 위젯이 새로 받는다. `off`면 스크립트를 부르지 않고 개발용 토큰 `dev-pass`를 보낸다.
+- `CAPTCHA_MODE=turnstile`이면 `TURNSTILE_SECRET_KEY`와 `TURNSTILE_SITE_KEY`가 둘 다 있어야 서버가 뜬다.
+- 응답은 `Cache-Control: public, max-age=60`.
 
 ### 건물
 
@@ -237,6 +252,7 @@
 
 #### `POST /auth/demo` · 공개
 호출할 때마다 **새 체험 계정**을 만들어 로그인시킨다. 체험 계정은 시드 습득물만 후보로 보고, 판정·열람·수령해도 시드 상태가 바뀌지 않는다. 24시간 뒤 삭제된다.
+- 시드 습득물은 `npm run seed:demo -w backend`로 넣는다(여러 번 돌려도 늘지 않음). 물건별 숨은 특징과 체험 순서는 [체험 시나리오](./docs/demo-scenario.md).
 - 같은 IP에서 과도하게 만들면 `429 RATE_LIMITED`. (초안: 10분에 5개)
 - 요청: `{ "consent": { "version": "2026-10-12", "externalAi": true, "location": false } }`, 헤더 `X-Captcha-Token`.
 ```json
@@ -300,6 +316,7 @@
 
 #### `GET /lost-reports/:id/candidates` · 회원
 `{ "candidates": [...] }`. `POST` 응답의 `candidates`와 같은 형식. 새 습득물이 등록되면 늘어난다. 닫힌 신고는 빈 목록. 남의 신고면 `404`.
+- 후보는 요청할 때마다 다시 고른다(상위 3개). 응답에 담긴 물건은 이 신고의 "보여 준 후보"(`candidate_exposure`)로 남는다. `POST`·`PATCH` 응답의 `candidates`, 새 후보 알림(`NEW_CANDIDATE`)도 같다.
 
 #### `PATCH /lost-reports/:id` · 회원
 ```json
@@ -322,7 +339,9 @@
 { "foundItemId": "6a1f..." }
 ```
 
-- 이 신고의 현재 후보(`GET /lost-reports/:id/candidates`)에 없는 습득물이면 `403 FORBIDDEN`.
+- 판정할 수 있는 습득물: 이 신고의 지금 후보(상위 3개)이거나, **이 신고의 후보로 보여 준 적 있고 지금도 후보 범위 안**인 물건. 새 습득물 때문에 보던 물건이 상위 3개에서 밀려나도 판정할 수 있다.
+  - 후보 범위: 등록됨·열람됨, 보관 기한 안, 분실 시작 이후 습득, 연관 종류 묶음 안, 체험 계정은 시드만·일반 계정은 시드 제외.
+  - 그 밖(보여 준 적 없는 물건, 수령·만료로 범위를 벗어난 물건, 다른 신고에서만 보여 준 물건, 없는 물건)은 `403 FORBIDDEN`. 아무 물건이나 id로 찔러 보는 것을 막는다 (QA B5, 위협 모델 T2).
 - 판정 기준: 특징 일치 1개 이상·모순 0개면 통과, 일치 1개 이상·모순 1개 이상이면 경계, 일치 0개면 실패. 상세는 기능 명세서 F-08.
 - 이 습득물에 대한 마지막 시도 이후 신고 설명이 바뀌지 않았으면 **새 시도를 만들지 않고 이전 결과를 그대로** 돌려준다(`"reused": true`). 시도 횟수를 쓰지 않는다.
 
@@ -399,7 +418,9 @@
   "pickupNotice": "귀중품은 보관처에서 직원이 한 번 더 확인한 뒤 돌려드려요. 학생증을 가져가 주세요(저장하지 않아요)."
 }
 ```
-- `pickupNotice`: 고가품(지갑·카드·노트북·태블릿·이어폰, 분류 확정 후 휴대폰·시계 등 추가)이면 보관처 대면 수령 안내, 아니면 `null`. (QA W3)
+- `pickupNotice`: 고가품(지갑·카드·노트북·태블릿·이어폰, 분류 확정 후 휴대폰·시계 등 추가)이면 안내, 아니면 `null`. (QA W3)
+  - 보관처에 맡김(`HANDED_OVER`): 보관처 대면 수령 안내 (위 예시).
+  - 그 자리에 둠(`IN_PLACE`): 직원 확인을 약속하지 않는 안내 — "귀중품이라 되도록 빨리 찾아가 주세요. 그 자리에 없으면 종합서비스센터에 문의해 주세요." (예전에 그 자리에 둔 고가품용)
 - 수령·기한 만료로 지운 물건은 수령됨이면 `409 ALREADY_CLAIMED`, 만료면 `404`.
 - 체험 계정이 열람해도 시드 습득물의 `status`는 바뀌지 않는다.
 - 확인 질문 정답(`BORDERLINE` + 정답)도 통과로 본다. 통과하지 않았으면 `403`, 없는 물건 `404`.

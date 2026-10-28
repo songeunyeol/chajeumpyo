@@ -1,0 +1,25 @@
+# 비밀 값과 로컬 산출물은 이미지에 넣지 않는다
+.env
+.env.*
+**/.env
+**/.env.*
+*service-account*.json
+*-credentials.json
+**/node_modules
+**/dist
+backend/src/generated
+**/uploads
+data
+.git
+.github
+.claude
+.vercel
+**/.DS_Store
+**/__pycache__
+.venv
+docs
+qa
+tester
+backend/test
+*.md
+frontend/**/*.md

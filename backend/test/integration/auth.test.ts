@@ -352,9 +352,13 @@ describe("기준 9. 인증 미들웨어, 민감 정보, 운영 설정", () => {
   });
 
   it("production에서는 API 문서를 닫는다", async () => {
+    // production 규칙: 사진 링크 주소는 https, 업로드 폴더는 절대 경로
+    vi.stubEnv("PUBLIC_BASE_URL", "https://example.test");
+    vi.stubEnv("STORAGE_LOCAL_DIR", "/tmp/chajeumpyo-test-uploads");
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("CAPTCHA_MODE", "turnstile"); // production에서는 캡차를 끌 수 없다
     vi.stubEnv("TURNSTILE_SECRET_KEY", "test-secret");
+    vi.stubEnv("TURNSTILE_SITE_KEY", "test-site-key");
     vi.resetModules();
     try {
       const { createApp: createProdApp } = await import("../../src/app");

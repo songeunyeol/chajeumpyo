@@ -3795,7 +3795,7 @@
           }
         ],
         "summary": "내 물건인지 확인 (F-08)",
-        "description": "이 신고의 현재 후보에만 시도할 수 있다. 통과: 특징 일치 1개 이상·모순 0 / 경계: 일치와 모순이 함께 있으면 확인 질문 / 실패: 일치 0. 설명이 그대로면 이전 결과를 reused=true로 돌려주고 횟수를 쓰지 않는다. 맞은 항목은 통과했을 때만 준다.",
+        "description": "이 신고의 지금 후보(상위 3개)나, 이 신고에 보여 준 적 있고 지금도 후보 범위 안인 물건에만 시도할 수 있다. 통과: 특징 일치 1개 이상·모순 0 / 경계: 일치와 모순이 함께 있으면 확인 질문 / 실패: 일치 0. 설명이 그대로면 이전 결과를 reused=true로 돌려주고 횟수를 쓰지 않는다. 맞은 항목은 통과했을 때만 준다.",
         "parameters": [
           {
             "schema": {
@@ -4588,6 +4588,54 @@
                   },
                   "required": [
                     "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config": {
+      "get": {
+        "tags": [
+          "설정"
+        ],
+        "summary": "프론트 공개 설정 (캡차)",
+        "description": "캡차 방식과 Turnstile 사이트 키를 준다. 프론트는 mode가 turnstile일 때만 위젯 스크립트를 불러오고, 받은 토큰을 X-Captcha-Token 헤더로 보낸다. off(개발)면 siteKey는 null이고 토큰 검사를 하지 않는다. 비밀 키는 내려 주지 않는다.",
+        "responses": {
+          "200": {
+            "description": "공개 설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "captcha": {
+                      "type": "object",
+                      "properties": {
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "turnstile"
+                          ]
+                        },
+                        "siteKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "siteKey"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "captcha"
                   ]
                 }
               }
