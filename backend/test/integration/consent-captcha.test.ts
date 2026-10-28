@@ -6,7 +6,12 @@ import { resetAiClient, setAiClient } from "../../src/ai";
 import { mockAiClient } from "../../src/ai/mock";
 import { createApp } from "../../src/app";
 import { EnvSchema, env } from "../../src/config/env";
-import { type CaptchaVerifier, resetCaptchaVerifier, setCaptchaVerifier } from "../../src/middlewares/captcha";
+import {
+  type CaptchaVerifier,
+  type CaptchaVerifyResult,
+  resetCaptchaVerifier,
+  setCaptchaVerifier,
+} from "../../src/middlewares/captcha";
 import { demoConsent, finderConsentFields, lastCodeFor, memberConsent, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
 import { createAttempt, createBuilding, createFoundItem, createStoragePlace, hoursAgo } from "../helpers/fixtures";
@@ -42,15 +47,20 @@ function extractAs(category: FoundItemExtraction["category"]) {
   });
 }
 
-/** 캡차를 켜고 검증 결과를 정한다. 검증 API에 넘어간 값을 모은다 */
-function captchaOn(result: boolean | Error) {
+/**
+ * 캡차를 켜고 검증 결과를 정한다. 검증 API에 넘어간 값을 모은다.
+ * true면 성공으로 보고, 토큰의 ":" 뒤를 action으로 돌려준다(예: "good:demo-login"). hostname은 PUBLIC_BASE_URL의 호스트(테스트는 test.local).
+ * 객체를 주면 그대로 돌려준다(hostname·action 불일치 확인용).
+ */
+function captchaOn(result: boolean | Error | CaptchaVerifyResult) {
   env.CAPTCHA_MODE = "turnstile";
   env.TURNSTILE_SECRET_KEY = "secret-key";
   const calls: Parameters<CaptchaVerifier>[0][] = [];
   setCaptchaVerifier(async (input) => {
     calls.push(input);
     if (result instanceof Error) throw result;
-    return result;
+    if (typeof result === "object") return result;
+    return { success: result, hostname: new URL(env.PUBLIC_BASE_URL).hostname, action: input.token.split(":")[1] };
   });
   return calls;
 }
@@ -63,8 +73,12 @@ beforeEach(async () => {
   B = (await createBuilding("청운관")).id;
 });
 
+const ORIGINAL_BASE_URL = env.PUBLIC_BASE_URL;
+
 afterEach(() => {
   env.CAPTCHA_MODE = "off";
+  env.PUBLIC_BASE_URL = ORIGINAL_BASE_URL;
+  env.TURNSTILE_HOSTNAMES = undefined;
   env.TURNSTILE_SECRET_KEY = undefined;
   resetCaptchaVerifier();
   resetAiClient();
@@ -153,11 +167,86 @@ describe("기준 5. 맞는 토큰이면 통과하고, 비밀 키·토큰·IP를 
     const calls = captchaOn(true);
     const res = await request(app)
       .post("/api/v1/auth/demo")
-      .set("X-Captcha-Token", "good-token")
+      .set("X-Captcha-Token", "good:demo-login")
       .send({ consent: demoConsent() });
     expect(res.status).toBe(201);
-    expect(calls).toEqual([{ secret: "secret-key", token: "good-token", ip: expect.any(String) }]);
-    expect((await register(base(), { "X-Captcha-Token": "good-token" })).status).toBe(201);
+    expect(calls).toEqual([{ secret: "secret-key", token: "good:demo-login", ip: expect.any(String) }]);
+    expect((await register(base(), { "X-Captcha-Token": "good:found-analyze" })).status).toBe(201);
+    expect(
+      (
+        await request(app)
+          .post("/api/v1/auth/email/code")
+          .set("X-Captcha-Token", "good:email-code")
+          .send({ email: EMAIL })
+      ).status,
+    ).toBe(204);
+  });
+});
+
+describe("기준 5-1. 다른 화면(action)에서 받은 토큰은 막는다", () => {
+  it("action이 다르거나 없으면 400 CAPTCHA_FAILED", async () => {
+    captchaOn(true);
+    const checks = [
+      // 사진 화면 토큰으로 체험 계정 만들기
+      await request(app)
+        .post("/api/v1/auth/demo")
+        .set("X-Captcha-Token", "good:found-analyze")
+        .send({ consent: demoConsent() }),
+      // 체험 로그인 토큰으로 습득물 등록
+      await register(base(), { "X-Captcha-Token": "good:demo-login" }),
+      // action 없음
+      await request(app).post("/api/v1/auth/email/code").set("X-Captcha-Token", "good").send({ email: EMAIL }),
+    ];
+    for (const res of checks) {
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("CAPTCHA_FAILED");
+    }
+    expect(await prisma.foundItem.count()).toBe(0);
+    expect(await prisma.user.count()).toBe(0);
+    expect(await prisma.emailVerification.count()).toBe(0);
+  });
+});
+
+describe("기준 5-2. 우리 사이트가 아닌 곳에서 받은 토큰은 막는다", () => {
+  it("hostname이 PUBLIC_BASE_URL과 다르면 400, 같으면 통과", async () => {
+    env.PUBLIC_BASE_URL = "https://chajeumpyo.example.com";
+    const demo = (token: string) =>
+      request(app).post("/api/v1/auth/demo").set("X-Captcha-Token", token).send({ consent: demoConsent() });
+
+    captchaOn({ success: true, hostname: "evil.example.net", action: "demo-login" });
+    const bad = await demo("t");
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.code).toBe("CAPTCHA_FAILED");
+
+    captchaOn({ success: true, action: "demo-login" }); // hostname 없음
+    expect((await demo("t")).status).toBe(400);
+
+    captchaOn({ success: true, hostname: "chajeumpyo.example.com", action: "demo-login" });
+    expect((await demo("t")).status).toBe(201);
+  });
+
+  it("TURNSTILE_HOSTNAMES가 있으면 그 목록으로 확인한다", async () => {
+    env.TURNSTILE_HOSTNAMES = "app.example.com, www.example.com";
+    captchaOn({ success: true, hostname: "localhost", action: "demo-login" });
+    const res = await request(app)
+      .post("/api/v1/auth/demo")
+      .set("X-Captcha-Token", "t")
+      .send({ consent: demoConsent() });
+    expect(res.body.error?.code).toBe("CAPTCHA_FAILED");
+    captchaOn({ success: true, hostname: "www.example.com", action: "demo-login" });
+    expect(
+      (await request(app).post("/api/v1/auth/demo").set("X-Captcha-Token", "t").send({ consent: demoConsent() }))
+        .status,
+    ).toBe(201);
+  });
+
+  it("success가 false면 hostname·action이 맞아도 막는다", async () => {
+    captchaOn({ success: false, hostname: "test.local", action: "demo-login" });
+    const res = await request(app)
+      .post("/api/v1/auth/demo")
+      .set("X-Captcha-Token", "t")
+      .send({ consent: demoConsent() });
+    expect(res.body.error.code).toBe("CAPTCHA_FAILED");
   });
 });
 

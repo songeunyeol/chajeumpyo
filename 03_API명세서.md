@@ -11,7 +11,7 @@
 - **권한 표기**: `공개` 누구나 · `회원` 분실자·체험 계정 · `관리자` 관리자 계정
 - **시간**: ISO 8601, 한국 시간 기준으로 표시는 프론트에서 처리
 - **이미지 URL**: 비공개 사진은 만료 시간이 있는 서명 URL로 내려준다. (초안: 10분)
-- **캡차**: 습득물 등록, 체험 로그인, 인증 코드 요청은 Cloudflare Turnstile 토큰을 `X-Captcha-Token` 헤더로 보낸다. 없거나 틀리면 `400 CAPTCHA_FAILED`. 개발 환경에서는 `CAPTCHA_MODE=off`로 끌 수 있고 production에서는 끌 수 없다. 위젯에 쓸 사이트 키와 캡차 방식은 `GET /config`로 받는다. (open-issues #38)
+- **캡차**: 습득물 등록, 체험 로그인, 인증 코드 요청은 Cloudflare Turnstile 토큰을 `X-Captcha-Token` 헤더로 보낸다. 없거나 틀리면 `400 CAPTCHA_FAILED`. 서버는 Turnstile 검증 결과의 `success`뿐 아니라 `hostname`(허용 호스트: `TURNSTILE_HOSTNAMES`, 없으면 `PUBLIC_BASE_URL`의 호스트. production이 아니고 localhost면 생략)과 위젯 `action`(습득물 분석·등록 `found-analyze`, 인증 코드 요청 `email-code`, 체험 로그인 `demo-login`)도 확인해, 다르면 같은 오류를 낸다. 개발 환경에서는 `CAPTCHA_MODE=off`로 끌 수 있고 production에서는 끌 수 없다. 위젯에 쓸 사이트 키와 캡차 방식은 `GET /config`로 받는다. (open-issues #38)
 - **동의**: 가입·체험 로그인·습득물 등록은 동의 화면 버전(`CONSENT_VERSION`, `packages/shared/src/api/consent.ts`)과 동의 항목을 같이 보낸다. 버전이 다르거나 필수 항목(가입: 이메일 수집·외부 AI 처리, 체험·등록: 외부 AI 처리)이 빠지면 `400 VALIDATION_ERROR`. 동의 문구도 같은 파일의 `CONSENT_TEXTS`를 쓴다. (QA B15, open-issues #35)
 
 ### 에러 응답 형식

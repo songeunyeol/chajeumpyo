@@ -28,6 +28,8 @@ const Env = z.object({
   TURNSTILE_SECRET_KEY: z.string().optional(),
   /** 위젯을 그릴 때 쓰는 공개 사이트 키. GET /api/v1/config로 프론트에 내려 준다 */
   TURNSTILE_SITE_KEY: z.string().optional(),
+  /** 캡차 위젯이 그려진 프론트 페이지의 호스트(쉼표로 여러 개). 없으면 PUBLIC_BASE_URL의 호스트. 프론트와 API 주소가 다르면 꼭 넣는다 */
+  TURNSTILE_HOSTNAMES: z.string().optional(),
   /** true면 production에서도 /api/docs, /api/openapi.json을 연다 */
   API_DOCS_ENABLED: z
     .enum(["true", "false"])
