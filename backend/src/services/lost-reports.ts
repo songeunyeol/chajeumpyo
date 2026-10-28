@@ -13,7 +13,7 @@ import { retryOnce, withTimeout } from "../lib/async";
 import { AppError } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
-import { findCandidates, publicCandidates } from "../matching/candidates";
+import { findCandidates, publicCandidates, recordExposure } from "../matching/candidates";
 import { setLostReportEmbedding } from "../repositories/embedding";
 import { isValidEmbedding } from "./found-items";
 
@@ -51,11 +51,13 @@ async function withCandidates(
   report: Awaited<ReturnType<typeof getOwnReport>>,
   role: Role,
 ): Promise<LostReportWithCandidates> {
-  return {
-    id: report.id,
-    status: report.status,
-    candidates: await publicCandidates(await findCandidates(report, role)),
-  };
+  const candidates = await findCandidates(report, role);
+  // 보여 준 후보를 남겨, 나중에 상위에서 밀려나도 판정을 요청할 수 있게 한다
+  await recordExposure(
+    report.id,
+    candidates.map((c) => c.foundItemId),
+  );
+  return { id: report.id, status: report.status, candidates: await publicCandidates(candidates) };
 }
 
 /** POST /lost-reports (F-06, F-07) */
