@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>올리는 중 · 찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+</head>
+<body>
+<main class="screen">
+  <header class="bar"></header>
+  <h1 id="pageTitle">올리고 있어요</h1>
+  <p class="lead" id="pageLead">종류를 읽는 중이에요.</p>
+
+  <div class="upload-stage" aria-live="polite">
+    <div class="ticket-mover is-enter" id="ticketMover">
+      <div class="ticket-flipper" id="ticketFlipper">
+        <!-- 앞면: 찾음표 티켓 -->
+        <div class="ticket-face front">
+          <svg class="ticket-svg" viewBox="0 0 320 168" aria-hidden="true">
+            <path fill="#1e5b3d" d="M40 12H280a16 16 0 0 1 16 16v30a28 28 0 0 0 0 52v30a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16v-30a28 28 0 0 0 0-52V28a16 16 0 0 1 16-16z"/>
+            <g fill="#f3efe6">
+              <circle cx="78" cy="18" r="3.2"/>
+              <circle cx="78" cy="36" r="3.2"/>
+              <circle cx="78" cy="54" r="3.2"/>
+              <circle cx="78" cy="72" r="3.2"/>
+              <circle cx="78" cy="90" r="3.2"/>
+              <circle cx="78" cy="108" r="3.2"/>
+              <circle cx="78" cy="126" r="3.2"/>
+              <circle cx="78" cy="144" r="3.2"/>
+            </g>
+          </svg>
+          <img class="ticket-leaf" src="../leaf-white.png" alt="">
+        </div>
+
+        <!-- 뒷면: AI 분석 메모장 -->
+        <div class="ticket-face back">
+          <svg class="ticket-svg" viewBox="0 0 320 168" aria-hidden="true">
+            <path fill="#1e5b3d" d="M40 12H280a16 16 0 0 1 16 16v30a28 28 0 0 0 0 52v30a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16v-30a28 28 0 0 0 0-52V28a16 16 0 0 1 16-16z"/>
+            <g fill="#f3efe6">
+              <circle cx="242" cy="18" r="3.2"/>
+              <circle cx="242" cy="36" r="3.2"/>
+              <circle cx="242" cy="54" r="3.2"/>
+              <circle cx="242" cy="72" r="3.2"/>
+              <circle cx="242" cy="90" r="3.2"/>
+              <circle cx="242" cy="108" r="3.2"/>
+              <circle cx="242" cy="126" r="3.2"/>
+              <circle cx="242" cy="144" r="3.2"/>
+            </g>
+          </svg>
+          <div class="ticket-pad" aria-hidden="true">
+            <div class="pad-head">
+              <span><i class="pad-dot"></i>AI VISION NOTE</span>
+              <span id="padStatus">SCANNING</span>
+            </div>
+            <div class="pad-rows">
+              <div class="pad-row"><span id="line0"></span></div>
+              <div class="pad-row"><span id="line1"></span></div>
+              <div class="pad-row"><span id="line2"></span></div>
+              <div class="pad-row"><span id="line3"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+  const mover = document.getElementById("ticketMover");
+  const flipper = document.getElementById("ticketFlipper");
+  const statusEl = document.getElementById("padStatus");
+  const pageTitle = document.getElementById("pageTitle");
+  const pageLead = document.getElementById("pageLead");
+  const lineEls = [
+    document.getElementById("line0"),
+    document.getElementById("line1"),
+    document.getElementById("line2"),
+    document.getElementById("line3")
+  ];
+
+  const cursor = document.createElement("span");
+  cursor.className = "pad-cursor";
+
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  async function typeLine(el, text, speed = 20) {
+    for (let i = 1; i <= text.length; i++) {
+      el.textContent = text.slice(0, i);
+      el.appendChild(cursor);
+      await wait(speed);
+    }
+  }
+
+  /**
+   * 실제 업로드/AI 분석 API Promise와 애니메이션을 동기화하는 함수.
+   * - 백엔드 연동 시: runUploadFlow(fetch('/api/items/analyze', { method: 'POST', body: formData }).then(r => r.json()))
+   * - 시안/데모에서는 기본 시뮬레이션 Promise로 동작합니다.
+   */
+  async function runUploadFlow(uploadPromise) {
+    // 1. 왼쪽에서 티켓 날아오기 + 뒤로 회전해 메모장 열기
+    await wait(760);
+    flipper.classList.add("is-back");
+    await wait(620);
+
+    // 2. 업로드 및 전처리 단계 타이핑 (서버 응답 기다리는 동안 진행)
+    await typeLine(lineEls[0], "> pii : face & card [MASKED]", 18);
+    await wait(100);
+    await typeLine(lineEls[1], "> geo : nearest_bldg [LOCKED]", 18);
+    await wait(100);
+    await typeLine(lineEls[2], "> tone: warm_ivory / matte", 18);
+    await wait(80);
+    await typeLine(lineEls[3], "> cls : analyzing...", 22);
+
+    // 3. 실제 서버/AI 업로드 완료까지 대기 (이미 끝났으면 즉시 통과, 아직 분석 중이면 커서 깜빡이며 대기)
+    const result = await uploadPromise;
+    const itemClass = (result && result.itemClass) || "wireless_earbuds (0.98)";
+    const itemLabel = (result && result.itemLabel) || "무선 이어폰";
+
+    // 4. 서버에서 받은 분석 결과 마지막 줄에 기록 후 정면 복귀 → 오른쪽으로 날아가기
+    await typeLine(lineEls[3], "> cls : " + itemClass, 16);
+    statusEl.textContent = "VERIFIED";
+    pageTitle.textContent = "다 읽었어요";
+    pageLead.textContent = itemLabel + "으로 확인했어요.";
+    await wait(240);
+
+    flipper.classList.remove("is-back");
+    flipper.classList.add("is-front-again");
+    await wait(720);
+
+    mover.classList.remove("is-enter");
+    mover.classList.add("is-exit");
+    await wait(640);
+
+    // 5. 완료 즉시 다음 페이지(register.html)로 자동 이동
+    if (!new URLSearchParams(window.location.search).has("preview")) {
+      window.location.href = "register.html";
+    } else {
+      // 한눈에.html의 3번 슬롯 프리뷰에서는 빈 화면으로 멈추지 않도록 잠시 후 다시 재생
+      await wait(1200);
+      window.location.reload();
+    }
+  }
+
+  // 실제 API 연동 전 기본 시뮬레이션 (약 2.4초)
+  const mockUploadTask = wait(2400).then(() => ({
+    itemClass: "wireless_earbuds (0.98)",
+    itemLabel: "무선 이어폰"
+  }));
+
+  runUploadFlow(mockUploadTask);
+</script>
+</body>
+</html>
