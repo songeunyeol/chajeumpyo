@@ -355,6 +355,7 @@ describe("기준 9. 인증 미들웨어, 민감 정보, 운영 설정", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("CAPTCHA_MODE", "turnstile"); // production에서는 캡차를 끌 수 없다
     vi.stubEnv("TURNSTILE_SECRET_KEY", "test-secret");
+    vi.stubEnv("TURNSTILE_SITE_KEY", "test-site-key");
     vi.resetModules();
     try {
       const { createApp: createProdApp } = await import("../../src/app");

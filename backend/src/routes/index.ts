@@ -3,6 +3,7 @@ import { createAdminRouter } from "./admin";
 import { createAuthRouter } from "./auth";
 import { createBuildingsRouter } from "./buildings";
 import { createClaimsRouter } from "./claims";
+import { createConfigRouter } from "./config";
 import { createFoundItemsRouter } from "./found-items";
 import { createLostReportsRouter } from "./lost-reports";
 import { createNotificationsRouter } from "./notifications";
@@ -11,6 +12,7 @@ import { createPickupsRouter } from "./pickups";
 /** /api/v1 아래 라우터. 기능별 라우터를 여기에 붙인다. 요청 제한 카운터가 앱마다 따로 생기도록 팩토리로 만든다. */
 export function createApiRouter() {
   const router = Router();
+  router.use(createConfigRouter());
   router.use(createAuthRouter());
   router.use(createBuildingsRouter());
   router.use(createFoundItemsRouter());

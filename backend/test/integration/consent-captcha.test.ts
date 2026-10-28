@@ -179,10 +179,10 @@ describe("기준 7. 캡차 끄기는 개발에서만", () => {
     const ok = { DATABASE_URL: "postgresql://x", JWT_SECRET: "a".repeat(32), ALLOWED_EMAIL_DOMAINS: "skuniv.ac.kr" };
     expect(EnvSchema.safeParse({ ...ok, NODE_ENV: "production" }).success).toBe(false);
     expect(EnvSchema.safeParse({ ...ok, CAPTCHA_MODE: "turnstile" }).success).toBe(false);
-    expect(
-      EnvSchema.safeParse({ ...ok, NODE_ENV: "production", CAPTCHA_MODE: "turnstile", TURNSTILE_SECRET_KEY: "k" })
-        .success,
-    ).toBe(true);
+    const prod = { ...ok, NODE_ENV: "production", CAPTCHA_MODE: "turnstile", TURNSTILE_SECRET_KEY: "k" };
+    // 사이트 키가 없으면 프론트가 위젯을 못 그리므로 설정 오류
+    expect(EnvSchema.safeParse(prod).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...prod, TURNSTILE_SITE_KEY: "site" }).success).toBe(true);
   });
 });
 

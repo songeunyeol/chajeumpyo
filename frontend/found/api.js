@@ -174,8 +174,103 @@
     });
   }
 
+  // 캡차 (Cloudflare Turnstile). 사이트 키는 GET /config에서 받는다(코드에 박지 않음).
+  // 토큰은 한 번만 쓸 수 있고 약 300초 뒤 만료라, 쓰면 지우고 오래된 건 버린다.
+  const CAPTCHA_KEY = "captchaToken";
+  const CAPTCHA_MAX_AGE_MS = 270_000;
+  let configPromise = null;
+  function config() {
+    if (!configPromise) {
+      configPromise = call("/config").catch(() => {
+        configPromise = null; // 연결이 안 되면 다음에 다시 묻는다. 서버가 캡차를 켰다면 등록 때 CAPTCHA_FAILED로 안내된다
+        return { captcha: { mode: "off", siteKey: null } };
+      });
+    }
+    return configPromise;
+  }
+
+  function saveCaptchaToken(token) {
+    try {
+      if (token) sessionStorage.setItem(CAPTCHA_KEY, JSON.stringify({ token, at: Date.now() }));
+      else sessionStorage.removeItem(CAPTCHA_KEY);
+    } catch (_) {}
+  }
+
+  /** 아직 유효한 토큰을 꺼내고 지운다(한 번만 쓸 수 있음). off면 개발용 토큰 */
+  async function takeCaptchaToken() {
+    const { captcha } = await config();
+    if (captcha.mode !== "turnstile") return DEV_CAPTCHA_TOKEN;
+    const saved = store.get(CAPTCHA_KEY);
+    saveCaptchaToken(null);
+    return saved && Date.now() - saved.at < CAPTCHA_MAX_AGE_MS ? saved.token : null;
+  }
+
+  let turnstileScript = null;
+  function loadTurnstile() {
+    if (!turnstileScript) {
+      turnstileScript = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        s.async = true;
+        s.onload = () => resolve(window.turnstile);
+        s.onerror = () => {
+          turnstileScript = null;
+          reject(new Error("캡차를 불러오지 못했어요."));
+        };
+        document.head.appendChild(s);
+      });
+    }
+    return turnstileScript;
+  }
+
+  /**
+   * 캡차 위젯을 container에 붙인다. turnstile일 때만 스크립트를 부르고, 대부분은 보이지 않게 통과한다
+   * (interaction-only: 의심스러울 때만 체크 상자가 나타남). ready()는 토큰을 받을 때까지 기다린다.
+   */
+  async function mountCaptcha(container) {
+    const { captcha } = await config();
+    if (captcha.mode !== "turnstile" || !captcha.siteKey) return { mode: "off", ready: () => Promise.resolve() };
+    saveCaptchaToken(null); // 이전 화면에서 받은 토큰은 다시 못 쓸 수 있어 새로 받는다
+    let token = null;
+    let waiters = [];
+    const settle = (t) => {
+      token = t;
+      saveCaptchaToken(t);
+      if (t) {
+        for (const w of waiters) w();
+        waiters = [];
+      }
+    };
+    const turnstile = await loadTurnstile();
+    const widgetId = turnstile.render(container, {
+      sitekey: captcha.siteKey,
+      action: "found-analyze",
+      appearance: "interaction-only",
+      "refresh-expired": "auto",
+      callback: (t) => settle(t),
+      "expired-callback": () => settle(null),
+      "error-callback": () => {
+        settle(null);
+        return true; // 위젯이 스스로 다시 시도한다
+      },
+    });
+    return {
+      mode: "turnstile",
+      ready() {
+        if (token) return Promise.resolve();
+        return new Promise((resolve) => waiters.push(resolve));
+      },
+      reset() {
+        settle(null);
+        turnstile.reset(widgetId);
+      },
+    };
+  }
+
   window.FoundApi = {
     API_BASE,
+    config,
+    mountCaptcha,
     CATEGORY_LABELS,
     itemLabel,
     ApiError,
@@ -186,7 +281,8 @@
       call(`/storage-places${buildingId ? `?buildingId=${buildingId}` : ""}`).then((r) => r.storagePlaces),
 
     /** POST /found-items/analyze. 사진(dataURL)과 동의를 보내고 { id, confirmToken, category, isValuable, message } */
-    analyze(photoDataUrl, locationConsent) {
+    async analyze(photoDataUrl, locationConsent) {
+      const token = await takeCaptchaToken();
       const form = new FormData();
       form.append("image", dataUrlToBlob(photoDataUrl), "photo.jpg");
       form.append("consentVersion", CONSENT_VERSION);
@@ -194,7 +290,8 @@
       form.append("consentLocation", locationConsent ? "true" : "false");
       return call("/found-items/analyze", {
         method: "POST",
-        headers: { "X-Captcha-Token": DEV_CAPTCHA_TOKEN },
+        // 토큰이 없거나 만료됐으면 헤더 없이 보내고, 서버의 CAPTCHA_FAILED를 화면이 안내한다
+        headers: token ? { "X-Captcha-Token": token } : {},
         body: form,
       });
     },
