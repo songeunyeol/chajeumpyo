@@ -110,11 +110,11 @@ export const DEMO_SEED_ITEMS: DemoSeedItem[] = [
     color: "BLACK",
     brand: null,
     features: [
-      { key: "pattern", value: "회색 체크무늬" },
+      { key: "pattern", value: "회색 줄무늬" },
       { key: "keyring", value: "고양이 키링" },
     ],
-    description: "검정 장우산, 회색 체크무늬, 손잡이에 고양이 키링",
-    title: "검정 체크무늬 우산, 고양이 키링",
+    description: "검정 장우산, 회색 줄무늬, 손잡이에 고양이 키링",
+    title: "검정 줄무늬 우산, 고양이 키링",
     svg: scene(`
       <path d="M180 400 L560 250 L600 290 L230 450 Z" fill="#222"/>
       <path d="M260 368 L585 268 M330 340 L592 278 M220 420 L560 300 M280 430 L578 316" stroke="#777" stroke-width="5"/>

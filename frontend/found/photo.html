@@ -53,9 +53,14 @@
   </div>
 
   <div class="dock">
-    <a class="btn" href="uploading.html">이 사진으로</a>
+    <!-- 사람 확인(Turnstile). 캡차가 켜진 배포에서만 채워지고, 대부분은 보이지 않게 통과한다 -->
+    <div id="captchaBox"></div>
+    <p class="note danger" id="captchaNote" style="margin:0" hidden></p>
+    <a class="btn" id="nextBtn" href="uploading.html">이 사진으로</a>
   </div>
 </main>
+<script src="api.js"></script>
+<script src="captcha.js"></script>
 <script>
   const box = document.getElementById("uploadBox");
   const input = document.getElementById("photoInput");
@@ -132,6 +137,40 @@
     e.stopPropagation();
     resetToUploadBox();
     input.click();
+  });
+
+  // 사람 확인: 토큰을 받기 전에는 다음 화면으로 넘어가지 않는다. 토큰은 다음 화면의 등록 요청이 쓴다
+  const nextBtn = document.getElementById("nextBtn");
+  const captchaNote = document.getElementById("captchaNote");
+  const showCaptchaNote = (text) => {
+    captchaNote.textContent = text;
+    captchaNote.hidden = !text;
+  };
+  const captchaReady = FoundCaptcha.mount(document.getElementById("captchaBox"), {
+    onError: () => showCaptchaNote("사람인지 확인하지 못했어요. 잠시 후 다시 시도해 주세요."),
+  }).catch(() => {
+    showCaptchaNote("사람 확인을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.");
+    return null;
+  });
+
+  nextBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (nextBtn.getAttribute("aria-busy") === "true") return;
+    const captcha = await captchaReady;
+    if (!captcha) return;
+    nextBtn.setAttribute("aria-busy", "true");
+    nextBtn.textContent = "확인 중…";
+    await captcha.ready();
+    showCaptchaNote("");
+    location.href = nextBtn.href;
+  });
+
+  // 뒤로 가기로 돌아오면(bfcache) 이미 쓴 토큰이 남아 있을 수 있어 새로 받는다
+  window.addEventListener("pageshow", async (e) => {
+    if (!e.persisted) return;
+    nextBtn.removeAttribute("aria-busy");
+    nextBtn.textContent = "이 사진으로";
+    (await captchaReady)?.reset();
   });
 </script>
 </body>
