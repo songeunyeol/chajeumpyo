@@ -16,12 +16,10 @@ const EARPHONE = DEMO_SEED_ITEMS[0] as (typeof DEMO_SEED_ITEMS)[number];
 const UMBRELLA = DEMO_SEED_ITEMS[2] as (typeof DEMO_SEED_ITEMS)[number];
 
 async function seedPlaces() {
-  const names = [...new Set([...DEMO_SEED_ITEMS.map((i) => i.building), "본관"])];
+  const names = [...new Set([...DEMO_SEED_ITEMS.map((i) => i.building), "혜인관"])];
   const byName = new Map<string, number>();
   for (const n of names) byName.set(n, (await createBuilding(n)).id);
-  await createStoragePlace("종합서비스센터", byName.get("본관") as number, "CENTER");
-  await createStoragePlace("유담관 경비실", byName.get("유담관") as number);
-  await createStoragePlace("청운관 경비실", byName.get("청운관") as number);
+  await createStoragePlace("교무처", byName.get("혜인관") as number, "CENTER");
   return byName;
 }
 
