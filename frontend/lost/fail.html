@@ -18,16 +18,15 @@
     <a class="btn" id="retryBtn" href="question.html">다시 확인</a>
   </div>
 </main>
+<script src="api.js"></script>
 <script>
-  try {
-    const params = new URLSearchParams(location.search);
-    const cand = params.get("cand") ?? sessionStorage.getItem("activeCandIdx") ?? "0";
-    document.getElementById("retryBtn").href = `question.html?cand=${cand}`;
-    const c = sessionStorage.getItem("quizChance");
-    if (c !== null) {
-      document.getElementById("failLead").textContent = `${c}번 남았어요.`;
-    }
-  } catch (_) {}
+  // 판정·답이 FAIL이고 이 계정에 기회가 남았을 때. 같은 설명으로 다시 판정하면 이전 결과를 그대로 돌려주므로
+  // "다시 확인"은 후보로 돌아간다 (설명을 고쳐 다시 판정하는 화면은 아직 없다: PATCH /lost-reports/:id)
+  const claim = LostApi.store.get(LostApi.KEYS.claim);
+  if (claim && typeof claim.attemptsLeft === "number") {
+    document.getElementById("failLead").textContent = `${claim.attemptsLeft}번 남았어요.`;
+  }
+  document.getElementById("retryBtn").href = "candidates.html";
 </script>
 </body>
 </html>

@@ -16,6 +16,7 @@
   <p class="lead">확인 전에는 사진이 모자이크로 가려져요.<br>일치하는 이유만 먼저 공개돼요.</p>
 
   <div class="candidate-list is-animating" id="candidateList"></div>
+  <p class="note danger" id="candErr" hidden></p>
 
   <div class="dock">
     <button type="button" class="btn white" id="refreshBtn" style="width:100%;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)">
@@ -36,7 +37,9 @@
     </div>
   </div>
 </main>
+<script src="api.js"></script>
 <script>
+  const authed = LostApi.requireLogin();
   const candidateList = document.getElementById("candidateList");
   const refreshBtn = document.getElementById("refreshBtn");
   const refreshModal = document.getElementById("refreshModal");
@@ -44,46 +47,18 @@
   const cancelRefreshBtn = document.getElementById("cancelRefreshBtn");
   const confirmRefreshBtn = document.getElementById("confirmRefreshBtn");
 
-  let uploadedPhoto = null;
-  let lostReport = null;
-  let refreshLeft = 5;
-  let candChances = [3, 3, 3];
+  const candHeading = document.getElementById("candHeading");
+  const candErr = document.getElementById("candErr");
+  const reportId = LostApi.store.get(LostApi.KEYS.reportId);
+  if (authed && !reportId) location.replace("home.html");
 
+  // 새로고침 횟수는 화면 쪽 약속이다 (서버는 횟수를 세지 않고, 부를 때마다 후보를 다시 고른다)
+  let refreshLeft = 5;
   try {
-    uploadedPhoto = sessionStorage.getItem("foundPhoto");
-    lostReport = JSON.parse(sessionStorage.getItem("lostReport") || "null");
     const savedRefresh = sessionStorage.getItem("refreshLeft");
     if (savedRefresh !== null) refreshLeft = Math.max(0, Math.min(5, Number(savedRefresh)));
-    const savedChances = JSON.parse(sessionStorage.getItem("candChances") || "null");
-    if (Array.isArray(savedChances) && savedChances.length === 3) {
-      candChances = savedChances.map((n) => Math.max(0, Math.min(3, Number(n))));
-    }
   } catch (_) {}
-
-  function formatDateOffset(offsetDays) {
-    const days = ["일", "월", "화", "수", "목", "금", "토"];
-    const d = new Date();
-    d.setDate(d.getDate() - offsetDays);
-    return `${d.getMonth() + 1}월 ${d.getDate()}일(${days[d.getDay()]}) 습득`;
-  }
-
-  const refreshPool = [
-    [
-      { title: "무선 이어폰", meta: (lostReport?.date ? `${lostReport.date} 습득` : formatDateOffset(0)), chips: ["같은 건물", "같은 종류", "잃어버린 뒤 2시간 안"] },
-      { title: "무선 이어폰", meta: formatDateOffset(0), chips: ["같은 건물", "같은 종류", "비슷한 시간대"] },
-      { title: "무선 이어폰", meta: formatDateOffset(1), chips: ["같은 건물", "같은 종류", "하루 안 습득"] }
-    ],
-    [
-      { title: "무선 이어폰", meta: formatDateOffset(0), chips: ["같은 건물", "같은 종류", "잃어버린 뒤 2시간 안"] },
-      { title: "무선 이어폰", meta: formatDateOffset(1), chips: ["같은 건물", "같은 종류", "비슷한 시간대"] },
-      { title: "무선 이어폰", meta: formatDateOffset(2), chips: ["같은 건물", "같은 종류", "이틀 안 습득"] }
-    ],
-    [
-      { title: "무선 이어폰", meta: formatDateOffset(0), chips: ["같은 건물", "같은 종류", "잃어버린 뒤 2시간 안"] },
-      { title: "무선 이어폰", meta: formatDateOffset(0), chips: ["같은 건물", "같은 종류", "비슷한 시간대"] },
-      { title: "무선 이어폰", meta: formatDateOffset(3), chips: ["같은 건물", "같은 종류", "사흘 안 습득"] }
-    ]
-  ];
+  let candidates = [];
 
   function drawMosaicFromSource(canvas, drawHighResFn) {
     const SRC_SIZE = 144;
@@ -201,68 +176,129 @@
     scenes[(seed + round) % scenes.length]();
   }
 
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  /** 서버가 준 흐린 사진(thumbnailUrl)을 기존 모자이크 캔버스에 그린다. 사진이 없으면 그림 예시 */
+  function paintThumb(canvas, url, seed, round) {
+    const sample = () => drawMosaicFromSource(canvas, (sctx, w, h) => renderSampleScene(sctx, w, h, seed, round));
+    if (!url) return sample();
+    const img = new Image();
+    img.onload = () => drawMosaicFromSource(canvas, (sctx, w, h) => sctx.drawImage(img, 0, 0, w, h));
+    img.onerror = sample;
+    LostApi.setImage(img, url).then((ok) => ok || sample());
+  }
+
   function renderCards(round = 0) {
-    const set = refreshPool[round % refreshPool.length];
     candidateList.innerHTML = "";
+    candHeading.textContent = candidates.length ? `비슷한 물건 ${candidates.length}개` : "아직 비슷한 물건이 없어요";
+    if (!candidates.length) {
+      const empty = el("div", "card", "새 물건이 들어오면 알림으로 알려 줘요.");
+      empty.style.color = "var(--mute)";
+      empty.style.fontSize = "14px";
+      candidateList.appendChild(empty);
+    }
 
-    set.forEach((item, idx) => {
-      const chance = candChances[idx] ?? 3;
-      const isLocked = chance <= 0;
-      const titleText = lostReport?.item || item.title;
-
-      const article = document.createElement("article");
-      article.className = "card";
+    candidates.forEach((c, idx) => {
+      const state = LostApi.candidateState(c); // open · locked · inPerson
+      const article = el("article", "card");
       article.style.setProperty("--idx", String(idx));
+      article.dataset.id = c.foundItemId;
 
-      if (isLocked) {
-        article.innerHTML = `
-          <div class="item">
-            <canvas class="thumb-mosaic dim" width="72" height="72" data-seed="${idx}" aria-label="모자이크 처리된 습득물 사진"></canvas>
-            <div>
-              <h3 class="cand-title">${titleText}</h3>
-              <p class="meta cand-meta">${item.meta}</p>
-            </div>
-          </div>
-          <div class="chips"><span class="chip danger">잠김</span></div>
-          <p class="meta" style="margin-top:10px">확인 기회를 모두 썼어요. 학생증을 가지고 종합서비스센터에 문의해요.</p>
-        `;
+      const item = el("div", "item");
+      const canvas = el("canvas", `thumb-mosaic${state === "open" ? "" : " dim"}`);
+      canvas.width = 72;
+      canvas.height = 72;
+      canvas.setAttribute("aria-label", "모자이크 처리된 습득물 사진");
+      const textBox = el("div");
+      const where = LostApi.buildingName(c.building, "");
+      textBox.append(
+        el("h3", "cand-title", LostApi.itemLabel(c.category, c.subCategory)),
+        el("p", "meta cand-meta", `${LostApi.formatKst(c.foundAt, { time: false })} 습득${where ? ` · ${where}` : ""}`),
+      );
+      item.append(canvas, textBox);
+      article.appendChild(item);
+
+      const chips = el("div", "chips");
+      if (state === "open") {
+        for (const r of c.reasons) chips.appendChild(el("span", "chip", LostApi.REASON_LABELS[r] || r));
+        if (c.isSeed) chips.appendChild(el("span", "chip warn", "시연용"));
+        article.append(chips, el("p", "meta", `확인 기회 3번 중 ${c.attemptsLeft}번 남음`));
+        const btn = el("a", "btn", "내 물건인지 확인");
+        btn.href = "#";
+        btn.style.marginTop = "12px";
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          doClaim(c, btn);
+        });
+        article.appendChild(btn);
+      } else if (state === "locked") {
+        chips.appendChild(el("span", "chip danger", "잠김"));
+        const note = el("p", "meta", "확인 기회를 모두 썼어요. 학생증을 가지고 종합서비스센터에 문의해요.");
+        note.style.marginTop = "10px";
+        article.append(chips, note);
       } else {
-        const chipsHtml = item.chips.map((c) => `<span class="chip">${c}</span>`).join("");
-        article.innerHTML = `
-          <div class="item">
-            <canvas class="thumb-mosaic" width="72" height="72" data-seed="${idx}" aria-label="모자이크 처리된 습득물 사진"></canvas>
-            <div>
-              <h3 class="cand-title">${titleText}</h3>
-              <p class="meta cand-meta">${item.meta}</p>
-            </div>
-          </div>
-          <div class="chips">${chipsHtml}</div>
-          <p class="meta" style="margin-top:10px">확인 기회 3번 중 ${chance}번 남음</p>
-          <a class="btn" style="margin-top:12px" href="question.html?cand=${idx}">내 물건인지 확인</a>
-        `;
+        chips.appendChild(el("span", "chip danger", "대면 확인만"));
+        const link = el("a", "btn white", "찾는 방법 보기");
+        link.href = "counter.html";
+        link.style.marginTop = "12px";
+        article.append(chips, link);
       }
 
       candidateList.appendChild(article);
+      paintThumb(canvas, c.thumbnailUrl, idx, round);
     });
+  }
 
-    const canvases = candidateList.querySelectorAll(".thumb-mosaic");
-    canvases.forEach((canvas, idx) => {
-      const seed = Number(canvas.dataset.seed || idx);
-      if (idx === 0 && uploadedPhoto) {
-        const img = new Image();
-        img.onload = () => {
-          drawMosaicFromSource(canvas, (sctx, w, h) => {
-            sctx.drawImage(img, 0, 0, w, h);
-          });
-        };
-        img.onerror = () => {
-          drawMosaicFromSource(canvas, (sctx, w, h) => renderSampleScene(sctx, w, h, seed, round));
-        };
-        img.src = uploadedPhoto;
-      } else {
-        drawMosaicFromSource(canvas, (sctx, w, h) => renderSampleScene(sctx, w, h, seed, round));
-      }
-    });
+  /** POST /lost-reports/:id/claims → 결과에 따라 다음 화면 */
+  let claiming = false;
+  async function doClaim(c, btn) {
+    if (claiming) return;
+    claiming = true;
+    candErr.hidden = true;
+    btn.style.opacity = "0.6";
+    LostApi.store.set(LostApi.KEYS.candidate, c);
+    try {
+      const r = await LostApi.claim(reportId, c.foundItemId);
+      await goNext(LostApi.claimScreen(r));
+    } catch (err) {
+      const screen = LostApi.claimScreen(err);
+      if (screen) return goNext(screen);
+      candErr.textContent = LostApi.friendlyMessage(err);
+      candErr.hidden = false;
+      // 후보가 바뀌었거나(403) 이미 누가 가져갔으면(409) 목록을 다시 받는다
+      if (err.code === "FORBIDDEN" || err.code === "ALREADY_CLAIMED") loadCandidates();
+    } finally {
+      claiming = false;
+      btn.style.opacity = "";
+    }
+  }
+
+  /** 다음 화면. 통과면 상세의 보관 방식에 따라 그 자리(item) / 보관처(item-handover) */
+  async function goNext(screen) {
+    if (screen === "pass") {
+      const d = await LostApi.detail();
+      location.href = d.storageType === "HANDED_OVER" ? "item-handover.html" : "item.html";
+    } else if (screen === "question") location.href = "question.html";
+    else if (screen === "fail") location.href = "fail.html";
+    else if (screen === "lock") location.href = "lock.html";
+    else if (screen === "counter") location.href = "counter.html";
+  }
+
+  async function loadCandidates(round = 0) {
+    try {
+      candidates = await LostApi.candidates(reportId);
+    } catch (err) {
+      if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+      candErr.textContent = LostApi.friendlyMessage(err);
+      candErr.hidden = false;
+      candidates = [];
+    }
+    renderCards(round);
   }
 
   function syncRefreshUI() {
@@ -297,23 +333,21 @@
   confirmRefreshBtn.addEventListener("click", () => {
     if (refreshLeft <= 0) return;
     refreshLeft -= 1;
-    candChances = [3, 3, 3];
     try {
       sessionStorage.setItem("refreshLeft", String(refreshLeft));
-      sessionStorage.setItem("candChances", JSON.stringify(candChances));
     } catch (_) {}
     refreshModal.classList.remove("is-open");
     syncRefreshUI();
 
-    const round = 5 - refreshLeft;
-    renderCards(round);
+    // GET /lost-reports/:id/candidates 다시
+    loadCandidates(5 - refreshLeft);
 
     candidateList.classList.remove("is-animating");
     void candidateList.offsetWidth;
     candidateList.classList.add("is-animating");
   });
 
-  renderCards(5 - refreshLeft);
+  if (authed && reportId) loadCandidates(5 - refreshLeft);
   syncRefreshUI();
 </script>
 </body>

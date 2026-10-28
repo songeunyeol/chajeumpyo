@@ -16,6 +16,7 @@
     <h2>알림</h2>
   </header>
   <h1>알림</h1>
+  <div id="alertList" style="display:flex;flex-direction:column">
   <a class="card" href="candidates.html">
     <h3>후보 3개</h3>
     <p class="meta">무선 이어폰 · 오늘 14:20</p>
@@ -24,6 +25,65 @@
     <h3>확인을 통과했어요</h3>
     <p class="meta">우산 · 10월 20일</p>
   </a>
+  </div>
 </main>
+<script src="api.js"></script>
+<script>
+  // GET /notifications. 누르면 읽음(PATCH /notifications/:id/read) 후 해당 신고의 후보로
+  const authed = LostApi.requireLogin();
+  const list = document.getElementById("alertList");
+  const TITLES = { NEW_CANDIDATE: "새 후보가 들어왔어요", CLAIM_LOCKED: "확인이 잠겼어요", MULTI_REVEAL: "알림", SYSTEM: "알림" };
+
+  function card(n) {
+    const a = document.createElement("a");
+    a.className = "card";
+    a.href = n.lostReportId ? "candidates.html" : "#";
+    const h3 = document.createElement("h3");
+    h3.textContent = TITLES[n.type] || "알림";
+    if (!n.readAt) {
+      const chip = document.createElement("span");
+      chip.className = "chip warn";
+      chip.style.marginLeft = "6px";
+      chip.textContent = "새 알림";
+      h3.appendChild(chip);
+    }
+    const msg = document.createElement("p");
+    msg.className = "meta";
+    msg.textContent = `${n.message} · ${LostApi.formatKst(n.createdAt)}`;
+    a.append(h3, msg);
+    a.addEventListener("click", async (e) => {
+      e.preventDefault();
+      if (!n.readAt) await LostApi.readNotification(n.id).catch(() => {});
+      if (n.lostReportId) {
+        LostApi.store.set(LostApi.KEYS.reportId, n.lostReportId);
+        location.href = "candidates.html";
+      }
+    });
+    return a;
+  }
+
+  if (authed) {
+    LostApi.notifications()
+      .then((r) => {
+        if (!r.notifications.length) {
+          const empty = document.createElement("div");
+          empty.className = "card";
+          empty.style.color = "var(--mute)";
+          empty.style.fontSize = "14px";
+          empty.textContent = "아직 알림이 없어요. 신고한 물건과 비슷한 물건이 들어오면 알려 줘요.";
+          list.replaceChildren(empty);
+        } else {
+          list.replaceChildren(...r.notifications.map(card));
+        }
+      })
+      .catch((err) => {
+        if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+        const box = document.createElement("div");
+        box.className = "card";
+        box.textContent = LostApi.friendlyMessage(err);
+        list.replaceChildren(box);
+      });
+  }
+</script>
 </body>
 </html>

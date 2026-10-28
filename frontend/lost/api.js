@@ -7,8 +7,9 @@
 //
 // API 주소 (배포에서도 안전하게):
 //   1) ?api=https://.../api/v1 로 한 번 주면 이 탭(sessionStorage)에서 기억한다 (found/api.js와 같은 키 "apiBase")
-//   2) 정적 개발 서버(5500 포트)로 열었으면 같은 호스트의 4100 포트 (휴대폰에서 PC IP로 열어도 맞게)
-//   3) 그 밖에는 같은 출처의 /api/v1 (배포)
+//   2) 포트가 붙은 주소(개발용 정적 서버: 5500, 8000 등)로 열었으면 같은 호스트의 4000 포트
+//      (백엔드 기본 PORT, found/api.js와 같음. 휴대폰에서 PC IP로 열어도 맞게)
+//   3) 포트 없는 주소(배포, https)는 같은 출처의 /api/v1
 (() => {
   // ── API 주소 ──────────────────────────────────────────────
   const params = new URLSearchParams(location.search);
@@ -19,10 +20,9 @@
   try {
     saved = sessionStorage.getItem("apiBase");
   } catch (_) {}
-  const DEV_STATIC_PORT = "5500";
-  const DEV_API_PORT = "4100";
+  const DEV_API_PORT = "4000";
   const defaultBase =
-    location.port === DEV_STATIC_PORT
+    location.port && location.port !== DEV_API_PORT
       ? `${location.protocol}//${location.hostname}:${DEV_API_PORT}/api/v1`
       : `${location.origin}/api/v1`;
   const API_BASE = (saved || defaultBase).replace(/\/+$/, "");
@@ -144,6 +144,72 @@
   const REPORT_STATUS_LABELS = { OPEN: "진행 중", RESOLVED: "찾음", CLOSED: "닫힘" };
   /** 보관 방식 (StorageType) */
   const STORAGE_TYPE_LABELS = { IN_PLACE: "그 자리에 둠", HANDED_OVER: "보관처에 맡김" };
+
+  /**
+   * 신고 화면에서 사람이 적은 물건 이름("에어팟", "검정 지갑")으로 종류를 미리 고른다. 못 고르면 null.
+   * 먼저 맞는 낱말이 이기므로 겹치는 낱말은 긴 쪽을 앞에 둔다 (이어폰 > 폰, 교통카드 > 카드).
+   * 서버로 보내기 전에 사람이 종류 선택칸에서 고칠 수 있다.
+   */
+  const CATEGORY_WORDS = [
+    ["이어폰", "EARPHONE"],
+    ["에어팟", "EARPHONE"],
+    ["버즈", "EARPHONE"],
+    ["헤드폰", "EARPHONE"],
+    ["스마트워치", "SMARTWATCH"],
+    ["애플워치", "SMARTWATCH"],
+    ["워치", "SMARTWATCH"],
+    ["학생증", "ID_CARD"],
+    ["신분증", "ID_CARD"],
+    ["면허증", "DRIVER_LICENSE"],
+    ["교통카드", "TRANSIT_CARD"],
+    ["체크카드", "PAYMENT_CARD"],
+    ["신용카드", "PAYMENT_CARD"],
+    ["카드", "OTHER_CARD"],
+    ["휴대폰", "PHONE"],
+    ["핸드폰", "PHONE"],
+    ["아이폰", "PHONE"],
+    ["갤럭시", "PHONE"],
+    ["폰", "PHONE"],
+    ["태블릿", "TABLET"],
+    ["아이패드", "TABLET"],
+    ["노트북", "LAPTOP"],
+    ["맥북", "LAPTOP"],
+    ["충전기", "CHARGER"],
+    ["보조배터리", "CHARGER"],
+    ["마우스", "CHARGER"],
+    ["키보드", "CHARGER"],
+    ["케이블", "CHARGER"],
+    ["지갑", "WALLET"],
+    ["가방", "BAG"],
+    ["백팩", "BAG"],
+    ["파우치", "BAG"],
+    ["모자", "HAT"],
+    ["패딩", "CLOTHING"],
+    ["후드", "CLOTHING"],
+    ["옷", "CLOTHING"],
+    ["목도리", "CLOTHING"],
+    ["교재", "BOOK"],
+    ["전공책", "BOOK"],
+    ["책", "BOOK"],
+    ["선글라스", "GLASSES"],
+    ["안경", "GLASSES"],
+    ["시계", "ACCESSORY"],
+    ["반지", "ACCESSORY"],
+    ["목걸이", "ACCESSORY"],
+    ["현금", "CASH"],
+    ["우산", "UMBRELLA"],
+    ["텀블러", "TUMBLER"],
+    ["물병", "TUMBLER"],
+    ["열쇠", "KEY"],
+    ["키링", "KEY"],
+    ["필통", "STATIONERY"],
+    ["펜", "STATIONERY"],
+  ];
+  const guessCategory = (text) => {
+    const t = String(text || "").replace(/\s+/g, "");
+    if (!t) return null;
+    return CATEGORY_WORDS.find(([w]) => t.includes(w))?.[1] || null;
+  };
 
   /** 화면 이름: 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름 (shared itemLabel) */
   const itemLabel = (category, sub) => (sub && SUB_CATEGORY_LABELS[sub]) || CATEGORY_LABELS[category] || "";
@@ -445,7 +511,7 @@
 
   // ── 사진 ─────────────────────────────────────────────────
   // 서명 URL(thumbnailUrl, imageUrl)은 백엔드 주소의 /files/... 이다. 화면과 백엔드 출처가 다르면
-  // (개발: 5500 ↔ 4100) helmet의 Cross-Origin-Resource-Policy: same-origin 때문에 <img src>가 막힐 수 있어,
+  // (개발: 5500 ↔ 4000) helmet의 Cross-Origin-Resource-Policy: same-origin 때문에 <img src>가 막힐 수 있어,
   // 그럴 때는 CORS fetch로 받아 blob URL로 바꾼다. 같은 출처(배포)면 그대로 쓴다.
   const apiOrigin = (() => {
     try {
@@ -500,6 +566,7 @@
     ERROR_MESSAGES,
     KEYS,
     itemLabel,
+    guessCategory,
     colorLabel: (c) => (c && COLOR_LABELS[c]) || "",
     /** "abcd@skuniv.ac.kr" → "ab***@skuniv.ac.kr" (인증 코드 화면, 내 정보) */
     maskEmail: (email) => {

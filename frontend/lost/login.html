@@ -47,6 +47,9 @@
     </a>
   </div>
 
+  <!-- [연결 추가] 체험 로그인 입구. 동의 화면(consent-social.html?demo=1)을 거쳐 POST /auth/demo -->
+  <p class="sublinks" style="margin-top:14px"><a id="demoLink" href="consent-social.html?demo=1">체험해 보기</a></p>
+
   <div class="dock">
     <button type="button" class="btn" id="loginBtn" style="position:relative;z-index:2;width:100%;cursor:pointer">로그인</button>
     <div class="signup-reveal" id="signupReveal">
@@ -54,7 +57,11 @@
     </div>
   </div>
 </main>
+<script src="api.js"></script>
 <script>
+  // 이미 로그인했으면 홈으로
+  if (LostApi.isLoggedIn()) location.replace("home.html");
+
   const loginScreen = document.getElementById("loginScreen");
   const emailInput = document.getElementById("loginEmail");
   const pwInput = document.getElementById("loginPw");
@@ -100,10 +107,24 @@
       }
       return;
     }
-    try {
-      sessionStorage.setItem("signupEmail", emailInput.value.trim());
-    } catch (_) {}
-    window.location.href = "home.html";
+    // POST /auth/login. 틀리면 401 (이메일·비밀번호 어느 쪽인지 알려 주지 않는다)
+    loginBtn.disabled = true;
+    LostApi.login(emailInput.value.trim(), pwInput.value)
+      .then(() => {
+        try {
+          sessionStorage.setItem("signupEmail", emailInput.value.trim());
+        } catch (_) {}
+        window.location.href = "home.html";
+      })
+      .catch((err) => {
+        loginErr.textContent =
+          err.code === "UNAUTHORIZED" ? "이메일 또는 비밀번호가 맞지 않아요." : LostApi.friendlyMessage(err);
+        loginErr.hidden = false;
+        if (err.code === "UNAUTHORIZED") openSignup();
+      })
+      .finally(() => {
+        loginBtn.disabled = false;
+      });
   });
 
   emailInput.addEventListener("input", () => {
@@ -121,7 +142,7 @@
   let movedDistance = 0;
 
   loginScreen.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("input, .social a, .back, #loginBtn, #signupReveal")) return;
+    if (e.target.closest("input, .social a, .sublinks a, .back, #loginBtn, #signupReveal")) return;
     dragStartY = e.clientY;
     dragStartProgress = currentProgress;
     movedDistance = 0;
