@@ -141,12 +141,13 @@ erDiagram
     PICKUP {
         uuid id PK
         uuid found_item_id FK
-        uuid user_id FK
-        enum method "CENTER_QR | SELF_REPORT | DEMO"
+        uuid user_id FK "IN_PERSON이면 null"
+        enum method "CENTER_QR | SELF_REPORT | IN_PERSON | DEMO"
         enum status "ISSUED | COMPLETED | EXPIRED"
         string qr_token_hash
         datetime qr_expires_at
         uuid processed_by_admin_id FK "nullable"
+        string verification_note "IN_PERSON 신분 확인 메모, 30일 뒤 삭제"
         datetime created_at
         datetime completed_at
         datetime purge_after
@@ -176,7 +177,7 @@ erDiagram
 | `lost_report` | 분실 신고 | 신고 설명도 같은 속성 체계로 추출·임베딩. 설명을 고치면 `description_hash`가 바뀐다 |
 | `match_attempt` | 일치 판정 시도 | 계정·습득물별 실패 횟수로 잠금 판단. 경계 판정이면 확인 질문을 여기 저장 |
 | `reveal_log` | 위치 열람 기록 | 상세 조회할 때마다 한 줄씩. 같은 시도로 여러 줄이 생기므로 `match_attempt_id`는 UNIQUE가 아니다 |
-| `pickup` | 수령 처리 | 물건당 여러 건 가능(QR 재발급). **완료는 물건당 1건** |
+| `pickup` | 수령 처리 | 물건당 여러 건 가능(QR 재발급). **완료는 물건당 1건**. 대면 확인 수령(`IN_PERSON`)은 계정 없이 처리 관리자·메모만 |
 | `notification` | 앱 내 알림 | 공개 정보만 담는다 |
 
 ## 4. 주요 규칙 (DB 수준)
@@ -190,6 +191,7 @@ erDiagram
   CREATE UNIQUE INDEX pickup_one_completed_per_item
     ON pickup (found_item_id) WHERE status = 'COMPLETED' AND method <> 'DEMO';
   ```
+- **대면 확인 수령** (#29 후속): `claim_locked_at`이 있는 보관 중 물건만. 계정 없는 수령은 대면 확인만, 대면 확인은 처리 관리자·메모 필수(CHECK 제약 `pickup_in_person_check`). 메모는 개인정보라 다른 수령 기록과 같이 `purge_after`(30일 뒤)에 지운다. `claim_locked_at`은 수령 뒤에도 남긴다(잠겼던 기록).
 - **QR 재발급**: 같은 사람이 새 QR을 받으면 그 사람의 이전 `ISSUED` 건을 `EXPIRED`로 바꾼다. 완료 처리는 트랜잭션 안에서 물건 상태까지 확인한다.
 - **보관처 필수**: Prisma는 CHECK 제약을 표현하지 못해 초기 마이그레이션 SQL 끝에 직접 넣었다.
   ```sql

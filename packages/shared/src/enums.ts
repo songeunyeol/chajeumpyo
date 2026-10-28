@@ -378,7 +378,7 @@ export const MatchResult = z.enum(["PASS", "BORDERLINE", "FAIL"]);
 export type MatchResult = z.infer<typeof MatchResult>;
 
 /** DEMO: 체험 계정의 수령. 시드 상태를 바꾸지 않고 "완료는 물건당 1건" 규칙에서도 빠진다. */
-export const PickupMethod = z.enum(["CENTER_QR", "SELF_REPORT", "DEMO"]);
+export const PickupMethod = z.enum(["CENTER_QR", "SELF_REPORT", "IN_PERSON", "DEMO"]);
 export type PickupMethod = z.infer<typeof PickupMethod>;
 
 export const PickupStatus = z.enum(["ISSUED", "COMPLETED", "EXPIRED"]);

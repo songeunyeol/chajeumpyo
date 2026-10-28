@@ -79,6 +79,8 @@ enum MatchResult {
 enum PickupMethod {
   CENTER_QR
   SELF_REPORT
+  /// 온라인 확인이 막힌 물건(#29)을 관리자가 신분을 직접 확인하고 내준 경우. 계정 없이 관리자 기록만 남는다
+  IN_PERSON
   DEMO
 }
 
@@ -292,14 +294,17 @@ model Pickup {
   id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   foundItem          FoundItem    @relation(fields: [foundItemId], references: [id])
   foundItemId        String       @map("found_item_id") @db.Uuid
-  user               User         @relation("PickupUser", fields: [userId], references: [id])
-  userId             String       @map("user_id") @db.Uuid
+  /// IN_PERSON이면 null (찾으러 온 사람의 계정을 모를 수 있음). 마이그레이션 SQL의 CHECK 제약
+  user               User?        @relation("PickupUser", fields: [userId], references: [id], onDelete: Restrict)
+  userId             String?      @map("user_id") @db.Uuid
   method             PickupMethod
   status             PickupStatus @default(ISSUED)
   qrTokenHash        String?      @map("qr_token_hash")
   qrExpiresAt        DateTime?    @map("qr_expires_at")
   processedBy        User?        @relation("PickupAdmin", fields: [processedByAdminId], references: [id])
   processedByAdminId String?      @map("processed_by_admin_id") @db.Uuid
+  /// IN_PERSON일 때 관리자가 남긴 신분 확인 메모 (개인정보). 수령 기록과 함께 30일 뒤 지운다 (F-12)
+  verificationNote   String?      @map("verification_note")
   createdAt          DateTime     @default(now()) @map("created_at")
   completedAt        DateTime?    @map("completed_at")
   purgeAfter         DateTime?    @map("purge_after")

@@ -42,6 +42,7 @@
 | 409 | `ALREADY_CLAIMED` | 이미 수령 완료된 물건 |
 | 409 | `ALREADY_ANSWERED` | 이미 답한 확인 질문 |
 | 409 | `INVALID_STORAGE_TYPE` | 보관 위치와 맞지 않는 수령 방식 |
+| 409 | `NOT_IN_PERSON_ITEM` | 대면 확인으로 넘어간 보관 중 물건이 아니라 대면 확인 수령을 할 수 없음 |
 | 410 | `QR_EXPIRED` | 수령 QR 만료 |
 | 413 | `IMAGE_TOO_LARGE` | 사진 용량 초과 |
 | 422 | `NO_OBJECT_DETECTED` | 사진에서 물건을 찾지 못함 |
@@ -83,6 +84,7 @@
 | GET | `/admin/found-items` | 관리자 | F-14 |
 | GET | `/admin/found-items/:id` | 관리자 | F-14 |
 | PATCH | `/admin/found-items/:id` | 관리자 | F-14 |
+| POST | `/admin/found-items/:id/in-person-pickup` | 관리자 | F-11, F-14 |
 | GET | `/admin/stats/hotspots` | 관리자 | F-15 |
 
 ---
@@ -442,6 +444,7 @@
 
 #### `GET /admin/found-items/:id` · 관리자
 공개·비공개 정보와 원본·공개본·후보용 블러본 사진 링크(10분), 시도·열람·수령 기록 전체. 수령·기한 만료로 지운 물건은 사진 링크가 `null`이다. 기록의 이메일은 가린다(`st****@skuniv.ac.kr`).
+- 수령 기록마다 처리 관리자(`processedByEmailMasked`, 가림)와 대면 확인 메모(`verificationNote`)가 있다. 대면 확인 수령은 계정이 없어 `emailMasked: null`.
 
 #### `PATCH /admin/found-items/:id` · 관리자
 검토 대기 습득물의 속성을 직접 고치고 `REGISTERED`로 바꾼다. 등록된 물건의 속성 수정에도 쓴다(상태는 그대로).
@@ -451,6 +454,20 @@
 ```json
 { "category": "UMBRELLA", "color": "BLACK", "features": [{ "key": "pattern", "value": "체크무늬" }], "title": "검정 체크무늬 우산", "status": "REGISTERED" }
 ```
+
+#### `POST /admin/found-items/:id/in-person-pickup` · 관리자
+모든 계정의 확인 실패가 10회에 닿아 온라인 확인이 막힌 물건(`claimLockedAt` 있음)을, 관리자가 찾으러 온 사람의 신분을 직접 확인하고 수령 완료로 바꾼다 (#29 후속).
+```json
+{ "verificationNote": "학생증 이름·학번 확인, 스티커 위치 설명 일치" }
+```
+```json
+{ "pickupId": "p_...", "method": "IN_PERSON", "status": "COMPLETED", "completedAt": "..." }
+```
+- 메모는 앞뒤 공백을 빼고 1~200자. 신분증 번호 전체는 적지 않는다. 어기면 `400`.
+- 처리 관리자·시각·메모를 수령 기록으로 남기고(계정 없음), 물건을 `CLAIMED`로 바꾼다. 다른 사람이 받아 둔 QR은 `EXPIRED`. 신고는 누구 것인지 몰라 그대로 둔다.
+- 완료 직후 사진·비공개 정보를 지우고, 기록(메모 포함)은 30일 뒤 지운다. 다른 수령과 같다.
+- `claimLockedAt`은 지우지 않고 그대로 둔다. 물건이 `CLAIMED`라 더 이상 판정·후보 대상이 아니고, "잠겼다가 대면으로 수령됨"을 관리자 화면과 통계에서 구분하는 기록으로 쓴다.
+- 관리 범위 밖이면 `403`, 이미 수령됐으면 `409 ALREADY_CLAIMED`, 잠기지 않았거나 보관 중(`REGISTERED`·`REVEALED`)이 아니면 `409 NOT_IN_PERSON_ITEM`. 같은 물건은 하나씩 처리해 동시에 눌러도 한 번만 완료된다.
 
 #### `GET /admin/stats/hotspots?from=2026-10-01&to=2026-10-31` · 관리자
 ```json
