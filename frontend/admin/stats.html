@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>분실 다발 통계 · 찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+</head>
+<body>
+<main class="screen">
+  <header class="bar"><a class="back" href="home.html">←</a><h2>통계</h2></header>
+  <h1>분실 다발</h1>
+  <p class="lead">언제, 어디서, 무엇을 많이 잃어버리는지 봐요.</p>
+  <div class="chips" id="ranges" style="margin-top:0"></div>
+  <div id="custom" style="display:none;margin-top:12px">
+    <label class="field"><span>시작</span><input type="date" id="from"></label>
+    <label class="field"><span>끝</span><input type="date" id="to"></label>
+    <button type="button" class="btn white" id="apply" style="width:100%;cursor:pointer">이 기간 보기</button>
+  </div>
+  <div class="banner" id="seed" style="display:none;margin-top:16px">시연용 시드 데이터로 센 결과예요.</div>
+  <div class="thanks-box" id="insight" style="margin-top:16px">불러오는 중…</div>
+  <div id="charts"></div>
+  <p class="note danger" id="error" role="alert" hidden></p>
+</main>
+<script src="admin.js"></script>
+<script>
+  AdminApi.requireLogin();
+  const { el } = AdminApi;
+  const ranges = document.getElementById("ranges");
+  const charts = document.getElementById("charts");
+  let active = 30;
+
+  function rangeButton(days, label) {
+    const button = el("button", {
+      type: "button",
+      class: "chip",
+      style: "border:0;cursor:pointer;background:var(--white);color:var(--ink)",
+      text: label,
+      onclick: () => {
+        active = days;
+        paintRanges();
+        AdminApi.show(document.getElementById("custom"), days === 0);
+        if (days !== 0) load(AdminApi.seoulDate(1 - days), AdminApi.seoulDate(0));
+      },
+    });
+    if (days === active) button.style.boxShadow = "inset 0 0 0 1.5px var(--green)";
+    return button;
+  }
+
+  function paintRanges() {
+    ranges.replaceChildren(
+      rangeButton(7, "최근 7일"),
+      rangeButton(30, "최근 30일"),
+      rangeButton(90, "최근 90일"),
+      rangeButton(0, "기간 직접"),
+    );
+  }
+
+  function bars(title, rows, labelOf) {
+    const max = Math.max(1, ...rows.map((row) => row.count));
+    const box = el("div", {}, el("p", { class: "section", text: title }));
+    if (!rows.length) {
+      box.append(el("p", { class: "note", text: "이 기간에는 기록이 없어요." }));
+      return box;
+    }
+    for (const row of rows) {
+      const width = Math.max(8, Math.round((row.count / max) * 100));
+      box.append(el("div", { style: "margin:0 0 10px" },
+        el("div", { style: "display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px" },
+          el("span", { text: labelOf(row) }),
+          el("span", { text: `${row.count}건`, style: "color:var(--mute)" })),
+        el("div", { style: "height:8px;border-radius:99px;background:var(--white)" },
+          el("div", { style: `width:${width}%;height:100%;border-radius:99px;background:var(--green)` }))));
+    }
+    return box;
+  }
+
+  async function load(from, to) {
+    AdminApi.showError(document.getElementById("error"));
+    let data;
+    try {
+      data = await AdminApi.hotspots({ from, to });
+    } catch (err) {
+      return AdminApi.showError(document.getElementById("error"), err);
+    }
+    document.getElementById("insight").textContent = data.topInsight;
+    AdminApi.show(document.getElementById("seed"), Boolean(data.isSeedData));
+    charts.replaceChildren(
+      bars("건물", data.byBuilding, (row) => row.building),
+      bars("시간", data.byHour, (row) => `${row.hour}시`),
+      bars("종류", data.byCategory, (row) => AdminApi.CATEGORY_LABELS[row.category] || row.category),
+    );
+  }
+
+  document.getElementById("apply").addEventListener("click", () => {
+    const from = document.getElementById("from").value;
+    const to = document.getElementById("to").value;
+    if (!from || !to || from > to) {
+      AdminApi.showError(document.getElementById("error"), "시작과 끝을 확인해 주세요.");
+      return;
+    }
+    load(from, to);
+  });
+
+  paintRanges();
+  load(AdminApi.seoulDate(-29), AdminApi.seoulDate(0));
+</script>
+</body>
+</html>

@@ -42,6 +42,7 @@
           <circle cx="208" cy="58" r="15" fill="#1c1915"/>
         </svg>
       </div>
+      <div class="map-box" id="handoverMap" aria-label="보관처 위치 지도"></div>
       <h1 id="itemTitle">무선 이어폰</h1>
       <table class="kv">
         <tr><th>주운 곳</th><td id="itemBuilding">혜인관</td></tr>
@@ -55,6 +56,7 @@
     </section>
   </div>
 </main>
+<script src="../naver-map.js"></script>
 <script>
   const viewport = document.getElementById("passToItemViewport");
   const barTitle = document.getElementById("barTitle");
@@ -69,6 +71,13 @@
       itemFallbackSvg.setAttribute("hidden", "");
     }
   } catch (_) {}
+
+  if (window.NaverCampusMap) {
+    window.NaverCampusMap.mount(document.getElementById("handoverMap"), {
+      buildingName: "혜인관",
+      caption: "서경대 혜인관 · 종합서비스센터"
+    });
+  }
 
   setTimeout(() => {
     viewport.classList.add("is-shifted");

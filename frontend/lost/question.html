@@ -24,6 +24,7 @@
     <div class="q-options" id="qOptions"></div>
   </section>
 </main>
+<script src="demo-store.js"></script>
 <script>
   const qStage = document.getElementById("qStage");
   const qStepChip = document.getElementById("qStepChip");
@@ -163,6 +164,19 @@
           };
           sessionStorage.setItem("lostReports", JSON.stringify([fallbackClosed]));
           sessionStorage.setItem("lostReport", JSON.stringify(fallbackClosed));
+        }
+        const closed = JSON.parse(sessionStorage.getItem("lostReport") || "null");
+        if (closed && window.ChajeumAlerts) {
+          window.ChajeumAlerts.push({
+            id: "al-pass-" + (closed.id || now),
+            type: "passed",
+            title: "확인을 통과했어요",
+            meta: [closed.item, closed.date].filter(Boolean).join(" · "),
+            href: `item.html?from=closed&id=${encodeURIComponent(closed.id || "")}`,
+            reportId: closed.id,
+            createdAt: now,
+            read: false
+          });
         }
       } catch (_) {}
       window.location.href = "item.html?passed=1";

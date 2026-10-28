@@ -16,14 +16,47 @@
     <h2>알림</h2>
   </header>
   <h1>알림</h1>
-  <a class="card" href="candidates.html">
-    <h3>후보 3개</h3>
-    <p class="meta">무선 이어폰 · 오늘 14:20</p>
-  </a>
-  <a class="card" href="item.html">
-    <h3>확인을 통과했어요</h3>
-    <p class="meta">우산 · 10월 20일</p>
-  </a>
+  <div id="alertList" style="display:flex;flex-direction:column;gap:10px"></div>
 </main>
+<script src="demo-store.js"></script>
+<script>
+  const alertList = document.getElementById("alertList");
+  const alerts = window.ChajeumAlerts.list()
+    .slice()
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const esc = window.ChajeumAlerts.esc;
+
+  if (alerts.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "card";
+    empty.style.color = "var(--mute)";
+    empty.style.fontSize = "14px";
+    empty.textContent = "아직 알림이 없어요.";
+    alertList.appendChild(empty);
+  } else {
+    alerts.forEach((item) => {
+      const link = document.createElement("a");
+      link.className = "card";
+      link.href = item.href || "home.html";
+      link.innerHTML = `
+        <h3>${esc(item.title)}</h3>
+        <p class="meta">${esc(item.meta)}${item.read ? "" : " · 새 알림"}</p>
+      `;
+      link.addEventListener("click", () => {
+        try {
+          const reports = JSON.parse(sessionStorage.getItem("lostReports") || "null");
+          const rep = Array.isArray(reports) ? reports.find((row) => row.id === item.reportId) : null;
+          if (rep) {
+            sessionStorage.setItem("activeReportId", rep.id);
+            sessionStorage.setItem("lostReport", JSON.stringify(rep));
+          }
+        } catch (_) {}
+      });
+      alertList.appendChild(link);
+    });
+  }
+
+  window.ChajeumAlerts.markAllRead();
+</script>
 </body>
 </html>

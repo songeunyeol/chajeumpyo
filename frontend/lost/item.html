@@ -107,7 +107,10 @@
   } catch (_) {}
 
   if (window.NaverCampusMap) {
-    window.NaverCampusMap.mount(document.getElementById("itemMapBox"), { buildingName });
+    window.NaverCampusMap.mount(document.getElementById("itemMapBox"), {
+      buildingName,
+      caption: `서경대 ${buildingName} · 그 자리 보관`
+    });
   }
 
   function updateExpireNote() {

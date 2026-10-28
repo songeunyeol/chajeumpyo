@@ -14,12 +14,23 @@
   <header class="bar"><a class="back" href="code.html">←</a></header>
   <h1>세 가지를 확인합니다</h1>
   <p class="lead">학교 이메일로 가입할 때 물어봐요.</p>
-  <div class="check"><span class="mark">✓</span><div><b>학교 이메일</b><p>가입과, 누가 가져갔는지만 적어요. 이름은 받지 않아요.</p></div></div>
-  <div class="check"><span class="mark">✓</span><div><b>위치</b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요.</p></div></div>
-  <div class="check"><span class="mark">✓</span><div><b>사진 외부 AI</b><p>종류와 색을 읽어요. 얼굴과 카드 번호는 보내기 전에 가려요.</p></div></div>
+  <div class="check"><span class="mark">✓</span><div><b>학교 이메일 <span class="meta" style="font-weight:400">(필수)</span></b><p>가입과, 누가 가져갔는지만 적어요. 이름은 받지 않아요.</p></div></div>
+  <div class="check" data-optional role="checkbox" aria-checked="true" tabindex="0"><span class="mark">✓</span><div><b>위치 <span class="meta" style="font-weight:400">(선택)</span></b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요.</p></div></div>
+  <div class="check"><span class="mark">✓</span><div><b>사진 외부 AI <span class="meta" style="font-weight:400">(필수)</span></b><p>종류와 색을 읽어요. 얼굴과 카드 번호는 보내기 전에 가려요.</p></div></div>
   <div class="dock">
     <a class="btn" href="home.html">동의하고 계속</a>
   </div>
 </main>
+<script>
+  const opt = document.querySelector("[data-optional]");
+  function toggle() {
+    const on = opt.getAttribute("aria-checked") !== "true";
+    opt.setAttribute("aria-checked", String(on));
+    opt.querySelector(".mark").style.opacity = on ? "1" : ".25";
+    try { sessionStorage.setItem("locationConsent", on ? "granted" : "denied"); } catch (_) {}
+  }
+  opt.addEventListener("click", toggle);
+  opt.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } });
+</script>
 </body>
 </html>

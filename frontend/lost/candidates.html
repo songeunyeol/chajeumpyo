@@ -14,6 +14,7 @@
   <header class="bar"><a class="back" href="home.html">←</a><h2>후보</h2></header>
   <h1 id="candHeading">비슷한 물건 3개</h1>
   <p class="lead">확인 전에는 사진이 모자이크로 가려져요.<br>일치하는 이유만 먼저 공개돼요.</p>
+  <button type="button" class="link-quiet" id="cancelReportBtn" style="margin:-6px 0 14px">이 분실 신고 취소</button>
 
   <div class="candidate-list is-animating" id="candidateList"></div>
 
@@ -35,7 +36,19 @@
       </div>
     </div>
   </div>
+
+  <div class="modal-backdrop" id="cancelModal" role="dialog" aria-modal="true" aria-labelledby="cancelModalTitle">
+    <div class="modal-card">
+      <h3 id="cancelModalTitle">이 분실 신고를 취소할까요?</h3>
+      <p id="cancelModalText">취소하면 홈의 진행 중 목록에서 빠지고, 이 후보도 더 이상 이어지지 않아요.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn gray" id="cancelKeepBtn">남겨 두기</button>
+        <button type="button" class="btn danger" id="cancelConfirmBtn">신고 취소</button>
+      </div>
+    </div>
+  </div>
 </main>
+<script src="demo-store.js"></script>
 <script>
   const candidateList = document.getElementById("candidateList");
   const refreshBtn = document.getElementById("refreshBtn");
@@ -315,6 +328,43 @@
 
   renderCards(5 - refreshLeft);
   syncRefreshUI();
+
+  const cancelReportBtn = document.getElementById("cancelReportBtn");
+  const cancelModal = document.getElementById("cancelModal");
+  const cancelModalText = document.getElementById("cancelModalText");
+  if (!lostReport || lostReport.status === "cancelled") {
+    cancelReportBtn.hidden = true;
+  } else {
+    cancelModalText.textContent = `${lostReport.item || "이 물건"} 신고를 취소하면 홈의 진행 중 목록에서 빠지고, 이 후보도 더 이상 이어지지 않아요.`;
+  }
+
+  cancelReportBtn.addEventListener("click", () => {
+    cancelModal.classList.add("is-open");
+  });
+  document.getElementById("cancelKeepBtn").addEventListener("click", () => {
+    cancelModal.classList.remove("is-open");
+  });
+  cancelModal.addEventListener("click", (e) => {
+    if (e.target === cancelModal) cancelModal.classList.remove("is-open");
+  });
+  document.getElementById("cancelConfirmBtn").addEventListener("click", () => {
+    if (!lostReport) return;
+    try {
+      const list = JSON.parse(sessionStorage.getItem("lostReports") || "null");
+      const next = Array.isArray(list)
+        ? list.map((item) => (
+          item.id === lostReport.id
+            ? { ...item, status: "cancelled", cancelledAt: Date.now() }
+            : item
+        ))
+        : list;
+      if (Array.isArray(next)) sessionStorage.setItem("lostReports", JSON.stringify(next));
+      sessionStorage.removeItem("activeReportId");
+      sessionStorage.removeItem("lostReport");
+      if (window.ChajeumAlerts) window.ChajeumAlerts.removeByReport(lostReport.id);
+    } catch (_) {}
+    window.location.href = "home.html";
+  });
 </script>
 </body>
 </html>

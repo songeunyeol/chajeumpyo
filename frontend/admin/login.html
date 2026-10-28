@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>관리자 로그인 · 찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+</head>
+<body>
+<form class="screen" id="form" novalidate>
+  <header class="bar"><a class="back" href="../index.html">←</a></header>
+  <h1>관리자 로그인</h1>
+  <p class="lead">보관처 관리자 계정으로 들어가요.</p>
+  <label class="field"><span>이메일</span><input type="email" id="email" placeholder="아이디@skuniv.ac.kr" autocomplete="username" required></label>
+  <label class="field"><span>비밀번호</span><input type="password" id="password" autocomplete="current-password" required></label>
+  <p class="note danger" id="error" role="alert" hidden></p>
+  <div class="dock">
+    <button type="submit" class="btn" id="submit" style="width:100%;cursor:pointer">로그인</button>
+    <button type="button" class="btn white" id="demoBtn" style="width:100%;cursor:pointer">시연으로 둘러보기</button>
+    <p class="note" style="text-align:center;margin-top:0">관리자 계정은 담당자가 따로 만들어 드려요. 시연은 서버 없이 예시 데이터로 움직여요.</p>
+  </div>
+</form>
+<script src="admin.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  // 같은 폴더의 화면으로만 돌아간다
+  const nextRaw = params.get("next") || "";
+  const next = /^[a-z-]+\.html(\?.*)?$/.test(nextRaw) && !nextRaw.startsWith("login.html") ? nextRaw : "home.html";
+  if (AdminApi.auth.get() && params.get("stay") !== "1") location.replace(next);
+
+  const form = document.getElementById("form");
+  const email = document.getElementById("email");
+  const password = document.getElementById("password");
+  const error = document.getElementById("error");
+  const submit = document.getElementById("submit");
+  let busy = false;
+
+  document.getElementById("demoBtn").addEventListener("click", () => {
+    AdminApi.startDemo();
+    location.replace(next);
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    if (!email.value.trim() || !password.value) {
+      AdminApi.showError(error, "이메일과 비밀번호를 넣어 주세요.");
+      (email.value.trim() ? password : email).focus();
+      return;
+    }
+    busy = true;
+    submit.textContent = "들어가는 중…";
+    AdminApi.showError(error);
+    try {
+      await AdminApi.login(email.value.trim(), password.value);
+      location.replace(next);
+    } catch (err) {
+      busy = false;
+      submit.textContent = "로그인";
+      AdminApi.showError(error, err.status === 401 ? "이메일이나 비밀번호가 맞지 않아요." : err);
+      password.select();
+    }
+  });
+</script>
+</body>
+</html>

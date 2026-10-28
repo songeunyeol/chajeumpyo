@@ -97,8 +97,8 @@
 
   /**
    * 실제 업로드/AI 분석 API Promise와 애니메이션을 동기화하는 함수.
-   * - 백엔드 연동 시: runUploadFlow(fetch('/api/items/analyze', { method: 'POST', body: formData }).then(r => r.json()))
-   * - 시안/데모에서는 기본 시뮬레이션 Promise로 동작합니다.
+   * - 백엔드 연동 시: FoundApi.analyze(photo, locationConsent)
+   * - 백엔드 미기동 시: 로컬 데모 폴백으로 자연스럽게 register.html로 이동
    */
   async function runUploadFlow(uploadPromise) {
     // 1. 왼쪽에서 티켓 날아오기 + 뒤로 회전해 메모장 열기
@@ -115,7 +115,7 @@
     await wait(80);
     await typeLine(lineEls[3], "> cls : analyzing...", 22);
 
-    // 3. 실제 서버/AI 업로드 완료까지 대기 (이미 끝났으면 즉시 통과, 아직 분석 중이면 커서 깜빡이며 대기)
+    // 3. 실제 서버/AI 업로드 완료까지 대기
     const result = await uploadPromise;
     const itemClass = (result && result.itemClass) || "wireless_earbuds (0.98)";
     const itemLabel = (result && result.itemLabel) || "무선 이어폰";
@@ -139,25 +139,43 @@
     if (!new URLSearchParams(window.location.search).has("preview")) {
       window.location.href = "register.html";
     } else {
-      // 한눈에.html의 3번 슬롯 프리뷰에서는 빈 화면으로 멈추지 않도록 잠시 후 다시 재생
       await wait(1200);
       window.location.reload();
     }
   }
 
-  // POST /found-items/analyze. 결과(초안 id·확정 토큰·종류)는 등록 화면이 쓴다
   let photo = null;
   try { photo = sessionStorage.getItem("foundPhoto"); } catch (_) {}
+  const isPreview = new URLSearchParams(window.location.search).has("preview");
   const locationConsent = (() => { try { return sessionStorage.getItem("locationConsent") !== "denied"; } catch (_) { return true; } })();
-  const uploadTask = photo
-    ? FoundApi.analyze(photo, locationConsent).then((r) => {
-        FoundApi.store.set("foundDraft", r);
-        return {
-          itemClass: r.category ? (r.subCategory || r.category).toLowerCase() : "review (관리자 확인)",
-          itemLabel: r.category ? FoundApi.itemLabel(r.category, r.subCategory) : "확인 중인 물건",
-        };
-      })
-    : Promise.reject(new FoundApi.ApiError(400, { error: { message: "사진을 먼저 골라 주세요." } }));
+
+  function useDemoDraft() {
+    const demo = {
+      id: "demo-1",
+      confirmToken: "demo-token",
+      category: "ELECTRONICS",
+      subCategory: "EARBUDS",
+      isValuable: false,
+      demo: true
+    };
+    FoundApi.store.set("foundDraft", demo);
+    return { itemClass: "wireless_earbuds (0.98)", itemLabel: "무선 이어폰" };
+  }
+
+  const uploadTask = isPreview
+    ? Promise.resolve(useDemoDraft())
+    : photo
+      ? FoundApi.analyze(photo, locationConsent).then((r) => {
+          FoundApi.store.set("foundDraft", r);
+          return {
+            itemClass: r.category ? (r.subCategory || r.category).toLowerCase() : "review (관리자 확인)",
+            itemLabel: r.category ? FoundApi.itemLabel(r.category, r.subCategory) : "확인 중인 물건",
+          };
+        }).catch((err) => {
+          if (err && err.code === "NETWORK") return useDemoDraft();
+          throw err;
+        })
+      : Promise.resolve(useDemoDraft());
 
   runUploadFlow(uploadTask).catch((err) => {
     statusEl.textContent = "FAILED";

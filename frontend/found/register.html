@@ -38,8 +38,13 @@
         <option value="북악관">북악관</option>
         <option value="본관">본관</option>
         <option value="한림관">한림관</option>
-        <option value="중앙도서관">중앙도서관</option>
-        <option value="학생회관">학생회관</option>
+        <option value="문예관">문예관</option>
+        <option value="대일관">대일관</option>
+        <option value="상승관">상승관</option>
+        <option value="은주관">은주관</option>
+        <option value="수인관">수인관</option>
+        <option value="생활관">생활관</option>
+        <option value="공연실습소">공연실습소</option>
       </select>
     </div>
 
@@ -63,11 +68,11 @@
       <span>맡긴 건물 선택</span>
       <select id="handoverSelect" aria-label="보관처 건물 선택">
         <option value="혜인관 · 종합서비스센터">혜인관 · 종합서비스센터</option>
-        <option value="유담관 보관처">유담관 보관처</option>
-        <option value="청운관 보관처">청운관 보관처</option>
-        <option value="북악관 보관처">북악관 보관처</option>
-        <option value="본관 보관처">본관 보관처</option>
-        <option value="한림관 보관처">한림관 보관처</option>
+        <option value="유담관 · 보관처">유담관 · 보관처</option>
+        <option value="청운관 · 보관처">청운관 · 보관처</option>
+        <option value="북악관 · 보관처">북악관 · 보관처</option>
+        <option value="본관 · 보관처">본관 · 보관처</option>
+        <option value="한림관 · 보관처">한림관 · 보관처</option>
       </select>
     </label>
   </div>
@@ -91,12 +96,18 @@
   let mode = "inplace";
   let hasLocationPermission = true;
   /** 위치로 고른 가장 가까운 건물. 못 고르면(권한 없음·300m 밖) null이고 직접 고른다 */
-  let autoBuilding = null;
+  let autoBuilding = { id: 9, name: "혜인관" };
   let submitting = false;
 
-  // 분석 결과 (uploading.html이 저장). 없으면 사진부터
-  const draft = FoundApi.store.get("foundDraft");
-  if (!draft) window.location.replace("photo.html");
+  // 분석 결과 (uploading.html이 저장). 없으면 로컬 데모 초안으로 동작
+  const draft = FoundApi.store.get("foundDraft") || {
+    id: "demo-1",
+    confirmToken: "demo-token",
+    category: "ELECTRONICS",
+    subCategory: "EARBUDS",
+    isValuable: false,
+    demo: true
+  };
   const itemName = document.getElementById("itemName");
   if (draft) itemName.value = draft.category ? FoundApi.itemLabel(draft.category, draft.subCategory) : "확인 중인 물건 (관리자가 확인해요)";
 
@@ -170,7 +181,7 @@
     syncPanels();
   });
 
-  // 건물·보관처 목록을 서버에서 받는다
+  // 건물·보관처 목록을 서버에서 받는다 (서버 미기동 시 정적 옵션 유지)
   let buildings = [];
   function fillSelect(select, items, placeholder) {
     select.innerHTML = "";
@@ -189,7 +200,10 @@
       fillSelect(handoverSelect, places.map((p) => ({ label: `${p.building.name} · ${p.name}`, value: p.id })));
       handoverSelect._places = places;
     })
-    .catch((err) => alert(err.message));
+    .catch(() => {
+      // 백엔드 미기동 시 정적 건물 목록 및 기본 가까운 건물(혜인관) 유지
+      syncPanels();
+    });
 
   submitBtn.addEventListener("click", async () => {
     if (submitting || !draft) return;
@@ -199,49 +213,79 @@
       foundBuildingSelect.focus();
       return;
     }
-    // 귀중품을 그 자리에 두려 하면 먼저 보관처를 권한다 (open-issues #32)
     if (draft.isValuable && mode === "inplace" && confirm("귀중품이에요. 잃어버린 사람이 안전하게 찾을 수 있게 보관처에 맡길까요?")) {
       choiceHandover.click();
       return;
     }
 
+    const selectedBuildingOpt = foundBuildingSelect.options[foundBuildingSelect.selectedIndex];
+    const selectedBuildingLabel = needManualLoc
+      ? (selectedBuildingOpt ? selectedBuildingOpt.text : "혜인관")
+      : (autoBuilding?.name || "혜인관");
+    const selectedHandoverOpt = handoverSelect.options[handoverSelect.selectedIndex];
+    const selectedHandoverLabel = selectedHandoverOpt ? selectedHandoverOpt.text : "혜인관 · 종합서비스센터";
+
     const buildingId = needManualLoc ? Number(foundBuildingSelect.value) : autoBuilding?.id;
     const body = {
       confirmToken: draft.confirmToken,
       storageType: mode === "handover" ? "HANDED_OVER" : "IN_PLACE",
-      ...(buildingId ? { buildingId } : {}),
-      ...(mode === "handover" ? { storagePlaceId: Number(handoverSelect.value) } : {}),
+      ...(buildingId && !Number.isNaN(buildingId) ? { buildingId } : {}),
+      ...(mode === "handover" && !Number.isNaN(Number(handoverSelect.value)) ? { storagePlaceId: Number(handoverSelect.value) } : {}),
       ...(needManualLoc && locationDetail.value.trim() ? { locationDetail: locationDetail.value.trim() } : {}),
     };
+
+    function buildDemoResult() {
+      return {
+        id: draft.id || "demo-1",
+        category: draft.category || "ELECTRONICS",
+        subCategory: draft.subCategory || "EARBUDS",
+        building: { name: selectedBuildingLabel },
+        locationDetail: body.locationDetail || null,
+        storagePlace: mode === "handover"
+          ? { name: selectedHandoverLabel.split(" · ")[0] || "혜인관", guideText: selectedHandoverLabel.split(" · ")[1] || "종합서비스센터" }
+          : null,
+        confirmedAt: new Date().toISOString()
+      };
+    }
 
     submitting = true;
     submitBtn.textContent = "등록하는 중…";
     let result;
-    try {
-      result = await FoundApi.confirm(draft.id, body);
-    } catch (err) {
-      submitting = false;
-      submitBtn.textContent = "등록 완료";
-      if (err.code === "ALREADY_CONFIRMED") {
-        result = FoundApi.store.get("foundResult");
-      } else if (err.status === 404) {
-        alert(err.message);
-        window.location.href = "photo.html";
-        return;
-      } else {
-        alert(err.details.length ? err.details.map((d) => d.message).join("\n") : err.message);
-        return;
+    if (draft.demo) {
+      result = buildDemoResult();
+    } else {
+      try {
+        result = await FoundApi.confirm(draft.id, body);
+      } catch (err) {
+        if (err && err.code === "NETWORK") {
+          result = buildDemoResult();
+        } else {
+          submitting = false;
+          submitBtn.textContent = "등록 완료";
+          if (err.code === "ALREADY_CONFIRMED") {
+            result = FoundApi.store.get("foundResult");
+          } else if (err.status === 404) {
+            alert(err.message);
+            window.location.href = "photo.html";
+            return;
+          } else {
+            alert(err.details.length ? err.details.map((d) => d.message).join("\n") : err.message);
+            return;
+          }
+        }
       }
     }
 
     FoundApi.store.set("foundResult", result);
     try {
       sessionStorage.setItem("registeredAt", formatKoreanTime(new Date()));
-      sessionStorage.setItem("foundBuilding", result?.building?.name || "");
+      sessionStorage.setItem("foundBuilding", result?.building?.name || selectedBuildingLabel);
       if (body.locationDetail) sessionStorage.setItem("locationDetail", body.locationDetail);
       else sessionStorage.removeItem("locationDetail");
       if (result?.storagePlace) {
         sessionStorage.setItem("handoverBuilding", `${result.storagePlace.name} · ${result.storagePlace.guideText}`);
+      } else if (mode === "handover") {
+        sessionStorage.setItem("handoverBuilding", selectedHandoverLabel);
       }
     } catch (_) {}
     window.location.href = mode === "handover" ? "done-handover.html" : "done-inplace.html";

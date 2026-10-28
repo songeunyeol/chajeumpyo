@@ -35,7 +35,7 @@
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
         </svg>
-        <span class="bell-dot" aria-hidden="true"></span>
+        <span class="bell-dot" id="bellDot" aria-hidden="true"></span>
       </a>
       <button type="button" class="icon-btn" id="settingsBtn" aria-label="설정 및 로그인 정보" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true">
@@ -52,7 +52,7 @@
       <div class="settings-user">
         <strong>김서경</strong>
         <p id="settingsEmail">ab***@skuniv.ac.kr</p>
-        <p>010-0000-0000</p>
+        <p id="settingsPhone">010-****-0000</p>
       </div>
       <a class="btn danger" href="login.html">로그아웃</a>
     </div>
@@ -70,7 +70,19 @@
   <div class="dock">
     <a class="btn" href="report.html">분실 신고하기</a>
   </div>
+
+  <div class="modal-backdrop" id="cancelModal" role="dialog" aria-modal="true" aria-labelledby="cancelModalTitle">
+    <div class="modal-card">
+      <h3 id="cancelModalTitle">이 분실 신고를 취소할까요?</h3>
+      <p id="cancelModalText">취소하면 진행 중 목록에서 빠지고, 후보는 더 이상 이어지지 않아요.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn gray" id="cancelKeepBtn">남겨 두기</button>
+        <button type="button" class="btn danger" id="cancelConfirmBtn">신고 취소</button>
+      </div>
+    </div>
+  </div>
 </main>
+<script src="demo-store.js"></script>
 <script>
   if (new URLSearchParams(location.search).get("demo") === "1") {
     document.getElementById("demo").hidden = false;
@@ -83,12 +95,30 @@
     return local.slice(0, 2) + "***@" + domain;
   }
 
+  function maskPhone(phone) {
+    const digits = String(phone || "").replace(/\D/g, "");
+    if (digits.length < 10) return "010-****-0000";
+    return `${digits.slice(0, 3)}-****-${digits.slice(-4)}`;
+  }
+
   try {
     const saved = sessionStorage.getItem("signupEmail");
     if (saved) {
       document.getElementById("settingsEmail").textContent = maskEmail(saved);
     }
+    const savedPhone = sessionStorage.getItem("signupPhone");
+    if (savedPhone) {
+      document.getElementById("settingsPhone").textContent = maskPhone(savedPhone);
+    }
   } catch (_) {}
+
+  function syncBell() {
+    const dot = document.getElementById("bellDot");
+    const tone = window.ChajeumAlerts ? window.ChajeumAlerts.unreadTone() : null;
+    dot.classList.toggle("is-on", Boolean(tone));
+    dot.classList.toggle("is-red", tone === "red");
+    dot.parentElement.setAttribute("aria-label", tone ? "알림, 읽지 않은 알림 있음" : "알림");
+  }
 
   const settingsBtn = document.getElementById("settingsBtn");
   const settingsPopover = document.getElementById("settingsPopover");
@@ -192,22 +222,30 @@
       activeListEl.appendChild(empty);
     } else {
       activeItems.forEach((rep) => {
-        const a = document.createElement("a");
-        a.className = "card glow-green";
-        a.href = "candidates.html";
+        const card = document.createElement("article");
+        card.className = "card glow-green";
         const metaParts = [rep.date, rep.timeRange].filter(Boolean).join(" ");
-        a.innerHTML = `
-          <h3>${rep.item}</h3>
-          <p class="meta">${metaParts}${rep.building ? " · " + rep.building : ""}</p>
-          <div class="chips"><span class="chip glow-green">진행 중</span><span class="chip">후보 3개</span></div>
+        const esc = window.ChajeumAlerts.esc;
+        card.innerHTML = `
+          <a href="candidates.html" class="card-open" style="display:block;color:inherit;text-decoration:none">
+            <h3>${esc(rep.item)}</h3>
+            <p class="meta">${esc(metaParts)}${rep.building ? " · " + esc(rep.building) : ""}</p>
+            <div class="chips"><span class="chip glow-green">진행 중</span><span class="chip">후보 3개</span></div>
+          </a>
+          <div class="card-foot" style="display:flex;justify-content:flex-end;margin-top:8px">
+            <button type="button" class="link-quiet" data-cancel="${esc(rep.id)}">신고 취소</button>
+          </div>
         `;
-        a.addEventListener("click", () => {
+        card.querySelector(".card-open").addEventListener("click", () => {
           try {
             sessionStorage.setItem("activeReportId", rep.id);
             sessionStorage.setItem("lostReport", JSON.stringify(rep));
           } catch (_) {}
         });
-        activeListEl.appendChild(a);
+        card.querySelector("[data-cancel]").addEventListener("click", () => {
+          openCancel(rep);
+        });
+        activeListEl.appendChild(card);
       });
     }
 
@@ -245,7 +283,48 @@
     }
   }
 
+  let pendingCancel = null;
+  const cancelModal = document.getElementById("cancelModal");
+  const cancelModalText = document.getElementById("cancelModalText");
+
+  function openCancel(rep) {
+    pendingCancel = rep;
+    cancelModalText.textContent = `${rep.item} 신고를 취소하면 진행 중 목록에서 빠지고, 후보는 더 이상 이어지지 않아요.`;
+    cancelModal.classList.add("is-open");
+  }
+
+  function closeCancel() {
+    pendingCancel = null;
+    cancelModal.classList.remove("is-open");
+  }
+
+  document.getElementById("cancelKeepBtn").addEventListener("click", closeCancel);
+  cancelModal.addEventListener("click", (e) => {
+    if (e.target === cancelModal) closeCancel();
+  });
+  document.getElementById("cancelConfirmBtn").addEventListener("click", () => {
+    if (!pendingCancel) return;
+    const targetId = pendingCancel.id;
+    try {
+      const next = loadReports().map((item) => (
+        item.id === targetId
+          ? { ...item, status: "cancelled", cancelledAt: Date.now() }
+          : item
+      ));
+      sessionStorage.setItem("lostReports", JSON.stringify(next));
+      if (sessionStorage.getItem("activeReportId") === targetId) {
+        sessionStorage.removeItem("activeReportId");
+        sessionStorage.removeItem("lostReport");
+      }
+      window.ChajeumAlerts.removeByReport(targetId);
+    } catch (_) {}
+    closeCancel();
+    renderHomeLists();
+    syncBell();
+  });
+
   renderHomeLists();
+  syncBell();
 
   // 닫힘 카드의 10분 열람 남은 시간을 1초마다 실시간 갱신 (10분 지나면 자동 닫힘)
   setInterval(() => {

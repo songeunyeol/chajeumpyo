@@ -1,11 +1,14 @@
 /**
- * 찾음표 네이버 지도 연동 모듈 (그 자리에 둠 화면용)
- * - 발급받은 네이버 지도 Client ID: n33l81gjaz
+ * 찾음표 캠퍼스 지도.
+ * 네이버 지도 키가 위성 타일을 열어 주면 그 화면을 쓰고,
+ * 인증이 막히면 같은 좌표의 위성 사진 위에 건물 핀을 올린다.
+ * Client ID: n33l81gjaz (공개 웹 키. Secret은 넣지 않는다.)
  */
 (function () {
   const DEFAULT_NAVER_MAP_KEY = "n33l81gjaz";
+  const SATELLITE_ZOOM = 18;
+  const TILE_SIZE = 256;
 
-  // 서경대학교 캠퍼스 건물 좌표 (backend/prisma/seed-data/buildings.json 기준)
   const CAMPUS_BUILDINGS = {
     "본관": { lat: 37.615438, lng: 127.012118 },
     "유담관": { lat: 37.615273, lng: 127.011721 },
@@ -19,9 +22,7 @@
     "은주관": { lat: 37.614623, lng: 127.013152 },
     "수인관": { lat: 37.613999, lng: 127.012994 },
     "생활관": { lat: 37.614615, lng: 127.011282 },
-    "공연실습소": { lat: 37.614379, lng: 127.011670 },
-    "중앙도서관": { lat: 37.615273, lng: 127.011721 },
-    "학생회관": { lat: 37.615177, lng: 127.014007 }
+    "공연실습소": { lat: 37.614379, lng: 127.011670 }
   };
 
   function getSavedKey() {
@@ -32,6 +33,8 @@
         localStorage.setItem("naverMapKey", qKey.trim());
         return qKey.trim();
       }
+      const saved = localStorage.getItem("naverMapKey");
+      if (saved) return saved.trim();
     } catch (_) {}
     return (window.NAVER_MAP_KEY || DEFAULT_NAVER_MAP_KEY || "").trim();
   }
@@ -45,17 +48,28 @@
         if (rep && rep.building && CAMPUS_BUILDINGS[rep.building]) bName = rep.building;
       }
     } catch (_) {}
+    if (bName.includes(" · ")) bName = bName.split(" · ")[0].trim();
     if (!bName || !CAMPUS_BUILDINGS[bName]) bName = "혜인관";
-
     const coords = CAMPUS_BUILDINGS[bName];
     return { buildingName: bName, lat: coords.lat, lng: coords.lng };
   }
 
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    }[ch]));
+  }
+
   function createMarkerHtml(buildingName) {
+    const safeName = esc(buildingName);
     return `
       <div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;pointer-events:none">
-        <div style="background:#1e5b3d;color:#fff;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,0.24);white-space:nowrap;margin-bottom:3px">${buildingName}</div>
-        <svg width="26" height="30" viewBox="0 0 28 32">
+        <div style="background:#1e5b3d;color:#fff;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,0.35);white-space:nowrap;margin-bottom:3px">${safeName}</div>
+        <svg width="26" height="30" viewBox="0 0 28 32" aria-hidden="true">
           <path d="M14 30 C5 20 1 14 1 11 A13 13 0 1 1 27 11 C27 14 23 20 14 30 Z" fill="#1e5b3d" stroke="#ffffff" stroke-width="2"/>
           <circle cx="14" cy="11" r="4.5" fill="#ffffff"/>
         </svg>
@@ -63,61 +77,71 @@
     `;
   }
 
+  function project(lng, lat, zoom) {
+    const n = 2 ** zoom;
+    const latRad = (lat * Math.PI) / 180;
+    const x = ((lng + 180) / 360) * n;
+    const y = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
+    return { x, y };
+  }
+
   function renderFallbackCampusMap(canvasEl, loc) {
-    const centerLat = loc.lat;
-    const centerLng = loc.lng;
-    const scaleX = 92000;
-    const scaleY = 112000;
-
-    const buildingRects = Object.entries(CAMPUS_BUILDINGS)
-      .slice(0, 13)
-      .map(([name, pos]) => {
-        const x = 180 + (pos.lng - centerLng) * scaleX;
-        const y = 88 - (pos.lat - centerLat) * scaleY;
-        const isTarget = name === loc.buildingName;
-        return `
-          <g transform="translate(${x.toFixed(1)}, ${y.toFixed(1)})">
-            <rect x="-22" y="-12" width="44" height="24" rx="5"
-              fill="${isTarget ? "#d8ece1" : "#f5f1e8"}"
-              stroke="${isTarget ? "#1e5b3d" : "#c9c0b1"}"
-              stroke-width="${isTarget ? "2" : "1.2"}"/>
-            <text x="0" y="4" text-anchor="middle" font-size="9.5" font-weight="${isTarget ? "700" : "500"}"
-              fill="${isTarget ? "#1e5b3d" : "#6f685e"}" font-family="Pretendard Variable, Pretendard, sans-serif">${name}</text>
-          </g>
-        `;
-      })
-      .join("");
-
     canvasEl.innerHTML = `
-      <svg viewBox="0 0 360 176" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="서경대학교 ${loc.buildingName} 위치 지도">
-        <rect width="360" height="176" fill="#e6e1d4"/>
-        <path d="M0 0 L360 0 L360 58 Q260 82 140 52 T0 70 Z" fill="#dce5d8" opacity="0.7"/>
-        <path d="M0 140 Q120 118 240 142 T360 130 L360 176 L0 176 Z" fill="#dce5d8" opacity="0.55"/>
-        <path d="M-10 124 Q95 92 180 88 T370 64" fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round"/>
-        <path d="M-10 124 Q95 92 180 88 T370 64" fill="none" stroke="#d5ccb9" stroke-width="1.2" stroke-dasharray="4 4"/>
-        <path d="M178 -10 L182 186" fill="none" stroke="#ffffff" stroke-width="8"/>
-        ${buildingRects}
-        <circle cx="180" cy="88" r="26" fill="rgba(30, 91, 61, 0.14)" stroke="rgba(30, 91, 61, 0.35)" stroke-width="1"/>
-        <g transform="translate(180, 84)">
-          <ellipse cx="0" cy="6" rx="7" ry="3" fill="rgba(28, 25, 21, 0.25)"/>
-          <path d="M0 4 C-9 -6 -13 -13 -13 -20 A13 13 0 1 1 13 -20 C13 -13 9 -6 0 4 Z" fill="#1e5b3d" stroke="#ffffff" stroke-width="2"/>
-          <circle cx="0" cy="-20" r="4.5" fill="#ffffff"/>
-        </g>
+      <svg viewBox="0 0 360 176" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="서경대학교 ${loc.buildingName} 위치">
+        <rect width="360" height="176" fill="#d7d2c6"/>
+        <text x="180" y="88" text-anchor="middle" font-size="13" fill="#6f685e" font-family="Pretendard Variable, Pretendard, sans-serif">${loc.buildingName}</text>
       </svg>
     `;
   }
 
-  function loadNaverSdk(key, onAuthFail) {
+  function renderSatelliteTiles(canvasEl, loc) {
+    const point = project(loc.lng, loc.lat, SATELLITE_ZOOM);
+    const originX = Math.floor(point.x) - 1;
+    const originY = Math.floor(point.y) - 1;
+    const cols = 3;
+    const rows = 3;
+    const px = (point.x - originX) * TILE_SIZE;
+    const py = (point.y - originY) * TILE_SIZE;
+    const tiles = [];
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const tx = originX + col;
+        const ty = originY + row;
+        const src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${SATELLITE_ZOOM}/${ty}/${tx}`;
+        tiles.push(
+          `<img alt="" draggable="false" width="${TILE_SIZE}" height="${TILE_SIZE}" style="position:absolute;left:${col * TILE_SIZE}px;top:${row * TILE_SIZE}px" src="${src}">`
+        );
+      }
+    }
+
+    canvasEl.innerHTML = `
+      <div class="sat-stage" role="img" aria-label="서경대학교 ${loc.buildingName} 위성 사진">
+        <div class="sat-layer" style="width:${cols * TILE_SIZE}px;height:${rows * TILE_SIZE}px;left:calc(50% - ${px}px);top:calc(42% - ${py}px)">
+          ${tiles.join("")}
+          <div class="sat-pin" style="left:${px}px;top:${py}px">${createMarkerHtml(loc.buildingName)}</div>
+        </div>
+        <span class="sat-attr">위성 · Esri</span>
+      </div>
+    `;
+
+    const images = [...canvasEl.querySelectorAll(".sat-layer img")];
+    let failed = 0;
+    images.forEach((img) => {
+      img.addEventListener("error", () => {
+        failed += 1;
+        if (failed >= images.length) renderFallbackCampusMap(canvasEl, loc);
+      });
+    });
+  }
+
+  function loadNaverSdk(key) {
     return new Promise((resolve, reject) => {
-      window.navermap_authFailure = function () {
-        if (onAuthFail) onAuthFail();
-      };
       if (window.naver && window.naver.maps && window.naver.maps.Map) {
-        return resolve();
+        resolve();
+        return;
       }
       const existing = document.getElementById("naver-map-sdk");
       if (existing) existing.remove();
-
       const script = document.createElement("script");
       script.id = "naver-map-sdk";
       script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(key)}`;
@@ -131,48 +155,30 @@
     });
   }
 
-  async function mount(containerEl, opts = {}) {
-    if (!containerEl) return;
-    const loc = resolveLocation(opts.buildingName);
+  function naverAuthFailed(canvasEl) {
+    return Boolean(canvasEl.querySelector('img[src*="auth_fail"], img[alt*="인증"]'));
+  }
 
-    containerEl.innerHTML = `
-      <div class="map-canvas" id="naverMapCanvas"></div>
-      <div class="map-badge-bar">
-        <span class="map-loc-pill"><i></i><span id="mapLocText">서경대 ${loc.buildingName} · 그 자리 보관</span></span>
-      </div>
-    `;
-
-    const canvasEl = containerEl.querySelector("#naverMapCanvas");
-    const apiKey = getSavedKey();
-
-    if (!apiKey || location.protocol === "file:") {
-      renderFallbackCampusMap(canvasEl, loc);
-      return;
-    }
-
-    let fallbackTriggered = false;
-    const triggerFallback = () => {
-      if (fallbackTriggered) return;
-      fallbackTriggered = true;
-      renderFallbackCampusMap(canvasEl, loc);
-    };
-
-    try {
-      await loadNaverSdk(apiKey, triggerFallback);
-      if (fallbackTriggered) return;
-
+  function mountNaverSatellite(canvasEl, loc) {
+    return new Promise((resolve, reject) => {
+      let failed = false;
+      window.navermap_authFailure = function () {
+        failed = true;
+        reject(new Error("NAVER_AUTH"));
+      };
       canvasEl.innerHTML = "";
       const center = new window.naver.maps.LatLng(loc.lat, loc.lng);
+      const satelliteType = window.naver.maps.MapTypeId && window.naver.maps.MapTypeId.SATELLITE;
       const map = new window.naver.maps.Map(canvasEl, {
         center,
-        zoom: 17,
-        minZoom: 15,
+        zoom: SATELLITE_ZOOM,
+        minZoom: 16,
         maxZoom: 19,
+        mapTypeId: satelliteType || window.naver.maps.MapTypeId.NORMAL,
         scaleControl: false,
         mapDataControl: false,
         logoControlOptions: { position: window.naver.maps.Position.TOP_LEFT }
       });
-
       new window.naver.maps.Marker({
         position: center,
         map,
@@ -183,15 +189,65 @@
         }
       });
 
-      const observer = new MutationObserver(() => {
-        if (canvasEl.querySelector('img[src*="auth_fail"]')) {
-          observer.disconnect();
-          triggerFallback();
+      const finish = (fromIdle) => {
+        if (failed || settled) return;
+        if (naverAuthFailed(canvasEl)) {
+          settled = true;
+          reject(new Error("NAVER_AUTH"));
+          return;
         }
-      });
-      observer.observe(canvasEl, { childList: true, subtree: true });
+        const hasTile = Boolean(canvasEl.querySelector("img, canvas"));
+        if (!fromIdle && !hasTile) {
+          settled = true;
+          reject(new Error("NAVER_EMPTY"));
+          return;
+        }
+        settled = true;
+        if (typeof map.autoResize === "function") map.autoResize();
+        const watch = new MutationObserver(() => {
+          if (naverAuthFailed(canvasEl)) {
+            watch.disconnect();
+            renderSatelliteTiles(canvasEl, loc);
+          }
+        });
+        watch.observe(canvasEl, { childList: true, subtree: true });
+        resolve(map);
+      };
+      let settled = false;
+      window.naver.maps.Event.once(map, "idle", () => finish(true));
+      window.setTimeout(() => finish(false), 1800);
+    });
+  }
+
+  async function mount(containerEl, opts = {}) {
+    if (!containerEl) return;
+    const loc = resolveLocation(opts.buildingName);
+    const caption = opts.caption || `서경대 ${loc.buildingName} · 그 자리 보관`;
+
+    containerEl.innerHTML = `
+      <div class="map-canvas" id="naverMapCanvas"></div>
+      <div class="map-badge-bar">
+        <span class="map-loc-pill"><i></i><span>${esc(caption)}</span></span>
+      </div>
+    `;
+    const canvasEl = containerEl.querySelector(".map-canvas");
+    const apiKey = getSavedKey();
+
+    renderSatelliteTiles(canvasEl, loc);
+    if (!apiKey || location.protocol === "file:") return;
+
+    const holder = document.createElement("div");
+    holder.className = "naver-holder";
+    holder.style.cssText = "position:absolute;inset:0;z-index:1";
+    canvasEl.appendChild(holder);
+
+    try {
+      await loadNaverSdk(apiKey);
+      await mountNaverSatellite(holder, loc);
+      const sat = canvasEl.querySelector(".sat-stage");
+      if (sat) sat.remove();
     } catch (_) {
-      triggerFallback();
+      holder.remove();
     }
   }
 

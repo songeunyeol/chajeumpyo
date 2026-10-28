@@ -14,6 +14,7 @@
   <header class="bar"><a class="back" href="candidates.html">←</a><h2>찾는 방법</h2></header>
   <h1>센터에서 확인해요</h1>
   <p class="lead">온라인 확인이 닫힌 물건이에요. 학생증을 가지고 가면 직원이 한 번 더 보고 돌려줘요.</p>
+  <div class="map-box" id="centerMap" aria-label="종합서비스센터 위치 지도"></div>
   <div class="card">
     <h3>종합서비스센터</h3>
     <p class="meta">혜인관</p>
@@ -22,5 +23,14 @@
     <a class="btn" href="candidates.html">후보로</a>
   </div>
 </main>
+<script src="../naver-map.js"></script>
+<script>
+  if (window.NaverCampusMap) {
+    window.NaverCampusMap.mount(document.getElementById("centerMap"), {
+      buildingName: "혜인관",
+      caption: "서경대 혜인관 · 종합서비스센터"
+    });
+  }
+</script>
 </body>
 </html>
