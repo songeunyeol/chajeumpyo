@@ -68,11 +68,17 @@
     box.classList.remove("is-sample", "show-reselect");
     box.classList.add("has-photo", "is-file");
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      try { sessionStorage.setItem("foundPhoto", reader.result); } catch (_) {}
+    // 휴대폰 사진은 수 MB라 sessionStorage(약 5MB)에 안 들어간다. 긴 변 1600px JPEG로 줄여서 둔다 (F-01)
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      try { sessionStorage.setItem("foundPhoto", canvas.toDataURL("image/jpeg", 0.85)); } catch (_) {}
     };
-    reader.readAsDataURL(file);
+    img.src = currentUrl;
   }
 
   function setSamplePhoto() {

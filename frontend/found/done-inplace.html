@@ -71,6 +71,23 @@
       document.getElementById("doneDetailRow").hidden = false;
     }
   } catch (_) {}
+  // 서버 등록 결과 (register.html이 저장): 주운 건물, 검토 대기·귀중품 안내
+  try {
+    const result = JSON.parse(sessionStorage.getItem("foundResult") || "null");
+    if (result) {
+      const table = document.querySelector("table.kv");
+      const row = table.insertRow(0);
+      row.innerHTML = "<th>주운 곳</th><td></td>";
+      row.cells[1].textContent = result.building ? result.building.name : "모름";
+      const notes = [result.message, result.handOverAdvice && result.handOverAdvice.message].filter(Boolean);
+      for (const text of notes) {
+        const p = document.createElement("p");
+        p.className = "note";
+        p.textContent = text;
+        table.after(p);
+      }
+    }
+  } catch (_) {}
 </script>
 </body>
 </html>
