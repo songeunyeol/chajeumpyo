@@ -14,6 +14,7 @@ import { hmac } from "../lib/hash";
 import { makePublicImage, makeThumbImage, normalizeImage } from "../lib/image";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
+import { premaskSafely } from "../privacy/premask";
 import { setFoundItemEmbedding } from "../repositories/embedding";
 import { storage } from "../storage";
 import { listStoragePlaces } from "./buildings";
@@ -120,7 +121,13 @@ export async function registerFoundItem(input: {
   }
 
   const original = await normalizeImage(input.image);
-  const analysis = await analyze(original);
+  // 얼굴·글자 영역을 먼저 가린 사본만 AI로 보내고 공개본·후보용 사본도 이것으로 만든다 (QA B3, T4).
+  // 가리기에 실패하면 원본을 보내지 않고 AI 없이 검토 대기로 저장한다. 원본은 관리자만 본다.
+  const masked = await premaskSafely(original);
+  if (masked && (masked.faces || masked.texts)) {
+    logger.info({ faces: masked.faces, texts: masked.texts }, "AI 전송 전 가림");
+  }
+  const analysis = masked ? await analyze(masked.image) : null;
   if (analysis && !analysis.extraction.hasObject) {
     throw new AppError("NO_OBJECT_DETECTED", "사진에서 물건을 찾지 못했어요. 물건이 잘 보이게 다시 찍어 주세요.");
   }
@@ -135,8 +142,8 @@ export async function registerFoundItem(input: {
     thumb: `found/${id}/thumb.jpg`,
   };
   const [publicImage, thumbImage] = await Promise.all([
-    makePublicImage(original, { sensitive, regions: ex?.sensitiveRegions ?? [] }),
-    makeThumbImage(original),
+    makePublicImage(masked?.image ?? original, { sensitive, regions: ex?.sensitiveRegions ?? [] }),
+    makeThumbImage(masked?.image ?? original),
   ]);
   await storage.put(keys.original, original, "image/jpeg");
   await storage.put(keys.public, publicImage, "image/jpeg");
