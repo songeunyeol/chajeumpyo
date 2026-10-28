@@ -184,6 +184,13 @@
                           },
                           "isSeed": {
                             "type": "boolean"
+                          },
+                          "claimLockedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
                           }
                         },
                         "required": [
@@ -196,7 +203,8 @@
                           "storageType",
                           "storagePlace",
                           "foundAt",
-                          "isSeed"
+                          "isSeed",
+                          "claimLockedAt"
                         ]
                       }
                     },
@@ -266,6 +274,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -455,6 +464,13 @@
                     },
                     "isSeed": {
                       "type": "boolean"
+                    },
+                    "claimLockedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
                     },
                     "categoryAlt": {
                       "type": [
@@ -680,6 +696,7 @@
                     "storagePlace",
                     "foundAt",
                     "isSeed",
+                    "claimLockedAt",
                     "categoryAlt",
                     "color",
                     "brand",
@@ -720,6 +737,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -788,6 +806,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -1124,6 +1143,13 @@
                     "isSeed": {
                       "type": "boolean"
                     },
+                    "claimLockedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
                     "categoryAlt": {
                       "type": [
                         "string",
@@ -1348,6 +1374,7 @@
                     "storagePlace",
                     "foundAt",
                     "isSeed",
+                    "claimLockedAt",
                     "categoryAlt",
                     "color",
                     "brand",
@@ -1388,6 +1415,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -1456,6 +1484,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -1524,6 +1553,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -1592,6 +1622,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -1817,6 +1848,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -1916,6 +1948,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -1984,6 +2017,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -2108,6 +2142,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -2292,6 +2327,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -2360,6 +2396,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -2428,6 +2465,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -2576,6 +2614,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -2742,6 +2781,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -2810,6 +2850,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -2924,6 +2965,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -3091,6 +3133,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -3298,6 +3341,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -3472,13 +3516,17 @@
                         "attemptsLeft": {
                           "type": "integer",
                           "minimum": 0
+                        },
+                        "inPersonOnly": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "attemptId",
                         "reused",
                         "result",
-                        "attemptsLeft"
+                        "attemptsLeft",
+                        "inPersonOnly"
                       ]
                     }
                   ]
@@ -3508,6 +3556,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -3576,6 +3625,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -3644,6 +3694,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -3691,7 +3742,7 @@
             }
           },
           "409": {
-            "description": "MATCH_LOCKED",
+            "description": "MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만",
             "content": {
               "application/json": {
                 "schema": {
@@ -3712,6 +3763,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -3780,6 +3832,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -3908,11 +3961,15 @@
                         "attemptsLeft": {
                           "type": "integer",
                           "minimum": 0
+                        },
+                        "inPersonOnly": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "result",
-                        "attemptsLeft"
+                        "attemptsLeft",
+                        "inPersonOnly"
                       ]
                     }
                   ]
@@ -3942,6 +3999,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -4010,6 +4068,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -4057,7 +4116,7 @@
             }
           },
           "409": {
-            "description": "ALREADY_ANSWERED",
+            "description": "ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감",
             "content": {
               "application/json": {
                 "schema": {
@@ -4078,6 +4137,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -4400,6 +4460,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -4468,6 +4529,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -4536,6 +4598,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -4604,6 +4667,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -4838,6 +4902,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -4906,6 +4971,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -4974,6 +5040,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -5204,6 +5271,9 @@
                           "locked": {
                             "type": "boolean"
                           },
+                          "inPersonOnly": {
+                            "type": "boolean"
+                          },
                           "isSeed": {
                             "type": "boolean"
                           }
@@ -5218,6 +5288,7 @@
                           "reasons",
                           "attemptsLeft",
                           "locked",
+                          "inPersonOnly",
                           "isSeed"
                         ]
                       }
@@ -5254,6 +5325,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -5322,6 +5394,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -5390,6 +5463,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -5581,6 +5655,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -5748,6 +5823,9 @@
                           "locked": {
                             "type": "boolean"
                           },
+                          "inPersonOnly": {
+                            "type": "boolean"
+                          },
                           "isSeed": {
                             "type": "boolean"
                           }
@@ -5762,6 +5840,7 @@
                           "reasons",
                           "attemptsLeft",
                           "locked",
+                          "inPersonOnly",
                           "isSeed"
                         ]
                       }
@@ -5796,6 +5875,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -5996,6 +6076,9 @@
                           "locked": {
                             "type": "boolean"
                           },
+                          "inPersonOnly": {
+                            "type": "boolean"
+                          },
                           "isSeed": {
                             "type": "boolean"
                           }
@@ -6010,6 +6093,7 @@
                           "reasons",
                           "attemptsLeft",
                           "locked",
+                          "inPersonOnly",
                           "isSeed"
                         ]
                       }
@@ -6046,6 +6130,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -6114,6 +6199,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -6182,6 +6268,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -6264,6 +6351,7 @@
                             "enum": [
                               "NEW_CANDIDATE",
                               "MULTI_REVEAL",
+                              "CLAIM_LOCKED",
                               "SYSTEM"
                             ]
                           },
@@ -6339,6 +6427,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -6436,6 +6525,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -6624,6 +6714,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -6692,6 +6783,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -6760,6 +6852,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -6895,6 +6988,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -6963,6 +7057,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -7154,6 +7249,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -7222,6 +7318,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -7290,6 +7387,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -7358,6 +7456,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -7483,6 +7582,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -7551,6 +7651,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -7619,6 +7720,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",
@@ -7687,6 +7789,7 @@
                             "NOT_FOUND",
                             "EMAIL_TAKEN",
                             "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
                             "ALREADY_CLAIMED",
                             "ALREADY_ANSWERED",
                             "INVALID_STORAGE_TYPE",

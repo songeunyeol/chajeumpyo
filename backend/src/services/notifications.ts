@@ -23,7 +23,7 @@ export async function adminsInChargeOf(storagePlaceId: number | null, db: Db = p
 export async function notifyUsers(
   userIds: string[],
   data: {
-    type: "NEW_CANDIDATE" | "MULTI_REVEAL" | "SYSTEM";
+    type: "NEW_CANDIDATE" | "MULTI_REVEAL" | "CLAIM_LOCKED" | "SYSTEM";
     message: string;
     foundItemId?: string;
     lostReportId?: string;

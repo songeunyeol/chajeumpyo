@@ -37,7 +37,8 @@
 | 403 | `FORBIDDEN` | 권한 없음 (일치 판정을 통과하지 않은 습득물 상세 조회, 후보가 아닌 습득물에 판정 시도, 다른 보관처 물건 수령 처리 등) |
 | 404 | `NOT_FOUND` | 대상 없음 |
 | 409 | `EMAIL_TAKEN` | 이미 가입된 이메일 (가입 단계에서 동시에 가입한 경우만. 코드 요청 단계에서는 쓰지 않는다) |
-| 409 | `MATCH_LOCKED` | 시도 횟수 초과로 잠김 |
+| 409 | `MATCH_LOCKED` | 이 계정의 시도 횟수(3회) 초과로 잠김 |
+| 409 | `IN_PERSON_REQUIRED` | 모든 계정의 실패가 10회가 되어 이 물건은 대면 확인만 됨 |
 | 409 | `ALREADY_CLAIMED` | 이미 수령 완료된 물건 |
 | 409 | `ALREADY_ANSWERED` | 이미 답한 확인 질문 |
 | 409 | `INVALID_STORAGE_TYPE` | 보관 위치와 맞지 않는 수령 방식 |
@@ -235,6 +236,7 @@
       "reasons": ["SAME_CATEGORY", "SAME_BUILDING", "FOUND_SOON_AFTER"],
       "attemptsLeft": 3,
       "locked": false,
+      "inPersonOnly": false,
       "isSeed": false
     }
   ]
@@ -308,15 +310,17 @@
 
 **실패**
 ```json
-{ "attemptId": "m_...", "result": "FAIL", "reused": false, "attemptsLeft": 2 }
+{ "attemptId": "m_...", "result": "FAIL", "reused": false, "attemptsLeft": 2, "inPersonOnly": false }
 ```
 
 - 점수 숫자는 응답에 넣지 않는다. 맞은 항목(`matchedFields`)은 **통과했을 때만** 보여준다. 실패·경계 응답에는 어떤 항목이 맞았는지 넣지 않는다.
 - `matchedFields` 값: `feature:<특징 key>`, `color`, `brand`, `place`(같은 건물), `time`(분실 후 24시간 안 습득).
 - 이미 통과한 물건은 다른 신고로 시도해도 그 결과를 `reused: true`로 돌려준다.
 - 경계인데 신고에 적지 않은 질문 가능한 특징이 없으면 실패로 처리한다(모순된 특징을 다시 묻지 않음).
-- 같은 계정·물건의 동시 요청은 하나씩 처리한다. 특징 대조 AI가 실패하면 `502 AI_UNAVAILABLE`(시도 기록 없음).
-- 계정·습득물별 실패 3회면 `409 MATCH_LOCKED`. (초안)
+- 같은 물건의 동시 요청은 계정이 달라도 하나씩 처리한다. 특징 대조 AI가 실패하면 `502 AI_UNAVAILABLE`(시도 기록 없음).
+- 계정·습득물별 실패 3회면 `409 MATCH_LOCKED`.
+- 물건 하나에 모든 계정의 실패(판정 실패 + 질문 오답)가 10회가 되면 그 물건은 대면 확인만 된다: 10번째 실패 응답은 `attemptsLeft: 0, inPersonOnly: true`, 이후 새 판정은 `409 IN_PERSON_REQUIRED`(AI 호출·시도 기록 없음). 맡은 관리자에게 `CLAIM_LOCKED` 알림을 한 번 보낸다. 이미 통과한 계정은 그대로 통과. 체험용 시드는 물건 단위로 막지 않는다. (#29)
+- 후보 목록의 `locked`는 이 계정이 횟수를 다 썼거나 대면 확인만 되는 물건이면 `true`, `inPersonOnly`는 대면 확인만 되는 물건.
 - 체험 계정이 시드가 아닌 습득물에 시도하면 `403 FORBIDDEN`.
 
 #### `POST /claims/:attemptId/answer` · 회원
@@ -326,9 +330,10 @@
 // 응답 200 (통과)
 { "result": "PASS", "foundItemId": "6a1f..." }
 // 응답 200 (실패)
-{ "result": "FAIL", "attemptsLeft": 1 }
+{ "result": "FAIL", "attemptsLeft": 1, "inPersonOnly": false }
 ```
 - 질문 하나당 답변은 한 번만 받는다. 이미 답한 시도면 `409 ALREADY_ANSWERED`.
+- 답하기 전에 물건이 대면 확인으로 넘어갔으면 `409 IN_PERSON_REQUIRED`(답 저장 안 함).
 - 답변은 1~50자. 넘으면 `400 VALIDATION_ERROR`.
 - 정답 판정: 문장부호·조사를 정리하고 질문에 나온 낱말을 뺀 뒤, 남은 낱말이 모두 저장 값의 낱말과 낱말 단위로 같고 2글자 이상 낱말이 있으면 정답(부분 문자열은 아님). 아니면 LLM이 `MATCH`/`NO_MATCH`로 판정한다(온도 0, 입력은 태그로 감싼 데이터, 지시 무시).
 
@@ -432,7 +437,7 @@
 ```
 
 #### `GET /admin/found-items?status=REVIEW&page=1` · 관리자
-습득물 목록. P0에서는 `REVIEW`(검토 대기) 확인용으로 쓴다. 20개씩 습득 시각 최신순, `total`과 상태별 개수(`counts`)를 함께 준다. 항목마다 AI가 만든 관리자용 제목(`title`, 비공개 정보 포함)과 층(`floor`)이 있다.
+습득물 목록. P0에서는 `REVIEW`(검토 대기) 확인용으로 쓴다. 20개씩 습득 시각 최신순, `total`과 상태별 개수(`counts`)를 함께 준다. 항목마다 AI가 만든 관리자용 제목(`title`, 비공개 정보 포함)과 층(`floor`)이 있다. 확인 실패가 쌓여 대면 확인만 되는 물건은 `claimLockedAt`(시각, 아니면 `null`)이 있다(목록·상세 모두, #29).
 - 관리 범위(open-issues #18 추천안): 경비실 관리자는 자기 보관처 물건만, 종합서비스센터 관리자와 보관처가 없는 관리자는 전체. 범위 밖 물건의 상세·수정은 `403`.
 
 #### `GET /admin/found-items/:id` · 관리자

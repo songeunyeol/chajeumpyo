@@ -3,8 +3,11 @@
 /** 후보 목록에 보여줄 최대 개수 (#6, QA B5: 상위 3개) */
 export const CANDIDATE_LIMIT = 3;
 
-/** 습득물 하나당 계정별 실패 허용 횟수 (F-08, 초안) */
+/** 습득물 하나당 계정별 실패 허용 횟수 (F-08) */
 export const MAX_FAILED_ATTEMPTS = 3;
+
+/** 습득물 하나당 모든 계정 실패 합계 한도. 닿으면 온라인 확인을 막고 대면 확인으로 (#29, open-issues #31) */
+export const MAX_ITEM_FAILED_ATTEMPTS = 10;
 
 /** 후보 고르기 점수 가중치. 합 = 1 (docs/matching-weights.md 시작값) */
 export const WEIGHTS = { attr: 0.4, place: 0.3, time: 0.2, emb: 0.1 } as const;

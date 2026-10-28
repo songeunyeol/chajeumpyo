@@ -384,5 +384,5 @@ export type PickupMethod = z.infer<typeof PickupMethod>;
 export const PickupStatus = z.enum(["ISSUED", "COMPLETED", "EXPIRED"]);
 export type PickupStatus = z.infer<typeof PickupStatus>;
 
-export const NotificationType = z.enum(["NEW_CANDIDATE", "MULTI_REVEAL", "SYSTEM"]);
+export const NotificationType = z.enum(["NEW_CANDIDATE", "MULTI_REVEAL", "CLAIM_LOCKED", "SYSTEM"]);
 export type NotificationType = z.infer<typeof NotificationType>;
