@@ -86,7 +86,7 @@
           sessionStorage.setItem("signupEmail", email);
         } catch (_) {}
         // 비밀번호는 동의 화면에서 가입할 때 보낸다. 이 탭에만 잠깐 두고 가입 직후 지운다
-        LostApi.store.set(LostApi.KEYS.signupPassword, pw);
+        LostApi.holdSignupPassword(pw);
         window.location.href = "code.html";
       })
       .catch((err) => {

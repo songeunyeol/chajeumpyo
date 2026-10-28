@@ -15,7 +15,7 @@
   <h1>세 가지를 확인합니다</h1>
   <p class="lead">구글, 카카오, 네이버로 가입할 때 물어봐요.</p>
   <div class="check" id="phoneCheck"><span class="mark">✓</span><div><b>전화번호</b><p>가입 뒤 한 번만 확인해요. 화면에는 가운데를 가려 보여요.</p></div></div>
-  <div class="check"><span class="mark">✓</span><div><b>위치</b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요.</p></div></div>
+  <div class="check is-toggle is-off" id="locConsent" role="checkbox" aria-checked="false" tabindex="0"><span class="mark">✓</span><div><b>위치 <span class="check-tag">(선택)</span></b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요. 누르면 동의해요.</p></div></div>
   <div class="check"><span class="mark">✓</span><div><b>사진 외부 AI</b><p>종류와 색을 읽어요. 얼굴과 카드 번호는 보내기 전에 가려요.</p></div></div>
   <p class="note danger" id="consentErr" hidden></p>
   <div class="dock">
@@ -36,6 +36,18 @@
     document.getElementById("phoneCheck").style.display = "none";
     document.querySelector("h1").textContent = "두 가지를 확인합니다";
   }
+  const locConsent = document.getElementById("locConsent");
+  const toggleLoc = () => {
+    const off = locConsent.classList.toggle("is-off");
+    locConsent.setAttribute("aria-checked", String(!off));
+  };
+  locConsent.addEventListener("click", toggleLoc);
+  locConsent.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleLoc();
+    }
+  });
   let busy = false;
   agreeBtn.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -48,7 +60,7 @@
     busy = true;
     consentErr.hidden = true;
     try {
-      await LostApi.demoLogin({ location: true });
+      await LostApi.demoLogin({ location: !locConsent.classList.contains("is-off") });
       location.replace("home.html");
     } catch (err) {
       consentErr.textContent = LostApi.friendlyMessage(err);

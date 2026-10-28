@@ -15,7 +15,7 @@
   <h1>세 가지를 확인합니다</h1>
   <p class="lead">학교 이메일로 가입할 때 물어봐요.</p>
   <div class="check"><span class="mark">✓</span><div><b>학교 이메일</b><p>가입과, 누가 가져갔는지만 적어요. 이름은 받지 않아요.</p></div></div>
-  <div class="check"><span class="mark">✓</span><div><b>위치</b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요.</p></div></div>
+  <div class="check is-toggle is-off" id="locConsent" role="checkbox" aria-checked="false" tabindex="0"><span class="mark">✓</span><div><b>위치 <span class="check-tag">(선택)</span></b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요. 누르면 동의해요.</p></div></div>
   <div class="check"><span class="mark">✓</span><div><b>사진 외부 AI</b><p>종류와 색을 읽어요. 얼굴과 카드 번호는 보내기 전에 가려요.</p></div></div>
   <p class="note danger" id="consentErr" hidden></p>
   <div class="dock">
@@ -25,10 +25,22 @@
 <script src="api.js"></script>
 <script>
   // POST /auth/signup: 인증 코드 화면이 저장한 verificationToken + 회원가입 화면이 잠깐 둔 비밀번호 + 동의
-  // 세 항목(이메일·위치·외부 AI)을 모두 보여 주고 한 번에 동의받으므로 위치도 true로 보낸다
+  // 이메일·외부 AI는 필수, 위치는 선택(처음엔 꺼 둠, 눌러야 동의). 위치 동의 여부를 그대로 보낸다 (QA B14·B15)
   const agreeBtn = document.getElementById("agreeBtn");
   const consentErr = document.getElementById("consentErr");
   if (!LostApi.store.get(LostApi.KEYS.verification)) location.replace("signup.html");
+  const locConsent = document.getElementById("locConsent");
+  const toggleLoc = () => {
+    const off = locConsent.classList.toggle("is-off");
+    locConsent.setAttribute("aria-checked", String(!off));
+  };
+  locConsent.addEventListener("click", toggleLoc);
+  locConsent.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleLoc();
+    }
+  });
   let busy = false;
   agreeBtn.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -36,14 +48,24 @@
     busy = true;
     consentErr.hidden = true;
     try {
-      await LostApi.signup({ password: LostApi.store.get(LostApi.KEYS.signupPassword) || "", location: true });
+      const password = LostApi.heldSignupPassword();
+      if (!password) {
+        consentErr.textContent = "가입 시간이 지났어요. 처음부터 다시 해 주세요.";
+        consentErr.hidden = false;
+        setTimeout(() => location.replace("signup.html"), 1800);
+        return;
+      }
+      await LostApi.signup({ password, location: !locConsent.classList.contains("is-off") });
       location.replace("home.html");
     } catch (err) {
       // INVALID_CODE: 인증이 10분 지났거나 이미 씀 → 가입을 처음부터
       consentErr.textContent =
         err.code === "INVALID_CODE" ? "인증 시간이 지났어요. 코드를 다시 받아 주세요." : LostApi.friendlyMessage(err);
       consentErr.hidden = false;
-      if (err.code === "INVALID_CODE") setTimeout(() => location.replace("signup.html"), 1800);
+      if (err.code === "INVALID_CODE") {
+        LostApi.dropSignupPassword();
+        setTimeout(() => location.replace("signup.html"), 1800);
+      }
     } finally {
       busy = false;
     }

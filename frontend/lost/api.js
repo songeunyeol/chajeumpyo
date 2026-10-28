@@ -289,7 +289,7 @@
   const KEYS = {
     auth: "lost.auth", // { accessToken, expiresAt, user: { id, email, role } }
     signupEmail: "lost.signupEmail", // 회원가입 → 인증 코드 화면
-    signupPassword: "lost.signupPassword", // 회원가입 → 동의 화면. 이 탭에만 잠깐 두고 가입 직후 지운다
+    signupPassword: "lost.signupPassword", // 회원가입 → 동의 화면. 이 탭에만 10분까지 두고, 가입·흐름 이탈 때 지운다
     verification: "lost.verification", // { verificationToken, expiresAt } 인증 코드 → 동의 화면
     reportDraft: "lost.reportDraft", // 신고 화면 ↔ 건물 화면 왕복
     reportId: "lost.reportId", // 지금 보고 있는 신고
@@ -298,6 +298,22 @@
     foundItemId: "lost.foundItemId", // 통과한 물건
     pickup: "lost.pickup", // 마지막 수령 응답 (PickupQrResponse/SelfPickupResponse)
   };
+
+  // ── 가입 중 비밀번호 ───────────────────────────────────────
+  // 회원가입 화면에서 받은 비밀번호를 동의 화면의 가입 요청까지 넘겨야 해서 이 탭(sessionStorage)에 잠깐 둔다.
+  // 오래 남지 않게 10분이 지나면 버리고, 가입 흐름(회원가입·인증 코드·동의) 밖 화면을 열면 바로 지운다.
+  const SIGNUP_PASSWORD_TTL_MS = 10 * 60_000;
+  const holdSignupPassword = (password) => store.set(KEYS.signupPassword, { password, at: Date.now() });
+  const dropSignupPassword = () => store.set(KEYS.signupPassword, null);
+  function heldSignupPassword() {
+    const v = store.get(KEYS.signupPassword);
+    if (!v?.password || Date.now() - v.at > SIGNUP_PASSWORD_TTL_MS) {
+      dropSignupPassword();
+      return null;
+    }
+    return v.password;
+  }
+  if (!/\/(signup|code|consent-mail)\.html$/.test(location.pathname)) dropSignupPassword();
 
   // ── 로그인 상태 ───────────────────────────────────────────
   /**
@@ -568,6 +584,9 @@
     STORAGE_TYPE_LABELS,
     ERROR_MESSAGES,
     KEYS,
+    holdSignupPassword,
+    heldSignupPassword,
+    dropSignupPassword,
     itemLabel,
     guessCategory,
     colorLabel: (c) => (c && COLOR_LABELS[c]) || "",
