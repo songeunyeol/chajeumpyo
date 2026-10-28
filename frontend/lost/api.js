@@ -355,6 +355,36 @@
   function setCaptchaProvider(fn) {
     captchaProvider = typeof fn === "function" ? fn : () => DEV_CAPTCHA_TOKEN;
   }
+  /**
+   * 화면에 Turnstile 위젯을 그리고 그 action의 요청에 토큰을 붙인다. ../found/captcha.js를 먼저 불러야 한다.
+   * 서버가 off면 위젯 없이 개발용 토큰을 보낸다. 토큰은 한 번만 쓸 수 있어 보낸 뒤 위젯을 reset해 새로 받는다.
+   * @returns {Promise<{ mode: string, reset(): void } | null>} 위젯을 못 그리면 null (화면이 안내하고 다시 부른다)
+   */
+  async function useCaptcha(container, action, { onError } = {}) {
+    if (!window.FoundCaptcha) return null;
+    let cap;
+    try {
+      cap = await window.FoundCaptcha.mount(container, {
+        action,
+        getConfig: () => window.LostApi.config(),
+        persist: false,
+        onError,
+      });
+    } catch (_) {
+      return null;
+    }
+    if (cap.mode !== "turnstile") return cap;
+    const previous = captchaProvider;
+    setCaptchaProvider(async (a) => {
+      if (a !== action) return previous(a);
+      await cap.ready();
+      const t = cap.token();
+      cap.reset();
+      return t;
+    });
+    return cap;
+  }
+
   async function captchaHeader(action) {
     const token = await captchaProvider(action);
     return { "X-Captcha-Token": token || "" };
@@ -606,6 +636,7 @@
     mask,
     onLog,
     setCaptchaProvider,
+    useCaptcha,
     CAPTCHA_ACTIONS,
 
     // 시간

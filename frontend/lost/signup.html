@@ -30,16 +30,38 @@
   <p class="note danger" id="signupErr" hidden style="margin-top:-6px;margin-bottom:4px"></p>
 
   <div class="dock">
+    <div id="captchaBox"></div>
     <button type="button" class="btn" id="signupBtn" style="width:100%;cursor:pointer">코드 받기</button>
   </div>
 </main>
 <script src="api.js"></script>
+<script src="../found/captcha.js"></script>
 <script>
   const emailInput = document.getElementById("signupEmail");
   const pwInput = document.getElementById("signupPw");
   const pwConfirmInput = document.getElementById("signupPwConfirm");
   const signupErr = document.getElementById("signupErr");
   const signupBtn = document.getElementById("signupBtn");
+
+  // 사람 확인(Turnstile): 서버가 turnstile이면 위젯을 그리고 이 요청(action "email-code")에 토큰을 붙인다. off면 개발용 토큰
+  let captcha = null;
+  const mountCaptcha = () =>
+    LostApi.useCaptcha(document.getElementById("captchaBox"), "email-code", {
+      onError: () => {
+        signupErr.textContent = "사람인지 확인하지 못했어요. 잠시 후 다시 눌러 주세요.";
+        signupErr.hidden = false;
+      },
+    }).then((c) => (captcha = c));
+  let captchaReady = mountCaptcha();
+  /** 위젯이 없으면 한 번 다시 그려 본다. 그래도 없으면 CAPTCHA_FAILED로 실패 */
+  async function captchaOk() {
+    await captchaReady;
+    if (!captcha) {
+      captchaReady = mountCaptcha();
+      await captchaReady;
+    }
+    if (!captcha) throw new LostApi.ApiError(400, { error: { code: "CAPTCHA_FAILED", message: "사람인지 확인하지 못했어요. 잠시 후 다시 눌러 주세요." } });
+  }
 
   function clearErrors() {
     emailInput.classList.remove("is-invalid");
@@ -80,7 +102,8 @@
     // POST /auth/email/code. 캡차: 지금은 LostApi 기본 dev-pass.
     // PR #47 머지 후 이 화면에 found/captcha.js 위젯(action "email-code")을 붙이고 LostApi.setCaptchaProvider로 넘긴다
     signupBtn.disabled = true;
-    LostApi.requestCode(email)
+    captchaOk()
+      .then(() => LostApi.requestCode(email))
       .then(() => {
         try {
           sessionStorage.setItem("signupEmail", email);

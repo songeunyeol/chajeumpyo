@@ -208,6 +208,29 @@ describe("기준 5-1. 다른 화면(action)에서 받은 토큰은 막는다", (
   });
 });
 
+describe("기준 5-1b. Cloudflare 테스트 키 결과(action 없음)", () => {
+  const demo = () =>
+    request(app).post("/api/v1/auth/demo").set("X-Captcha-Token", "t").send({ consent: demoConsent() });
+
+  it("production이 아니면 action 확인을 건너뛰어 로컬에서 흐름을 확인할 수 있다", async () => {
+    captchaOn({ success: true, hostname: "test.local", testingKey: true });
+    expect((await demo()).status).toBe(201);
+  });
+
+  it("production에서는 테스트 키 결과라도 action이 없으면 막는다", async () => {
+    const original = env.NODE_ENV;
+    env.NODE_ENV = "production";
+    try {
+      captchaOn({ success: true, hostname: "test.local", testingKey: true });
+      const res = await demo();
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("CAPTCHA_FAILED");
+    } finally {
+      env.NODE_ENV = original;
+    }
+  });
+});
+
 describe("기준 5-2. 우리 사이트가 아닌 곳에서 받은 토큰은 막는다", () => {
   it("hostname이 PUBLIC_BASE_URL과 다르면 400, 같으면 통과", async () => {
     env.PUBLIC_BASE_URL = "https://chajeumpyo.example.com";

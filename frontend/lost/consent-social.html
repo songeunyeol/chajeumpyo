@@ -19,15 +19,16 @@
   <div class="check"><span class="mark">✓</span><div><b>사진 외부 AI</b><p>종류와 색을 읽어요. 얼굴과 카드 번호는 보내기 전에 가려요.</p></div></div>
   <p class="note danger" id="consentErr" hidden></p>
   <div class="dock">
+    <div id="captchaBox"></div>
     <a class="btn" id="agreeBtn" href="home.html">동의하고 계속</a>
   </div>
 </main>
 <script src="api.js"></script>
+<script src="../found/captcha.js"></script>
 <script>
   // 간편 로그인(구글·카카오·네이버)은 백엔드에 없다. 이 화면은 지금 체험 로그인(?demo=1) 동의로 쓴다.
   // 체험 계정은 이메일을 받지 않으므로 전화번호 항목을 숨기고, 위치·외부 AI 동의로 POST /auth/demo
-  // 캡차: 지금은 LostApi 기본 dev-pass. PR #47 머지 후 이 화면에 found/captcha.js 위젯(action "demo-login")을 붙이고
-  // LostApi.setCaptchaProvider로 넘긴다
+  // 캡차: found/captcha.js 위젯(action "demo-login"). 체험(?demo=1)일 때만 그린다
   const isDemo = new URLSearchParams(location.search).get("demo") === "1";
   const agreeBtn = document.getElementById("agreeBtn");
   const consentErr = document.getElementById("consentErr");
@@ -48,6 +49,16 @@
       toggleLoc();
     }
   });
+  let captcha = null;
+  let captchaReady = Promise.resolve();
+  const mountCaptcha = () =>
+    LostApi.useCaptcha(document.getElementById("captchaBox"), "demo-login", {
+      onError: () => {
+        consentErr.textContent = "사람인지 확인하지 못했어요. 잠시 후 다시 눌러 주세요.";
+        consentErr.hidden = false;
+      },
+    }).then((c) => (captcha = c));
+  if (isDemo) captchaReady = mountCaptcha();
   let busy = false;
   agreeBtn.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -60,6 +71,12 @@
     busy = true;
     consentErr.hidden = true;
     try {
+      await captchaReady;
+      if (!captcha) {
+        captchaReady = mountCaptcha();
+        await captchaReady;
+      }
+      if (!captcha) throw new LostApi.ApiError(400, { error: { code: "CAPTCHA_FAILED", message: "사람인지 확인하지 못했어요. 잠시 후 다시 눌러 주세요." } });
       await LostApi.demoLogin({ location: !locConsent.classList.contains("is-off") });
       location.replace("home.html");
     } catch (err) {

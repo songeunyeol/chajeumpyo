@@ -2,11 +2,14 @@
 // GET /config가 turnstile일 때만 Cloudflare 스크립트를 부르고 위젯을 그린다. off(개발)면 아무것도 하지 않고,
 // 등록 요청은 api.js가 개발용 토큰("dev-pass")을 그대로 보낸다.
 // 받은 토큰은 sessionStorage(FoundApi.CAPTCHA_KEY)에 두고, 다음 화면(uploading.html)의 등록 요청이 꺼내 쓴다.
+// 잃어버린 사람 화면도 같은 모듈을 쓴다: mount(container, { action, getConfig: LostApi.config, persist: false })로 그리고
+// token()으로 바로 꺼내 쓴다(LostApi.useCaptcha). action은 서버가 경로별로 확인한다 (found-analyze, email-code, demo-login).
 (() => {
   const SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-  const OFF = { mode: "off", ready: () => Promise.resolve(), reset() {}, remove() {} };
+  const OFF = { mode: "off", ready: () => Promise.resolve(), token: () => null, reset() {}, remove() {} };
 
   function save(token) {
+    if (!window.FoundApi) return;
     try {
       if (token) sessionStorage.setItem(FoundApi.CAPTCHA_KEY, JSON.stringify({ token, at: Date.now() }));
       else sessionStorage.removeItem(FoundApi.CAPTCHA_KEY);
@@ -39,11 +42,15 @@
    * 의심스러울 때만 상자가 나타난다(appearance: interaction-only).
    * ready()는 위젯 오류(예: 도메인 미등록)나 30초 시간 초과면 실패(reject)한다. 화면은 버튼을 되돌리고 다시 누르게 한다.
    */
-  async function mount(container, { onError } = {}) {
-    const { captcha } = await FoundApi.config();
+  async function mount(
+    container,
+    { onError, action = "found-analyze", getConfig = () => window.FoundApi.config(), persist = true } = {},
+  ) {
+    const { captcha } = await getConfig();
     if (captcha.mode !== "turnstile" || !captcha.siteKey) return OFF;
+    const keep = persist ? save : () => {};
 
-    save(null); // 이전에 받은 토큰은 이미 썼을 수 있어 새로 받는다
+    keep(null); // 이전에 받은 토큰은 이미 썼을 수 있어 새로 받는다
     let token = null;
     let lastError = null; // 위젯이 오류 상태면 ready()는 기다리지 않고 바로 실패한다(클릭 전에 오류가 났을 때)
     let waiters = [];
@@ -54,7 +61,7 @@
     };
     const settle = (t) => {
       token = t;
-      save(t);
+      keep(t);
       if (t) {
         lastError = null;
         flush();
@@ -65,7 +72,7 @@
     container.replaceChildren(); // 다시 그릴 때 이전 위젯 자리를 비운다
     const widgetId = turnstile.render(container, {
       sitekey: captcha.siteKey,
-      action: "found-analyze",
+      action,
       appearance: "interaction-only",
       "refresh-expired": "auto",
       callback: (t) => settle(t),
@@ -81,6 +88,8 @@
 
     return {
       mode: "turnstile",
+      /** 지금 가진 토큰(한 번 쓰면 서버에서 무효). 쓰고 나면 reset()으로 새로 받는다 */
+      token: () => token,
       ready(timeoutMs = READY_TIMEOUT_MS) {
         if (token) return Promise.resolve();
         if (lastError) return Promise.reject(lastError);
