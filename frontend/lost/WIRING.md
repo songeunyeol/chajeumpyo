@@ -10,7 +10,7 @@
 - 오류는 `LostApi.ApiError`(`status`, `code`, `message`, `details`). 화면 문구는 `LostApi.friendlyMessage(e)`. `401`이면 토큰이 이미 지워져 있으니 `login.html`로.
 - 화면 사이 값은 `LostApi.store` + `LostApi.KEYS`(sessionStorage). 예전 시안 키(`lostReports`, `candChances`, `quizChance`, `foundPhoto` 등)는 더 이상 읽지 않는다. `signupEmail`, `refreshLeft`, `lostReport`(올리는 중 화면 문구)만 남아 있다.
 - 서버 값은 `textContent`로만 넣는다 (innerHTML 금지).
-- 캡차: `POST /auth/email/code`(signup.html·code.html 다시 보내기)와 `POST /auth/demo`(consent-social.html?demo=1)에 붙는다. 지금은 LostApi 기본값 `"dev-pass"`(백엔드 `CAPTCHA_MODE=off`에서만 통과). **PR #47 머지 후**: 두 화면에 `frontend/found/captcha.js` 위젯을 붙이고 `LostApi.config()` → `cfg.captcha.mode === "turnstile"`이면 `LostApi.setCaptchaProvider(() => 위젯 토큰)`. 실패는 `400 CAPTCHA_FAILED` → 위젯 reset.
+- 캡차: `POST /auth/email/code`(signup.html·code.html 다시 보내기, action `email-code`)와 `POST /auth/demo`(consent-social.html?demo=1, action `demo-login`)에 붙는다. provider 함수는 action 이름을 받는다. 지금은 LostApi 기본값 `"dev-pass"`(백엔드 `CAPTCHA_MODE=off`에서만 통과). **PR #47 머지 후**: 두 화면에 `frontend/found/captcha.js` 위젯을 붙이고 `LostApi.config()` → `cfg.captcha.mode === "turnstile"`이면 `LostApi.setCaptchaProvider(() => 위젯 토큰)`. 실패는 `400 CAPTCHA_FAILED` → 위젯 reset.
 - `building`은 어디서나 `null`일 수 있다. 후보에는 층이 없다(상세에서만).
 
 ## 화면별

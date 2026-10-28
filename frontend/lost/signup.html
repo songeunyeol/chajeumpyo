@@ -77,7 +77,8 @@
       return;
     }
 
-    // POST /auth/email/code (캡차: 지금은 LostApi 기본 dev-pass. PR #47 머지 후 Turnstile 위젯을 이 화면에 붙인다)
+    // POST /auth/email/code. 캡차: 지금은 LostApi 기본 dev-pass.
+    // PR #47 머지 후 이 화면에 found/captcha.js 위젯(action "email-code")을 붙이고 LostApi.setCaptchaProvider로 넘긴다
     signupBtn.disabled = true;
     LostApi.requestCode(email)
       .then(() => {

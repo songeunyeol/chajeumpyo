@@ -26,7 +26,8 @@
 <script>
   // 간편 로그인(구글·카카오·네이버)은 백엔드에 없다. 이 화면은 지금 체험 로그인(?demo=1) 동의로 쓴다.
   // 체험 계정은 이메일을 받지 않으므로 전화번호 항목을 숨기고, 위치·외부 AI 동의로 POST /auth/demo
-  // 캡차: 지금은 LostApi 기본 dev-pass. PR #47 머지 후 Turnstile 위젯을 이 화면에 붙이고 setCaptchaProvider로 넘긴다
+  // 캡차: 지금은 LostApi 기본 dev-pass. PR #47 머지 후 이 화면에 found/captcha.js 위젯(action "demo-login")을 붙이고
+  // LostApi.setCaptchaProvider로 넘긴다
   const isDemo = new URLSearchParams(location.search).get("demo") === "1";
   const agreeBtn = document.getElementById("agreeBtn");
   const consentErr = document.getElementById("consentErr");

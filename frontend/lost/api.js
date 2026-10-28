@@ -328,16 +328,19 @@
   }
 
   // ── 캡차 ─────────────────────────────────────────────────
-  // Turnstile을 붙이면 위젯 토큰을 돌려주는 함수를 끼운다. 예:
-  //   LostApi.setCaptchaProvider(() => turnstile.getResponse(widgetId));
-  // 함수는 문자열 또는 Promise<문자열>을 돌려준다. 기본은 개발용 "dev-pass".
+  // Turnstile을 붙이면 위젯 토큰을 돌려주는 함수를 끼운다. 함수는 action 이름을 받는다.
+  // 서버(PR #47)는 토큰의 action을 확인한다: 인증 코드 요청 "email-code", 체험 로그인 "demo-login"
+  // (습득물 등록은 found 쪽 "found-analyze"). 위젯을 그릴 때 같은 action을 넣어야 통과한다. 예:
+  //   LostApi.setCaptchaProvider((action) => turnstile.getResponse(widgetIdByAction[action]));
+  // 함수는 문자열 또는 Promise<문자열>을 돌려준다. 기본은 개발용 "dev-pass" (CAPTCHA_MODE=off에서만 통과).
+  const CAPTCHA_ACTIONS = { emailCode: "email-code", demoLogin: "demo-login" };
   let captchaProvider = () => DEV_CAPTCHA_TOKEN;
-  /** @param {() => string | Promise<string>} fn */
+  /** @param {(action: string) => string | Promise<string>} fn */
   function setCaptchaProvider(fn) {
     captchaProvider = typeof fn === "function" ? fn : () => DEV_CAPTCHA_TOKEN;
   }
-  async function captchaHeader() {
-    const token = await captchaProvider();
+  async function captchaHeader(action) {
+    const token = await captchaProvider(action);
     return { "X-Captcha-Token": token || "" };
   }
 
@@ -375,7 +378,7 @@
   // ── 요청 ─────────────────────────────────────────────────
   /**
    * @param {string} path /api/v1 뒤 경로
-   * @param {{ method?: string, body?: unknown, auth?: boolean, captcha?: boolean }} [opts]
+   * @param {{ method?: string, body?: unknown, auth?: boolean, captcha?: string }} [opts] captcha: 캡차 action 이름
    */
   async function call(path, opts = {}) {
     const method = opts.method || "GET";
@@ -385,7 +388,7 @@
       const s = session();
       if (s) headers.Authorization = `Bearer ${s.accessToken}`;
     }
-    if (opts.captcha) Object.assign(headers, await captchaHeader());
+    if (opts.captcha) Object.assign(headers, await captchaHeader(opts.captcha));
 
     const started = Date.now();
     let res;
@@ -584,6 +587,7 @@
     mask,
     onLog,
     setCaptchaProvider,
+    CAPTCHA_ACTIONS,
 
     // 시간
     kstParts,
@@ -609,7 +613,12 @@
     /** POST /auth/email/code (캡차). 204. 가입된 이메일도 204 (가입 여부를 드러내지 않음) */
     requestCode(email) {
       store.set(KEYS.signupEmail, String(email).trim().toLowerCase());
-      return call("/auth/email/code", { method: "POST", body: { email }, auth: false, captcha: true });
+      return call("/auth/email/code", {
+        method: "POST",
+        body: { email },
+        auth: false,
+        captcha: CAPTCHA_ACTIONS.emailCode,
+      });
     },
     /** POST /auth/email/verify → { verificationToken, expiresAt(10분) }. 저장해 두고 동의 화면에서 signup */
     async verifyCode(email, code) {
@@ -650,7 +659,7 @@
         await call("/auth/demo", {
           method: "POST",
           auth: false,
-          captcha: true,
+          captcha: CAPTCHA_ACTIONS.demoLogin,
           body: { consent: { version: CONSENT_VERSION, externalAi: true, location: !!location } },
         }),
       );

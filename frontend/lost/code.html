@@ -95,7 +95,7 @@
 
   resendBtn.addEventListener("click", async () => {
     if (isTransitioning) return;
-    // POST /auth/email/code 다시. 1분에 한 번만 된다 (429)
+    // POST /auth/email/code 다시. 1분에 한 번만 된다 (429). 캡차 action "email-code" (PR #47 머지 후 위젯 붙일 곳)
     resendBtn.disabled = true;
     try {
       await LostApi.requestCode(signupEmail);
