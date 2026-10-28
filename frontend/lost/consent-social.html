@@ -14,86 +14,60 @@
   <header class="bar"><a class="back" href="login.html">←</a></header>
   <h1>세 가지를 확인합니다</h1>
   <p class="lead">구글, 카카오, 네이버로 가입할 때 물어봐요.</p>
-  <div class="check"><span class="mark">✓</span><div><b>전화번호 <span class="meta" style="font-weight:400">(필수)</span></b><p>가입 뒤 한 번만 확인해요. 화면에는 가운데를 가려 보여요.</p></div></div>
-  <div class="check" data-optional role="checkbox" aria-checked="true" tabindex="0"><span class="mark">✓</span><div><b>위치 <span class="meta" style="font-weight:400">(선택)</span></b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요.</p></div></div>
-  <div class="check"><span class="mark">✓</span><div><b>사진 외부 AI <span class="meta" style="font-weight:400">(필수)</span></b><p>종류와 색을 읽어요. 얼굴과 카드 번호는 보내기 전에 가려요.</p></div></div>
+  <div class="check" id="phoneCheck"><span class="mark">✓</span><div><b>전화번호</b><p>가입 뒤 한 번만 확인해요. 화면에는 가운데를 가려 보여요.</p></div></div>
+  <div class="check is-toggle is-off" id="locConsent" role="checkbox" aria-checked="false" tabindex="0"><span class="mark">✓</span><div><b>위치 <span class="check-tag">(선택)</span></b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요. 누르면 동의해요.</p></div></div>
+  <div class="check"><span class="mark">✓</span><div><b>사진 외부 AI</b><p>종류와 색을 읽어요. 얼굴과 카드 번호는 보내기 전에 가려요.</p></div></div>
+  <p class="note danger" id="consentErr" hidden></p>
   <div class="dock">
-    <button type="button" class="btn" id="agreeBtn" style="width:100%;cursor:pointer">동의하고 계속</button>
-  </div>
-
-  <div class="modal-backdrop" id="phoneModal" role="dialog" aria-modal="true" aria-labelledby="phoneModalTitle">
-    <div class="modal-card">
-      <h3 id="phoneModalTitle">전화번호를 한 번만 확인해요</h3>
-      <p>화면에는 가운데를 가려 보여요. 이 브라우저에서는 다시 묻지 않아요.</p>
-      <label class="field" style="margin-bottom:14px">
-        <span>휴대폰 번호</span>
-        <input id="phoneInput" type="tel" inputmode="numeric" autocomplete="tel" placeholder="010-0000-0000">
-      </label>
-      <p class="note danger" id="phoneErr" hidden style="margin-top:-6px">010으로 시작하는 번호를 확인해 주세요.</p>
-      <div class="modal-actions">
-        <button type="button" class="btn gray" id="phoneCloseBtn">닫기</button>
-        <button type="button" class="btn" id="phoneOkBtn">확인</button>
-      </div>
-    </div>
+    <a class="btn" id="agreeBtn" href="home.html">동의하고 계속</a>
   </div>
 </main>
+<script src="api.js"></script>
 <script>
-  const opt = document.querySelector("[data-optional]");
-  function toggle() {
-    const on = opt.getAttribute("aria-checked") !== "true";
-    opt.setAttribute("aria-checked", String(on));
-    opt.querySelector(".mark").style.opacity = on ? "1" : ".25";
-    try { sessionStorage.setItem("locationConsent", on ? "granted" : "denied"); } catch (_) {}
+  // 간편 로그인(구글·카카오·네이버)은 백엔드에 없다. 이 화면은 지금 체험 로그인(?demo=1) 동의로 쓴다.
+  // 체험 계정은 이메일을 받지 않으므로 전화번호 항목을 숨기고, 위치·외부 AI 동의로 POST /auth/demo
+  // 캡차: 지금은 LostApi 기본 dev-pass. PR #47 머지 후 이 화면에 found/captcha.js 위젯(action "demo-login")을 붙이고
+  // LostApi.setCaptchaProvider로 넘긴다
+  const isDemo = new URLSearchParams(location.search).get("demo") === "1";
+  const agreeBtn = document.getElementById("agreeBtn");
+  const consentErr = document.getElementById("consentErr");
+  if (isDemo) {
+    document.querySelector(".lead").textContent = "체험 계정을 만들 때 물어봐요. 체험 계정은 24시간 뒤 지워져요.";
+    document.getElementById("phoneCheck").style.display = "none";
+    document.querySelector("h1").textContent = "두 가지를 확인합니다";
   }
-  opt.addEventListener("click", toggle);
-  opt.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } });
-
-  const phoneModal = document.getElementById("phoneModal");
-  const phoneInput = document.getElementById("phoneInput");
-  const phoneErr = document.getElementById("phoneErr");
-
-  function formatPhone(digits) {
-    if (digits.length < 10) return null;
-    if (!/^01[016789]\d{7,8}$/.test(digits)) return null;
-    if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
-    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
-  }
-
-  function goHome() {
-    window.location.href = "home.html";
-  }
-
-  document.getElementById("agreeBtn").addEventListener("click", () => {
-    let saved = "";
-    try { saved = sessionStorage.getItem("signupPhone") || ""; } catch (_) {}
-    if (saved) {
-      goHome();
+  const locConsent = document.getElementById("locConsent");
+  const toggleLoc = () => {
+    const off = locConsent.classList.toggle("is-off");
+    locConsent.setAttribute("aria-checked", String(!off));
+  };
+  locConsent.addEventListener("click", toggleLoc);
+  locConsent.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleLoc();
+    }
+  });
+  let busy = false;
+  agreeBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    if (!isDemo) {
+      consentErr.textContent = "간편 로그인은 준비 중이에요. 학교 이메일로 가입하거나 체험해 보기를 눌러 주세요.";
+      consentErr.hidden = false;
       return;
     }
-    phoneErr.hidden = true;
-    phoneModal.classList.add("is-open");
-    phoneInput.focus();
-  });
-
-  document.getElementById("phoneCloseBtn").addEventListener("click", () => {
-    phoneModal.classList.remove("is-open");
-  });
-  phoneModal.addEventListener("click", (e) => {
-    if (e.target === phoneModal) phoneModal.classList.remove("is-open");
-  });
-  phoneInput.addEventListener("input", () => {
-    phoneErr.hidden = true;
-  });
-  document.getElementById("phoneOkBtn").addEventListener("click", () => {
-    const digits = phoneInput.value.replace(/\D/g, "");
-    const formatted = formatPhone(digits);
-    if (!formatted) {
-      phoneErr.hidden = false;
-      phoneInput.focus();
-      return;
+    busy = true;
+    consentErr.hidden = true;
+    try {
+      await LostApi.demoLogin({ location: !locConsent.classList.contains("is-off") });
+      location.replace("home.html");
+    } catch (err) {
+      consentErr.textContent = LostApi.friendlyMessage(err);
+      consentErr.hidden = false;
+    } finally {
+      busy = false;
     }
-    try { sessionStorage.setItem("signupPhone", formatted); } catch (_) {}
-    goHome();
   });
 </script>
 </body>

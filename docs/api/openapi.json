@@ -122,6 +122,51 @@
                               null
                             ]
                           },
+                          "subCategory": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "CABLE_CHARGER",
+                              "POWER_BANK",
+                              "MOUSE",
+                              "KEYBOARD",
+                              "USB_MEMORY",
+                              "CAMERA",
+                              "GAME_CONSOLE",
+                              "WIRELESS_EARBUDS",
+                              "WIRED_EARPHONE",
+                              "HEADPHONE",
+                              "BACKPACK",
+                              "SHOULDER_BAG",
+                              "ECO_BAG",
+                              "POUCH",
+                              "SHOPPING_BAG",
+                              "OUTER",
+                              "TOP",
+                              "BOTTOM",
+                              "SCARF_GLOVES",
+                              "SHOES",
+                              "LONG_WALLET",
+                              "BIFOLD_WALLET",
+                              "CARD_WALLET",
+                              "WRISTWATCH",
+                              "JEWELRY",
+                              "HAIR_ACCESSORY",
+                              "TEXTBOOK",
+                              "NOTEBOOK",
+                              "PENCIL_CASE",
+                              "CALCULATOR",
+                              "PEN",
+                              "DOOR_KEY",
+                              "CAR_KEY",
+                              "DOLL_KEYRING",
+                              "COSMETICS",
+                              "MEDICINE",
+                              null
+                            ]
+                          },
                           "title": {
                             "type": [
                               "string",
@@ -204,6 +249,7 @@
                           "id",
                           "status",
                           "category",
+                          "subCategory",
                           "title",
                           "building",
                           "floor",
@@ -276,6 +322,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -407,6 +454,51 @@
                         "KEY",
                         "STATIONERY",
                         "ETC",
+                        null
+                      ]
+                    },
+                    "subCategory": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "CABLE_CHARGER",
+                        "POWER_BANK",
+                        "MOUSE",
+                        "KEYBOARD",
+                        "USB_MEMORY",
+                        "CAMERA",
+                        "GAME_CONSOLE",
+                        "WIRELESS_EARBUDS",
+                        "WIRED_EARPHONE",
+                        "HEADPHONE",
+                        "BACKPACK",
+                        "SHOULDER_BAG",
+                        "ECO_BAG",
+                        "POUCH",
+                        "SHOPPING_BAG",
+                        "OUTER",
+                        "TOP",
+                        "BOTTOM",
+                        "SCARF_GLOVES",
+                        "SHOES",
+                        "LONG_WALLET",
+                        "BIFOLD_WALLET",
+                        "CARD_WALLET",
+                        "WRISTWATCH",
+                        "JEWELRY",
+                        "HAIR_ACCESSORY",
+                        "TEXTBOOK",
+                        "NOTEBOOK",
+                        "PENCIL_CASE",
+                        "CALCULATOR",
+                        "PEN",
+                        "DOOR_KEY",
+                        "CAR_KEY",
+                        "DOLL_KEYRING",
+                        "COSMETICS",
+                        "MEDICINE",
                         null
                       ]
                     },
@@ -722,6 +814,7 @@
                     "id",
                     "status",
                     "category",
+                    "subCategory",
                     "title",
                     "building",
                     "floor",
@@ -765,6 +858,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -835,6 +929,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -945,6 +1040,51 @@
                       "KEY",
                       "STATIONERY",
                       "ETC"
+                    ]
+                  },
+                  "subCategory": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "CABLE_CHARGER",
+                      "POWER_BANK",
+                      "MOUSE",
+                      "KEYBOARD",
+                      "USB_MEMORY",
+                      "CAMERA",
+                      "GAME_CONSOLE",
+                      "WIRELESS_EARBUDS",
+                      "WIRED_EARPHONE",
+                      "HEADPHONE",
+                      "BACKPACK",
+                      "SHOULDER_BAG",
+                      "ECO_BAG",
+                      "POUCH",
+                      "SHOPPING_BAG",
+                      "OUTER",
+                      "TOP",
+                      "BOTTOM",
+                      "SCARF_GLOVES",
+                      "SHOES",
+                      "LONG_WALLET",
+                      "BIFOLD_WALLET",
+                      "CARD_WALLET",
+                      "WRISTWATCH",
+                      "JEWELRY",
+                      "HAIR_ACCESSORY",
+                      "TEXTBOOK",
+                      "NOTEBOOK",
+                      "PENCIL_CASE",
+                      "CALCULATOR",
+                      "PEN",
+                      "DOOR_KEY",
+                      "CAR_KEY",
+                      "DOLL_KEYRING",
+                      "COSMETICS",
+                      "MEDICINE",
+                      null
                     ]
                   },
                   "categoryAlt": {
@@ -1115,6 +1255,51 @@
                         null
                       ]
                     },
+                    "subCategory": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "CABLE_CHARGER",
+                        "POWER_BANK",
+                        "MOUSE",
+                        "KEYBOARD",
+                        "USB_MEMORY",
+                        "CAMERA",
+                        "GAME_CONSOLE",
+                        "WIRELESS_EARBUDS",
+                        "WIRED_EARPHONE",
+                        "HEADPHONE",
+                        "BACKPACK",
+                        "SHOULDER_BAG",
+                        "ECO_BAG",
+                        "POUCH",
+                        "SHOPPING_BAG",
+                        "OUTER",
+                        "TOP",
+                        "BOTTOM",
+                        "SCARF_GLOVES",
+                        "SHOES",
+                        "LONG_WALLET",
+                        "BIFOLD_WALLET",
+                        "CARD_WALLET",
+                        "WRISTWATCH",
+                        "JEWELRY",
+                        "HAIR_ACCESSORY",
+                        "TEXTBOOK",
+                        "NOTEBOOK",
+                        "PENCIL_CASE",
+                        "CALCULATOR",
+                        "PEN",
+                        "DOOR_KEY",
+                        "CAR_KEY",
+                        "DOLL_KEYRING",
+                        "COSMETICS",
+                        "MEDICINE",
+                        null
+                      ]
+                    },
                     "title": {
                       "type": [
                         "string",
@@ -1427,6 +1612,7 @@
                     "id",
                     "status",
                     "category",
+                    "subCategory",
                     "title",
                     "building",
                     "floor",
@@ -1470,6 +1656,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1540,6 +1727,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1610,6 +1798,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1680,6 +1869,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1833,6 +2023,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1903,6 +2094,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -1973,6 +2165,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2043,6 +2236,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2270,6 +2464,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2371,6 +2566,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2441,6 +2637,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2567,6 +2764,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2753,6 +2951,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2823,6 +3022,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -2973,6 +3173,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3141,6 +3342,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3211,6 +3413,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3327,6 +3530,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3496,6 +3700,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3705,6 +3910,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3772,7 +3978,7 @@
           }
         ],
         "summary": "내 물건인지 확인 (F-08)",
-        "description": "이 신고의 현재 후보에만 시도할 수 있다. 통과: 특징 일치 1개 이상·모순 0 / 경계: 일치와 모순이 함께 있으면 확인 질문 / 실패: 일치 0. 설명이 그대로면 이전 결과를 reused=true로 돌려주고 횟수를 쓰지 않는다. 맞은 항목은 통과했을 때만 준다.",
+        "description": "이 신고의 지금 후보(상위 3개)나, 이 신고에 보여 준 적 있고 지금도 후보 범위 안인 물건에만 시도할 수 있다. 통과: 특징 일치 1개 이상·모순 0 / 경계: 일치와 모순이 함께 있으면 확인 질문 / 실패: 일치 0. 설명이 그대로면 이전 결과를 reused=true로 돌려주고 횟수를 쓰지 않는다. 맞은 항목은 통과했을 때만 준다.",
         "parameters": [
           {
             "schema": {
@@ -3921,6 +4127,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -3991,6 +4198,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4061,6 +4269,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4131,6 +4340,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4201,6 +4411,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4369,6 +4580,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4439,6 +4651,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4509,6 +4722,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4557,6 +4771,54 @@
                   },
                   "required": [
                     "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config": {
+      "get": {
+        "tags": [
+          "설정"
+        ],
+        "summary": "프론트 공개 설정 (캡차)",
+        "description": "캡차 방식과 Turnstile 사이트 키를 준다. 프론트는 mode가 turnstile일 때만 위젯 스크립트를 불러오고, 받은 토큰을 X-Captcha-Token 헤더로 보낸다. off(개발)면 siteKey는 null이고 토큰 검사를 하지 않는다. 비밀 키는 내려 주지 않는다.",
+        "responses": {
+          "200": {
+            "description": "공개 설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "captcha": {
+                      "type": "object",
+                      "properties": {
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "turnstile"
+                          ]
+                        },
+                        "siteKey": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "siteKey"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "captcha"
                   ]
                 }
               }
@@ -4748,6 +5010,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4818,6 +5081,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4888,6 +5152,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -4958,6 +5223,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5020,7 +5286,7 @@
           "습득물"
         ],
         "summary": "두 단계 등록 2: 위치·보관 방식 확정",
-        "description": "analyze 응답의 confirmToken과 위치를 보내 등록을 끝낸다. 응답은 POST /found-items와 같다.",
+        "description": "analyze 응답의 confirmToken과 위치를 보내 등록을 끝낸다. 응답은 POST /found-items와 같다. 귀중품(isValuable)은 storageType이 HANDED_OVER여야 하고, IN_PLACE면 400 VALUABLE_HAND_OVER_REQUIRED이며 초안은 남아 다시 확정할 수 있다.",
         "parameters": [
           {
             "schema": {
@@ -5313,7 +5579,7 @@
             }
           },
           "400": {
-            "description": "VALIDATION_ERROR",
+            "description": "VALIDATION_ERROR, VALUABLE_HAND_OVER_REQUIRED",
             "content": {
               "application/json": {
                 "schema": {
@@ -5329,6 +5595,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5399,6 +5666,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5469,6 +5737,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5531,7 +5800,7 @@
           "습득물"
         ],
         "summary": "습득물 한 번에 등록 (F-01, F-02, F-03)",
-        "description": "로그인 없이 사진과 위치를 한 번에 등록한다. 물건 이름을 먼저 보여 주려면 analyze → confirm 두 단계를 쓴다. 응답에는 공개 정보만 담는다. AI 분석이 실패해도 201로 응답하고 status가 REVIEW다. 사진은 10MB 이하 JPG·PNG·WEBP·HEIC. 같은 기기·IP는 10분에 5건까지. 동의(외부 AI 처리)와 캡차(X-Captcha-Token 헤더)가 필요하다. 고가품을 그 자리에 두면 handOverAdvice로 보관처를 안내한다.",
+        "description": "로그인 없이 사진과 위치를 한 번에 등록한다. 물건 이름을 먼저 보여 주려면 analyze → confirm 두 단계를 쓴다. 응답에는 공개 정보만 담는다. AI 분석이 실패해도 201로 응답하고 status가 REVIEW다. 사진은 10MB 이하 JPG·PNG·WEBP·HEIC. 같은 기기·IP는 10분에 5건까지. 동의(외부 AI 처리)와 캡차(X-Captcha-Token 헤더)가 필요하다. AI가 귀중품으로 보는데 IN_PLACE면 사진을 저장하지 않고 400 VALUABLE_HAND_OVER_REQUIRED. AI가 실패하면(REVIEW) 막지 않는다.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -5831,7 +6100,7 @@
             }
           },
           "400": {
-            "description": "VALIDATION_ERROR, CAPTCHA_FAILED",
+            "description": "VALIDATION_ERROR, CAPTCHA_FAILED, VALUABLE_HAND_OVER_REQUIRED",
             "content": {
               "application/json": {
                 "schema": {
@@ -5847,6 +6116,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5917,6 +6187,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -5987,6 +6258,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6057,6 +6329,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6356,6 +6629,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6426,6 +6700,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6496,6 +6771,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6824,6 +7100,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6894,6 +7171,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -6964,6 +7242,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -7157,6 +7436,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -7420,6 +7700,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -7718,6 +7999,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -7788,6 +8070,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -7858,6 +8141,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -8018,6 +8302,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -8117,6 +8402,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -8307,6 +8593,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -8377,6 +8664,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -8447,6 +8735,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -8585,6 +8874,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -8655,6 +8945,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -8788,6 +9079,51 @@
                             "ETC"
                           ]
                         },
+                        "subCategory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "CABLE_CHARGER",
+                            "POWER_BANK",
+                            "MOUSE",
+                            "KEYBOARD",
+                            "USB_MEMORY",
+                            "CAMERA",
+                            "GAME_CONSOLE",
+                            "WIRELESS_EARBUDS",
+                            "WIRED_EARPHONE",
+                            "HEADPHONE",
+                            "BACKPACK",
+                            "SHOULDER_BAG",
+                            "ECO_BAG",
+                            "POUCH",
+                            "SHOPPING_BAG",
+                            "OUTER",
+                            "TOP",
+                            "BOTTOM",
+                            "SCARF_GLOVES",
+                            "SHOES",
+                            "LONG_WALLET",
+                            "BIFOLD_WALLET",
+                            "CARD_WALLET",
+                            "WRISTWATCH",
+                            "JEWELRY",
+                            "HAIR_ACCESSORY",
+                            "TEXTBOOK",
+                            "NOTEBOOK",
+                            "PENCIL_CASE",
+                            "CALCULATOR",
+                            "PEN",
+                            "DOOR_KEY",
+                            "CAR_KEY",
+                            "DOLL_KEYRING",
+                            "COSMETICS",
+                            "MEDICINE",
+                            null
+                          ]
+                        },
                         "building": {
                           "type": [
                             "string",
@@ -8804,6 +9140,7 @@
                       "required": [
                         "id",
                         "category",
+                        "subCategory",
                         "building",
                         "imageUrl"
                       ]
@@ -8851,6 +9188,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -8921,6 +9259,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -8991,6 +9330,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -9061,6 +9401,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -9188,6 +9529,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -9258,6 +9600,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -9328,6 +9671,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",
@@ -9398,6 +9742,7 @@
                             "INVALID_EMAIL_DOMAIN",
                             "INVALID_CODE",
                             "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
                             "UNAUTHORIZED",
                             "FORBIDDEN",
                             "NOT_FOUND",

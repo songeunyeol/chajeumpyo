@@ -13,7 +13,7 @@
 <main class="screen">
   <header class="bar" style="justify-content:space-between">
     <a class="back" href="signup.html">←</a>
-    <span class="loc-chip" style="cursor:default">테스트 코드: 123456</span>
+    <span class="loc-chip" id="testCodeChip" style="cursor:default;display:none">테스트 코드: 123456</span>
   </header>
   <h1>코드를 보냈어요</h1>
   <p class="lead"><span id="maskedEmail">ab***@skuniv.ac.kr</span> 로 보낸 숫자 6개를 입력해요. 5분이 지나면 다시 받아야 해요.</p>
@@ -36,8 +36,11 @@
     <button type="button" class="btn" id="verifyBtn" style="width:100%;cursor:pointer">확인</button>
   </div>
 </main>
+<script src="api.js"></script>
 <script>
-  const CORRECT_CODE = "123456";
+  // 코드는 서버가 메일로 보낸다 (개발 서버 MAIL_MODE=console이면 백엔드 로그). 화면에 정답을 두지 않는다
+  const signupEmail = LostApi.store.get(LostApi.KEYS.signupEmail);
+  if (!signupEmail) location.replace("signup.html");
   const maskedEmailEl = document.getElementById("maskedEmail");
   const codeTiles = document.getElementById("codeTiles");
   const inputs = Array.from(codeTiles.querySelectorAll("input"));
@@ -90,8 +93,18 @@
     codeTiles.classList.remove("is-enter");
   }, 850);
 
-  resendBtn.addEventListener("click", () => {
+  resendBtn.addEventListener("click", async () => {
     if (isTransitioning) return;
+    // POST /auth/email/code 다시. 1분에 한 번만 된다 (429). 캡차 action "email-code" (PR #47 머지 후 위젯 붙일 곳)
+    resendBtn.disabled = true;
+    try {
+      await LostApi.requestCode(signupEmail);
+    } catch (err) {
+      attemptText.textContent = LostApi.friendlyMessage(err);
+      return;
+    } finally {
+      resendBtn.disabled = false;
+    }
     remainingSeconds = 300;
     remainingAttempts = 5;
     renderTimer();
@@ -147,17 +160,36 @@
     }, 700);
   }
 
-  function verifyCode() {
-    if (isTransitioning) return;
+  let verifying = false;
+  async function verifyCode() {
+    if (isTransitioning || verifying) return;
     if (remainingSeconds <= 0 || remainingAttempts <= 0) {
       triggerWrong();
       return;
     }
     const code = inputs.map((i) => i.value.trim()).join("");
-    if (code === CORRECT_CODE) {
-      triggerSuccess();
-    } else {
+    if (code.length !== 6) {
       triggerWrong();
+      return;
+    }
+    // POST /auth/email/verify → verificationToken을 저장하고 동의 화면으로
+    verifying = true;
+    try {
+      await LostApi.verifyCode(signupEmail, code);
+      triggerSuccess();
+    } catch (err) {
+      if (err.code === "INVALID_CODE" || err.code === "VALIDATION_ERROR") {
+        triggerWrong();
+        // 칸을 비워 처음부터 다시 입력하게 한다 (한 칸만 고칠 때마다 섞인 코드로 다시 확인해 기회를 쓰지 않게)
+        setTimeout(() => {
+          for (const inp of inputs) inp.value = "";
+          if (!inputs[0].disabled) inputs[0].focus();
+        }, 450);
+      } else {
+        attemptText.textContent = LostApi.friendlyMessage(err);
+      }
+    } finally {
+      verifying = false;
     }
   }
 

@@ -200,6 +200,7 @@ model FoundItem {
   reveals             RevealLog[]
   pickups             Pickup[]
   notifications       Notification[]
+  exposures           CandidateExposure[]
 
   @@index([category, status, foundAt])
   @@index([categoryAlt])
@@ -252,8 +253,24 @@ model LostReport {
   updatedAt           DateTime                     @updatedAt @map("updated_at")
   attempts            MatchAttempt[]
   notifications       Notification[]
+  exposures           CandidateExposure[]
 
   @@map("lost_report")
+}
+
+/// 신고자에게 그 신고의 후보로 보여 준 적 있는 물건 (후보 목록 응답·새 후보 알림).
+/// 후보는 요청마다 다시 고르므로 새 습득물이 들어오면 보던 물건이 상위 3개에서 밀려날 수 있다.
+/// 한 번이라도 보여 준 물건은 지금도 후보 범위(종류·시간·상태·기한) 안이면 판정을 요청할 수 있다.
+model CandidateExposure {
+  lostReport   LostReport @relation(fields: [lostReportId], references: [id], onDelete: Cascade)
+  lostReportId String     @map("lost_report_id") @db.Uuid
+  foundItem    FoundItem  @relation(fields: [foundItemId], references: [id], onDelete: Cascade)
+  foundItemId  String     @map("found_item_id") @db.Uuid
+  firstShownAt DateTime   @default(now()) @map("first_shown_at")
+
+  @@id([lostReportId, foundItemId])
+  @@index([foundItemId])
+  @@map("candidate_exposure")
 }
 
 model MatchAttempt {

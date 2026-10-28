@@ -35,7 +35,7 @@
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
         </svg>
-        <span class="bell-dot" id="bellDot" aria-hidden="true"></span>
+        <span class="bell-dot" aria-hidden="true"></span>
       </a>
       <button type="button" class="icon-btn" id="settingsBtn" aria-label="설정 및 로그인 정보" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true">
@@ -50,11 +50,11 @@
     <div class="settings-popover" id="settingsPopover" role="dialog" aria-label="로그인 정보 및 설정">
       <p class="settings-label">로그인 정보</p>
       <div class="settings-user">
-        <strong>김서경</strong>
+        <strong id="settingsName">김서경</strong>
         <p id="settingsEmail">ab***@skuniv.ac.kr</p>
-        <p id="settingsPhone">010-****-0000</p>
+        <p id="settingsPhone">010-0000-0000</p>
       </div>
-      <a class="btn danger" href="login.html">로그아웃</a>
+      <a class="btn danger" id="logoutBtn" href="login.html">로그아웃</a>
     </div>
   </header>
 
@@ -70,55 +70,34 @@
   <div class="dock">
     <a class="btn" href="report.html">분실 신고하기</a>
   </div>
-
-  <div class="modal-backdrop" id="cancelModal" role="dialog" aria-modal="true" aria-labelledby="cancelModalTitle">
-    <div class="modal-card">
-      <h3 id="cancelModalTitle">이 분실 신고를 취소할까요?</h3>
-      <p id="cancelModalText">취소하면 진행 중 목록에서 빠지고, 후보는 더 이상 이어지지 않아요.</p>
-      <div class="modal-actions">
-        <button type="button" class="btn gray" id="cancelKeepBtn">남겨 두기</button>
-        <button type="button" class="btn danger" id="cancelConfirmBtn">신고 취소</button>
-      </div>
-    </div>
-  </div>
 </main>
-<script src="demo-store.js"></script>
+<script src="api.js"></script>
 <script>
-  if (new URLSearchParams(location.search).get("demo") === "1") {
+  // 로그인하지 않았으면 로그인 화면으로 (아래 API 호출은 authed일 때만)
+  const authed = LostApi.requireLogin();
+  if (new URLSearchParams(location.search).get("demo") === "1" || LostApi.isDemo()) {
     document.getElementById("demo").hidden = false;
   }
 
-  function maskEmail(email) {
-    if (!email || !email.includes("@")) return "ab***@skuniv.ac.kr";
-    const [local, domain] = email.split("@");
-    if (local.length <= 2) return local[0] + "***@" + domain;
-    return local.slice(0, 2) + "***@" + domain;
-  }
+  // 로그인 정보: 이름·전화번호는 받지 않는다. 이메일은 가려서
+  (() => {
+    const s = LostApi.session();
+    document.getElementById("settingsName").textContent = LostApi.isDemo() ? "체험 계정" : "학교 이메일 계정";
+    document.getElementById("settingsPhone").hidden = true;
+    if (s?.user?.email) document.getElementById("settingsEmail").textContent = LostApi.maskEmail(s.user.email);
+  })();
+  document.getElementById("logoutBtn").addEventListener("click", () => LostApi.logout());
 
-  function maskPhone(phone) {
-    const digits = String(phone || "").replace(/\D/g, "");
-    if (digits.length < 10) return "010-****-0000";
-    return `${digits.slice(0, 3)}-****-${digits.slice(-4)}`;
-  }
+  // 알림 점: 안 읽은 알림이 있을 때만
+  const bellDot = document.querySelector(".bell-dot");
+  bellDot.style.display = "none";
+  if (authed) LostApi.notifications()
+    .then((r) => {
+      if (r.unreadCount > 0) bellDot.style.display = "";
+    })
+    .catch(() => {});
 
-  try {
-    const saved = sessionStorage.getItem("signupEmail");
-    if (saved) {
-      document.getElementById("settingsEmail").textContent = maskEmail(saved);
-    }
-    const savedPhone = sessionStorage.getItem("signupPhone");
-    if (savedPhone) {
-      document.getElementById("settingsPhone").textContent = maskPhone(savedPhone);
-    }
-  } catch (_) {}
 
-  function syncBell() {
-    const dot = document.getElementById("bellDot");
-    const tone = window.ChajeumAlerts ? window.ChajeumAlerts.unreadTone() : null;
-    dot.classList.toggle("is-on", Boolean(tone));
-    dot.classList.toggle("is-red", tone === "red");
-    dot.parentElement.setAttribute("aria-label", tone ? "알림, 읽지 않은 알림 있음" : "알림");
-  }
 
   const settingsBtn = document.getElementById("settingsBtn");
   const settingsPopover = document.getElementById("settingsPopover");
@@ -145,203 +124,81 @@
     if (e.key === "Escape") setSettingsOpen(false);
   });
 
-  // 진행 중 & 닫힘 분실 신고 목록 관리 (찾은 물건은 닫힘에서 10분 동안 열람 가능)
-  const TEN_MIN_MS = 10 * 60 * 1000;
+  // 진행 중(OPEN) & 닫힘(RESOLVED 찾음 · CLOSED 닫음) 분실 신고 목록: GET /lost-reports
   const activeHeading = document.getElementById("activeHeading");
   const closedHeading = document.getElementById("closedHeading");
   const activeListEl = document.getElementById("activeList");
   const closedListEl = document.getElementById("closedList");
 
-  function getTodayLabel() {
-    const days = ["일", "월", "화", "수", "목", "금", "토"];
-    const d = new Date();
-    return `${d.getMonth() + 1}월 ${d.getDate()}일(${days[d.getDay()]})`;
+  function emptyCard(text) {
+    const empty = document.createElement("div");
+    empty.className = "card";
+    empty.style.color = "var(--mute)";
+    empty.style.fontSize = "14px";
+    empty.textContent = text;
+    return empty;
   }
 
-  function loadReports() {
-    let list = null;
-    try {
-      list = JSON.parse(sessionStorage.getItem("lostReports") || "null");
-    } catch (_) {}
-
-    if (!Array.isArray(list) || list.length === 0) {
-      list = [
-        {
-          id: "rep-seed-active",
-          item: "무선 이어폰",
-          date: getTodayLabel(),
-          timeRange: "13:00~15:00",
-          building: "혜인관",
-          memo: "",
-          status: "active",
-          createdAt: Date.now()
-        },
-        {
-          id: "rep-seed-closed",
-          item: "우산",
-          date: "10월 20일(화)",
-          timeRange: "",
-          building: "유담관",
-          memo: "",
-          status: "closed",
-          foundAt: Date.now() - 40 * 1000,
-          expiresAt: Date.now() + TEN_MIN_MS - 40 * 1000
-        }
-      ];
-      try {
-        sessionStorage.setItem("lostReports", JSON.stringify(list));
-      } catch (_) {}
+  /** 카드 한 장. 서버 값은 textContent로만 넣는다 */
+  function reportCard(rep, tag, glow, chips) {
+    const el = document.createElement(tag);
+    el.className = `card ${glow}`;
+    const h3 = document.createElement("h3");
+    h3.textContent = LostApi.itemLabel(rep.category);
+    const meta = document.createElement("p");
+    meta.className = "meta";
+    meta.textContent = [LostApi.formatRange(rep.lostFrom, rep.lostTo), LostApi.buildingName(rep.building, "")]
+      .filter(Boolean)
+      .join(" · ");
+    const chipBox = document.createElement("div");
+    chipBox.className = "chips";
+    for (const [text, cls] of chips) {
+      const c = document.createElement("span");
+      c.className = `chip ${cls}`.trim();
+      c.textContent = text;
+      chipBox.appendChild(c);
     }
-    return list;
+    el.append(h3, meta, chipBox);
+    return el;
   }
 
-  function formatRemainTime(ms) {
-    const totalSec = Math.max(0, Math.ceil(ms / 1000));
-    const m = Math.floor(totalSec / 60);
-    const s = String(totalSec % 60).padStart(2, "0");
-    return `${m}분 ${s}초 남음`;
-  }
-
-  function renderHomeLists() {
-    const now = Date.now();
-    const all = loadReports();
-    const activeItems = all.filter((r) => r.status === "active");
-    // 닫힘 카드는 찾은 뒤 10분(expiresAt) 동안 볼 수 있도록 필터링
-    const closedItems = all.filter((r) => r.status === "closed" && (!r.expiresAt || r.expiresAt > now));
+  function renderHomeLists(all) {
+    const activeItems = all.filter((r) => r.status === "OPEN");
+    const closedItems = all.filter((r) => r.status !== "OPEN");
 
     activeHeading.textContent = `진행 중 ${activeItems.length}`;
     closedHeading.textContent = `닫힘 ${closedItems.length}`;
 
-    activeListEl.innerHTML = "";
-    if (activeItems.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "card";
-      empty.style.color = "var(--mute)";
-      empty.style.fontSize = "14px";
-      empty.textContent = "진행 중인 분실 신고가 없어요.";
-      activeListEl.appendChild(empty);
-    } else {
-      activeItems.forEach((rep) => {
-        const card = document.createElement("article");
-        card.className = "card glow-green";
-        const metaParts = [rep.date, rep.timeRange].filter(Boolean).join(" ");
-        const esc = window.ChajeumAlerts.esc;
-        card.innerHTML = `
-          <a href="candidates.html" class="card-open" style="display:block;color:inherit;text-decoration:none">
-            <h3>${esc(rep.item)}</h3>
-            <p class="meta">${esc(metaParts)}${rep.building ? " · " + esc(rep.building) : ""}</p>
-            <div class="chips"><span class="chip glow-green">진행 중</span><span class="chip">후보 3개</span></div>
-          </a>
-          <div class="card-foot" style="display:flex;justify-content:flex-end;margin-top:8px">
-            <button type="button" class="link-quiet" data-cancel="${esc(rep.id)}">신고 취소</button>
-          </div>
-        `;
-        card.querySelector(".card-open").addEventListener("click", () => {
-          try {
-            sessionStorage.setItem("activeReportId", rep.id);
-            sessionStorage.setItem("lostReport", JSON.stringify(rep));
-          } catch (_) {}
-        });
-        card.querySelector("[data-cancel]").addEventListener("click", () => {
-          openCancel(rep);
-        });
-        activeListEl.appendChild(card);
-      });
+    activeListEl.replaceChildren();
+    if (activeItems.length === 0) activeListEl.appendChild(emptyCard("진행 중인 분실 신고가 없어요."));
+    for (const rep of activeItems) {
+      const a = reportCard(rep, "a", "glow-green", [
+        ["진행 중", "glow-green"],
+        [`후보 ${rep.candidateCount}개`, ""],
+      ]);
+      a.href = "candidates.html";
+      a.addEventListener("click", () => LostApi.store.set(LostApi.KEYS.reportId, rep.id));
+      activeListEl.appendChild(a);
     }
 
-    closedListEl.innerHTML = "";
-    if (closedItems.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "card";
-      empty.style.color = "var(--mute)";
-      empty.style.fontSize = "14px";
-      empty.textContent = "열람 가능한 닫힘 내역이 없어요.";
-      closedListEl.appendChild(empty);
-    } else {
-      closedItems.forEach((rep) => {
-        const remainMs = (rep.expiresAt || (now + TEN_MIN_MS)) - now;
-        const a = document.createElement("a");
-        a.className = "card glow-red";
-        a.href = `item.html?from=closed&id=${encodeURIComponent(rep.id)}`;
-        const metaParts = [rep.date, rep.timeRange].filter(Boolean).join(" ");
-        a.innerHTML = `
-          <h3>${rep.item}</h3>
-          <p class="meta">${metaParts}${rep.building ? " · " + rep.building : ""}</p>
-          <div class="chips">
-            <span class="chip glow-red">닫힘 · 찾음</span>
-            <span class="chip warn" data-expires="${rep.expiresAt || (now + TEN_MIN_MS)}">10분 열람 · ${formatRemainTime(remainMs)}</span>
-          </div>
-        `;
-        a.addEventListener("click", () => {
-          try {
-            sessionStorage.setItem("activeReportId", rep.id);
-            sessionStorage.setItem("lostReport", JSON.stringify(rep));
-          } catch (_) {}
-        });
-        closedListEl.appendChild(a);
-      });
+    // 닫힌 신고는 서버가 후보를 주지 않고, 찾은 물건 상세는 수령 뒤 닫힌다(409 ALREADY_CLAIMED). 그래서 누를 곳이 없다
+    closedListEl.replaceChildren();
+    if (closedItems.length === 0) closedListEl.appendChild(emptyCard("닫힌 신고가 없어요."));
+    for (const rep of closedItems) {
+      closedListEl.appendChild(
+        reportCard(rep, "div", "glow-red", [[rep.status === "RESOLVED" ? "닫힘 · 찾음" : "닫힘", "glow-red"]]),
+      );
     }
   }
 
-  let pendingCancel = null;
-  const cancelModal = document.getElementById("cancelModal");
-  const cancelModalText = document.getElementById("cancelModalText");
-
-  function openCancel(rep) {
-    pendingCancel = rep;
-    cancelModalText.textContent = `${rep.item} 신고를 취소하면 진행 중 목록에서 빠지고, 후보는 더 이상 이어지지 않아요.`;
-    cancelModal.classList.add("is-open");
-  }
-
-  function closeCancel() {
-    pendingCancel = null;
-    cancelModal.classList.remove("is-open");
-  }
-
-  document.getElementById("cancelKeepBtn").addEventListener("click", closeCancel);
-  cancelModal.addEventListener("click", (e) => {
-    if (e.target === cancelModal) closeCancel();
-  });
-  document.getElementById("cancelConfirmBtn").addEventListener("click", () => {
-    if (!pendingCancel) return;
-    const targetId = pendingCancel.id;
-    try {
-      const next = loadReports().map((item) => (
-        item.id === targetId
-          ? { ...item, status: "cancelled", cancelledAt: Date.now() }
-          : item
-      ));
-      sessionStorage.setItem("lostReports", JSON.stringify(next));
-      if (sessionStorage.getItem("activeReportId") === targetId) {
-        sessionStorage.removeItem("activeReportId");
-        sessionStorage.removeItem("lostReport");
-      }
-      window.ChajeumAlerts.removeByReport(targetId);
-    } catch (_) {}
-    closeCancel();
-    renderHomeLists();
-    syncBell();
-  });
-
-  renderHomeLists();
-  syncBell();
-
-  // 닫힘 카드의 10분 열람 남은 시간을 1초마다 실시간 갱신 (10분 지나면 자동 닫힘)
-  setInterval(() => {
-    const now = Date.now();
-    const badges = closedListEl.querySelectorAll("[data-expires]");
-    let expiredAny = false;
-    badges.forEach((el) => {
-      const exp = Number(el.getAttribute("data-expires"));
-      const diff = exp - now;
-      if (diff <= 0) {
-        expiredAny = true;
-      } else {
-        el.textContent = `10분 열람 · ${formatRemainTime(diff)}`;
-      }
+  if (authed) LostApi.reports()
+    .then(renderHomeLists)
+    .catch((err) => {
+      if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+      activeHeading.textContent = "진행 중";
+      closedHeading.textContent = "닫힘";
+      activeListEl.replaceChildren(emptyCard(LostApi.friendlyMessage(err)));
     });
-    if (expiredAny) renderHomeLists();
-  }, 1000);
 </script>
 </body>
 </html>

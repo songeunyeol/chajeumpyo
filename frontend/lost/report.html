@@ -20,6 +20,12 @@
     <input id="lostItemInput" placeholder="무선 이어폰">
   </label>
 
+  <!-- [연결 추가] 서버는 종류(category)가 꼭 필요하다. 물건 이름으로 미리 고르고 사람이 고칠 수 있게 -->
+  <label class="field">
+    <span>종류</span>
+    <select id="lostCategorySelect" aria-label="물건 종류 선택"></select>
+  </label>
+
   <div class="field">
     <span>언제</span>
     <div class="when-stack">
@@ -41,13 +47,8 @@
       <option value="북악관">북악관</option>
       <option value="본관">본관</option>
       <option value="한림관">한림관</option>
-      <option value="문예관">문예관</option>
-      <option value="대일관">대일관</option>
-      <option value="상승관">상승관</option>
-      <option value="은주관">은주관</option>
-      <option value="수인관">수인관</option>
-      <option value="생활관">생활관</option>
-      <option value="공연실습소">공연실습소</option>
+      <option value="중앙도서관">중앙도서관</option>
+      <option value="학생회관">학생회관</option>
       <option value="잘 모르겠음">잘 모르겠음 (캠퍼스 전체)</option>
     </select>
   </label>
@@ -60,12 +61,15 @@
     <textarea id="memoInput" class="auto-grow" maxlength="200" placeholder="공개 목록에는 이 문장만 보여요."></textarea>
   </div>
 
+  <p class="note danger" id="reportErr" hidden></p>
+
   <div class="dock">
     <button type="button" class="btn" id="reportSubmitBtn" style="width:100%;cursor:pointer">신고하기</button>
   </div>
 </main>
-<script src="demo-store.js"></script>
+<script src="api.js"></script>
 <script>
+  const authed = LostApi.requireLogin();
   const dateSelect = document.getElementById("lostDateSelect");
   const startSelect = document.getElementById("lostStartHour");
   const endSelect = document.getElementById("lostEndHour");
@@ -76,20 +80,42 @@
   const submitBtn = document.getElementById("reportSubmitBtn");
 
   // 1. 당일 기준 날짜 셀렉트 생성
-  const days = ["일", "월", "화", "수", "목", "금", "토"];
-  const today = new Date();
+  // 표시는 "10월 28일(수)", 값은 한국 날짜 "2026-10-28" (서버로 보낼 때 LostApi.lostRange로 ISO로 바꾼다)
+  const DAY_MS = 24 * 3600 * 1000;
   for (let offset = 0; offset < 7; offset++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - offset);
-    const m = d.getMonth() + 1;
-    const day = d.getDate();
-    const dow = days[d.getDay()];
-    const baseText = `${m}월 ${day}일(${dow})`;
+    const p = LostApi.kstParts(new Date(Date.now() - offset * DAY_MS));
+    const baseText = `${p.month}월 ${p.day}일(${p.weekday})`;
     const label = offset === 0 ? `오늘 · ${baseText}` : offset === 1 ? `어제 · ${baseText}` : baseText;
-    const opt = new Option(label, baseText, offset === 0, offset === 0);
+    const opt = new Option(label, p.date, offset === 0, offset === 0);
+    opt.dataset.label = baseText;
     dateSelect.add(opt);
   }
-  dateSelect.add(new Option("일주일 이전", "일주일 이전"));
+  dateSelect.add(new Option("일주일 이전", "older"));
+
+  // 종류: 물건 이름을 적으면 미리 고른다. 사람이 직접 고르면 그 뒤로는 바꾸지 않는다
+  const categorySelect = document.getElementById("lostCategorySelect");
+  for (const c of LostApi.CATEGORIES) categorySelect.add(new Option(LostApi.CATEGORY_LABELS[c], c));
+  categorySelect.value = "EARPHONE";
+  let categoryTouched = false;
+  categorySelect.addEventListener("change", () => {
+    categoryTouched = true;
+  });
+  document.getElementById("lostItemInput").addEventListener("input", (e) => {
+    const guess = LostApi.guessCategory(e.target.value);
+    if (guess && !categoryTouched) categorySelect.value = guess;
+  });
+
+  // 건물: 서버 건물 목록으로 바꾼다 (모르면 "잘 모르겠음" = buildingId 없음)
+  if (authed) {
+    LostApi.buildings()
+      .then((list) => {
+        const sel = document.getElementById("lostBuildingSelect");
+        sel.replaceChildren(...list.map((b) => new Option(b.name, String(b.id))));
+        sel.add(new Option("잘 모르겠음 (캠퍼스 전체)", ""));
+        sel.value = "";
+      })
+      .catch(() => {});
+  }
 
   // 2. 몇 시부터 ~ 몇 시까지 시간 셀렉트 생성
   for (let h = 0; h <= 23; h++) {
@@ -142,47 +168,45 @@
   memoInput.addEventListener("input", syncMemoSize);
   syncMemoSize();
 
-  // 4. 신고하기 -> 분실신고 목록(lostReports)에 추가 후 올리는 중 페이지(lost/uploading.html)로 이동
+  // 4. 신고하기 → 입력을 저장하고 올리는 중 화면(uploading.html)에서 POST /lost-reports
+  const reportErr = document.getElementById("reportErr");
   submitBtn.addEventListener("click", () => {
-    const sh = String(startSelect.value).padStart(2, "0") + ":00";
-    const eh = String(endSelect.value).padStart(2, "0") + ":00";
-    const reportData = {
-      id: "rep-" + Date.now(),
-      item: itemInput.value.trim() || "무선 이어폰",
-      date: dateSelect.value,
-      timeRange: `${sh}~${eh}`,
-      building: buildingSelect.value,
-      memo: memoInput.value.trim(),
-      status: "active",
-      createdAt: Date.now()
-    };
-    try {
-      let list = JSON.parse(sessionStorage.getItem("lostReports") || "null");
-      if (!Array.isArray(list)) {
-        list = [];
-      }
-      list.unshift(reportData);
-      sessionStorage.setItem("lostReports", JSON.stringify(list));
-      sessionStorage.setItem("activeReportId", reportData.id);
-      sessionStorage.setItem("lostReport", JSON.stringify(reportData));
-      sessionStorage.setItem("refreshLeft", "5");
-      sessionStorage.setItem("candChances", JSON.stringify([3, 3, 3]));
-      sessionStorage.setItem("quizChance", "3");
-    } catch (_) {}
-    if (window.ChajeumAlerts) {
-      window.ChajeumAlerts.push({
-        id: "al-report-" + reportData.id,
-        type: "report",
-        title: "후보 3개",
-        meta: [reportData.item, reportData.date, reportData.timeRange].filter(Boolean).join(" · "),
-        href: "candidates.html",
-        reportId: reportData.id,
-        createdAt: reportData.createdAt,
-        read: false
-      });
+    reportErr.hidden = true;
+    const category = categorySelect.value;
+    const itemName = itemInput.value.trim() || LostApi.CATEGORY_LABELS[category];
+    // 서버는 설명 한 줄(5~500자)을 받는다. 물건 이름과 기억나는 점을 이어 보낸다
+    const description = [itemName, memoInput.value.trim()].filter(Boolean).join(". ");
+    if (description.length < LostApi.DESCRIPTION_MIN) {
+      memoInput.classList.add("is-invalid");
+      reportErr.textContent = "기억나는 점을 조금 더 적어 주세요. 색, 스티커, 케이스 같은 특징이 확인에 쓰여요.";
+      reportErr.hidden = false;
+      return;
     }
+    const sh = String(startSelect.value).padStart(2, "0") + ":00";
+    const eh = endSelect.value === "24" ? "23:59" : String(endSelect.value).padStart(2, "0") + ":00";
+    let range;
+    if (dateSelect.value === "older") {
+      // 일주일 이전: 30일 전 ~ 7일 전 (서버 보관 기한 30일)
+      const from = LostApi.kstParts(new Date(Date.now() - 30 * DAY_MS)).date;
+      const to = LostApi.kstParts(new Date(Date.now() - 7 * DAY_MS)).date;
+      range = { lostFrom: LostApi.kstIso(from, "00:00"), lostTo: LostApi.kstIso(to, "23:59") };
+    } else {
+      range = LostApi.lostRange(dateSelect.value, sh, eh);
+    }
+    const buildingId = buildingSelect.value ? Number(buildingSelect.value) : null;
+    LostApi.store.set(LostApi.KEYS.reportDraft, { category, ...range, buildingId, description });
+    try {
+      sessionStorage.setItem("refreshLeft", "5"); // 새 신고는 후보 새로고침 5번부터
+      // 올리는 중 화면의 문구용 (기존 화면 값)
+      const dateLabel = dateSelect.selectedOptions[0]?.dataset.label || "일주일 이전";
+      sessionStorage.setItem(
+        "lostReport",
+        JSON.stringify({ item: itemName, date: dateLabel, timeRange: `${sh}~${eh}`, building: buildingSelect.selectedOptions[0]?.textContent || "" }),
+      );
+    } catch (_) {}
     window.location.href = "uploading.html";
   });
+  memoInput.addEventListener("input", () => memoInput.classList.remove("is-invalid"));
 </script>
 </body>
 </html>

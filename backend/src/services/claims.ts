@@ -15,7 +15,7 @@ import { AppError } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
 import { judgeAnswer } from "../matching/answer";
-import { FAILED_ATTEMPT, failedAttemptCounts, findCandidates } from "../matching/candidates";
+import { FAILED_ATTEMPT, failedAttemptCounts, findClaimableCandidate } from "../matching/candidates";
 import { judge } from "../matching/judge";
 import { MAX_FAILED_ATTEMPTS, MAX_ITEM_FAILED_ATTEMPTS } from "../matching/policy";
 import { questionFor } from "../matching/questions";
@@ -104,8 +104,8 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   if (!report) throw new AppError("NOT_FOUND", "신고를 찾을 수 없어요.");
   if (report.status !== "OPEN") throw new AppError("VALIDATION_ERROR", "닫힌 신고예요.");
 
-  // 지금 이 신고의 후보로 보이는 물건에만 시도할 수 있다 (open-issues #20)
-  const candidate = (await findCandidates(report, viewer.role)).find((c) => c.foundItemId === foundItemId);
+  // 이 신고의 후보로 보이는(보여 준 적 있는) 물건에만 시도할 수 있다 (open-issues #20)
+  const candidate = await findClaimableCandidate(report, viewer.role, foundItemId);
   if (!candidate) throw new AppError("FORBIDDEN", "이 신고의 후보가 아닌 물건이에요.");
 
   const item = await prisma.foundItem.findUniqueOrThrow({ where: { id: foundItemId }, include: { detail: true } });

@@ -254,6 +254,33 @@ describe("기준 8. 임베딩이 실패하면 아무것도 바꾸지 않는다",
   });
 });
 
+describe("기준 8-2. 세부 종류: 목록·상세에 보이고, 등록할 때 함께 고른다", () => {
+  it("종류에 속한 세부 종류만 저장, 속하지 않으면 400, 종류만 바꾸면 맞지 않는 세부 종류는 지운다", async () => {
+    const item = await at(guardPlace, { status: "REVIEW", category: null });
+    const res = await patch(guard, item.id, {
+      category: "CHARGER",
+      subCategory: "MOUSE",
+      description: "검정 무선 마우스",
+      status: "REGISTERED",
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: "REGISTERED", category: "CHARGER", subCategory: "MOUSE" });
+    const row = (await list(guard)).body.items.find((i: { id: string }) => i.id === item.id);
+    expect(row.subCategory).toBe("MOUSE");
+
+    const bad = await patch(guard, item.id, { subCategory: "BACKPACK" });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.details[0].path).toBe("subCategory");
+    expect((await patch(guard, item.id, { category: "BAG", subCategory: "BACKPACK" })).body.subCategory).toBe(
+      "BACKPACK",
+    );
+    expect((await patch(guard, item.id, { category: "UMBRELLA" })).body.subCategory).toBeNull();
+    expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: item.id } })).subCategory).toBeNull();
+    await patch(guard, item.id, { category: "BAG", subCategory: "POUCH" }).expect(200);
+    expect((await patch(guard, item.id, { subCategory: null })).body.subCategory).toBeNull();
+  });
+});
+
 describe("기준 9. 경비실 관리자도 자기 보관처의 검토 대기는 처리할 수 있다", () => {
   it("자기 보관처 REVIEW → REGISTERED", async () => {
     const item = await at(guardPlace, { status: "REVIEW", category: null });

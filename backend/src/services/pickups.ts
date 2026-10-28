@@ -1,11 +1,12 @@
 import { randomBytes } from "node:crypto";
-import type {
-  InPersonPickupResponse,
-  PickupCompleteResponse,
-  PickupQrResponse,
-  PickupScanResponse,
-  Role,
-  SelfPickupResponse,
+import {
+  type InPersonPickupResponse,
+  type PickupCompleteResponse,
+  type PickupQrResponse,
+  type PickupScanResponse,
+  type Role,
+  type SelfPickupResponse,
+  subCategoryWithin,
 } from "@chajeumpyo/shared";
 import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../lib/errors";
@@ -179,6 +180,7 @@ export async function scanPickup(admin: Admin, qrToken: string): Promise<PickupS
     foundItem: {
       id: item.id,
       category: item.category,
+      subCategory: subCategoryWithin(item.category, item.subCategory),
       building: item.building?.name ?? null,
       imageUrl: item.detail.imageOriginalKey
         ? await storage.signedUrl(item.detail.imageOriginalKey, ADMIN_IMAGE_TTL_SECONDS)

@@ -178,8 +178,9 @@ for (const [i, s] of samples.entries()) {
   const form = new FormData();
   form.append("image", new Blob([new Uint8Array(await photo(s.rgb))], { type: "image/jpeg" }), "sample.jpg");
   form.append("buildingId", String(await bid(s.building)));
-  form.append("storageType", s.place ? "HANDED_OVER" : "IN_PLACE");
-  if (s.place) form.append("storagePlaceId", String(await pid(s.place)));
+  // 가짜 AI는 늘 이어폰(귀중품)이라 그 자리에 둠은 거절된다 (QA B11). 일단 맡김으로 등록하고 종류를 바꾼 뒤 되돌린다
+  form.append("storageType", "HANDED_OVER");
+  form.append("storagePlaceId", String(await pid(s.place ?? "종합서비스센터")));
   form.append("floor", String(s.floor));
   form.append("consentVersion", CONSENT_VERSION);
   form.append("consentExternalAi", "true");
@@ -194,6 +195,9 @@ for (const [i, s] of samples.entries()) {
       body: JSON.stringify(s.patch),
     });
     if (!p.ok) throw new Error(`속성 수정 실패 ${p.status} ${await p.text()}`);
+  }
+  if (!s.place) {
+    await prisma.foundItem.update({ where: { id }, data: { storageType: "IN_PLACE", storagePlaceId: null } });
   }
   if (s.seed) await prisma.foundItem.update({ where: { id }, data: { isSeed: true } });
 }

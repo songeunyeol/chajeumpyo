@@ -11,7 +11,7 @@
 - **권한 표기**: `공개` 누구나 · `회원` 분실자·체험 계정 · `관리자` 관리자 계정
 - **시간**: ISO 8601, 한국 시간 기준으로 표시는 프론트에서 처리
 - **이미지 URL**: 비공개 사진은 만료 시간이 있는 서명 URL로 내려준다. (초안: 10분)
-- **캡차**: 습득물 등록, 체험 로그인, 인증 코드 요청은 Cloudflare Turnstile 토큰을 `X-Captcha-Token` 헤더로 보낸다. 없거나 틀리면 `400 CAPTCHA_FAILED`. 개발 환경에서는 `CAPTCHA_MODE=off`로 끌 수 있고 production에서는 끌 수 없다. (open-issues #38)
+- **캡차**: 습득물 등록, 체험 로그인, 인증 코드 요청은 Cloudflare Turnstile 토큰을 `X-Captcha-Token` 헤더로 보낸다. 없거나 틀리면 `400 CAPTCHA_FAILED`. 서버는 Turnstile 검증 결과의 `success`뿐 아니라 `hostname`(허용 호스트: `TURNSTILE_HOSTNAMES`, 없으면 `PUBLIC_BASE_URL`의 호스트. production이 아니고 localhost면 생략)과 위젯 `action`(습득물 분석·등록 `found-analyze`, 인증 코드 요청 `email-code`, 체험 로그인 `demo-login`)도 확인해, 다르면 같은 오류를 낸다. 개발 환경에서는 `CAPTCHA_MODE=off`로 끌 수 있고 production에서는 끌 수 없다. 위젯에 쓸 사이트 키와 캡차 방식은 `GET /config`로 받는다. (open-issues #38)
 - **동의**: 가입·체험 로그인·습득물 등록은 동의 화면 버전(`CONSENT_VERSION`, `packages/shared/src/api/consent.ts`)과 동의 항목을 같이 보낸다. 버전이 다르거나 필수 항목(가입: 이메일 수집·외부 AI 처리, 체험·등록: 외부 AI 처리)이 빠지면 `400 VALIDATION_ERROR`. 동의 문구도 같은 파일의 `CONSENT_TEXTS`를 쓴다. (QA B15, open-issues #35)
 
 ### 에러 응답 형식
@@ -33,6 +33,7 @@
 | 400 | `INVALID_EMAIL_DOMAIN` | 학교 이메일이 아님 |
 | 400 | `INVALID_CODE` | 인증 코드 불일치·만료 |
 | 400 | `CAPTCHA_FAILED` | 캡차 토큰이 없거나 틀림, 캡차 검증 서버 오류 |
+| 400 | `VALUABLE_HAND_OVER_REQUIRED` | AI가 귀중품으로 본 물건을 `IN_PLACE`(그 자리에 둠)로 등록하려 함. 보관처(`HANDED_OVER`)만 받는다 (QA B11) |
 | 401 | `UNAUTHORIZED` | 토큰 없음·만료 |
 | 403 | `FORBIDDEN` | 권한 없음 (일치 판정을 통과하지 않은 습득물 상세 조회, 후보가 아닌 습득물에 판정 시도, 다른 보관처 물건 수령 처리 등) |
 | 404 | `NOT_FOUND` | 대상 없음 |
@@ -56,6 +57,7 @@
 
 | 메서드 | 경로 | 권한 | 기능 ID |
 | --- | --- | --- | --- |
+| GET | `/config` | 공개 | F-01, F-04, F-05 (캡차 설정) |
 | GET | `/buildings` | 공개 | F-01 |
 | GET | `/storage-places` | 공개 | F-01 |
 | GET | `/files/*` | 서명 URL | F-10, F-14 |
@@ -92,6 +94,20 @@
 ---
 
 ## 3. 상세
+
+### 공개 설정
+
+#### `GET /config` · 공개
+프론트가 화면을 그리기 전에 읽는 공개 설정. 지금은 캡차 설정만 있다.
+
+```json
+{ "captcha": { "mode": "turnstile", "siteKey": "0x4AAAAAAA..." } }
+```
+- `mode`: `off`(개발. 서버가 토큰을 검사하지 않음) 또는 `turnstile`(Cloudflare Turnstile).
+- `siteKey`: Turnstile 위젯용 **공개** 사이트 키(`TURNSTILE_SITE_KEY`). `off`면 `null`. 비밀 키(`TURNSTILE_SECRET_KEY`)는 내려주지 않는다.
+- 프론트 동작: `turnstile`일 때만 `https://challenges.cloudflare.com/turnstile/v0/api.js`를 불러 위젯을 그리고, 받은 토큰을 `X-Captcha-Token`으로 보낸다. 토큰은 한 번만 쓸 수 있고 약 5분 뒤 만료되므로 만료되면 위젯이 새로 받는다. `off`면 스크립트를 부르지 않고 개발용 토큰 `dev-pass`를 보낸다.
+- `CAPTCHA_MODE=turnstile`이면 `TURNSTILE_SECRET_KEY`와 `TURNSTILE_SITE_KEY`가 둘 다 있어야 서버가 뜬다.
+- 응답은 `Cache-Control: public, max-age=60`.
 
 ### 건물
 
@@ -154,7 +170,9 @@
 - 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안)
 - AI 분석은 호출마다 제한 시간(기본 8초)이 있고 실패하면 한 번 재시도한다. AI 실패로 민감 여부를 모르면 공개본은 블러 처리한다.
 - 동의 필드: `consentVersion`, `consentExternalAi`(`"true"` 필수), `consentLocation`(`"true"`/`"false"`). 물건에 버전과 위치 동의 여부를 남긴다.
-- **고가품 안내**: AI가 고가품으로 본 물건을 `IN_PLACE`로 등록하면 `handOverAdvice`에 "보관처에 맡겨 주세요" 문구와 가까운 보관처 최대 3곳(같은 건물 먼저)을 준다. 아니면 `null`. 등록 단계 차단은 P1. (open-issues #32)
+- **고가품은 보관처에만** (QA B11, open-issues #32): AI가 고가품(`VALUABLE_CATEGORIES`, 지갑·카드·휴대폰·이어폰 등)으로 본 물건을 `IN_PLACE`로 보내면 `400 VALUABLE_HAND_OVER_REQUIRED` ("귀중품은 보관처(센터·경비실)에 맡겨 주세요.", `details[0].path = "storageType"`). 한 번에 등록은 AI 분석 뒤에야 종류를 알기 때문에, 분석 직후 **사진을 저장하기 전에** 거절한다(물건 행·사진 파일이 남지 않고 등록 횟수에도 세지 않는다). 같은 사진을 `HANDED_OVER`로 다시 보내면 된다. 이 거절은 요청 형식이 아니라 서버 AI 결과에 따라 갈리므로 `VALIDATION_ERROR`와 따로 둬서 화면이 "보관처 고르기"로 바로 이어지게 한다.
+- AI가 실패해 종류를 모르면(`REVIEW`) 막지 않는다. 관리자가 검토할 때 종류를 확인한다.
+- `handOverAdvice`: 예전 고가품 안내 필드(P0). 고가품을 그 자리에 두는 등록을 이제 거절하므로 **늘 `null`**이다. 응답 호환을 위해 남겨 둔다.
 - AI 응답이 4장의 형식과 다르면(허용 밖 색·종류·특징 키, 특징 5개 이상, 사진 밖 영역, 임베딩 차원 불일치) 실패로 보고 `REVIEW`로 저장한다.
 
 #### 두 단계 등록: `POST /found-items/analyze` → `POST /found-items/:id/confirm`
@@ -176,7 +194,7 @@
 }
 ```
 - `category`: AI가 알아본 종류. AI가 실패하면 `null`이고 `message`에 검토 대기 안내가 온다. 이때도 확정할 수 있고, 확정하면 `REVIEW`가 된다.
-- `isValuable`: 귀중품이면 `true`. 등록 화면에서 "보관처에 맡겨 주세요"를 먼저 권할 때 쓴다. (open-issues #32)
+- `isValuable`: 귀중품이면 `true`. 이때 확정은 `HANDED_OVER`만 받으므로 등록 화면은 "그 자리에 둠"을 감추고 "보관처에 맡김"을 미리 고른다. (open-issues #32, QA B11)
 - `confirmToken`: 서버는 HMAC만 저장한다. 이 값을 가진 기기만 확정할 수 있다.
 - `confirmBy`(60분)까지 확정하지 않으면 정기 작업이 기한 만료로 바꾸고 사진까지 지운다.
 
@@ -185,6 +203,7 @@
 - `201` 응답은 한 번에 등록과 같다. 분석에 성공했으면 `REGISTERED`(새 후보 알림), 실패했으면 `REVIEW`.
 - 습득 시각(`foundAt`)과 보관 기한(30일)은 확정한 때부터 센다.
 - 없는 물건·틀린 토큰·확정 시간 지남은 모두 `404 NOT_FOUND`. 이미 확정했으면 `409 ALREADY_CONFIRMED` (버튼을 두 번 눌러도 하나만 확정).
+- 분석 결과(초안의 `category`)가 귀중품인데 `storageType: IN_PLACE`면 `400 VALUABLE_HAND_OVER_REQUIRED`. 초안은 `ANALYZING` 그대로 남으므로 같은 `confirmToken`으로 보관처를 골라 다시 확정하면 된다. 종류를 모르면(`category: null`, 확정 시 `REVIEW`) 막지 않는다. (QA B11)
 
 ### 인증
 
@@ -233,6 +252,7 @@
 
 #### `POST /auth/demo` · 공개
 호출할 때마다 **새 체험 계정**을 만들어 로그인시킨다. 체험 계정은 시드 습득물만 후보로 보고, 판정·열람·수령해도 시드 상태가 바뀌지 않는다. 24시간 뒤 삭제된다.
+- 시드 습득물은 `npm run seed:demo -w backend`로 넣는다(여러 번 돌려도 늘지 않음). 물건별 숨은 특징과 체험 순서는 [체험 시나리오](./docs/demo-scenario.md).
 - 같은 IP에서 과도하게 만들면 `429 RATE_LIMITED`. (초안: 10분에 5개)
 - 요청: `{ "consent": { "version": "2026-10-12", "externalAi": true, "location": false } }`, 헤더 `X-Captcha-Token`.
 ```json
@@ -296,6 +316,7 @@
 
 #### `GET /lost-reports/:id/candidates` · 회원
 `{ "candidates": [...] }`. `POST` 응답의 `candidates`와 같은 형식. 새 습득물이 등록되면 늘어난다. 닫힌 신고는 빈 목록. 남의 신고면 `404`.
+- 후보는 요청할 때마다 다시 고른다(상위 3개). 응답에 담긴 물건은 이 신고의 "보여 준 후보"(`candidate_exposure`)로 남는다. `POST`·`PATCH` 응답의 `candidates`, 새 후보 알림(`NEW_CANDIDATE`)도 같다.
 
 #### `PATCH /lost-reports/:id` · 회원
 ```json
@@ -318,7 +339,9 @@
 { "foundItemId": "6a1f..." }
 ```
 
-- 이 신고의 현재 후보(`GET /lost-reports/:id/candidates`)에 없는 습득물이면 `403 FORBIDDEN`.
+- 판정할 수 있는 습득물: 이 신고의 지금 후보(상위 3개)이거나, **이 신고의 후보로 보여 준 적 있고 지금도 후보 범위 안**인 물건. 새 습득물 때문에 보던 물건이 상위 3개에서 밀려나도 판정할 수 있다.
+  - 후보 범위: 등록됨·열람됨, 보관 기한 안, 분실 시작 이후 습득, 연관 종류 묶음 안, 체험 계정은 시드만·일반 계정은 시드 제외.
+  - 그 밖(보여 준 적 없는 물건, 수령·만료로 범위를 벗어난 물건, 다른 신고에서만 보여 준 물건, 없는 물건)은 `403 FORBIDDEN`. 아무 물건이나 id로 찔러 보는 것을 막는다 (QA B5, 위협 모델 T2).
 - 판정 기준: 특징 일치 1개 이상·모순 0개면 통과, 일치 1개 이상·모순 1개 이상이면 경계, 일치 0개면 실패. 상세는 기능 명세서 F-08.
 - 이 습득물에 대한 마지막 시도 이후 신고 설명이 바뀌지 않았으면 **새 시도를 만들지 않고 이전 결과를 그대로** 돌려준다(`"reused": true`). 시도 횟수를 쓰지 않는다.
 
@@ -395,7 +418,9 @@
   "pickupNotice": "귀중품은 보관처에서 직원이 한 번 더 확인한 뒤 돌려드려요. 학생증을 가져가 주세요(저장하지 않아요)."
 }
 ```
-- `pickupNotice`: 고가품(지갑·카드·노트북·태블릿·이어폰, 분류 확정 후 휴대폰·시계 등 추가)이면 보관처 대면 수령 안내, 아니면 `null`. (QA W3)
+- `pickupNotice`: 고가품(지갑·카드·노트북·태블릿·이어폰, 분류 확정 후 휴대폰·시계 등 추가)이면 안내, 아니면 `null`. (QA W3)
+  - 보관처에 맡김(`HANDED_OVER`): 보관처 대면 수령 안내 (위 예시).
+  - 그 자리에 둠(`IN_PLACE`): 직원 확인을 약속하지 않는 안내 — "귀중품이라 되도록 빨리 찾아가 주세요. 그 자리에 없으면 종합서비스센터에 문의해 주세요." (예전에 그 자리에 둔 고가품용)
 - 수령·기한 만료로 지운 물건은 수령됨이면 `409 ALREADY_CLAIMED`, 만료면 `404`.
 - 체험 계정이 열람해도 시드 습득물의 `status`는 바뀌지 않는다.
 - 확인 질문 정답(`BORDERLINE` + 정답)도 통과로 본다. 통과하지 않았으면 `403`, 없는 물건 `404`.
@@ -459,7 +484,7 @@
 // 응답 200
 {
   "pickupId": "p_...",
-  "foundItem": { "id": "6a1f...", "category": "EARPHONE", "building": "혜인관", "imageUrl": "...(원본)" },
+  "foundItem": { "id": "6a1f...", "category": "EARPHONE", "subCategory": "WIRELESS_EARBUDS", "building": "혜인관", "imageUrl": "...(원본)" },
   "claimant": { "emailMasked": "st****@skuniv.ac.kr" },
   "expiresAt": "..."
 }
@@ -488,6 +513,7 @@
 검토 대기 습득물의 속성을 직접 고치고 `REGISTERED`로 바꾼다. 등록된 물건의 속성 수정에도 쓴다(상태는 그대로).
 - `status: "REGISTERED"`는 검토 대기 물건에만, 종류·설명이 있어야 한다. 등록하면 새 후보 알림을 보낸다.
 - 설명이 바뀌거나 등록하면 임베딩을 다시 만든다. 실패하면 아무것도 바꾸지 않고 `502 AI_UNAVAILABLE`.
+- `subCategory`는 세부 종류 키로, `category`(바꾸면 바꾼 값)에 속해야 한다. 속하지 않으면 `400`, `null`이면 지운다. 생략하고 `category`만 바꾸면 새 종류에 속하지 않는 세부 종류는 지운다. 목록·상세에도 `subCategory`가 있다.
 - 형식은 AI 응답과 같다: `color`는 12색 키, `features`는 정해진 키로 최대 4개, `brand` 40자, `title` 60자. 어기면 `400`.
 ```json
 { "category": "UMBRELLA", "color": "BLACK", "features": [{ "key": "pattern", "value": "체크무늬" }], "title": "검정 체크무늬 우산", "status": "REGISTERED" }

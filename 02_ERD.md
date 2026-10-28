@@ -32,6 +32,8 @@ erDiagram
     MATCH_ATTEMPT ||--o{ REVEAL_LOG : "통과 시"
     FOUND_ITEM ||--o{ REVEAL_LOG : "열람됨"
     FOUND_ITEM ||--o{ PICKUP : "수령"
+    LOST_REPORT ||--o{ CANDIDATE_EXPOSURE : "보여 준 후보"
+    FOUND_ITEM ||--o{ CANDIDATE_EXPOSURE : "후보로 보임"
 
     USER {
         uuid id PK
@@ -154,6 +156,11 @@ erDiagram
         datetime completed_at
         datetime purge_after
     }
+    CANDIDATE_EXPOSURE {
+        uuid lost_report_id PK,FK
+        uuid found_item_id PK,FK
+        datetime first_shown_at
+    }
     NOTIFICATION {
         uuid id PK
         uuid user_id FK
@@ -181,6 +188,7 @@ erDiagram
 | `reveal_log` | 위치 열람 기록 | 상세 조회할 때마다 한 줄씩. 같은 시도로 여러 줄이 생기므로 `match_attempt_id`는 UNIQUE가 아니다 |
 | `pickup` | 수령 처리 | 물건당 여러 건 가능(QR 재발급). **완료는 물건당 1건**. 대면 확인 수령(`IN_PERSON`)은 계정 없이 처리 관리자·메모만 |
 | `notification` | 앱 내 알림 | 공개 정보만 담는다 |
+| `candidate_exposure` | 신고별로 보여 준 후보 | 후보 목록 응답·새 후보 알림에 담긴 물건. 후보는 요청마다 다시 고르므로, 상위 3개에서 밀려난 물건도 여기 있고 지금 후보 범위 안이면 판정할 수 있다. 신고·물건이 지워지면 함께 지운다(CASCADE, 활동 기록이 아니라 파생 데이터) |
 
 ## 4. 주요 규칙 (DB 수준)
 

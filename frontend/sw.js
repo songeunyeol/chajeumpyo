@@ -9,7 +9,7 @@
  *
  * 배포 때 SHELL 파일이 바뀌면 VERSION을 올린다. 그러면 새 캐시를 받고 옛 캐시는 지운다.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = `chajeumpyo-shell-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -27,6 +27,7 @@ const SHELL = [
   "/icons/icon-maskable-512.png",
   "/icons/apple-touch-icon.png",
   "/found/api.js",
+  "/found/captcha.js",
   "/found/consent.html",
   "/found/photo.html",
   "/found/uploading.html",
@@ -70,7 +71,7 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
-  // 다른 출처(글꼴 CDN, Turnstile, 개발용 :4100 API)는 브라우저에 맡긴다.
+  // 다른 출처(글꼴 CDN, Turnstile, 개발용 :4000 API)는 브라우저에 맡긴다.
   if (url.origin !== self.location.origin) return;
 
   if (req.mode === "navigate") {
