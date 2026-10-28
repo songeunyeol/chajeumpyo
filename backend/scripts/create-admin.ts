@@ -1,5 +1,5 @@
 // 관리자 계정 만들기 (관리자는 직접 발급한다, 기능 명세서 F-14)
-// npm run admin:create -w backend -- --email guard@skuniv.ac.kr --password '...' --place "혜인관 경비실"
+// npm run admin:create -w backend -- --email gyomu@skuniv.ac.kr --password '...' --place "교무처"
 import { parseArgs } from "node:util";
 import { Password } from "@chajeumpyo/shared";
 import { hashPassword } from "../src/lib/hash";

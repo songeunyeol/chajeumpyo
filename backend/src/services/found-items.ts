@@ -31,7 +31,7 @@ export const DRAFT_TTL_MINUTES = 60;
 
 export const REVIEW_MESSAGE = "분석이 늦어져서 관리자가 확인한 뒤 등록돼요.";
 /** 고가품을 그 자리에 두려 할 때의 거절 문구 (QA B11) */
-export const HAND_OVER_REQUIRED_MESSAGE = "귀중품은 보관처(센터·경비실)에 맡겨 주세요.";
+export const HAND_OVER_REQUIRED_MESSAGE = "귀중품은 보관처(교무처)에 맡겨 주세요.";
 
 export function isValuableCategory(category: Category | null | undefined): boolean {
   return !!category && VALUABLE_CATEGORIES.includes(category);

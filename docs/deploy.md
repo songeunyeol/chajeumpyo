@@ -78,7 +78,7 @@ DB는 **pgvector가 들어 있는 이미지**로 만든다. Railway 기본 Postg
 railway ssh                      # 앱 서비스 컨테이너 셸 (/app/backend)
 npm run db:seed                  # 건물·보관처 (prisma/seed-data). 다시 돌려도 upsert라 안전
 npm run seed:demo                # 심사위원 체험용 습득물 (PR #47). 사진이 볼륨(STORAGE_LOCAL_DIR)에 저장되므로 꼭 ssh 안에서 돌린다
-npm run admin:create -- --email <관리자 메일> --password '<비밀번호>' --place "<보관처 이름>"   # --place는 선택
+npm run admin:create -- --email <관리자 메일> --password '<비밀번호>' --place "교무처"   # 보관처는 교무처(혜인관 1층) 한 곳. --place는 선택
 exit
 ```
 

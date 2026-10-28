@@ -314,7 +314,7 @@ describe("기준 8. 고가품을 그 자리에 두면 등록하지 않고 보관
     expect(res.status).toBe(400);
     expect(res.body.error).toMatchObject({
       code: "VALUABLE_HAND_OVER_REQUIRED",
-      message: "귀중품은 보관처(센터·경비실)에 맡겨 주세요.",
+      message: "귀중품은 보관처(교무처)에 맡겨 주세요.",
     });
     expect(await prisma.foundItem.count()).toBe(0);
     expect(JSON.stringify(res.body)).not.toMatch(/WHITE|Apple|곰돌이/);
