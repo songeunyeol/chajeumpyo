@@ -1,4 +1,4 @@
-// 물건 종류 24개 (#27): 이슈의 완료 기준 7(고가품 안내), 9(API가 새 값만 받는다)
+// 물건 종류 24개 (#27): 이슈의 완료 기준 7(고가품 보관), 9(API가 새 값만 받는다)
 import type { FoundItemExtraction } from "@chajeumpyo/shared";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -38,17 +38,19 @@ beforeEach(async () => {
 
 afterEach(() => resetAiClient());
 
-describe("기준 7. 새 고가품 종류도 보관처 안내", () => {
-  it("휴대폰·현금·스마트워치는 안내, 열쇠·텀블러는 없음", async () => {
+describe("기준 7. 새 고가품 종류도 그 자리에 둘 수 없다 (QA B11)", () => {
+  it("휴대폰·현금·스마트워치는 400, 열쇠·텀블러는 201", async () => {
     for (const category of ["PHONE", "CASH", "SMARTWATCH"] as const) {
       extractAs(category);
       const res = await register();
-      expect(res.status, category).toBe(201);
-      expect(res.body.handOverAdvice?.message, category).toContain("보관처에 맡겨");
+      expect(res.status, category).toBe(400);
+      expect(res.body.error.code, category).toBe("VALUABLE_HAND_OVER_REQUIRED");
     }
     for (const category of ["KEY", "TUMBLER"] as const) {
       extractAs(category);
-      expect((await register()).body.handOverAdvice, category).toBeNull();
+      const res = await register();
+      expect(res.status, category).toBe(201);
+      expect(res.body.handOverAdvice, category).toBeNull();
     }
   });
 });
