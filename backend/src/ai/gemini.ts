@@ -14,7 +14,7 @@ import { compareByRules } from "../matching/compare";
 import { type AiClient, EMBEDDING_DIM } from "./types";
 
 // 실제 Gemini 구현. 모델이 무엇을 돌려주든 바깥에는 고정 계약(packages/shared/src/ai.ts) 형식만 내보낸다.
-// 속성 추출은 기본 모델(2.5 Flash-Lite)로 하고, 실패하면(호출 오류·형식 오류) 대체 모델(2.5 Flash)로 한 번 더 한다.
+// 속성 추출은 기본 모델(3.6 Flash)로 하고, 실패하면(호출 오류·형식 오류) 대체 모델(3.5 Flash)로 한 번 더 한다.
 
 export type GeminiModels = Pick<GoogleGenAI["models"], "generateContent" | "embedContent">;
 

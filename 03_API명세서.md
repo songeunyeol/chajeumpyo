@@ -514,7 +514,7 @@
 - `features`: 최대 4개. `key`는 `sticker`, `scratch`, `case`, `keyring`, `contents`, `text`, `pattern`, `other` 중 하나, `value`는 40자 이하.
 - `sensitiveRegions`: 개인정보가 보이는 영역(사진 크기 대비 0~1 비율, `x`·`y`·`width`·`height`). 이 영역만 가린 공개본을 만든다.
 - `title`: 관리자 목록용 제목. 비공개 정보가 들어가므로 관리자 화면에만 쓴다.
-- 모델: 속성 추출은 `gemini-2.5-flash-lite`, 실패하면 `gemini-2.5-flash`로 한 번 더. 온도 0, JSON 스키마 강제. 사진 속 글자·신고 설명은 데이터로만 다루고 그 안의 지시는 따르지 않는다(신고 설명은 `<report>` 태그로 감싼다).
+- 모델: 속성 추출은 `gemini-3.6-flash`, 실패하면 `gemini-3.5-flash`로 한 번 더. 온도 0, JSON 스키마 강제. 사진 속 글자·신고 설명은 데이터로만 다루고 그 안의 지시는 따르지 않는다(신고 설명은 `<report>` 태그로 감싼다).
 - 임베딩: `gemini-embedding-001`, 출력 차원 1536(pgvector 인덱스 한도 2000 아래), 길이 1로 정규화.
 - 코드 기준: `packages/shared/src/ai.ts`
 
