@@ -1,9 +1,13 @@
 // 종류 인식 정확도 채점 (실제 AI). 파일 이름 앞부분을 정답으로 보고, 서비스와 같은 순서(정리 → 가리기 → AI)로 돌린다.
-// npm run eval:categories -w backend -- [사진 폴더] (기본 ~/Desktop/chajeumpyo-test-photos)
+// npm run eval:categories -w backend -- [사진 폴더] [--delay 초] (기본 ~/Desktop/chajeumpyo-test-photos, 사진 사이 대기 0초)
+// AI 호출 오류(사용량 초과·과부하)는 틀림이 아니라 "확인 못 함"으로 따로 세고, 정확도에서 뺀다.
+// 하루 사용량을 다 쓰면(429 quota) 그 자리에서 멈추고 지금까지 결과만 낸다.
 // 파일 이름 예: 마우스_1.jpg, 백팩-2.jpg, 우산3.jpg, 무선 이어폰_1.jpg → 세부 종류 이름이나 큰 종류 이름으로 정답을 찾는다.
 import { readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { extname, join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+import { parseArgs } from "node:util";
 import {
   CATEGORY_LABELS,
   Category,
@@ -69,7 +73,16 @@ function nameOf(file: string): string {
   );
 }
 
-const dir = process.argv[2] ?? join(homedir(), "Desktop", "chajeumpyo-test-photos");
+const { values: opts, positionals } = parseArgs({
+  options: { delay: { type: "string", default: "0" } },
+  allowPositionals: true,
+});
+const dir = positionals[0] ?? join(homedir(), "Desktop", "chajeumpyo-test-photos");
+const delayMs = Math.max(0, Number(opts.delay) || 0) * 1000;
+/** 하루 사용량 초과. 더 돌려도 모두 실패하므로 멈춘다 */
+const isQuotaExhausted = (msg: string) => msg.includes("429") && /quota/i.test(msg);
+/** 잠깐 몰린 것(과부하·분당 제한). 한 번 쉬었다 다시 해 본다 */
+const isTransient = (msg: string) => /\b(429|503)\b|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(msg);
 const lookup = buildLookup();
 const files = (await readdir(dir)).filter((f) => IMAGE_EXT.has(extname(f).toLowerCase())).sort();
 if (files.length === 0) {
@@ -84,20 +97,42 @@ type Row = {
   got: string;
   catOk: boolean | null;
   subOk: boolean | null;
+  /** AI 호출이 실패해 판정하지 못함 (정확도에서 뺀다) */
+  aiError: boolean;
   ms: number;
 };
+
+async function extract(image: Buffer) {
+  try {
+    return await withTimeout(ai.extractFoundItem(image, "image/jpeg"), 60_000, "AI");
+  } catch (err) {
+    const msg = (err as Error).message;
+    if (isQuotaExhausted(msg) || !isTransient(msg)) throw err;
+    await sleep(15_000);
+    return withTimeout(ai.extractFoundItem(image, "image/jpeg"), 60_000, "AI");
+  }
+}
 const rows: Row[] = [];
-for (const file of files) {
+let stoppedForQuota = false;
+for (const [i, file] of files.entries()) {
+  if (i > 0 && delayMs) await sleep(delayMs);
   const expected = lookup.get(squash(nameOf(file))) ?? null;
   const started = Date.now();
   let got = "";
   let catOk: boolean | null = null;
   let subOk: boolean | null = null;
+  let aiError = false;
   try {
     const original = await normalizeImage(await readFile(join(dir, file)));
     const masked = await premaskSafely(original);
     if (!masked) throw new Error("가리기 실패 (서비스에서는 AI로 보내지 않는다)");
-    const ex = await withTimeout(ai.extractFoundItem(masked.image, "image/jpeg"), 60_000, "AI");
+    let ex: Awaited<ReturnType<typeof extract>>;
+    try {
+      ex = await extract(masked.image);
+    } catch (err) {
+      aiError = true;
+      throw err;
+    }
     got = ex.hasObject
       ? `${itemLabel(ex.category, ex.subCategory)} (${ex.category}${ex.subCategory ? `/${ex.subCategory}` : ""})`
       : "물건 없음";
@@ -106,23 +141,35 @@ for (const file of files) {
       subOk = expected.sub ? catOk && ex.subCategory === expected.sub : null;
     }
   } catch (err) {
-    got = `오류: ${(err as Error).message.slice(0, 80)}`;
-    if (expected) catOk = false;
+    const msg = (err as Error).message;
+    got = `오류: ${msg.slice(0, 80)}`;
+    // 가리기 실패는 서비스에서도 생기는 실패라 틀림으로 세고, AI 호출 오류는 판정에서 뺀다
+    if (expected && !aiError) catOk = false;
+    if (aiError && isQuotaExhausted(msg)) stoppedForQuota = true;
   }
   const ms = Date.now() - started;
-  rows.push({ file, expected, got, catOk, subOk, ms });
-  const mark = catOk === null ? "?" : catOk && subOk !== false ? "✓" : "✗";
+  rows.push({ file, expected, got, catOk, subOk, aiError, ms });
+  const mark = aiError ? "!" : catOk === null ? "?" : catOk && subOk !== false ? "✓" : "✗";
   const want = expected ? itemLabel(expected.category, expected.sub) : `정답 모름("${nameOf(file)}")`;
   console.log(`${mark} ${file.padEnd(24)} 정답 ${want.padEnd(10)} → ${got}  ${(ms / 1000).toFixed(1)}s`);
+  if (stoppedForQuota) {
+    console.log("\nAI 하루 사용량을 다 써서 멈췄어요. 결제를 켜거나 내일 다시 돌려 주세요.");
+    break;
+  }
 }
 
 const scored = rows.filter((r) => r.catOk !== null);
 const subScored = rows.filter((r) => r.subOk !== null);
 const pct = (n: number, d: number) => (d ? `${((n / d) * 100).toFixed(0)}% (${n}/${d})` : "-");
-const times = rows.map((r) => r.ms).sort((a, b) => a - b);
+const times = rows
+  .filter((r) => !r.aiError)
+  .map((r) => r.ms)
+  .sort((a, b) => a - b);
+const aiErrors = rows.filter((r) => r.aiError).length;
 console.log(`
 큰 종류 정확도   ${pct(scored.filter((r) => r.catOk).length, scored.length)}
 세부 종류 정확도 ${pct(subScored.filter((r) => r.subOk).length, subScored.length)}  (정답에 세부 종류가 있는 사진만)
+AI 오류로 못 본 사진 ${aiErrors}장, 돌리지 못한 사진 ${files.length - rows.length}장 (둘 다 정확도에서 뺐어요)
 걸린 시간       중앙값 ${((times[Math.floor(times.length / 2)] ?? 0) / 1000).toFixed(1)}s, 최대 ${((times.at(-1) ?? 0) / 1000).toFixed(1)}s`);
 const unknown = rows.filter((r) => !r.expected);
 if (unknown.length) console.log(`정답을 못 읽은 파일 ${unknown.length}장: ${unknown.map((r) => r.file).join(", ")}`);
