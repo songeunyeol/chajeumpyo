@@ -9,6 +9,7 @@ import {
   PickupMethod,
   PickupStatus,
   StorageType,
+  SubCategory,
 } from "../enums";
 import { BuildingSummary } from "./buildings";
 import { StoragePlaceSummary } from "./found-items";
@@ -26,6 +27,8 @@ export const AdminFoundItemSummary = z.object({
   id: z.string(),
   status: FoundStatus,
   category: Category.nullable(),
+  /** 세부 종류 (예: CHARGER 안의 MOUSE). 없으면 null. 화면 이름은 itemLabel(category, subCategory) */
+  subCategory: SubCategory.nullable(),
   /** AI가 만든 짧은 제목. 비공개 정보가 들어가므로 관리자 화면에만 (open-issues #38) */
   title: z.string().nullable(),
   /** 주운 건물. 모르면(보관처에 맡김) 또는 확정 전이면 null */
@@ -97,6 +100,8 @@ export type AdminFoundItemDetailResponse = z.infer<typeof AdminFoundItemDetailRe
 export const AdminUpdateFoundItemRequest = z
   .object({
     category: Category.optional(),
+    /** 세부 종류. category(바꾸면 바꾼 값)에 속해야 한다. null이면 지운다. 생략하고 종류만 바꾸면 속하지 않는 세부 종류는 지운다 */
+    subCategory: SubCategory.nullable().optional(),
     categoryAlt: Category.nullable().optional(),
     color: Color.nullable().optional(),
     brand: z.string().trim().max(40).nullable().optional(),

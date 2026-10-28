@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>관리자 · 찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
+</head>
+<body>
+<main class="screen">
+  <header class="bar">
+    <b style="color:var(--green);font-size:18px">찾음표 관리자</b>
+    <span style="flex:1"></span>
+    <button type="button" class="text-btn" id="logout" style="cursor:pointer">로그아웃</button>
+  </header>
+  <h1 id="place">보관처</h1>
+  <p class="lead" id="who"></p>
+
+  <a class="choice" href="scan.html">
+    <span>수령 QR 스캔<small>학생 화면의 QR을 읽고 물건을 내줘요</small></span>
+    <span style="color:var(--green);font-weight:650">→</span>
+  </a>
+  <a class="choice" href="items.html?status=REVIEW">
+    <span>검토 대기<small>AI가 못 읽은 물건을 확인하고 등록해요</small></span>
+    <b id="countReview" style="color:var(--green)"></b>
+  </a>
+  <a class="choice" href="items.html">
+    <span>전체 습득물<small>상태별로 보고 고쳐요</small></span>
+    <b id="countAll" style="color:var(--green)"></b>
+  </a>
+  <a class="choice" href="stats.html">
+    <span>분실 다발 통계<small>어느 건물, 몇 시에 많이 잃어버리는지</small></span>
+    <span style="color:var(--green);font-weight:650">→</span>
+  </a>
+  <a class="choice" href="alerts.html">
+    <span>알림<small>대면 확인, 여러 명 열람</small></span>
+    <span id="unread" class="chip" style="display:none"></span>
+  </a>
+  <p class="note danger" id="error" role="alert" hidden></p>
+</main>
+<script src="admin.js"></script>
+<script>
+  const me = AdminApi.requireLogin();
+  if (me) {
+    document.getElementById("place").textContent = me.storagePlace ? me.storagePlace.name : "전체 관리";
+    document.getElementById("who").textContent = `${me.user.email}로 들어왔어요.`;
+  }
+  document.getElementById("logout").addEventListener("click", () => AdminApi.logout());
+  const error = document.getElementById("error");
+
+  AdminApi.listItems({ page: 1 })
+    .then((r) => {
+      const all = Object.values(r.counts).reduce((a, b) => a + b, 0);
+      document.getElementById("countReview").textContent = `${r.counts.REVIEW || 0}개`;
+      document.getElementById("countAll").textContent = `${all}개`;
+    })
+    .catch((err) => AdminApi.showError(error, err));
+
+  AdminApi.notifications()
+    .then((r) => {
+      const chip = document.getElementById("unread");
+      AdminApi.show(chip, r.unreadCount > 0);
+      chip.textContent = `새 알림 ${r.unreadCount}`;
+    })
+    .catch((err) => AdminApi.showError(error, err));
+</script>
+</body>
+</html>

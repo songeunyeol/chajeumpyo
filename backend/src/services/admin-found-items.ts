@@ -6,6 +6,7 @@ import {
   type AdminUpdateFoundItemRequest,
   AiFeature,
   type FoundStatus,
+  subCategoryWithin,
 } from "@chajeumpyo/shared";
 import { z } from "zod";
 import { ai } from "../ai";
@@ -40,6 +41,7 @@ const summarySelect = {
   id: true,
   status: true,
   category: true,
+  subCategory: true,
   storageType: true,
   foundAt: true,
   isSeed: true,
@@ -53,6 +55,7 @@ const summarySelect = {
 type Summary = Prisma.FoundItemGetPayload<{ select: typeof summarySelect }>;
 const toSummary = ({ detail, ...i }: Summary) => ({
   ...i,
+  subCategory: subCategoryWithin(i.category, i.subCategory),
   title: detail?.title ?? null,
   foundAt: i.foundAt.toISOString(),
   claimLockedAt: i.claimLockedAt?.toISOString() ?? null,
@@ -169,6 +172,16 @@ export async function updateFoundItem(
   if (registering && !category) {
     throw new AppError("VALIDATION_ERROR", "종류를 정해야 등록할 수 있어요.", [{ path: "category", message: "필수" }]);
   }
+  // 세부 종류: 직접 주면 그 종류에 속해야 한다. 생략하면 지금 값을 두되, 종류가 바뀌어 속하지 않으면 지운다
+  let subCategory = subCategoryWithin(category, item.subCategory);
+  if (input.subCategory !== undefined) {
+    subCategory = input.subCategory === null ? null : subCategoryWithin(category, input.subCategory);
+    if (input.subCategory !== null && !subCategory) {
+      throw new AppError("VALIDATION_ERROR", "이 종류에 없는 세부 종류예요.", [
+        { path: "subCategory", message: "종류에 속하지 않음" },
+      ]);
+    }
+  }
   const description = input.description ?? item.detail?.description ?? null;
   if (registering && !description) {
     throw new AppError("VALIDATION_ERROR", "설명을 적어야 등록할 수 있어요.", [
@@ -194,6 +207,7 @@ export async function updateFoundItem(
       where: { id },
       data: {
         category,
+        subCategory,
         categoryAlt: categoryAlt && categoryAlt !== category ? categoryAlt : null,
         ...(registering ? { status: "REGISTERED" as const } : {}),
         detail: {
