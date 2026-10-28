@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수령 QR 스캔 · 찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
+</head>
+<body>
+<main class="screen">
+  <header class="bar"><a class="back" href="home.html">←</a><h2>수령</h2></header>
+
+  <!-- 1. 읽기: 카메라 또는 코드 직접 입력 -->
+  <section id="readStep">
+    <h1>QR을 비춰 주세요</h1>
+    <p class="lead">학생 화면의 수령 QR을 네모 안에 맞춰요.</p>
+    <div class="done-photo" id="camBox" style="height:260px;background:var(--ink);display:grid;place-items:center">
+      <video id="video" muted playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none"></video>
+      <span aria-hidden="true" style="position:relative;width:180px;height:180px;border-radius:var(--radius);box-shadow:inset 0 0 0 3px var(--white)"></span>
+      <p id="camMsg" style="position:absolute;left:16px;right:16px;bottom:14px;margin:0;color:var(--white);font-size:13px;text-align:center">카메라를 켜는 중…</p>
+    </div>
+    <button type="button" class="btn line" id="camRetry" style="width:100%;cursor:pointer;display:none">카메라 다시 켜기</button>
+
+    <form id="manualForm" novalidate style="margin-top:20px">
+      <label class="field"><span>코드로 찾기</span>
+        <input id="code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="QR 아래 코드 (pk_…)">
+      </label>
+      <button type="submit" class="btn white" id="codeBtn" style="width:100%;cursor:pointer">코드 확인</button>
+    </form>
+    <p class="note danger" id="readError" role="alert" hidden></p>
+  </section>
+
+  <!-- 2. 확인: 물건·원본 사진·가린 이메일·만료 -->
+  <section id="checkStep" style="display:none">
+    <h1>이 물건이 맞나요</h1>
+    <p class="lead">사진과 물건을 맞춰 보고 내줘요.</p>
+    <div class="done-photo">
+      <img id="photo" alt="맡겨진 물건 원본 사진" hidden>
+      <div id="noPhoto" style="height:100%;display:grid;place-items:center;color:var(--mute);font-size:14px">사진이 없어요</div>
+    </div>
+    <table class="kv">
+      <tr><th>물건</th><td id="itemName"></td></tr>
+      <tr><th>주운 곳</th><td id="itemPlace"></td></tr>
+      <tr><th>찾는 사람</th><td id="claimant"></td></tr>
+      <tr><th>QR 만료</th><td id="expires"></td></tr>
+    </table>
+    <p class="note">찾는 사람에게 학교 이메일 앞 두 글자를 물어보면 더 확실해요. 사진 링크는 10분 뒤 닫혀요.</p>
+    <p class="note danger" id="checkError" role="alert" hidden></p>
+    <div class="dock">
+      <button type="button" class="btn" id="completeBtn" style="width:100%;cursor:pointer">수령 완료</button>
+      <button type="button" class="btn white" id="cancelBtn" style="width:100%;cursor:pointer">다른 QR 읽기</button>
+    </div>
+  </section>
+
+  <!-- 3. 끝 -->
+  <section id="doneStep" style="display:none">
+    <h1>내줬어요</h1>
+    <div class="thanks-box" id="doneMsg">수령 완료로 바꿨어요. 사진과 비공개 정보는 바로 지워져요.</div>
+    <table class="kv">
+      <tr><th>물건</th><td id="doneName"></td></tr>
+      <tr><th>시각</th><td id="doneTime"></td></tr>
+    </table>
+    <div class="dock">
+      <button type="button" class="btn" id="againBtn" style="width:100%;cursor:pointer">다음 QR 읽기</button>
+      <a class="btn white" href="home.html">관리 처음</a>
+    </div>
+  </section>
+</main>
+<script src="admin.js"></script>
+<script>
+  AdminApi.requireLogin();
+  const $ = (id) => document.getElementById(id);
+  const steps = { read: $("readStep"), check: $("checkStep"), done: $("doneStep") };
+  const video = $("video");
+  const camMsg = $("camMsg");
+
+  /** 직원이 알아들을 오류 문장. 서버 문장 뒤에 할 일을 붙인다 */
+  const SCAN_HINTS = {
+    QR_EXPIRED: "만료된 QR이에요. 학생에게 앱에서 수령 QR을 다시 받아 달라고 해 주세요.",
+    ALREADY_CLAIMED: "이미 내준 물건이에요. 같은 물건을 두 번 내줄 수 없어요.",
+    FORBIDDEN: "우리 보관처에 맡겨진 물건이 아니에요. 학생 앱에 나온 보관처로 안내해 주세요.",
+    NOT_FOUND: "없는 QR이에요. 코드를 다시 확인해 주세요.",
+    VALIDATION_ERROR: "코드 모양이 맞지 않아요. 다시 확인해 주세요.",
+  };
+  const hint = (err) => SCAN_HINTS[err.code] || AdminApi.errorText(err);
+
+  let current = null;
+  let busy = false;
+  /** 방금 '다른 QR 읽기'로 넘긴 QR. 잠시 카메라가 다시 읽어도 무시한다 */
+  let skipToken = null;
+
+  function go(name) {
+    for (const [k, node] of Object.entries(steps)) AdminApi.show(node, k === name);
+    window.scrollTo(0, 0);
+    if (name === "read") startCamera();
+    else stopCamera();
+  }
+
+  /** QR 안의 글자 → 토큰. 공백을 지우고, 주소 모양이면 token/qrToken 값을 꺼낸다 */
+  function toToken(raw) {
+    const text = String(raw || "").trim();
+    try {
+      const u = new URL(text);
+      const t = u.searchParams.get("qrToken") || u.searchParams.get("token");
+      if (t) return t.replace(/\s+/g, "");
+    } catch (_) {}
+    return text.replace(/\s+/g, "");
+  }
+
+  async function lookup(raw) {
+    const token = toToken(raw);
+    if (!token) return AdminApi.showError($("readError"), "코드를 넣어 주세요.");
+    if (busy) return;
+    busy = true;
+    $("codeBtn").textContent = "확인하는 중…";
+    AdminApi.showError($("readError"));
+    try {
+      current = { ...(await AdminApi.scanPickup(token)), token };
+      showCheck(current);
+    } catch (err) {
+      AdminApi.showError($("readError"), hint(err));
+      // 같은 QR을 계속 비추고 있어도 잠시 다시 묻지 않는다(오류 문구가 깜빡이거나 서버를 두드리지 않게)
+      skipToken = { token, until: Date.now() + 5000 };
+      if (!stream) startCamera();
+    } finally {
+      busy = false;
+      $("codeBtn").textContent = "코드 확인";
+    }
+  }
+
+  function showCheck(r) {
+    $("itemName").textContent = AdminApi.itemLabel(r.foundItem.category, r.foundItem.subCategory);
+    $("itemPlace").textContent = r.foundItem.building || "주운 곳 모름";
+    $("claimant").textContent = r.claimant.emailMasked;
+    $("expires").textContent = AdminApi.formatTime(r.expiresAt);
+    const img = $("photo");
+    if (r.foundItem.imageUrl) {
+      img.src = r.foundItem.imageUrl;
+      img.hidden = false;
+      AdminApi.show($("noPhoto"), false);
+    } else {
+      img.hidden = true;
+      AdminApi.show($("noPhoto"), true);
+    }
+    AdminApi.showError($("checkError"));
+    AdminApi.show($("completeBtn"), true);
+    go("check");
+  }
+
+  $("completeBtn").addEventListener("click", async () => {
+    if (!current || busy) return;
+    busy = true;
+    $("completeBtn").textContent = "처리하는 중…";
+    try {
+      const r = await AdminApi.completePickup(current.pickupId);
+      $("doneName").textContent = $("itemName").textContent;
+      $("doneTime").textContent = AdminApi.formatTime(r.completedAt);
+      skipToken = { token: current.token, until: Date.now() + 5000 };
+      current = null;
+      $("code").value = "";
+      go("done");
+    } catch (err) {
+      AdminApi.showError($("checkError"), hint(err));
+      // 만료·이미 수령·범위 밖은 다시 눌러도 안 되므로 버튼을 숨긴다
+      if (["QR_EXPIRED", "ALREADY_CLAIMED", "FORBIDDEN", "NOT_FOUND"].includes(err.code)) AdminApi.show($("completeBtn"), false);
+    } finally {
+      busy = false;
+      $("completeBtn").textContent = "수령 완료";
+    }
+  });
+  $("cancelBtn").addEventListener("click", () => {
+    // 학생이 아직 같은 QR을 비추고 있어도 바로 다시 읽지 않게 잠시 건너뛴다
+    if (current) skipToken = { token: current.token, until: Date.now() + 5000 };
+    current = null;
+    go("read");
+  });
+  $("againBtn").addEventListener("click", () => go("read"));
+  $("manualForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    lookup($("code").value);
+  });
+
+  // ---- 카메라 ----
+  // BarcodeDetector가 있으면 그것으로, 없으면 jsQR(고정 버전, 무결성 확인)을 그때 불러온다.
+  const JSQR_SRC = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+  const JSQR_SRI = "sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx";
+  let stream = null;
+  let timer = null;
+  let detector = null;
+
+  function loadJsQR() {
+    if (window.jsQR) return Promise.resolve(window.jsQR);
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = JSQR_SRC;
+      s.integrity = JSQR_SRI;
+      s.crossOrigin = "anonymous";
+      s.onload = () => (window.jsQR ? resolve(window.jsQR) : reject(new Error("jsQR")));
+      s.onerror = () => reject(new Error("jsQR"));
+      document.head.append(s);
+    });
+  }
+
+  async function makeDecoder() {
+    if ("BarcodeDetector" in window) {
+      try {
+        const formats = await window.BarcodeDetector.getSupportedFormats();
+        if (formats.includes("qr_code")) {
+          detector = detector || new window.BarcodeDetector({ formats: ["qr_code"] });
+          return async () => {
+            const codes = await detector.detect(video);
+            return codes[0]?.rawValue || null;
+          };
+        }
+      } catch (_) {}
+    }
+    const jsQR = await loadJsQR();
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    return async () => {
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if (!w || !h) return null;
+      const scale = Math.min(1, 640 / Math.max(w, h));
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      return jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" })?.data || null;
+    };
+  }
+
+  function cameraFailed(msg) {
+    stopCamera();
+    camMsg.textContent = msg;
+    AdminApi.show($("camRetry"), true);
+  }
+
+  async function startCamera() {
+    if (stream) return;
+    AdminApi.show($("camRetry"), false);
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      return cameraFailed("카메라는 HTTPS 주소에서만 켜져요. 아래에 코드를 넣어 주세요.");
+    }
+    camMsg.textContent = "카메라를 켜는 중…";
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    } catch (_) {
+      return cameraFailed("카메라를 쓸 수 없어요. 권한을 허용하거나 아래에 코드를 넣어 주세요.");
+    }
+    if (steps.read.style.display === "none") return stopCamera();
+    video.srcObject = stream;
+    video.style.display = "block";
+    try {
+      await video.play();
+    } catch (_) {}
+    let decode;
+    try {
+      decode = await makeDecoder();
+    } catch (_) {
+      return cameraFailed("QR 읽기 도구를 못 불러왔어요. 아래에 코드를 넣어 주세요.");
+    }
+    camMsg.textContent = "QR을 찾는 중…";
+    const tick = async () => {
+      if (!stream) return;
+      let text = null;
+      try {
+        text = await decode();
+      } catch (_) {}
+      if (text && skipToken && toToken(text) === skipToken.token && Date.now() < skipToken.until) text = null;
+      if (text && !busy) {
+        stopCamera();
+        camMsg.textContent = "QR을 읽었어요";
+        lookup(text);
+        return;
+      }
+      timer = setTimeout(tick, 250);
+    };
+    tick();
+  }
+
+  function stopCamera() {
+    clearTimeout(timer);
+    timer = null;
+    if (stream) for (const t of stream.getTracks()) t.stop();
+    stream = null;
+    video.srcObject = null;
+    video.style.display = "none";
+  }
+
+  $("camRetry").addEventListener("click", startCamera);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopCamera();
+    else if (steps.read.style.display !== "none") startCamera();
+  });
+  window.addEventListener("pagehide", stopCamera);
+  startCamera();
+</script>
+</body>
+</html>

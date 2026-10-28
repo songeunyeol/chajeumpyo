@@ -84,13 +84,25 @@ export async function failedAttemptCounts(
   return new Map(rows.map((r) => [r.foundItemId, r._count._all]));
 }
 
+type EligibleItem = {
+  id: string;
+  category: Category | null;
+  subCategory: string | null;
+  foundAt: Date;
+  buildingId: number | null;
+  isSeed: boolean;
+  claimLockedAt: Date | null;
+  building: { id: number; name: string } | null;
+  detail: { imageThumbKey: string | null } | null;
+};
+type Ranked = { item: EligibleItem & { category: Category }; score: ScoreBreakdown };
+
 /**
- * 신고의 후보를 고른다 (F-07).
- * 1) 범위: 분실 시작 이후 등록, 등록됨·열람됨, 보관 기한 안, 1·2순위 종류가 연관 종류 묶음 안,
- *    체험 계정은 시드만·일반 계정은 시드 제외
- * 2) 점수로 상위 CANDIDATE_LIMIT개 → 3) 습득 시각 최신순으로 돌려준다(점수 순서를 드러내지 않음)
+ * 후보 범위 안의 물건을 모두 점수 순으로 줄 세운다.
+ * 범위: 분실 시작 이후 등록, 등록됨·열람됨, 보관 기한 안, 1·2순위 종류가 연관 종류 묶음 안,
+ * 체험 계정은 시드만·일반 계정은 시드 제외
  */
-export async function findCandidates(report: ReportForMatching, viewerRole: Role): Promise<ScoredCandidate[]> {
+async function rankEligible(report: ReportForMatching, viewerRole: Role): Promise<Ranked[]> {
   if (report.status !== "OPEN") return [];
   const categories = relatedCategories(report.category);
   const now = new Date();
@@ -118,51 +130,106 @@ export async function findCandidates(report: ReportForMatching, viewerRole: Role
   });
   if (items.length === 0) return [];
 
-  const ids = items.map((i) => i.id);
-  const [similarity, failures] = await Promise.all([
-    similarityToFoundItems(report.id, ids),
-    failedAttemptCounts(report.userId, ids),
-  ]);
+  const similarity = await similarityToFoundItems(
+    report.id,
+    items.map((i) => i.id),
+  );
   const reportSide = { ...report, ...attrsOf(report.extractedAttributes, report.category) };
 
-  const scored = items
-    .filter((i) => i.category !== null)
-    .map((i) => ({
-      item: i,
-      score: scoreCandidate(
-        reportSide,
-        { ...i, color: i.detail?.color ?? null, brand: i.detail?.brand ?? null },
-        similarity.get(i.id),
-      ),
-    }))
-    // 동점이면 최근 습득물 우선, 그다음 id로 고정해 같은 입력엔 같은 결과
-    .sort(
-      (a, b) =>
-        b.score.total - a.score.total || +b.item.foundAt - +a.item.foundAt || a.item.id.localeCompare(b.item.id),
-    )
-    .slice(0, CANDIDATE_LIMIT);
+  return (
+    items
+      .filter((i): i is typeof i & { category: Category } => i.category !== null)
+      .map((i) => ({
+        item: i,
+        score: scoreCandidate(
+          reportSide,
+          { ...i, color: i.detail?.color ?? null, brand: i.detail?.brand ?? null },
+          similarity.get(i.id),
+        ),
+      }))
+      // 동점이면 최근 습득물 우선, 그다음 id로 고정해 같은 입력엔 같은 결과
+      .sort(
+        (a, b) =>
+          b.score.total - a.score.total || +b.item.foundAt - +a.item.foundAt || a.item.id.localeCompare(b.item.id),
+      )
+  );
+}
 
-  return scored
-    .map(({ item, score }) => {
-      const inPersonOnly = item.claimLockedAt !== null;
-      const left = inPersonOnly ? 0 : Math.max(0, MAX_FAILED_ATTEMPTS - (failures.get(item.id) ?? 0));
-      const category = item.category as Candidate["category"];
-      return {
-        foundItemId: item.id,
-        category,
-        subCategory: subCategoryWithin(category, item.subCategory),
-        foundAt: item.foundAt.toISOString(),
-        building: item.building,
-        thumbKey: item.detail?.imageThumbKey ?? null,
-        reasons: publicReasons(report, { category, buildingId: item.buildingId, foundAt: item.foundAt }),
-        attemptsLeft: left,
-        locked: left === 0,
-        inPersonOnly,
-        isSeed: item.isSeed,
-        score,
-      };
-    })
-    .sort((a, b) => b.foundAt.localeCompare(a.foundAt) || a.foundItemId.localeCompare(b.foundItemId));
+async function toScored(report: ReportForMatching, ranked: Ranked[]): Promise<ScoredCandidate[]> {
+  const failures = await failedAttemptCounts(
+    report.userId,
+    ranked.map((r) => r.item.id),
+  );
+  return ranked.map(({ item, score }) => {
+    const inPersonOnly = item.claimLockedAt !== null;
+    const left = inPersonOnly ? 0 : Math.max(0, MAX_FAILED_ATTEMPTS - (failures.get(item.id) ?? 0));
+    const category = item.category;
+    return {
+      foundItemId: item.id,
+      category,
+      subCategory: subCategoryWithin(category, item.subCategory),
+      foundAt: item.foundAt.toISOString(),
+      building: item.building,
+      thumbKey: item.detail?.imageThumbKey ?? null,
+      reasons: publicReasons(report, { category, buildingId: item.buildingId, foundAt: item.foundAt }),
+      attemptsLeft: left,
+      locked: left === 0,
+      inPersonOnly,
+      isSeed: item.isSeed,
+      score,
+    };
+  });
+}
+
+/**
+ * 신고의 후보를 고른다 (F-07).
+ * 1) 범위 안의 물건(rankEligible) 2) 점수로 상위 CANDIDATE_LIMIT개
+ * 3) 습득 시각 최신순으로 돌려준다(점수 순서를 드러내지 않음)
+ */
+export async function findCandidates(report: ReportForMatching, viewerRole: Role): Promise<ScoredCandidate[]> {
+  const top = (await rankEligible(report, viewerRole)).slice(0, CANDIDATE_LIMIT);
+  return (await toScored(report, top)).sort(
+    (a, b) => b.foundAt.localeCompare(a.foundAt) || a.foundItemId.localeCompare(b.foundItemId),
+  );
+}
+
+/** 신고자에게 이 물건들을 후보로 보여 줬다고 남긴다. 이미 있으면 그대로 둔다 */
+export async function recordExposure(
+  lostReportId: string,
+  foundItemIds: string[],
+  db: Pick<Prisma.TransactionClient, "candidateExposure"> = prisma,
+): Promise<void> {
+  if (foundItemIds.length === 0) return;
+  await db.candidateExposure.createMany({
+    data: foundItemIds.map((foundItemId) => ({ lostReportId, foundItemId })),
+    skipDuplicates: true,
+  });
+}
+
+/**
+ * 판정을 요청할 수 있는 후보인지 (F-08, open-issues #20).
+ * - 지금 상위 CANDIDATE_LIMIT개 안이거나
+ * - 이 신고의 후보로 보여 준 적이 있고(candidate_exposure) 지금도 후보 범위 안이면 된다.
+ * 새 습득물이 들어와 보던 물건이 상위에서 밀려나도 판정할 수 있게 하되,
+ * 보여 준 적 없는 물건을 id로 찔러 보는 것(QA B5, 위협 모델 T2)은 그대로 막는다.
+ */
+export async function findClaimableCandidate(
+  report: ReportForMatching,
+  viewerRole: Role,
+  foundItemId: string,
+): Promise<ScoredCandidate | null> {
+  const ranked = await rankEligible(report, viewerRole);
+  const index = ranked.findIndex((r) => r.item.id === foundItemId);
+  if (index < 0) return null;
+  if (index >= CANDIDATE_LIMIT) {
+    const shown = await prisma.candidateExposure.findUnique({
+      where: { lostReportId_foundItemId: { lostReportId: report.id, foundItemId } },
+      select: { foundItemId: true },
+    });
+    if (!shown) return null;
+  }
+  const [candidate] = await toScored(report, [ranked[index] as Ranked]);
+  return candidate ?? null;
 }
 
 /** 응답용: 점수를 빼고, 강한 블러 사진만 서명 URL로 바꾼다 */

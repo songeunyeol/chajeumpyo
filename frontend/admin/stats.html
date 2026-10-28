@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>분실 다발 통계 · 찾음표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
+</head>
+<body>
+<main class="screen">
+  <header class="bar"><a class="back" href="home.html">←</a><h2>통계</h2></header>
+  <h1>분실 다발 통계</h1>
+  <p class="lead">등록된 습득물을 건물·시간대·종류별로 세요. 캠퍼스 전체를 봐요.</p>
+
+  <div class="chips" id="ranges" style="margin:0 0 12px"></div>
+  <form id="rangeForm" novalidate style="display:flex;gap:8px;align-items:flex-end">
+    <label class="field" style="flex:1;min-width:0;margin:0"><span>시작</span><input type="date" id="from" required></label>
+    <label class="field" style="flex:1;min-width:0;margin:0"><span>끝</span><input type="date" id="to" required></label>
+  </form>
+  <button type="submit" form="rangeForm" class="btn white" id="apply" style="width:100%;margin-top:10px;cursor:pointer">이 기간으로 보기</button>
+  <p class="note danger" id="error" role="alert" hidden></p>
+
+  <section id="result" style="display:none;margin-top:20px">
+    <div class="banner" id="seedBanner" style="display:none">아직 실제 등록이 없어 시드 데이터로 센 결과예요.</div>
+    <div class="thanks-box" id="insight"></div>
+    <table class="kv">
+      <tr><th>기간</th><td id="period"></td></tr>
+      <tr><th>전체</th><td id="total"></td></tr>
+    </table>
+
+    <p class="section" style="margin-top:24px">건물</p>
+    <div class="card" id="byBuilding"></div>
+    <p class="section" style="margin-top:20px">시간대 (한국 시간)</p>
+    <div class="card" id="byHour"></div>
+    <p class="section" style="margin-top:20px">종류</p>
+    <div class="card" id="byCategory"></div>
+  </section>
+</main>
+<script src="admin.js"></script>
+<script>
+  AdminApi.requireLogin();
+  const A = AdminApi;
+  const { el } = A;
+  const $ = (id) => document.getElementById(id);
+  const RANGES = [
+    [7, "최근 7일"],
+    [30, "최근 30일"],
+    [90, "최근 90일"],
+  ];
+  const params = new URLSearchParams(location.search);
+  const isDay = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || "");
+  $("from").value = isDay(params.get("from")) ? params.get("from") : A.seoulDate(-29);
+  $("to").value = isDay(params.get("to")) ? params.get("to") : A.seoulDate(0);
+  $("from").max = $("to").max = A.seoulDate(0);
+
+  function renderRanges() {
+    const today = A.seoulDate(0);
+    $("ranges").replaceChildren(
+      ...RANGES.map(([days, label]) => {
+        const on = $("to").value === today && $("from").value === A.seoulDate(-(days - 1));
+        return el("button", {
+          type: "button",
+          class: "chip",
+          "aria-pressed": on ? "true" : "false",
+          style: `border:0;cursor:pointer;${on ? "box-shadow:inset 0 0 0 1.5px var(--green)" : "background:var(--white);color:var(--ink)"}`,
+          onclick: () => {
+            $("from").value = A.seoulDate(-(days - 1));
+            $("to").value = today;
+            load();
+          },
+          text: label,
+        });
+      }),
+    );
+  }
+
+  /** 가로 막대 목록. 색은 팔레트의 초록·옅은 초록만 쓴다 */
+  function bars(node, rows, emptyText) {
+    if (!rows.length) return node.replaceChildren(el("p", { class: "meta", text: emptyText }));
+    const max = Math.max(...rows.map((r) => r.count), 1);
+    node.replaceChildren(
+      ...rows.map((r, i) =>
+        el(
+          "div",
+          { style: `display:grid;grid-template-columns:96px 1fr 40px;gap:10px;align-items:center;${i ? "margin-top:10px" : ""}` },
+          el("span", { style: "font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", text: r.label }),
+          el(
+            "span",
+            { style: "height:12px;border-radius:999px;background:var(--soft);overflow:hidden", "aria-hidden": "true" },
+            el("span", { style: `display:block;height:100%;width:${Math.max(4, (r.count / max) * 100)}%;background:var(--green);border-radius:999px` }),
+          ),
+          el("b", { style: "font-size:14px;text-align:right", text: `${r.count}` }),
+        ),
+      ),
+    );
+  }
+
+  /** 24시간 막대. 비어 있는 시간도 자리를 둔다 */
+  function hours(node, rows) {
+    const counts = Array(24).fill(0);
+    for (const r of rows) counts[r.hour] = r.count;
+    const max = Math.max(...counts, 1);
+    const peak = counts.indexOf(Math.max(...counts));
+    const chart = el(
+      "div",
+      { style: "display:grid;grid-template-columns:repeat(24,1fr);gap:2px;align-items:end;height:96px", role: "img", "aria-label": counts.map((c, h) => `${h}시 ${c}건`).join(", ") },
+      ...counts.map((c, h) =>
+        el("span", {
+          title: `${h}시 ${c}건`,
+          style: `display:block;height:${c ? Math.max(6, (c / max) * 100) : 2}%;border-radius:3px 3px 0 0;background:${h === peak && c ? "var(--green)" : "var(--soft)"}`,
+        }),
+      ),
+    );
+    const axis = el(
+      "div",
+      { style: "display:grid;grid-template-columns:repeat(4,1fr);margin-top:6px;color:var(--mute);font-size:12px" },
+      ...[0, 6, 12, 18].map((h) => el("span", { text: `${h}시` })),
+    );
+    const sum = counts.reduce((a, b) => a + b, 0);
+    node.replaceChildren(chart, axis, el("p", { class: "meta", style: "margin-top:8px", text: sum ? `가장 많은 때 ${peak}시 (${counts[peak]}건)` : "이 기간에는 없어요." }));
+  }
+
+  let busy = false;
+  async function load() {
+    const from = $("from").value;
+    const to = $("to").value;
+    A.showError($("error"));
+    if (!isDay(from) || !isDay(to)) return A.showError($("error"), "시작과 끝 날짜를 골라 주세요.");
+    if (from > to) return A.showError($("error"), "끝 날짜가 시작 날짜보다 빨라요.");
+    if (busy) return;
+    busy = true;
+    renderRanges();
+    history.replaceState(null, "", `stats.html?from=${from}&to=${to}`);
+    $("apply").textContent = "세는 중…";
+    try {
+      const r = await A.hotspots({ from, to });
+      A.show($("seedBanner"), r.isSeedData);
+      $("insight").textContent = r.topInsight;
+      A.show($("insight"), !!r.topInsight);
+      $("period").textContent = `${A.formatTime(`${r.from}T12:00:00+09:00`, false)} ~ ${A.formatTime(`${r.to}T12:00:00+09:00`, false)}`;
+      $("total").textContent = `${r.total}건`;
+      bars($("byBuilding"), r.byBuilding.map((b) => ({ label: b.building, count: b.count })), "이 기간에는 없어요.");
+      hours($("byHour"), r.byHour);
+      bars($("byCategory"), r.byCategory.map((c) => ({ label: A.CATEGORY_LABELS[c.category] || c.category, count: c.count })), "이 기간에는 없어요.");
+      A.show($("result"), true);
+    } catch (err) {
+      A.showError($("error"), err);
+    } finally {
+      busy = false;
+      $("apply").textContent = "이 기간으로 보기";
+    }
+  }
+
+  $("rangeForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    load();
+  });
+  load();
+</script>
+</body>
+</html>

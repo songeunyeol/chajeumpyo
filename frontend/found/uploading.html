@@ -161,11 +161,16 @@
 
   runUploadFlow(uploadTask).catch((err) => {
     statusEl.textContent = "FAILED";
-    pageTitle.textContent = err.code === "NO_OBJECT_DETECTED" ? "다시 찍어 주세요" : "올리지 못했어요";
+    // CAPTCHA_FAILED: 토큰 만료·재사용 등. 사진 화면으로 돌아가면 위젯이 새 토큰을 받는다
+    pageTitle.textContent =
+      err.code === "NO_OBJECT_DETECTED" ? "다시 찍어 주세요" : err.code === "CAPTCHA_FAILED" ? "한 번 더 확인할게요" : "올리지 못했어요";
     pageLead.textContent = err.message;
     const dock = document.createElement("div");
     dock.className = "dock";
-    dock.innerHTML = '<a class="btn" href="photo.html">사진 다시 고르기</a>';
+    dock.innerHTML =
+      err.code === "CAPTCHA_FAILED"
+        ? '<a class="btn" href="photo.html">다시 시도</a>'
+        : '<a class="btn" href="photo.html">사진 다시 고르기</a>';
     document.querySelector("main.screen").appendChild(dock);
   });
 </script>

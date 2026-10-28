@@ -1,5 +1,7 @@
 // 찾은 사람 화면 ↔ 백엔드 연결 (테스트 연동용).
-// API 주소: ?api=... 로 한 번 주면 기억한다. 없으면 이 페이지를 연 호스트의 4000 포트(휴대폰에서 PC IP로 열어도 맞게).
+// API 주소: ?api=... 로 한 번 주면 기억한다. 없으면
+// - 개발(정적 서버 5500 포트): 이 페이지를 연 호스트의 4000 포트(휴대폰에서 PC IP로 열어도 맞게)
+// - 배포: 백엔드가 화면도 같이 내려주므로 같은 주소의 /api/v1
 (function () {
   const params = new URLSearchParams(location.search);
   try {
@@ -9,7 +11,9 @@
   try {
     saved = sessionStorage.getItem("apiBase");
   } catch (_) {}
-  const API_BASE = saved || `${location.protocol}//${location.hostname}:4000/api/v1`;
+  const devStatic = location.port === "5500";
+  const API_BASE =
+    saved || (devStatic ? `${location.protocol}//${location.hostname}:4000/api/v1` : `${location.origin}/api/v1`);
 
   /** 동의 화면 버전 (packages/shared/src/api/consent.ts의 CONSENT_VERSION) */
   const CONSENT_VERSION = "2026-10-12";
@@ -174,8 +178,38 @@
     });
   }
 
+  // 캡차 (Cloudflare Turnstile). 사이트 키는 GET /config에서 받는다(코드에 박지 않음).
+  // 위젯은 사진 화면(captcha.js)이 그리고 토큰을 sessionStorage에 둔다. 등록 요청이 꺼내 쓴다.
+  // 토큰은 한 번만 쓸 수 있고 약 300초 뒤 만료라, 쓰면 지우고 오래된 건 버린다.
+  const CAPTCHA_KEY = "captchaToken";
+  const CAPTCHA_MAX_AGE_MS = 270_000;
+  let configPromise = null;
+  /** GET /config. 연결이 안 되면 off로 보고 다음에 다시 묻는다(서버가 켰다면 등록 때 CAPTCHA_FAILED로 안내된다) */
+  function config() {
+    if (!configPromise) {
+      configPromise = call("/config").catch(() => {
+        configPromise = null;
+        return { captcha: { mode: "off", siteKey: null } };
+      });
+    }
+    return configPromise;
+  }
+
+  /** 아직 유효한 토큰을 꺼내고 지운다(한 번만 쓸 수 있음). off면 개발용 토큰 */
+  async function takeCaptchaToken() {
+    const { captcha } = await config();
+    if (captcha.mode !== "turnstile") return DEV_CAPTCHA_TOKEN;
+    const saved = store.get(CAPTCHA_KEY);
+    try {
+      sessionStorage.removeItem(CAPTCHA_KEY);
+    } catch (_) {}
+    return saved && Date.now() - saved.at < CAPTCHA_MAX_AGE_MS ? saved.token : null;
+  }
+
   window.FoundApi = {
     API_BASE,
+    CAPTCHA_KEY,
+    config,
     CATEGORY_LABELS,
     itemLabel,
     ApiError,
@@ -186,7 +220,8 @@
       call(`/storage-places${buildingId ? `?buildingId=${buildingId}` : ""}`).then((r) => r.storagePlaces),
 
     /** POST /found-items/analyze. 사진(dataURL)과 동의를 보내고 { id, confirmToken, category, isValuable, message } */
-    analyze(photoDataUrl, locationConsent) {
+    async analyze(photoDataUrl, locationConsent) {
+      const token = await takeCaptchaToken();
       const form = new FormData();
       form.append("image", dataUrlToBlob(photoDataUrl), "photo.jpg");
       form.append("consentVersion", CONSENT_VERSION);
@@ -194,7 +229,8 @@
       form.append("consentLocation", locationConsent ? "true" : "false");
       return call("/found-items/analyze", {
         method: "POST",
-        headers: { "X-Captcha-Token": DEV_CAPTCHA_TOKEN },
+        // 토큰이 없거나 만료됐으면 헤더 없이 보내고, 서버의 CAPTCHA_FAILED를 화면이 안내한다
+        headers: token ? { "X-Captcha-Token": token } : {},
         body: form,
       });
     },

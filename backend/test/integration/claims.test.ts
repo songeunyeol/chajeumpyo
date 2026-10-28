@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetAiClient, setAiClient } from "../../src/ai";
 import { mockAiClient } from "../../src/ai/mock";
 import { createApp } from "../../src/app";
+import { alertNewCandidate } from "../../src/services/candidate-alerts";
 import { demoLogin, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
 import { createBuilding, createFoundItem, hoursAgo } from "../helpers/fixtures";
@@ -260,6 +261,68 @@ describe("기준 7. 후보가 아닌 물건·남의 신고·닫힌 신고·비�
       .set("Authorization", `Bearer ${token}`)
       .send({ status: "CLOSED" });
     expect((await claim(r, it1.id)).status).toBe(400);
+  });
+});
+
+describe("후보가 바뀌어도 보여 준 물건에는 판정할 수 있다 (후보 밀림)", () => {
+  const candidateIds = async (r: string) => {
+    const res = await request(app).get(`/api/v1/lost-reports/${r}/candidates`).set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    return (res.body.candidates as { foundItemId: string }[]).map((c) => c.foundItemId);
+  };
+  /** 다른 건물에서 주운 물건: 같은 건물 물건보다 점수가 낮다 */
+  const fartherItem = async () => item({ buildingId: (await createBuilding(`먼 건물 ${Math.random()}`)).id });
+
+  it("보던 물건이 상위 3개에서 밀려나도 403이 아니다", async () => {
+    const old = await fartherItem();
+    const r = await newReport({ features: [feature("sticker", "곰돌이 스티커")] });
+    expect(await candidateIds(r)).toEqual([old.id]);
+
+    // 더 잘 맞는 새 습득물 3개가 들어와 old가 목록에서 빠진다
+    for (let i = 0; i < 3; i++) await item();
+    const now = await candidateIds(r);
+    expect(now).toHaveLength(3);
+    expect(now).not.toContain(old.id);
+
+    const res = await claim(r, old.id);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ result: "PASS", foundItemId: old.id });
+  });
+
+  it("새 후보 알림으로 알려 준 물건도 밀려난 뒤 판정할 수 있다", async () => {
+    const r = await newReport({ features: [feature("sticker", "곰돌이 스티커")] });
+    const notified = await fartherItem();
+    await alertNewCandidate(notified.id);
+    expect(await prisma.notification.count({ where: { foundItemId: notified.id, type: "NEW_CANDIDATE" } })).toBe(1);
+    for (let i = 0; i < 3; i++) await item();
+    expect(await candidateIds(r)).not.toContain(notified.id);
+    expect((await claim(r, notified.id)).status).toBe(200);
+  });
+
+  it("한 번도 보여 주지 않은 물건은 범위 안이어도 403", async () => {
+    const r = await newReport({ features: [feature("sticker", "곰돌이 스티커")] });
+    for (let i = 0; i < 3; i++) await item();
+    expect(await candidateIds(r)).toHaveLength(3);
+    // 상위 3개 밖에서 등록된 물건. 목록·알림으로 보여 준 적이 없다
+    const hidden = await fartherItem();
+    expect(await candidateIds(r)).not.toContain(hidden.id);
+    const res = await claim(r, hidden.id);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
+    expect(await prisma.candidateExposure.count({ where: { lostReportId: r, foundItemId: hidden.id } })).toBe(0);
+  });
+
+  it("보여 준 적 있어도 지금 범위를 벗어나면(수령됨·기한 지남) 403", async () => {
+    const gone = await fartherItem();
+    const expired = await fartherItem();
+    const r = await newReport({ features: [feature("sticker", "곰돌이 스티커")] });
+    expect(await candidateIds(r)).toEqual(expect.arrayContaining([gone.id, expired.id]));
+    await prisma.foundItem.update({ where: { id: gone.id }, data: { status: "CLAIMED" } });
+    await prisma.foundItem.update({ where: { id: expired.id }, data: { expiresAt: hoursAgo(0.1) } });
+    for (const id of [gone.id, expired.id]) {
+      const res = await claim(r, id);
+      expect(res.status).toBe(403);
+    }
   });
 });
 

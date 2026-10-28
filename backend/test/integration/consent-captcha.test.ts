@@ -6,7 +6,13 @@ import { resetAiClient, setAiClient } from "../../src/ai";
 import { mockAiClient } from "../../src/ai/mock";
 import { createApp } from "../../src/app";
 import { EnvSchema, env } from "../../src/config/env";
-import { type CaptchaVerifier, resetCaptchaVerifier, setCaptchaVerifier } from "../../src/middlewares/captcha";
+import {
+  type CaptchaVerifier,
+  type CaptchaVerifyResult,
+  resetCaptchaVerifier,
+  setCaptchaVerifier,
+} from "../../src/middlewares/captcha";
+import { VALUABLE_IN_PLACE_NOTICE, VALUABLE_PICKUP_NOTICE } from "../../src/services/reveal";
 import { demoConsent, finderConsentFields, lastCodeFor, memberConsent, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
 import { createAttempt, createBuilding, createFoundItem, createStoragePlace, hoursAgo } from "../helpers/fixtures";
@@ -42,15 +48,20 @@ function extractAs(category: FoundItemExtraction["category"]) {
   });
 }
 
-/** 캡차를 켜고 검증 결과를 정한다. 검증 API에 넘어간 값을 모은다 */
-function captchaOn(result: boolean | Error) {
+/**
+ * 캡차를 켜고 검증 결과를 정한다. 검증 API에 넘어간 값을 모은다.
+ * true면 성공으로 보고, 토큰의 ":" 뒤를 action으로 돌려준다(예: "good:demo-login"). hostname은 PUBLIC_BASE_URL의 호스트(테스트는 test.local).
+ * 객체를 주면 그대로 돌려준다(hostname·action 불일치 확인용).
+ */
+function captchaOn(result: boolean | Error | CaptchaVerifyResult) {
   env.CAPTCHA_MODE = "turnstile";
   env.TURNSTILE_SECRET_KEY = "secret-key";
   const calls: Parameters<CaptchaVerifier>[0][] = [];
   setCaptchaVerifier(async (input) => {
     calls.push(input);
     if (result instanceof Error) throw result;
-    return result;
+    if (typeof result === "object") return result;
+    return { success: result, hostname: new URL(env.PUBLIC_BASE_URL).hostname, action: input.token.split(":")[1] };
   });
   return calls;
 }
@@ -63,8 +74,12 @@ beforeEach(async () => {
   B = (await createBuilding("청운관")).id;
 });
 
+const ORIGINAL_BASE_URL = env.PUBLIC_BASE_URL;
+
 afterEach(() => {
   env.CAPTCHA_MODE = "off";
+  env.PUBLIC_BASE_URL = ORIGINAL_BASE_URL;
+  env.TURNSTILE_HOSTNAMES = undefined;
   env.TURNSTILE_SECRET_KEY = undefined;
   resetCaptchaVerifier();
   resetAiClient();
@@ -153,11 +168,86 @@ describe("기준 5. 맞는 토큰이면 통과하고, 비밀 키·토큰·IP를 
     const calls = captchaOn(true);
     const res = await request(app)
       .post("/api/v1/auth/demo")
-      .set("X-Captcha-Token", "good-token")
+      .set("X-Captcha-Token", "good:demo-login")
       .send({ consent: demoConsent() });
     expect(res.status).toBe(201);
-    expect(calls).toEqual([{ secret: "secret-key", token: "good-token", ip: expect.any(String) }]);
-    expect((await register(base(), { "X-Captcha-Token": "good-token" })).status).toBe(201);
+    expect(calls).toEqual([{ secret: "secret-key", token: "good:demo-login", ip: expect.any(String) }]);
+    expect((await register(base(), { "X-Captcha-Token": "good:found-analyze" })).status).toBe(201);
+    expect(
+      (
+        await request(app)
+          .post("/api/v1/auth/email/code")
+          .set("X-Captcha-Token", "good:email-code")
+          .send({ email: EMAIL })
+      ).status,
+    ).toBe(204);
+  });
+});
+
+describe("기준 5-1. 다른 화면(action)에서 받은 토큰은 막는다", () => {
+  it("action이 다르거나 없으면 400 CAPTCHA_FAILED", async () => {
+    captchaOn(true);
+    const checks = [
+      // 사진 화면 토큰으로 체험 계정 만들기
+      await request(app)
+        .post("/api/v1/auth/demo")
+        .set("X-Captcha-Token", "good:found-analyze")
+        .send({ consent: demoConsent() }),
+      // 체험 로그인 토큰으로 습득물 등록
+      await register(base(), { "X-Captcha-Token": "good:demo-login" }),
+      // action 없음
+      await request(app).post("/api/v1/auth/email/code").set("X-Captcha-Token", "good").send({ email: EMAIL }),
+    ];
+    for (const res of checks) {
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("CAPTCHA_FAILED");
+    }
+    expect(await prisma.foundItem.count()).toBe(0);
+    expect(await prisma.user.count()).toBe(0);
+    expect(await prisma.emailVerification.count()).toBe(0);
+  });
+});
+
+describe("기준 5-2. 우리 사이트가 아닌 곳에서 받은 토큰은 막는다", () => {
+  it("hostname이 PUBLIC_BASE_URL과 다르면 400, 같으면 통과", async () => {
+    env.PUBLIC_BASE_URL = "https://chajeumpyo.example.com";
+    const demo = (token: string) =>
+      request(app).post("/api/v1/auth/demo").set("X-Captcha-Token", token).send({ consent: demoConsent() });
+
+    captchaOn({ success: true, hostname: "evil.example.net", action: "demo-login" });
+    const bad = await demo("t");
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.code).toBe("CAPTCHA_FAILED");
+
+    captchaOn({ success: true, action: "demo-login" }); // hostname 없음
+    expect((await demo("t")).status).toBe(400);
+
+    captchaOn({ success: true, hostname: "chajeumpyo.example.com", action: "demo-login" });
+    expect((await demo("t")).status).toBe(201);
+  });
+
+  it("TURNSTILE_HOSTNAMES가 있으면 그 목록으로 확인한다", async () => {
+    env.TURNSTILE_HOSTNAMES = "app.example.com, www.example.com";
+    captchaOn({ success: true, hostname: "localhost", action: "demo-login" });
+    const res = await request(app)
+      .post("/api/v1/auth/demo")
+      .set("X-Captcha-Token", "t")
+      .send({ consent: demoConsent() });
+    expect(res.body.error?.code).toBe("CAPTCHA_FAILED");
+    captchaOn({ success: true, hostname: "www.example.com", action: "demo-login" });
+    expect(
+      (await request(app).post("/api/v1/auth/demo").set("X-Captcha-Token", "t").send({ consent: demoConsent() }))
+        .status,
+    ).toBe(201);
+  });
+
+  it("success가 false면 hostname·action이 맞아도 막는다", async () => {
+    captchaOn({ success: false, hostname: "test.local", action: "demo-login" });
+    const res = await request(app)
+      .post("/api/v1/auth/demo")
+      .set("X-Captcha-Token", "t")
+      .send({ consent: demoConsent() });
+    expect(res.body.error.code).toBe("CAPTCHA_FAILED");
   });
 });
 
@@ -176,13 +266,20 @@ describe("기준 6. 캡차 검증 서버 오류면 통과시키지 않는다", (
 describe("기준 7. 캡차 끄기는 개발에서만", () => {
   it("꺼져 있으면 토큰 없이 동작, production에서 끄거나 비밀 키 없이 켜면 설정 오류", async () => {
     expect((await request(app).post("/api/v1/auth/demo").send({ consent: demoConsent() })).status).toBe(201);
-    const ok = { DATABASE_URL: "postgresql://x", JWT_SECRET: "a".repeat(32), ALLOWED_EMAIL_DOMAINS: "skuniv.ac.kr" };
+    // PUBLIC_BASE_URL·STORAGE_LOCAL_DIR는 production 규칙(https·절대 경로)을 맞춘 값 (규칙 자체는 unit/env.test.ts)
+    const ok = {
+      DATABASE_URL: "postgresql://x",
+      JWT_SECRET: "a".repeat(32),
+      ALLOWED_EMAIL_DOMAINS: "skuniv.ac.kr",
+      PUBLIC_BASE_URL: "https://example.test",
+      STORAGE_LOCAL_DIR: "/data/uploads",
+    };
     expect(EnvSchema.safeParse({ ...ok, NODE_ENV: "production" }).success).toBe(false);
     expect(EnvSchema.safeParse({ ...ok, CAPTCHA_MODE: "turnstile" }).success).toBe(false);
-    expect(
-      EnvSchema.safeParse({ ...ok, NODE_ENV: "production", CAPTCHA_MODE: "turnstile", TURNSTILE_SECRET_KEY: "k" })
-        .success,
-    ).toBe(true);
+    const prod = { ...ok, NODE_ENV: "production", CAPTCHA_MODE: "turnstile", TURNSTILE_SECRET_KEY: "k" };
+    // 사이트 키가 없으면 프론트가 위젯을 못 그리므로 설정 오류
+    expect(EnvSchema.safeParse(prod).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...prod, TURNSTILE_SITE_KEY: "site" }).success).toBe(true);
   });
 });
 
@@ -225,11 +322,17 @@ describe("기준 9. 고가품이 아니거나, 맡겼거나, AI가 실패하면 
 });
 
 describe("기준 10. 공개 화면은 고가품이면 대면 수령 안내", () => {
-  it("지갑은 안내, 우산은 null", async () => {
+  it("보관처에 맡긴 지갑은 대면 안내, 그 자리에 둔 지갑은 그 자리 안내, 우산은 null", async () => {
     const user = await signupUser(app);
+    const place = await createStoragePlace("혜인관 경비실", A);
     const notices: (string | null)[] = [];
-    for (const category of ["WALLET", "UMBRELLA"] as const) {
-      const item = await createFoundItem({ buildingId: A, category, foundAt: hoursAgo(1) });
+    const cases = [
+      { category: "WALLET", storageType: "HANDED_OVER", storagePlaceId: place.id },
+      { category: "WALLET", storageType: "IN_PLACE", storagePlaceId: null },
+      { category: "UMBRELLA", storageType: "HANDED_OVER", storagePlaceId: place.id },
+    ] as const;
+    for (const c of cases) {
+      const item = await createFoundItem({ buildingId: A, foundAt: hoursAgo(1), ...c });
       await prisma.foundItemDetail.update({
         where: { foundItemId: item.id },
         data: { imagePublicKey: `found/${item.id}/public.jpg` },
@@ -241,7 +344,10 @@ describe("기준 10. 공개 화면은 고가품이면 대면 수령 안내", () 
         .expect(200);
       notices.push(res.body.pickupNotice);
     }
-    expect(notices[0]).toContain("보관처에서");
-    expect(notices[1]).toBeNull();
+    expect(notices[0]).toBe(VALUABLE_PICKUP_NOTICE);
+    // 직원이 맡고 있지 않으니 "직원이 한 번 더 확인"을 약속하지 않는다
+    expect(notices[1]).toBe(VALUABLE_IN_PLACE_NOTICE);
+    expect(notices[1]).not.toContain("직원");
+    expect(notices[2]).toBeNull();
   });
 });

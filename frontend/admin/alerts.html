@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>알림 · 찾음표 관리자</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../palette.css">
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
+</head>
+<body>
+<main class="screen">
+  <header class="bar">
+    <a class="back" href="home.html">←</a><h2>알림</h2>
+    <span style="flex:1"></span>
+    <button type="button" class="text-btn" id="readAll" style="cursor:pointer;color:var(--green);display:none">모두 읽음</button>
+  </header>
+  <h1>알림</h1>
+  <p class="lead" id="lead">불러오는 중…</p>
+  <p class="note danger" id="error" role="alert" hidden></p>
+  <div id="list"></div>
+  <p class="note" id="empty" style="display:none">아직 알림이 없어요.</p>
+</main>
+<script src="admin.js"></script>
+<script>
+  AdminApi.requireLogin();
+  const A = AdminApi;
+  const { el } = A;
+  const $ = (id) => document.getElementById(id);
+  let data = { notifications: [], unreadCount: 0 };
+
+  function render() {
+    const { notifications, unreadCount } = data;
+    $("lead").textContent = unreadCount ? `읽지 않은 알림 ${unreadCount}개` : "모두 읽었어요.";
+    A.show($("readAll"), unreadCount > 0);
+    A.show($("empty"), notifications.length === 0);
+    $("list").replaceChildren(
+      ...notifications.map((n) => {
+        const unread = !n.readAt;
+        const chips = [el("span", { class: n.type === "CLAIM_LOCKED" ? "chip danger" : n.type === "MULTI_REVEAL" ? "chip warn" : "chip", text: A.NOTIFICATION_LABELS[n.type] || "알림" })];
+        if (unread) chips.push(el("span", { class: "chip", text: "새 알림" }));
+        const body = [el("p", { style: "margin:0;font-size:15px;line-height:1.45", text: n.message }), el("p", { class: "meta", style: "margin-top:6px", text: A.formatTime(n.createdAt) }), el("div", { class: "chips" }, chips)];
+        const attrs = { class: "card", style: `display:block;${unread ? "box-shadow:inset 0 0 0 1.5px var(--green)" : ""}` };
+        if (n.foundItemId) {
+          // 누르면 읽음으로 바꾸고 그 물건으로 간다
+          return el("a", { ...attrs, href: `item.html?id=${encodeURIComponent(n.foundItemId)}`, onclick: (e) => openNote(e, n) }, body);
+        }
+        return el("button", { ...attrs, type: "button", style: `${attrs.style};width:100%;text-align:left;border:0;cursor:${unread ? "pointer" : "default"}`, onclick: (e) => openNote(e, n) }, body);
+      }),
+    );
+  }
+
+  async function markRead(n) {
+    if (n.readAt) return;
+    await A.markRead(n.id);
+    n.readAt = new Date().toISOString();
+    data.unreadCount = Math.max(0, data.unreadCount - 1);
+  }
+
+  async function openNote(e, n) {
+    if (n.readAt) return;
+    const href = e.currentTarget.getAttribute("href");
+    e.preventDefault();
+    try {
+      await markRead(n);
+    } catch (err) {
+      if (!href) return A.showError($("error"), err);
+    }
+    if (href) location.href = href;
+    else render();
+  }
+
+  $("readAll").addEventListener("click", async () => {
+    A.showError($("error"));
+    try {
+      await A.markAllRead();
+      const now = new Date().toISOString();
+      for (const n of data.notifications) n.readAt = n.readAt || now;
+      data.unreadCount = 0;
+      render();
+    } catch (err) {
+      A.showError($("error"), err);
+    }
+  });
+
+  A.notifications()
+    .then((r) => {
+      data = r;
+      render();
+    })
+    .catch((err) => {
+      $("lead").textContent = "";
+      A.showError($("error"), err);
+    });
+</script>
+</body>
+</html>
