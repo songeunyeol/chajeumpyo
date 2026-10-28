@@ -17,7 +17,7 @@
     <!-- 1단계: 먼저 나타났다가 위로 올라가며 사라지는 통과 문구 -->
     <section class="pass-intro" id="passIntro" aria-live="polite">
       <div class="pass-intro-inner">
-        <span class="pass-badge">✓ 확인 질문 3/3 통과</span>
+        <span class="pass-badge" id="passBadge">✓ 확인 질문 3/3 통과</span>
         <h1>내 물건이 맞아요</h1>
         <p class="lead" style="margin-bottom:0">설명한 특징이 물건과 모두 맞았어요.</p>
       </div>
@@ -49,18 +49,21 @@
       <h1 id="itemTitle" style="margin:6px 0 8px;font-size:26px">무선 이어폰</h1>
       <table class="kv">
         <tr><th>주운 곳</th><td id="itemBuilding">혜인관</td></tr>
-        <tr><th>보관</th><td>그 자리에 둠</td></tr>
+        <tr><th>보관</th><td id="itemStorage">그 자리에 둠</td></tr>
         <tr><th>습득</th><td id="itemTime">10월 28일(수) 14:10</td></tr>
       </table>
       <p class="note" id="expireNote" style="margin-top:8px">이 사진과 위치는 10분 뒤 닫혀요.</p>
       <div class="dock" style="padding-top:14px">
-        <a class="btn" href="home.html">확인했어요</a>
+        <a class="btn" id="selfPickupBtn" href="home.html">확인했어요</a>
       </div>
     </section>
   </div>
 </main>
 <script src="../naver-map.js"></script>
+<script src="api.js"></script>
 <script>
+  // 내 물건 (그 자리에 둠): GET /found-items/:id/detail. 통과한 계정만 볼 수 있고 열람 기록이 남는다
+  const authed = LostApi.requireLogin();
   const viewport = document.getElementById("passToItemViewport");
   const barTitle = document.getElementById("barTitle");
   const backLink = document.querySelector(".bar .back");
@@ -68,53 +71,23 @@
   const itemFallbackSvg = document.getElementById("itemFallbackSvg");
   const itemBuildingEl = document.getElementById("itemBuilding");
   const expireNoteEl = document.getElementById("expireNote");
+  const selfPickupBtn = document.getElementById("selfPickupBtn");
   const params = new URLSearchParams(location.search);
   const isFromClosed = params.get("from") === "closed";
 
-  if (isFromClosed && backLink) {
-    backLink.href = "home.html";
-  }
+  if (isFromClosed && backLink) backLink.href = "home.html";
+  document.getElementById("passBadge").textContent = "✓ 확인 통과";
 
-  let buildingName = "혜인관";
-  let expiresAt = Date.now() + 10 * 60 * 1000;
-
-  try {
-    const savedPhoto = sessionStorage.getItem("foundPhoto");
-    if (savedPhoto) {
-      itemPhotoImg.src = savedPhoto;
-      itemPhotoImg.hidden = false;
-      itemFallbackSvg.setAttribute("hidden", "");
-    }
-    const foundBldg = sessionStorage.getItem("foundBuilding");
-    if (foundBldg) buildingName = foundBldg;
-
-    const report = JSON.parse(sessionStorage.getItem("lostReport") || "null");
-    if (report) {
-      if (report.item) document.getElementById("itemTitle").textContent = report.item;
-      if (!foundBldg && report.building && report.building !== "잘 모르겠음") {
-        buildingName = report.building;
-      }
-      if (report.expiresAt) {
-        expiresAt = Number(report.expiresAt);
-      }
-    }
-    itemBuildingEl.textContent = buildingName;
-
-    const regTime = sessionStorage.getItem("registeredAt");
-    if (regTime) {
-      document.getElementById("itemTime").textContent = regTime;
-    }
-  } catch (_) {}
-
-  if (window.NaverCampusMap) {
-    window.NaverCampusMap.mount(document.getElementById("itemMapBox"), { buildingName });
-  }
+  let expiresAt = 0;
+  let timer = null;
 
   function updateExpireNote() {
+    if (!expiresAt) return;
     const remainMs = expiresAt - Date.now();
     if (remainMs <= 0) {
-      expireNoteEl.textContent = "열람 가능 시간(10분)이 지나 닫혔어요.";
-      window.location.href = "home.html";
+      // 사진 링크(서명 URL)가 닫혔다. 다시 열면 새 링크를 받는다
+      expireNoteEl.textContent = "사진 링크가 닫혔어요. 화면을 다시 열면 새로 받아요.";
+      clearInterval(timer);
       return;
     }
     const totalSec = Math.ceil(remainMs / 1000);
@@ -123,8 +96,58 @@
     expireNoteEl.textContent = `이 사진과 위치는 ${m}분 ${s}초 뒤 닫혀요.`;
   }
 
-  updateExpireNote();
-  setInterval(updateExpireNote, 1000);
+  function showError(err) {
+    expireNoteEl.textContent = LostApi.friendlyMessage(err);
+    expireNoteEl.classList.add("danger");
+    selfPickupBtn.textContent = "홈으로";
+    selfPickupBtn.dataset.done = "1";
+  }
+
+  async function load() {
+    let d;
+    try {
+      d = await LostApi.detail();
+    } catch (err) {
+      if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+      return showError(err);
+    }
+    // 보관처에 맡긴 물건이면 그 화면으로
+    if (d.storageType === "HANDED_OVER") return location.replace("item-handover.html");
+
+    document.getElementById("itemTitle").textContent = LostApi.itemLabel(d.category, d.subCategory);
+    const place = [LostApi.buildingName(d.building, "건물 모름"), LostApi.floorLabel(d.floor)].filter(Boolean).join(" ");
+    itemBuildingEl.textContent = d.locationDetail ? `${place} · ${d.locationDetail}` : place;
+    document.getElementById("itemStorage").textContent = LostApi.STORAGE_TYPE_LABELS[d.storageType];
+    document.getElementById("itemTime").textContent = LostApi.formatKst(d.foundAt);
+    if (await LostApi.setImage(itemPhotoImg, d.imageUrl)) {
+      itemPhotoImg.hidden = false;
+      itemFallbackSvg.setAttribute("hidden", "");
+    }
+    // 지도 핀은 건물 좌표에만 (물건 좌표는 서버가 주지 않는다). 건물을 모르면 지도를 그리지 않는다
+    const mapBox = document.getElementById("itemMapBox");
+    if (d.building && window.NaverCampusMap) window.NaverCampusMap.mount(mapBox, { buildingName: d.building.name });
+    else mapBox.hidden = true;
+
+    expiresAt = Date.parse(d.imageUrlExpiresAt);
+    updateExpireNote();
+    timer = setInterval(updateExpireNote, 1000);
+  }
+
+  // "확인했어요": POST /found-items/:id/self-pickup (가져갔다고 기록) → 홈
+  selfPickupBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (selfPickupBtn.dataset.done) return location.assign("home.html");
+    selfPickupBtn.style.opacity = "0.6";
+    try {
+      await LostApi.selfPickup();
+      location.assign("home.html");
+    } catch (err) {
+      selfPickupBtn.style.opacity = "";
+      showError(err);
+    }
+  });
+
+  if (authed) load();
 
   if (isFromClosed) {
     viewport.classList.add("is-shifted");

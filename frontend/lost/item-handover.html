@@ -17,7 +17,7 @@
     <!-- 1단계: 먼저 나타났다가 위로 올라가며 사라지는 통과 문구 -->
     <section class="pass-intro" id="passIntro" aria-live="polite">
       <div class="pass-intro-inner">
-        <span class="pass-badge">✓ 확인 질문 3/3 통과</span>
+        <span class="pass-badge" id="passBadge">✓ 확인 질문 3/3 통과</span>
         <h1>내 물건이 맞아요</h1>
         <p class="lead" style="margin-bottom:0">설명한 특징이 물건과 모두 맞았어요.</p>
       </div>
@@ -46,29 +46,119 @@
       <table class="kv">
         <tr><th>주운 곳</th><td id="itemBuilding">혜인관</td></tr>
         <tr><th>보관</th><td>보관처에 맡김</td></tr>
-        <tr><th>맡긴 곳</th><td>종합서비스센터<br>혜인관</td></tr>
+        <tr><th>맡긴 곳</th><td id="itemPlace">종합서비스센터<br>혜인관</td></tr>
       </table>
-      <p class="note">이 사진 링크는 10분 뒤 닫혀요.</p>
+      <p class="note" id="expireNote">이 사진 링크는 10분 뒤 닫혀요.</p>
+      <p class="note" id="pickupNotice" hidden></p>
+      <!-- [연결 추가] 수령 QR (qr.html이 없어져 이 화면에서 보여 준다). 기존 .qr 클래스 -->
+      <div id="qrWrap" hidden>
+        <div class="qr" id="qrBox" role="img" aria-label="수령 QR"></div>
+        <p class="note" id="qrNote" style="text-align:center;margin-top:0"></p>
+      </div>
       <div class="dock">
-        <a class="btn" href="home.html">확인했어요</a>
+        <a class="btn" id="qrBtn" href="home.html">수령 QR 받기</a>
       </div>
     </section>
   </div>
 </main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="api.js"></script>
 <script>
+  // 내 물건 (보관처에 맡김): GET /found-items/:id/detail → "수령 QR 받기" POST /found-items/:id/pickup-qr
+  const authed = LostApi.requireLogin();
   const viewport = document.getElementById("passToItemViewport");
   const barTitle = document.getElementById("barTitle");
   const itemPhotoImg = document.getElementById("itemPhotoImg");
   const itemFallbackSvg = document.getElementById("itemFallbackSvg");
+  const expireNote = document.getElementById("expireNote");
+  const qrBtn = document.getElementById("qrBtn");
+  const qrWrap = document.getElementById("qrWrap");
+  const qrBox = document.getElementById("qrBox");
+  const qrNote = document.getElementById("qrNote");
+  document.getElementById("passBadge").textContent = "✓ 확인 통과";
 
-  try {
-    const savedPhoto = sessionStorage.getItem("foundPhoto");
-    if (savedPhoto) {
-      itemPhotoImg.src = savedPhoto;
+  let mode = "qr"; // qr: QR 받기 · again: 다시 받기 · home: 홈으로
+  let qrTimer = null;
+
+  function fail(err) {
+    expireNote.textContent = LostApi.friendlyMessage(err);
+    expireNote.classList.add("danger");
+    if (err.code === "ALREADY_CLAIMED" || err.code === "FORBIDDEN" || err.code === "NOT_FOUND") {
+      mode = "home";
+      qrBtn.textContent = "홈으로";
+    }
+  }
+
+  async function load() {
+    let d;
+    try {
+      d = await LostApi.detail();
+    } catch (err) {
+      if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+      return fail(err);
+    }
+    if (d.storageType === "IN_PLACE") return location.replace("item.html");
+    document.getElementById("itemTitle").textContent = LostApi.itemLabel(d.category, d.subCategory);
+    const place = [LostApi.buildingName(d.building, "건물 모름"), LostApi.floorLabel(d.floor)].filter(Boolean).join(" ");
+    document.getElementById("itemBuilding").textContent = d.locationDetail ? `${place} · ${d.locationDetail}` : place;
+    const placeTd = document.getElementById("itemPlace");
+    placeTd.replaceChildren();
+    if (d.storagePlace) {
+      placeTd.append(d.storagePlace.name);
+      if (d.storagePlace.guideText) placeTd.append(document.createElement("br"), d.storagePlace.guideText);
+    } else placeTd.textContent = "-";
+    if (d.pickupNotice) {
+      const n = document.getElementById("pickupNotice");
+      n.textContent = d.pickupNotice;
+      n.hidden = false;
+    }
+    if (await LostApi.setImage(itemPhotoImg, d.imageUrl)) {
       itemPhotoImg.hidden = false;
       itemFallbackSvg.setAttribute("hidden", "");
     }
-  } catch (_) {}
+    expireNote.textContent = `이 사진 링크는 ${LostApi.remaining(d.imageUrlExpiresAt).replace(" 남음", "")} 뒤 닫혀요.`;
+  }
+
+  function showQr(r) {
+    qrBox.replaceChildren();
+    if (window.QRCode) {
+      new QRCode(qrBox, { text: r.qrToken, width: 176, height: 176, correctLevel: QRCode.CorrectLevel.M });
+    } else {
+      qrBox.textContent = "QR을 그리지 못했어요. 인터넷 연결을 확인해 주세요.";
+    }
+    qrWrap.hidden = false;
+    const tick = () => {
+      qrNote.textContent = `센터 직원에게 보여 주세요 · ${LostApi.remaining(r.expiresAt)}. 다시 받으면 지금 QR은 바로 쓸 수 없어요.`;
+    };
+    tick();
+    clearInterval(qrTimer);
+    qrTimer = setInterval(tick, 30_000);
+    mode = "again";
+    qrBtn.textContent = "QR 다시 받기";
+  }
+
+  qrBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (mode === "home") return location.assign("home.html");
+    qrBtn.style.opacity = "0.6";
+    try {
+      const r = await LostApi.pickupQr();
+      if (r.method === "DEMO") {
+        // 체험 계정은 QR 없이 바로 수령 완료
+        expireNote.textContent = `체험 계정이라 바로 수령 완료됐어요 (${LostApi.formatKst(r.completedAt)}).`;
+        mode = "home";
+        qrBtn.textContent = "홈으로";
+      } else {
+        showQr(r);
+      }
+    } catch (err) {
+      fail(err);
+    } finally {
+      qrBtn.style.opacity = "";
+    }
+  });
+
+  if (authed) load();
 
   setTimeout(() => {
     viewport.classList.add("is-shifted");

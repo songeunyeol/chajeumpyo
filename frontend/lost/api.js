@@ -7,8 +7,9 @@
 //
 // API 주소 (배포에서도 안전하게):
 //   1) ?api=https://.../api/v1 로 한 번 주면 이 탭(sessionStorage)에서 기억한다 (found/api.js와 같은 키 "apiBase")
-//   2) 정적 개발 서버(5500 포트)로 열었으면 같은 호스트의 4100 포트 (휴대폰에서 PC IP로 열어도 맞게)
-//   3) 그 밖에는 같은 출처의 /api/v1 (배포)
+//   2) 포트가 붙은 주소(개발용 정적 서버: 5500, 8000 등)로 열었으면 같은 호스트의 4000 포트
+//      (백엔드 기본 PORT, found/api.js와 같음. 휴대폰에서 PC IP로 열어도 맞게)
+//   3) 포트 없는 주소(배포, https)는 같은 출처의 /api/v1
 (() => {
   // ── API 주소 ──────────────────────────────────────────────
   const params = new URLSearchParams(location.search);
@@ -19,10 +20,9 @@
   try {
     saved = sessionStorage.getItem("apiBase");
   } catch (_) {}
-  const DEV_STATIC_PORT = "5500";
-  const DEV_API_PORT = "4100";
+  const DEV_API_PORT = "4000";
   const defaultBase =
-    location.port === DEV_STATIC_PORT
+    location.port && location.port !== DEV_API_PORT
       ? `${location.protocol}//${location.hostname}:${DEV_API_PORT}/api/v1`
       : `${location.origin}/api/v1`;
   const API_BASE = (saved || defaultBase).replace(/\/+$/, "");
@@ -145,6 +145,72 @@
   /** 보관 방식 (StorageType) */
   const STORAGE_TYPE_LABELS = { IN_PLACE: "그 자리에 둠", HANDED_OVER: "보관처에 맡김" };
 
+  /**
+   * 신고 화면에서 사람이 적은 물건 이름("에어팟", "검정 지갑")으로 종류를 미리 고른다. 못 고르면 null.
+   * 먼저 맞는 낱말이 이기므로 겹치는 낱말은 긴 쪽을 앞에 둔다 (이어폰 > 폰, 교통카드 > 카드).
+   * 서버로 보내기 전에 사람이 종류 선택칸에서 고칠 수 있다.
+   */
+  const CATEGORY_WORDS = [
+    ["이어폰", "EARPHONE"],
+    ["에어팟", "EARPHONE"],
+    ["버즈", "EARPHONE"],
+    ["헤드폰", "EARPHONE"],
+    ["스마트워치", "SMARTWATCH"],
+    ["애플워치", "SMARTWATCH"],
+    ["워치", "SMARTWATCH"],
+    ["학생증", "ID_CARD"],
+    ["신분증", "ID_CARD"],
+    ["면허증", "DRIVER_LICENSE"],
+    ["교통카드", "TRANSIT_CARD"],
+    ["체크카드", "PAYMENT_CARD"],
+    ["신용카드", "PAYMENT_CARD"],
+    ["카드", "OTHER_CARD"],
+    ["휴대폰", "PHONE"],
+    ["핸드폰", "PHONE"],
+    ["아이폰", "PHONE"],
+    ["갤럭시", "PHONE"],
+    ["폰", "PHONE"],
+    ["태블릿", "TABLET"],
+    ["아이패드", "TABLET"],
+    ["노트북", "LAPTOP"],
+    ["맥북", "LAPTOP"],
+    ["충전기", "CHARGER"],
+    ["보조배터리", "CHARGER"],
+    ["마우스", "CHARGER"],
+    ["키보드", "CHARGER"],
+    ["케이블", "CHARGER"],
+    ["지갑", "WALLET"],
+    ["가방", "BAG"],
+    ["백팩", "BAG"],
+    ["파우치", "BAG"],
+    ["모자", "HAT"],
+    ["패딩", "CLOTHING"],
+    ["후드", "CLOTHING"],
+    ["옷", "CLOTHING"],
+    ["목도리", "CLOTHING"],
+    ["교재", "BOOK"],
+    ["전공책", "BOOK"],
+    ["책", "BOOK"],
+    ["선글라스", "GLASSES"],
+    ["안경", "GLASSES"],
+    ["시계", "ACCESSORY"],
+    ["반지", "ACCESSORY"],
+    ["목걸이", "ACCESSORY"],
+    ["현금", "CASH"],
+    ["우산", "UMBRELLA"],
+    ["텀블러", "TUMBLER"],
+    ["물병", "TUMBLER"],
+    ["열쇠", "KEY"],
+    ["키링", "KEY"],
+    ["필통", "STATIONERY"],
+    ["펜", "STATIONERY"],
+  ];
+  const guessCategory = (text) => {
+    const t = String(text || "").replace(/\s+/g, "");
+    if (!t) return null;
+    return CATEGORY_WORDS.find(([w]) => t.includes(w))?.[1] || null;
+  };
+
   /** 화면 이름: 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름 (shared itemLabel) */
   const itemLabel = (category, sub) => (sub && SUB_CATEGORY_LABELS[sub]) || CATEGORY_LABELS[category] || "";
 
@@ -223,7 +289,7 @@
   const KEYS = {
     auth: "lost.auth", // { accessToken, expiresAt, user: { id, email, role } }
     signupEmail: "lost.signupEmail", // 회원가입 → 인증 코드 화면
-    signupPassword: "lost.signupPassword", // 회원가입 → 동의 화면. 이 탭에만 잠깐 두고 가입 직후 지운다
+    signupPassword: "lost.signupPassword", // 회원가입 → 동의 화면. 이 탭에만 10분까지 두고, 가입·흐름 이탈 때 지운다
     verification: "lost.verification", // { verificationToken, expiresAt } 인증 코드 → 동의 화면
     reportDraft: "lost.reportDraft", // 신고 화면 ↔ 건물 화면 왕복
     reportId: "lost.reportId", // 지금 보고 있는 신고
@@ -232,6 +298,22 @@
     foundItemId: "lost.foundItemId", // 통과한 물건
     pickup: "lost.pickup", // 마지막 수령 응답 (PickupQrResponse/SelfPickupResponse)
   };
+
+  // ── 가입 중 비밀번호 ───────────────────────────────────────
+  // 회원가입 화면에서 받은 비밀번호를 동의 화면의 가입 요청까지 넘겨야 해서 이 탭(sessionStorage)에 잠깐 둔다.
+  // 오래 남지 않게 10분이 지나면 버리고, 가입 흐름(회원가입·인증 코드·동의) 밖 화면을 열면 바로 지운다.
+  const SIGNUP_PASSWORD_TTL_MS = 10 * 60_000;
+  const holdSignupPassword = (password) => store.set(KEYS.signupPassword, { password, at: Date.now() });
+  const dropSignupPassword = () => store.set(KEYS.signupPassword, null);
+  function heldSignupPassword() {
+    const v = store.get(KEYS.signupPassword);
+    if (!v?.password || Date.now() - v.at > SIGNUP_PASSWORD_TTL_MS) {
+      dropSignupPassword();
+      return null;
+    }
+    return v.password;
+  }
+  if (!/\/(signup|code|consent-mail)\.html$/.test(location.pathname)) dropSignupPassword();
 
   // ── 로그인 상태 ───────────────────────────────────────────
   /**
@@ -262,16 +344,19 @@
   }
 
   // ── 캡차 ─────────────────────────────────────────────────
-  // Turnstile을 붙이면 위젯 토큰을 돌려주는 함수를 끼운다. 예:
-  //   LostApi.setCaptchaProvider(() => turnstile.getResponse(widgetId));
-  // 함수는 문자열 또는 Promise<문자열>을 돌려준다. 기본은 개발용 "dev-pass".
+  // Turnstile을 붙이면 위젯 토큰을 돌려주는 함수를 끼운다. 함수는 action 이름을 받는다.
+  // 서버(PR #47)는 토큰의 action을 확인한다: 인증 코드 요청 "email-code", 체험 로그인 "demo-login"
+  // (습득물 등록은 found 쪽 "found-analyze"). 위젯을 그릴 때 같은 action을 넣어야 통과한다. 예:
+  //   LostApi.setCaptchaProvider((action) => turnstile.getResponse(widgetIdByAction[action]));
+  // 함수는 문자열 또는 Promise<문자열>을 돌려준다. 기본은 개발용 "dev-pass" (CAPTCHA_MODE=off에서만 통과).
+  const CAPTCHA_ACTIONS = { emailCode: "email-code", demoLogin: "demo-login" };
   let captchaProvider = () => DEV_CAPTCHA_TOKEN;
-  /** @param {() => string | Promise<string>} fn */
+  /** @param {(action: string) => string | Promise<string>} fn */
   function setCaptchaProvider(fn) {
     captchaProvider = typeof fn === "function" ? fn : () => DEV_CAPTCHA_TOKEN;
   }
-  async function captchaHeader() {
-    const token = await captchaProvider();
+  async function captchaHeader(action) {
+    const token = await captchaProvider(action);
     return { "X-Captcha-Token": token || "" };
   }
 
@@ -309,7 +394,7 @@
   // ── 요청 ─────────────────────────────────────────────────
   /**
    * @param {string} path /api/v1 뒤 경로
-   * @param {{ method?: string, body?: unknown, auth?: boolean, captcha?: boolean }} [opts]
+   * @param {{ method?: string, body?: unknown, auth?: boolean, captcha?: string }} [opts] captcha: 캡차 action 이름
    */
   async function call(path, opts = {}) {
     const method = opts.method || "GET";
@@ -319,7 +404,7 @@
       const s = session();
       if (s) headers.Authorization = `Bearer ${s.accessToken}`;
     }
-    if (opts.captcha) Object.assign(headers, await captchaHeader());
+    if (opts.captcha) Object.assign(headers, await captchaHeader(opts.captcha));
 
     const started = Date.now();
     let res;
@@ -445,7 +530,7 @@
 
   // ── 사진 ─────────────────────────────────────────────────
   // 서명 URL(thumbnailUrl, imageUrl)은 백엔드 주소의 /files/... 이다. 화면과 백엔드 출처가 다르면
-  // (개발: 5500 ↔ 4100) helmet의 Cross-Origin-Resource-Policy: same-origin 때문에 <img src>가 막힐 수 있어,
+  // (개발: 5500 ↔ 4000) helmet의 Cross-Origin-Resource-Policy: same-origin 때문에 <img src>가 막힐 수 있어,
   // 그럴 때는 CORS fetch로 받아 blob URL로 바꾼다. 같은 출처(배포)면 그대로 쓴다.
   const apiOrigin = (() => {
     try {
@@ -499,7 +584,11 @@
     STORAGE_TYPE_LABELS,
     ERROR_MESSAGES,
     KEYS,
+    holdSignupPassword,
+    heldSignupPassword,
+    dropSignupPassword,
     itemLabel,
+    guessCategory,
     colorLabel: (c) => (c && COLOR_LABELS[c]) || "",
     /** "abcd@skuniv.ac.kr" → "ab***@skuniv.ac.kr" (인증 코드 화면, 내 정보) */
     maskEmail: (email) => {
@@ -517,6 +606,7 @@
     mask,
     onLog,
     setCaptchaProvider,
+    CAPTCHA_ACTIONS,
 
     // 시간
     kstParts,
@@ -542,7 +632,12 @@
     /** POST /auth/email/code (캡차). 204. 가입된 이메일도 204 (가입 여부를 드러내지 않음) */
     requestCode(email) {
       store.set(KEYS.signupEmail, String(email).trim().toLowerCase());
-      return call("/auth/email/code", { method: "POST", body: { email }, auth: false, captcha: true });
+      return call("/auth/email/code", {
+        method: "POST",
+        body: { email },
+        auth: false,
+        captcha: CAPTCHA_ACTIONS.emailCode,
+      });
     },
     /** POST /auth/email/verify → { verificationToken, expiresAt(10분) }. 저장해 두고 동의 화면에서 signup */
     async verifyCode(email, code) {
@@ -583,7 +678,7 @@
         await call("/auth/demo", {
           method: "POST",
           auth: false,
-          captcha: true,
+          captcha: CAPTCHA_ACTIONS.demoLogin,
           body: { consent: { version: CONSENT_VERSION, externalAi: true, location: !!location } },
         }),
       );

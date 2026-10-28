@@ -66,6 +66,7 @@
     </div>
   </div>
 </main>
+<script src="api.js"></script>
 <script>
   const mover = document.getElementById("ticketMover");
   const flipper = document.getElementById("ticketFlipper");
@@ -97,6 +98,21 @@
     report = JSON.parse(sessionStorage.getItem("lostReport") || "null");
   } catch (_) {}
 
+  // POST /lost-reports: 애니메이션과 함께 바로 보낸다 (AI가 설명을 읽느라 몇 초 걸린다)
+  const draft = LostApi.store.get(LostApi.KEYS.reportDraft);
+  if (!LostApi.isLoggedIn()) location.replace("login.html");
+  else if (!draft) location.replace("report.html");
+  const created = draft ? LostApi.createReport(draft) : Promise.reject(new Error("no draft"));
+  created.catch(() => {}); // 아래에서 기다린다. 먼저 끝나도 처리되지 않은 거부로 보이지 않게
+
+  async function showFailure(err) {
+    statusEl.textContent = "FAILED";
+    pageTitle.textContent = "올리지 못했어요";
+    pageLead.textContent = LostApi.friendlyMessage(err);
+    await wait(2600);
+    window.location.href = "report.html";
+  }
+
   async function runReportUploadFlow() {
     await wait(720);
     flipper.classList.add("is-back");
@@ -108,7 +124,15 @@
     await wait(90);
     await typeLine(lineEls[2], "> time: window_range [MATCH]", 16);
     await wait(90);
-    await typeLine(lineEls[3], "> hit : 3 candidates ready", 16);
+    let result;
+    try {
+      result = await created;
+    } catch (err) {
+      await showFailure(err);
+      return;
+    }
+    LostApi.store.set(LostApi.KEYS.reportDraft, null);
+    await typeLine(lineEls[3], `> hit : ${result.candidates.length} candidates ready`, 16);
 
     statusEl.textContent = "REGISTERED";
     pageTitle.textContent = "다 올렸어요";

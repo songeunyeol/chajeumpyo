@@ -1,125 +1,51 @@
 # 잃어버린 사람 화면 연결표 (LostApi)
 
-진짜 화면이 들어오면 이 표대로 `LostApi` 함수를 붙인다. 응답 원문은 `_flow.html`(개발용 점검 화면)에서 바로 볼 수 있다.
+`frontend/lost/*.html` 실제 화면(29c9e8f)에 `LostApi`(api.js)를 붙인 상태를 적는다. 응답 원문은 `_flow.html`(개발용 점검 화면)에서 볼 수 있다.
 
 ## 공통
 
-- 모든 화면: `<script src="api.js"></script>` 한 줄. 전역 `LostApi`가 생긴다.
-- API 주소: 배포는 같은 출처 `/api/v1`. 정적 개발 서버(5500 포트)로 열면 같은 호스트의 4100 포트. 다른 서버는 `?api=http://.../api/v1`을 한 번 붙이면 이 탭에서 기억한다.
-- 로그인이 필요한 화면은 맨 위에서 `if (!LostApi.requireLogin()) return;` (토큰이 없거나 만료면 `login.html`로 보낸다).
-- 오류는 모두 `LostApi.ApiError`(`status`, `code`, `message`, `details`)로 던진다. 화면 문구는 `LostApi.friendlyMessage(e)`.
-  - `401 UNAUTHORIZED`면 토큰은 이미 지워져 있다. 문구를 띄우고 `login.html`로.
-  - `0 NETWORK`(연결 실패), `429 RATE_LIMITED`(서버 문구를 그대로 씀), `500 INTERNAL_ERROR`는 어느 화면에서나 날 수 있다.
-  - `VALIDATION_ERROR`는 `e.details[0].message`(서버가 준 한국어)가 문구가 된다. 칸 옆에 띄우려면 `e.details[].path`를 본다.
-- 화면 사이에 넘기는 값은 `LostApi.store`(sessionStorage)와 `LostApi.KEYS`에 이름을 모아 두었다. 대부분 함수가 알아서 저장하고, 인자를 빼면 저장된 값을 쓴다 (`candidates()`, `detail()`, `pickupQr()` 등).
-- 표시 도우미: `itemLabel(category, subCategory)`, `colorLabel`, `floorLabel(-1) → "지하 1층"`, `buildingName(b)`(null이면 "건물 모름"), `formatKst(iso)` → `10월 23일(금) 14:10`, `formatRange(from, to)`, `remaining(iso)` → `23시간 58분 남음`, `maskEmail`.
-- 캡차: 기본은 개발용 `"dev-pass"`. Turnstile을 붙일 때 `const cfg = await LostApi.config()` → `cfg.captcha.mode === "turnstile"`이면 위젯을 그리고 `LostApi.setCaptchaProvider(() => turnstile.getResponse(id))`. 캡차가 붙는 요청은 `requestCode`, `demoLogin` 두 개다. 실패하면 `400 CAPTCHA_FAILED` → 위젯을 `reset`.
-- `building`은 어디서나 `null`일 수 있다 (보관처에 맡겼고 주운 곳을 모름). 후보에는 `floor`가 없다. 층·자세한 위치는 상세에서만.
+- 모든 연결 화면: `<script src="api.js"></script>` 뒤에 화면 스크립트. 전역 `LostApi`.
+- API 주소: 포트 없는 주소(배포)는 같은 출처 `/api/v1`. 포트가 붙은 개발 주소(5500, 8000 등)는 같은 호스트의 **4000** 포트(백엔드 기본, found/api.js와 같음). 다른 서버는 처음 연 화면에 `?api=http://.../api/v1`을 붙이면 이 탭에서 기억한다.
+- 로그인이 필요한 화면은 맨 위에서 `const authed = LostApi.requireLogin();` (토큰이 없거나 만료면 `login.html`로 보내고 false). API 호출은 `authed`일 때만.
+- 오류는 `LostApi.ApiError`(`status`, `code`, `message`, `details`). 화면 문구는 `LostApi.friendlyMessage(e)`. `401`이면 토큰이 이미 지워져 있으니 `login.html`로.
+- 화면 사이 값은 `LostApi.store` + `LostApi.KEYS`(sessionStorage). 예전 시안 키(`lostReports`, `candChances`, `quizChance`, `foundPhoto` 등)는 더 이상 읽지 않는다. `signupEmail`, `refreshLeft`, `lostReport`(올리는 중 화면 문구)만 남아 있다.
+- 서버 값은 `textContent`로만 넣는다 (innerHTML 금지).
+- 캡차: `POST /auth/email/code`(signup.html·code.html 다시 보내기, action `email-code`)와 `POST /auth/demo`(consent-social.html?demo=1, action `demo-login`)에 붙는다. provider 함수는 action 이름을 받는다. 지금은 LostApi 기본값 `"dev-pass"`(백엔드 `CAPTCHA_MODE=off`에서만 통과). **PR #47 머지 후**: 두 화면에 `frontend/found/captcha.js` 위젯을 붙이고 `LostApi.config()` → `cfg.captcha.mode === "turnstile"`이면 `LostApi.setCaptchaProvider(() => 위젯 토큰)`. 실패는 `400 CAPTCHA_FAILED` → 위젯 reset.
+- `building`은 어디서나 `null`일 수 있다. 후보에는 층이 없다(상세에서만).
 
 ## 화면별
 
-### login.html — 로그인
-- 호출: `LostApi.login(email, password)` → 성공하면 `home.html`.
-- "체험해 보기": 동의를 받아야 하므로 `consent-social.html`이 아니라 체험 동의를 거쳐 `LostApi.demoLogin({ location })` → `home.html`. (동의 화면을 따로 두지 않으면 이 화면에 `CONSENT_TEXTS.externalAi`를 보여 주고 바로 호출)
-- 오류: `401 UNAUTHORIZED`(이메일·비밀번호 틀림. 같은 문구), `429 RATE_LIMITED`(10분에 20번), 체험은 `400 CAPTCHA_FAILED`, `429`(10분에 5개).
-- Google·카카오·네이버 버튼: 백엔드에 간편 로그인이 없다. 버튼은 숨기거나 "준비 중"으로.
+| 화면 | 상태 | LostApi 호출 | 보여 주는 값 | 처리하는 오류 |
+| --- | --- | --- | --- | --- |
+| login.html | 연결 | `login(email, pw)` → home | — | `401`(이메일·비밀번호 틀림 → 회원가입 버튼 노출), `429` |
+| login.html "체험해 보기" | **추가** | 링크 → `consent-social.html?demo=1` | — | — |
+| signup.html | 연결 | `requestCode(email)` → code. 비밀번호는 `KEYS.signupPassword`에 잠깐 | — | `INVALID_EMAIL_DOMAIN`, `CAPTCHA_FAILED`, `429`(1분 1번) |
+| code.html | 연결 | `verifyCode(email, code)` → consent-mail, 다시 보내기 `requestCode` | `maskEmail`, 5분 타이머, 5번 | `INVALID_CODE`(흔들림, 칸 비움), `429` |
+| consent-mail.html | 연결 | `signup({ password, location: true })` → home | 세 항목(시안 문구) | `INVALID_CODE`(인증 10분 지남 → signup), `VALIDATION_ERROR` |
+| consent-social.html | 체험 동의로 씀 | `?demo=1`: `demoLogin({ location: true })` → home. 그 밖(간편 로그인): "준비 중" 안내 | demo면 전화번호 항목 숨김 | `CAPTCHA_FAILED`, `429`(10분 5개) |
+| home.html | 연결 | `reports()`, `notifications()`(알림 점) | 진행 중(OPEN): 종류·`formatRange`·건물·후보 N개 / 닫힘(RESOLVED·CLOSED). 체험 띠 `isDemo()`. 설정: 계정 종류·가린 이메일 | `401` |
+| report.html | 연결 | 입력을 `KEYS.reportDraft`에 저장 → uploading | 종류 선택칸(**추가**, 물건 이름으로 `guessCategory`), 날짜는 한국 날짜, 건물은 `buildings()` + "잘 모르겠음" | 설명 5자 미만(화면 검사) |
+| uploading.html | 연결 | `createReport(draft)` (애니메이션과 동시에) → home | 후보 수 | `502 AI_UNAVAILABLE`, `VALIDATION_ERROR` → 문구 후 report로 |
+| candidates.html | 연결 | `candidates(reportId)`, 확인 `claim()` → `claimScreen` → pass면 `detail()`의 `storageType`으로 item / item-handover, question, fail, lock, counter | 흐린 사진(`thumbnailUrl`을 기존 모자이크 캔버스에), `itemLabel`, 습득일·건물, 근거 칩, 남은 기회, 잠김·대면 확인만 | `403 FORBIDDEN`·`409 ALREADY_CLAIMED` → 목록 다시 받기, `MATCH_LOCKED`→lock, `IN_PERSON_REQUIRED`→counter |
+| question.html | 연결(스크립트 교체) | `answer(attemptId, 답)` → pass면 상세, 아니면 fail·lock·counter | 서버 질문 1개, 남은 기회. 답 입력칸·버튼 **추가** | `ALREADY_ANSWERED` → 후보로, `502` |
+| fail.html | 연결 | 없음 | `KEYS.claim.attemptsLeft`. "다시 확인" → 후보 | — |
+| lock.html · counter.html | 그대로 | 없음 | 고정 문구 | — |
+| item.html | 연결 | `detail()` (보관처 물건이면 item-handover로), "확인했어요" `selfPickup()` → home | 사진(10분 서명 URL), 종류, 건물·층·자세한 위치, 습득 시각, 남은 시간, 건물 지도(`naver-map.js`, 건물을 모르면 지도 숨김) | `403`, `409 ALREADY_CLAIMED`(→ "홈으로"), `INVALID_STORAGE_TYPE` |
+| item-handover.html | 연결 | `detail()` (그 자리 물건이면 item으로), "수령 QR 받기" `pickupQr()` → 화면 안에 QR(**추가**, qr.html이 없어짐) | 맡긴 곳 이름·안내, `pickupNotice`, QR 남은 시간. 체험 계정은 바로 완료 | `409 ALREADY_CLAIMED`, `INVALID_STORAGE_TYPE` |
+| alerts.html | 연결 | `notifications()`, 누르면 `readNotification(id)` → 그 신고의 후보 | 종류별 제목, 서버 문구, 시각, 새 알림 칩 | `401` |
+| me.html | 연결 | `me()`, 로그아웃 `logout()` | 계정 종류, 가린 이메일, 로그인 유지 시각(체험은 24시간 안내) | `401` |
+| board.html | 그대로 | — | 시안 목차 (지운 building·pass·qr 링크가 남아 있음) | — |
 
-### signup.html — 회원가입 (이메일·비밀번호)
-- 호출: `LostApi.requestCode(email)` (204, 본문 없음) → `code.html`. 비밀번호는 동의 화면에서 가입할 때 쓰므로 `LostApi.store.set(LostApi.KEYS.signupPassword, pw)`로 잠깐 둔다 (가입하면 지워진다).
-- 화면 검사: 비밀번호 8~64자, `@skuniv.ac.kr`.
-- 오류: `400 INVALID_EMAIL_DOMAIN`, `400 VALIDATION_ERROR`, `400 CAPTCHA_FAILED`, `429 RATE_LIMITED`(같은 이메일 1분에 1번·하루 10번, IP 10분 10번).
-- 이미 가입된 이메일도 204다(가입 여부를 숨김). 메일로 로그인 안내가 간다.
+## 서버와 시안이 다른 점 (연결하며 바꾼 것)
 
-### code.html — 인증 코드
-- 보여 줄 값: `LostApi.maskEmail(LostApi.store.get(LostApi.KEYS.signupEmail))`, 5분 타이머.
-- 호출: `LostApi.verifyCode(email, code)` → 토큰이 저장되고 `consent-mail.html`. "다시 보내기"는 `requestCode(email)`.
-- 오류: `400 INVALID_CODE`(틀림·만료·5번 틀려 버려짐 → 다시 받기), `400 VALIDATION_ERROR`(숫자 6자리 아님), `429`.
-
-### consent-mail.html — 동의 (학교 이메일)
-- 보여 줄 값: `LostApi.CONSENT_TEXTS.email / location / externalAi` (문구를 고치려면 `packages/shared/src/api/consent.ts`와 함께, `CONSENT_VERSION`도 올린다).
-- 호출: `LostApi.signup({ password: LostApi.store.get(LostApi.KEYS.signupPassword), location: 위치체크 })` → 로그인 상태 → `home.html`. 이메일·외부 AI는 필수(true로 보냄), 위치만 선택.
-- 오류: `400 INVALID_CODE`(인증 10분 지남·이미 씀 → `signup.html`부터 다시), `400 VALIDATION_ERROR`(비밀번호, 동의 버전 바뀜 "동의 내용이 바뀌었어요"), `429`.
-
-### consent-social.html — 동의 (간편가입)
-- 백엔드에 간편가입이 없다. 체험 로그인 동의로 쓰면: `CONSENT_TEXTS.externalAi`, `location` 두 개만 보여 주고 `LostApi.demoLogin({ location })`. 전화번호 항목은 지운다.
-
-### home.html — 내 분실 신고
-- 호출: `LostApi.reports()` → `[{ id, category, status, description, lostFrom, lostTo, building, candidateCount, createdAt }]`, 알림 점에는 `LostApi.notifications()`의 `unreadCount`.
-- 보여 줄 값: `itemLabel(category)`, `formatRange(lostFrom, lostTo)`, `buildingName(building)`, `REPORT_STATUS_LABELS[status]`(진행 중·찾음·닫힘), 진행 중이면 "후보 N개".
-- 체험 띠: `LostApi.isDemo()`.
-- 카드 누르면 `LostApi.store.set(LostApi.KEYS.reportId, id)` → `candidates.html`.
-- 오류: `401`.
-
-### report.html — 분실 신고
-- 입력: 종류(`LostApi.CATEGORIES`, 이름은 `CATEGORY_LABELS`), 날짜·시작·끝 시각, 건물(`building.html`에서 고름, 모르면 비움), 설명(`DESCRIPTION_MIN`~`DESCRIPTION_MAX`자).
-- 건물 화면을 오갈 때 입력은 `LostApi.store.set(LostApi.KEYS.reportDraft, {...})`로 보관.
-- 호출: `const range = LostApi.lostRange(date, from, to)` → `LostApi.createReport({ category, ...range, buildingId, description })` → `{ id, status, candidates }`. 신고 id가 저장되고 `candidates.html`.
-  - `lostRange`: 한국 시간으로 계산하고, 끝이 지금보다 뒤면 지금으로 줄인다. 끝 시각이 시작보다 빠르면 전날 밤부터로 본다(날짜는 끝 날짜).
-- 오류: `400 VALIDATION_ERROR`(설명 길이, "아직 오지 않은 시각이에요", 시작·끝 순서), `502 AI_UNAVAILABLE`(설명을 못 읽음, 저장 안 됨 → 다시 시도), `401`.
-- 로딩: AI 추출이 들어가 몇 초 걸린다. 버튼을 막고 기다림 표시.
-
-### building.html — 건물 고르기
-- 호출: `LostApi.buildings()` → `[{ id, name, lat, lng }]`. 고르면 `reportDraft.buildingId`에 넣고 `report.html`로.
-- "모름"도 고를 수 있게 (buildingId를 비우면 위치 점수는 "모름").
-
-### candidates.html — 후보
-- 호출: `LostApi.candidates()` (신고 직후라면 `createReport` 응답의 `candidates`를 그대로 써도 된다).
-- 카드마다: 흐린 사진 `LostApi.setImage(img, c.thumbnailUrl)` (null이면 빈 칸), `itemLabel(c.category, c.subCategory)`, `formatKst(c.foundAt, { time: false })` 습득, `buildingName(c.building)`, 근거 칩 `REASON_LABELS[r]`, `isSeed`면 "시연용".
-- 상태: `LostApi.candidateState(c)` → `"open"`("확인 기회 3번 중 `attemptsLeft`번 남음" + "내 물건인지 확인") / `"locked"`(잠김 → `lock.html` 안내) / `"inPerson"`(대면 확인만 → `counter.html`).
-- 확인 버튼: `LostApi.store.set(LostApi.KEYS.candidate, c)` 후 `LostApi.claim(reportId, c.foundItemId)` → `LostApi.claimScreen(응답)`으로 다음 화면 (`pass`·`question`·`fail`·`lock`·`counter`). 오류도 `claimScreen(e)`에 넣으면 `MATCH_LOCKED → lock`, `IN_PERSON_REQUIRED → counter`.
-- 기타 오류: `403 FORBIDDEN`(지금 이 신고의 후보가 아님. 후보는 부를 때마다 서버가 다시 고르므로 새 물건이 들어오면 보던 카드가 빠질 수 있다 → 후보를 다시 불러온다), `409 ALREADY_CLAIMED`, `400 VALIDATION_ERROR`("닫힌 신고예요"), `502 AI_UNAVAILABLE`, `429`.
-- 0개면 "아직 비슷한 물건이 없어요. 새로 들어오면 알림으로 알려 줘요."
-- 응답의 `reused: true`는 설명이 같아 이전 판정을 그대로 돌려준 것(횟수를 안 씀).
-
-### question.html — 확인 질문 (BORDERLINE)
-- 보여 줄 값: `LostApi.store.get(LostApi.KEYS.claim).question`, 남은 횟수는 저장해 둔 후보(`KEYS.candidate`)의 `attemptsLeft`.
-- 호출: `LostApi.answer(claim.attemptId, 답)` (1~50자, 자유 입력. 시안의 "있어요/없어요" 버튼만으로는 특징 내용을 말할 수 없으니 입력칸을 둔다) → `claimScreen(응답)`으로 `pass` 또는 `fail`·`lock`·`counter`.
-- 오류: `409 ALREADY_ANSWERED`(이미 답함 → 후보로), `400 VALIDATION_ERROR`, `502 AI_UNAVAILABLE`.
-- 맞은 항목·점수는 어디에도 보여 주지 않는다.
-
-### pass.html — 확인 통과
-- 값: 통과한 물건 id는 이미 `KEYS.foundItemId`에 있다. "사진과 위치 보기" → 상세 화면. 어느 상세로 갈지는 `LostApi.detail()`을 불러 `storageType`으로 정한다 (`IN_PLACE` → `item.html`, `HANDED_OVER` → `item-handover.html`). 또는 한 화면에서 둘 다 처리.
-
-### fail.html — 확인 실패
-- 값: `LostApi.store.get(LostApi.KEYS.claim).attemptsLeft` → "N번 남았어요." "다시 확인"은 `candidates.html`(설명을 고치려면 `LostApi.editReport(reportId, 새 설명)` → 후보가 다시 나온다. 설명이 같으면 다시 판정해도 이전 결과를 돌려준다).
-
-### lock.html — 확인 잠금 (이 계정이 3번 다 씀)
-- API 호출 없음. 문구는 `ERROR_MESSAGES.MATCH_LOCKED`. "센터 가는 법" → `counter.html`.
-
-### counter.html — 센터에서 확인 (대면 확인만)
-- API 호출 없음. 문구는 `ERROR_MESSAGES.IN_PERSON_REQUIRED`. 보관처 이름·안내는 아직 판정 전이라 상세를 못 부른다 → 고정 문구(종합서비스센터)로.
-
-### item.html — 내 물건 (그 자리에 둠)
-- 호출: `LostApi.detail()` → `{ id, category, subCategory, color, imageUrl, imageUrlExpiresAt, building, floor, locationDetail, storageType, storagePlace, status, foundAt, isSeed, pickupNotice }`.
-- 보여 줄 값: `setImage(img, imageUrl)`(10분 뒤 닫힘: `remaining(imageUrlExpiresAt)`), `itemLabel`, `colorLabel(color)`, 주운 곳 `buildingName(building)` + `floorLabel(floor)` + `locationDetail`, `STORAGE_TYPE_LABELS[storageType]`, `formatKst(foundAt)`, `pickupNotice`가 있으면 안내 상자.
-- "확인했어요": `LostApi.selfPickup()` → `{ pickupId, method, status: "COMPLETED", completedAt }` → 완료 표시 후 `home.html`.
-- 오류: `403 FORBIDDEN`(통과 안 함), `409 ALREADY_CLAIMED`(이미 가져감), `409 INVALID_STORAGE_TYPE`, `404`.
-
-### item-handover.html — 내 물건 (보관처에 맡김)
-- 호출과 값은 `item.html`과 같고, 맡긴 곳은 `storagePlace.name`, `storagePlace.guideText`.
-- "수령 QR 받기": `LostApi.pickupQr()` → `qr.html`.
-  - 체험 계정은 `{ method: "DEMO", status: "COMPLETED", completedAt }`로 바로 끝난다 → QR 화면 대신 "수령 완료(체험)" 표시.
-- 오류: `409 INVALID_STORAGE_TYPE`, `409 ALREADY_CLAIMED`, `403`.
-
-### qr.html — 수령 QR
-- 값: `LostApi.store.get(LostApi.KEYS.pickup)` → `{ method: "CENTER_QR", pickupId, qrToken, status: "ISSUED", expiresAt }`. `qrToken`을 QR로 그린다(`_flow.html`처럼 cdnjs `qrcodejs@1.0.0`, SRI 포함). 남은 시간 `remaining(expiresAt)`.
-- "QR 다시 받기": `LostApi.pickupQr()` (이전 QR은 바로 못 쓰게 된다).
-- `qrToken`은 화면 밖(로그·주소창)에 남기지 않는다. `LostApi`의 요청 기록은 가려서 보낸다.
-- 오류: `409 ALREADY_CLAIMED`(센터에서 이미 수령 처리됨 → 완료 표시). `410 QR_EXPIRED`는 관리자 스캔 쪽 오류라 이 화면에서는 `remaining`이 "시간이 지났어요"면 다시 받게 한다.
-
-### alerts.html — 알림
-- 호출: `LostApi.notifications()` → `{ notifications: [{ id, type, message, foundItemId, lostReportId, readAt, createdAt }], unreadCount }`.
-- 누르면 `LostApi.readNotification(id)` 후, `NEW_CANDIDATE`면 `store.set(KEYS.reportId, lostReportId)` → `candidates.html`. "모두 읽음"은 `readAllNotifications()`.
-- `type`: `NEW_CANDIDATE`(새 후보), `MULTI_REVEAL`·`CLAIM_LOCKED`(관리자용), `SYSTEM`.
-
-### me.html — 내 정보
-- 호출: `LostApi.me()` → `{ id, email, role }`. 보여 줄 값: `maskEmail(email)`, 체험이면 "체험 계정 (24시간 뒤 삭제)".
-- 이름·전화번호는 받지 않으므로 시안에서 뺀다.
-- 로그아웃: `LostApi.logout()` → `login.html` (서버 호출 없음).
-
-### board.html
-- 시안 모음(목차)이라 연결할 것 없음.
+- **확인 질문**: 시안은 보기 3개짜리 질문 3개를 화면에서 채점했다(정답이 화면 코드에 있음). 서버는 판정이 BORDERLINE일 때 질문 1개를 주고 자유 입력 답을 받아 서버가 채점한다. 그래서 question.html 스크립트를 바꾸고 입력칸을 넣었다.
+- **사진 신고**: 잃어버린 사람 쪽 사진 신고는 화면에도 서버에도 없다. uploading.html은 설명 신고(`POST /lost-reports`)를 올리는 화면으로 연결했다.
+- **종류**: 서버는 종류(category)가 꼭 필요하다. 시안은 물건 이름만 받아서 종류 선택칸을 하나 넣었다. 서버로 가는 설명은 "물건 이름. 기억나는 점".
+- **후보 새로고침 5번**: 화면 쪽 약속이다. 서버는 횟수를 세지 않고 부를 때마다 후보를 다시 고른다(지금 최대 3개).
+- **닫힌 신고 10분 열람**: 서버에 없는 개념이다. 수령하면 상세가 닫힌다(`409 ALREADY_CLAIMED`). 닫힌 카드는 누를 수 없게 했다.
+- **실패 후 다시 확인**: 같은 설명으로 다시 판정하면 이전 결과를 돌려준다(`reused`). 설명을 고쳐 다시 판정하려면 `editReport(reportId, 설명)`(PATCH)을 부르는 화면이 필요하다. 지금은 후보로 돌아간다.
+- **간편 로그인·이름·전화번호**: 서버에 없다. 화면에서 숨기거나 "준비 중"으로 둔다.
 
 ## 점검 화면 `_flow.html`
 
-`frontend/`를 정적 서버로 열고 `/lost/_flow.html`(다른 백엔드면 `?api=...`). 로그인(체험·회원·인증 코드) → 신고(설명 고치기) → 후보(흐린 사진) → 확인(질문이면 답) → 상세 → 수령 QR·확인했어요 → 알림 순서로 누르면 각 단계의 응답 원문과 요청 기록(토큰·코드 가림)이 보인다. 개발 서버(`MAIL_MODE=console`)는 인증 코드를 백엔드 로그에 찍는다.
+`frontend/`를 정적 서버로 열고 `/lost/_flow.html`(다른 백엔드면 `?api=...`). 로그인 → 신고(설명 고치기) → 후보 → 확인(질문이면 답) → 상세 → 수령 QR·확인했어요 → 알림 순서로 누르면 응답 원문과 요청 기록(토큰·코드 가림)이 보인다. 개발 서버(`MAIL_MODE=console`)는 인증 코드를 백엔드 로그에 찍는다.

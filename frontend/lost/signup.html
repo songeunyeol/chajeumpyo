@@ -33,6 +33,7 @@
     <button type="button" class="btn" id="signupBtn" style="width:100%;cursor:pointer">코드 받기</button>
   </div>
 </main>
+<script src="api.js"></script>
 <script>
   const emailInput = document.getElementById("signupEmail");
   const pwInput = document.getElementById("signupPw");
@@ -76,10 +77,26 @@
       return;
     }
 
-    try {
-      sessionStorage.setItem("signupEmail", email);
-    } catch (_) {}
-    window.location.href = "code.html";
+    // POST /auth/email/code. 캡차: 지금은 LostApi 기본 dev-pass.
+    // PR #47 머지 후 이 화면에 found/captcha.js 위젯(action "email-code")을 붙이고 LostApi.setCaptchaProvider로 넘긴다
+    signupBtn.disabled = true;
+    LostApi.requestCode(email)
+      .then(() => {
+        try {
+          sessionStorage.setItem("signupEmail", email);
+        } catch (_) {}
+        // 비밀번호는 동의 화면에서 가입할 때 보낸다. 이 탭에만 잠깐 두고 가입 직후 지운다
+        LostApi.holdSignupPassword(pw);
+        window.location.href = "code.html";
+      })
+      .catch((err) => {
+        if (err.code === "INVALID_EMAIL_DOMAIN") emailInput.classList.add("is-invalid");
+        signupErr.textContent = LostApi.friendlyMessage(err);
+        signupErr.hidden = false;
+      })
+      .finally(() => {
+        signupBtn.disabled = false;
+      });
   });
 </script>
 </body>

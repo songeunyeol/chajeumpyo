@@ -24,174 +24,84 @@
     <div class="q-options" id="qOptions"></div>
   </section>
 </main>
+<script src="api.js"></script>
 <script>
+  // 확인 질문 (판정 결과 BORDERLINE). 서버가 질문 하나를 주고, 답은 자유 입력(1~50자)으로 받는다.
+  // 정답·보기는 화면에 두지 않는다 (맞는 항목을 드러내지 않기 위해 서버가 판정)
+  const authed = LostApi.requireLogin();
   const qStage = document.getElementById("qStage");
   const qStepChip = document.getElementById("qStepChip");
   const qChanceChip = document.getElementById("qChanceChip");
   const qTitle = document.getElementById("qTitle");
+  const qLead = document.getElementById("qLead");
   const qOptions = document.getElementById("qOptions");
 
-  const defaultAiQuestions = [
-    {
-      question: "AI가 읽은 본체 또는 케이스의 색상과 표면 느낌은 어떤가요?",
-      options: [
-        { label: "하얀색(아이보리) · 무광 표면이에요", correct: true },
-        { label: "검은색 · 유광 표면이에요", correct: false },
-        { label: "투명 하드 케이스가 씌워져 있어요", correct: false }
-      ]
-    },
-    {
-      question: "물건 겉면이나 안쪽에 눈에 띄는 스티커·장식이 있나요?",
-      options: [
-        { label: "뚜껑 안쪽에 초록색 작은 스티커가 붙어 있어요", correct: true },
-        { label: "금속 키링 고리가 달려 있어요", correct: false },
-        { label: "아무 장식도 없는 기본 상태예요", correct: false }
-      ]
-    },
-    {
-      question: "충전 단자 주변이나 모서리에 어떤 흔적이 남아 있나요?",
-      options: [
-        { label: "아랫면 충전 단자 옆에 살짝 긁힌 자국이 있어요", correct: true },
-        { label: "뚜껑 경첩 부분이 깨져 있어요", correct: false },
-        { label: "영문 이니셜 각인이 새겨져 있어요", correct: false }
-      ]
-    }
-  ];
+  const claim = LostApi.store.get(LostApi.KEYS.claim);
+  const cand = LostApi.store.get(LostApi.KEYS.candidate);
+  if (authed && claim?.result !== "BORDERLINE") location.replace("candidates.html");
 
-  const params = new URLSearchParams(location.search);
-  const candIdx = Math.max(0, Math.min(2, Number(params.get("cand") ?? sessionStorage.getItem("activeCandIdx") ?? 0)));
-  let candChances = [3, 3, 3];
-  let questions = defaultAiQuestions;
-  let currentStep = 0;
-  let quizChance = 3;
-  // 3문제를 모두 답할 때까지 정답 여부를 모아두는 배열
-  let pickedResults = [];
-  let lockedInput = false;
+  qStepChip.textContent = "질문 1 / 1";
+  qChanceChip.textContent = `3번 중 ${cand?.attemptsLeft ?? 3}번 남음`;
+  qTitle.textContent = claim?.question || "";
+  qLead.textContent = "맞는 항목은 알려 주지 않아요. 기억나는 대로 짧게 적어 주세요.";
 
-  try {
-    sessionStorage.setItem("activeCandIdx", String(candIdx));
-    const savedQ = JSON.parse(sessionStorage.getItem("aiQuestions") || "null");
-    if (Array.isArray(savedQ) && savedQ.length >= 3) {
-      questions = savedQ.slice(0, 3);
-    }
-    const savedChances = JSON.parse(sessionStorage.getItem("candChances") || "null");
-    if (Array.isArray(savedChances) && savedChances.length === 3) {
-      candChances = savedChances.map((n) => Math.max(0, Math.min(3, Number(n))));
-    }
-    quizChance = candChances[candIdx] ?? 3;
-  } catch (_) {}
+  // [연결 추가] 답 입력칸과 버튼 (기존 .field / .btn 클래스)
+  const field = document.createElement("label");
+  field.className = "field";
+  const input = document.createElement("input");
+  input.id = "answerInput";
+  input.maxLength = LostApi.ANSWER_MAX;
+  input.placeholder = "예: 오른쪽 아래";
+  input.autocomplete = "off";
+  field.append(input);
+  const err = document.createElement("p");
+  err.className = "note danger";
+  err.hidden = true;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn";
+  btn.id = "answerBtn";
+  btn.style.width = "100%";
+  btn.textContent = "답하기";
+  qOptions.replaceChildren(field, btn, err);
 
-  if (quizChance <= 0) {
-    window.location.replace("lock.html");
-  }
-
-  function renderQuestion(stepIdx) {
-    const total = questions.length;
-    const item = questions[stepIdx] || questions[0];
-
-    qStepChip.textContent = `질문 ${stepIdx + 1} / ${total}`;
-    qChanceChip.textContent = `3번 중 ${quizChance}번 남음`;
-    qTitle.textContent = item.question;
-    qOptions.innerHTML = "";
-
-    item.options.forEach((opt) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "q-opt-btn";
-      btn.innerHTML = `<span>${opt.label}</span><span aria-hidden="true" style="color:var(--mute);font-weight:500">→</span>`;
-      btn.addEventListener("click", () => handleSelectOption(btn, Boolean(opt.correct)));
-      qOptions.appendChild(btn);
-    });
-  }
-
-  function handleSelectOption(btn, isCorrect) {
-    if (lockedInput) return;
-    lockedInput = true;
-    btn.classList.add("is-picked");
-    pickedResults[currentStep] = isCorrect;
-
-    // 1번, 2번 질문에서는 맞든 틀리든 결과를 노출하지 않고 다음 질문으로 넘어감
-    if (currentStep + 1 < questions.length) {
-      currentStep += 1;
-      qStage.classList.add("is-switching");
-      setTimeout(() => {
-        renderQuestion(currentStep);
-        qStage.classList.remove("is-switching");
-        lockedInput = false;
-      }, 210);
+  async function submit() {
+    const answer = input.value.trim();
+    if (!answer) {
+      input.classList.add("is-invalid");
       return;
     }
-
-    // 3문제를 모두 답한 뒤에 전체 정답 여부 판정
-    const allCorrect = pickedResults.length === questions.length && pickedResults.every(Boolean);
-
-    if (allCorrect) {
-      try {
-        const TEN_MIN = 10 * 60 * 1000;
-        const now = Date.now();
-        let list = JSON.parse(sessionStorage.getItem("lostReports") || "null");
-        const activeId = sessionStorage.getItem("activeReportId");
-        const currentRep = JSON.parse(sessionStorage.getItem("lostReport") || "null");
-
-        if (Array.isArray(list) && list.length > 0) {
-          let matched = false;
-          list = list.map((r) => {
-            if (!matched && ((activeId && r.id === activeId) || (!activeId && r.status === "active"))) {
-              matched = true;
-              const updated = { ...r, status: "closed", foundAt: now, expiresAt: now + TEN_MIN };
-              sessionStorage.setItem("lostReport", JSON.stringify(updated));
-              return updated;
-            }
-            return r;
-          });
-          if (!matched && currentRep) {
-            const added = { ...currentRep, id: currentRep.id || ("rep-" + now), status: "closed", foundAt: now, expiresAt: now + TEN_MIN };
-            list.unshift(added);
-            sessionStorage.setItem("lostReport", JSON.stringify(added));
-          }
-          sessionStorage.setItem("lostReports", JSON.stringify(list));
-        } else {
-          const fallbackClosed = {
-            id: currentRep?.id || ("rep-" + now),
-            item: currentRep?.item || "무선 이어폰",
-            date: currentRep?.date || "오늘",
-            timeRange: currentRep?.timeRange || "13:00~15:00",
-            building: currentRep?.building || "혜인관",
-            status: "closed",
-            foundAt: now,
-            expiresAt: now + TEN_MIN
-          };
-          sessionStorage.setItem("lostReports", JSON.stringify([fallbackClosed]));
-          sessionStorage.setItem("lostReport", JSON.stringify(fallbackClosed));
-        }
-      } catch (_) {}
-      window.location.href = "item.html?passed=1";
-    } else {
-      // 하나라도 틀렸으면 어떤 질문이 틀렸는지 알려주지 않고 기회 1회 차감 후 실패/잠금 화면으로 이동
-      quizChance = Math.max(0, quizChance - 1);
-      candChances[candIdx] = quizChance;
-      try {
-        sessionStorage.setItem("candChances", JSON.stringify(candChances));
-        sessionStorage.setItem("quizChance", String(quizChance));
-      } catch (_) {}
-      if (quizChance <= 0) {
-        window.location.href = "lock.html";
+    btn.disabled = true;
+    err.hidden = true;
+    qStage.classList.add("is-switching");
+    try {
+      // POST /claims/:attemptId/answer → PASS | FAIL
+      const r = await LostApi.answer(claim.attemptId, answer);
+      const next = LostApi.claimScreen(r);
+      if (next === "pass") {
+        const d = await LostApi.detail();
+        location.href = d.storageType === "HANDED_OVER" ? "item-handover.html" : "item.html";
       } else {
-        window.location.href = `fail.html?cand=${candIdx}`;
+        location.href = `${next}.html`; // fail · lock · counter
       }
+    } catch (e) {
+      const next = LostApi.claimScreen(e);
+      if (next) {
+        location.href = `${next}.html`;
+        return;
+      }
+      qStage.classList.remove("is-switching");
+      err.textContent = LostApi.friendlyMessage(e);
+      err.hidden = false;
+      btn.disabled = false;
+      if (e.code === "ALREADY_ANSWERED") setTimeout(() => location.replace("candidates.html"), 1500);
     }
   }
-
-  window.setAiQuestions = function (newQuestions) {
-    if (!Array.isArray(newQuestions) || !newQuestions.length) return;
-    questions = newQuestions.slice(0, 3);
-    currentStep = 0;
-    pickedResults = [];
-    lockedInput = false;
-    renderQuestion(0);
-  };
-
-  renderQuestion(0);
+  btn.addEventListener("click", submit);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submit();
+  });
+  input.addEventListener("input", () => input.classList.remove("is-invalid"));
 </script>
 </body>
 </html>
