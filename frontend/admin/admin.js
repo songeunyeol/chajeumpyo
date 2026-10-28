@@ -1,7 +1,7 @@
 // 관리자 화면 ↔ 백엔드 연결. 화면마다 이 파일 하나만 불러온다.
 // API 주소는 found/api.js와 같은 규칙: ?api=... 로 한 번 주면 기억하고, 없으면 이 페이지를 연 호스트의 4100 포트.
 // 로그인 토큰은 sessionStorage에만 둔다(탭을 닫으면 사라진다).
-(function () {
+(() => {
   const params = new URLSearchParams(location.search);
   try {
     if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
@@ -42,7 +42,7 @@
     ETC: "기타",
   };
 
-  /** packages/shared/src/enums.ts의 SUB_CATEGORY_LABELS (관리자 API가 세부 종류를 주면 이 이름으로 보인다) */
+  /** packages/shared/src/enums.ts의 SUB_CATEGORY_LABELS */
   const SUB_CATEGORY_LABELS = {
     CABLE_CHARGER: "충전기·케이블",
     POWER_BANK: "보조배터리",
@@ -80,6 +80,20 @@
     DOLL_KEYRING: "인형·키링",
     COSMETICS: "화장품",
     MEDICINE: "약·의약품",
+  };
+
+  /** packages/shared/src/enums.ts의 SUB_CATEGORIES: 큰 종류별 세부 종류. 없는 큰 종류는 세부 종류를 쓰지 않는다 */
+  const SUB_CATEGORIES = {
+    CHARGER: ["CABLE_CHARGER", "POWER_BANK", "MOUSE", "KEYBOARD", "USB_MEMORY", "CAMERA", "GAME_CONSOLE"],
+    EARPHONE: ["WIRELESS_EARBUDS", "WIRED_EARPHONE", "HEADPHONE"],
+    BAG: ["BACKPACK", "SHOULDER_BAG", "ECO_BAG", "POUCH", "SHOPPING_BAG"],
+    CLOTHING: ["OUTER", "TOP", "BOTTOM", "SCARF_GLOVES", "SHOES"],
+    WALLET: ["LONG_WALLET", "BIFOLD_WALLET", "CARD_WALLET"],
+    ACCESSORY: ["WRISTWATCH", "JEWELRY", "HAIR_ACCESSORY"],
+    BOOK: ["TEXTBOOK", "NOTEBOOK"],
+    STATIONERY: ["PENCIL_CASE", "CALCULATOR", "PEN"],
+    KEY: ["DOOR_KEY", "CAR_KEY"],
+    ETC: ["DOLL_KEYRING", "COSMETICS", "MEDICINE"],
   };
 
   /** packages/shared/src/enums.ts의 COLOR_LABELS (기본 12색) */
@@ -160,7 +174,7 @@
     get() {
       try {
         const v = JSON.parse(sessionStorage.getItem(AUTH_KEY) || "null");
-        if (v && v.expiresAt && Date.parse(v.expiresAt) <= Date.now()) {
+        if (v?.expiresAt && Date.parse(v.expiresAt) <= Date.now()) {
           sessionStorage.removeItem(AUTH_KEY);
           return null;
         }
@@ -214,7 +228,9 @@
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch (_) {
-      throw new ApiError(0, { error: { code: "NETWORK", message: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." } });
+      throw new ApiError(0, {
+        error: { code: "NETWORK", message: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." },
+      });
     }
     if (res.status === 204) return null;
     const data = await res.json().catch(() => null);
@@ -301,7 +317,9 @@
   /** 주운 곳 글자: "혜인관 3층" / 모르면 "주운 곳 모름" */
   function placeText(item) {
     if (!item.building) return "주운 곳 모름";
-    return item.floor !== null && item.floor !== undefined ? `${item.building.name} ${item.floor}층` : item.building.name;
+    return item.floor !== null && item.floor !== undefined
+      ? `${item.building.name} ${item.floor}층`
+      : item.building.name;
   }
 
   /** 목록·상세 제목: AI 제목 → 종류 이름 → 확인 전 */
@@ -313,6 +331,7 @@
     API_BASE,
     CATEGORY_LABELS,
     SUB_CATEGORY_LABELS,
+    SUB_CATEGORIES,
     COLOR_LABELS,
     FEATURE_KEY_LABELS,
     MAX_FEATURES,
@@ -366,8 +385,7 @@
       }),
 
     scanPickup: (qrToken) => call("/admin/pickups/scan", { method: "POST", body: { qrToken } }),
-    completePickup: (pickupId) =>
-      call(`/admin/pickups/${encodeURIComponent(pickupId)}/complete`, { method: "POST" }),
+    completePickup: (pickupId) => call(`/admin/pickups/${encodeURIComponent(pickupId)}/complete`, { method: "POST" }),
 
     /** GET /admin/stats/hotspots?from=&to= (한국 날짜) */
     hotspots: ({ from, to } = {}) => {
