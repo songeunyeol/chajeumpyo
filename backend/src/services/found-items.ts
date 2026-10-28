@@ -1,6 +1,9 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
+  type AnalyzeFoundItemFields,
+  type AnalyzeFoundItemResponse,
   type Category,
+  type ConfirmFoundItemBody,
   FoundItemExtraction,
   type RegisterFoundItemFields,
   type RegisterFoundItemResponse,
@@ -8,6 +11,7 @@ import {
 } from "@chajeumpyo/shared";
 import { ai, EMBEDDING_DIM } from "../ai";
 import { env } from "../config/env";
+import type { Prisma } from "../generated/prisma/client";
 import { retryOnce, withTimeout } from "../lib/async";
 import { AppError } from "../lib/errors";
 import { hmac } from "../lib/hash";
@@ -22,6 +26,8 @@ import { alertNewCandidateSafely } from "./candidate-alerts";
 
 /** 비회원 등록 제한: 같은 지문으로 10분에 5건 (초안, F-01) */
 export const REGISTER_LIMIT = { windowMinutes: 10, count: 5 };
+/** 두 단계 등록에서 분석 뒤 확정을 기다리는 시간. 지나면 정기 작업이 기한 만료로 지운다 */
+export const DRAFT_TTL_MINUTES = 60;
 
 export const REVIEW_MESSAGE = "분석이 늦어져서 관리자가 확인한 뒤 등록돼요.";
 export const HAND_OVER_MESSAGE = "귀중품이에요. 잃어버린 사람이 안전하게 찾을 수 있게 가까운 보관처에 맡겨 주세요.";
@@ -32,7 +38,7 @@ const HAND_OVER_SUGGESTIONS = 3;
  * 고가품을 그 자리에 두면 보관처에 맡겨 달라고 안내한다 (open-issues #32 P0 단계, QA B11).
  * 등록 전에는 종류를 몰라 막을 수 없으므로 완료 응답에서 안내하고, 등록 단계 차단은 P1(두 단계 등록)에서 한다.
  */
-async function handOverAdvice(category: Category | null, storageType: string, buildingId: number) {
+async function handOverAdvice(category: Category | null, storageType: string, buildingId: number | undefined) {
   if (!category || storageType !== "IN_PLACE" || !VALUABLE_CATEGORIES.includes(category)) return null;
   const places = await listStoragePlaces(buildingId);
   return {
@@ -88,25 +94,23 @@ async function analyze(image: Buffer): Promise<Analysis | null> {
   }
 }
 
-/** POST /found-items (F-01, F-02, F-03) */
-export async function registerFoundItem(input: {
-  image: Buffer;
-  fields: RegisterFoundItemFields;
-  fingerprint: string;
-}): Promise<RegisterFoundItemResponse> {
-  const { fields, fingerprint } = input;
-
+/** 같은 지문으로 짧은 시간에 너무 많이 올리면 막는다. 두 단계 등록의 분석(초안)도 센다 */
+async function checkRegisterLimit(fingerprint: string) {
   const since = new Date(Date.now() - REGISTER_LIMIT.windowMinutes * 60_000);
   const recent = await prisma.foundItem.count({ where: { uploaderFingerprint: fingerprint, foundAt: { gte: since } } });
   if (recent >= REGISTER_LIMIT.count) {
     throw new AppError("RATE_LIMITED", "짧은 시간에 너무 많이 등록했어요. 잠시 후 다시 시도해 주세요.");
   }
+}
 
-  const building = await prisma.building.findUnique({
-    where: { id: fields.buildingId },
-    select: { id: true, name: true },
-  });
-  if (!building)
+type PlaceFields = Pick<RegisterFoundItemFields, "buildingId" | "storagePlaceId">;
+
+/** 고른 건물·보관처가 실제로 있는지 본다. 보관처에 맡겼고 주운 건물을 모르면 건물은 null */
+async function resolvePlace(fields: PlaceFields) {
+  const building = fields.buildingId
+    ? await prisma.building.findUnique({ where: { id: fields.buildingId }, select: { id: true, name: true } })
+    : null;
+  if (fields.buildingId && !building)
     throw new AppError("VALIDATION_ERROR", "건물을 다시 골라 주세요.", [{ path: "buildingId", message: "없는 건물" }]);
   const place = fields.storagePlaceId
     ? await prisma.storagePlace.findFirst({
@@ -119,8 +123,22 @@ export async function registerFoundItem(input: {
       { path: "storagePlaceId", message: "없거나 운영하지 않는 보관처" },
     ]);
   }
+  return { building, place };
+}
 
-  const original = await normalizeImage(input.image);
+type ProcessedPhoto = {
+  id: string;
+  keys: { original: string; public: string; thumb: string };
+  analysis: Analysis | null;
+  sensitive: boolean;
+};
+
+/**
+ * 사진을 정리하고, 가린 사본으로 AI 분석을 한 뒤 원본·공개본·후보용 사본을 저장한다.
+ * 물건이 없다고 분석되면 아무것도 저장하지 않고 NO_OBJECT_DETECTED.
+ */
+async function processPhoto(image: Buffer): Promise<ProcessedPhoto> {
+  const original = await normalizeImage(image);
   // 얼굴·글자 영역을 먼저 가린 사본만 AI로 보내고 공개본·후보용 사본도 이것으로 만든다 (QA B3, T4).
   // 가리기에 실패하면 원본을 보내지 않고 AI 없이 검토 대기로 저장한다. 원본은 관리자만 본다.
   const masked = await premaskSafely(original);
@@ -148,26 +166,25 @@ export async function registerFoundItem(input: {
   await storage.put(keys.original, original, "image/jpeg");
   await storage.put(keys.public, publicImage, "image/jpeg");
   await storage.put(keys.thumb, thumbImage, "image/jpeg");
+  return { id, keys, analysis, sensitive };
+}
 
-  const foundAt = new Date();
-  const status = analysis ? "REGISTERED" : "REVIEW";
+/** 저장한 사진과 AI 결과로 습득물 행을 만든다. 실패하면 올린 사진을 지운다 */
+async function createFoundItem(
+  photo: ProcessedPhoto,
+  data: Omit<Prisma.FoundItemUncheckedCreateInput, "id" | "category" | "categoryAlt" | "detail">,
+  locationDetail: string | null,
+) {
+  const { id, keys, analysis, sensitive } = photo;
+  const ex = analysis?.extraction;
   try {
     await prisma.$transaction(async (tx) => {
       await tx.foundItem.create({
         data: {
+          ...data,
           id,
-          buildingId: building.id,
           category: ex?.category ?? null,
           categoryAlt: ex?.categoryAlt && ex.categoryAlt !== ex.category ? ex.categoryAlt : null,
-          storageType: fields.storageType,
-          storagePlaceId: place?.id ?? null,
-          floor: fields.floor ?? null,
-          consentVersion: fields.consentVersion,
-          locationConsent: fields.consentLocation,
-          status,
-          uploaderFingerprint: fingerprint,
-          foundAt,
-          expiresAt: new Date(foundAt.getTime() + env.FOUND_ITEM_RETENTION_DAYS * 86_400_000),
           detail: {
             create: {
               imageOriginalKey: keys.original,
@@ -179,6 +196,7 @@ export async function registerFoundItem(input: {
               features: ex?.features ?? [],
               description: ex?.description ?? null,
               title: ex?.title ?? null,
+              locationDetail,
               rawAiResponse: ex ?? undefined,
             },
           },
@@ -190,18 +208,156 @@ export async function registerFoundItem(input: {
     await Promise.all([storage.delete(keys.original), storage.delete(keys.public), storage.delete(keys.thumb)]);
     throw err;
   }
+}
 
-  if (status === "REGISTERED") await alertNewCandidateSafely(id);
+/** POST /found-items (F-01, F-02, F-03): 사진과 위치를 한 번에 받아 등록한다 */
+export async function registerFoundItem(input: {
+  image: Buffer;
+  fields: RegisterFoundItemFields;
+  fingerprint: string;
+}): Promise<RegisterFoundItemResponse> {
+  const { fields, fingerprint } = input;
+  await checkRegisterLimit(fingerprint);
+  const { building, place } = await resolvePlace(fields);
+  const photo = await processPhoto(input.image);
 
+  const foundAt = new Date();
+  const status = photo.analysis ? "REGISTERED" : "REVIEW";
+  await createFoundItem(
+    photo,
+    {
+      buildingId: building?.id ?? null,
+      storageType: fields.storageType,
+      storagePlaceId: place?.id ?? null,
+      floor: fields.floor ?? null,
+      consentVersion: fields.consentVersion,
+      locationConsent: fields.consentLocation,
+      status,
+      uploaderFingerprint: fingerprint,
+      foundAt,
+      expiresAt: new Date(foundAt.getTime() + env.FOUND_ITEM_RETENTION_DAYS * 86_400_000),
+    },
+    fields.locationDetail ?? null,
+  );
+
+  if (status === "REGISTERED") await alertNewCandidateSafely(photo.id);
+
+  const category = photo.analysis?.extraction.category ?? null;
   return {
-    id,
+    id: photo.id,
     status,
-    category: ex?.category ?? null,
+    category,
     building,
     floor: fields.floor ?? null,
     storageType: fields.storageType,
     storagePlace: place,
-    message: analysis ? null : REVIEW_MESSAGE,
-    handOverAdvice: await handOverAdvice(ex?.category ?? null, fields.storageType, building.id),
+    message: photo.analysis ? null : REVIEW_MESSAGE,
+    handOverAdvice: await handOverAdvice(category, fields.storageType, building?.id),
+  };
+}
+
+/**
+ * POST /found-items/analyze: 두 단계 등록의 1단계. 사진만 먼저 받아 분석하고 확정 전(ANALYZING)으로 저장한다.
+ * 확정 전에는 후보·알림·관리자 등록 처리에 나오지 않고, 기한(DRAFT_TTL_MINUTES)이 지나면 정기 작업이 사진까지 지운다.
+ */
+export async function analyzeFoundItem(input: {
+  image: Buffer;
+  fields: AnalyzeFoundItemFields;
+  fingerprint: string;
+}): Promise<AnalyzeFoundItemResponse> {
+  const { fields, fingerprint } = input;
+  await checkRegisterLimit(fingerprint);
+  const photo = await processPhoto(input.image);
+
+  const now = new Date();
+  const confirmBy = new Date(now.getTime() + DRAFT_TTL_MINUTES * 60_000);
+  const confirmToken = randomBytes(32).toString("base64url");
+  await createFoundItem(
+    photo,
+    {
+      consentVersion: fields.consentVersion,
+      locationConsent: fields.consentLocation,
+      status: "ANALYZING",
+      uploaderFingerprint: fingerprint,
+      foundAt: now,
+      expiresAt: confirmBy,
+      confirmTokenHash: hmac(`found-confirm:${confirmToken}`),
+    },
+    null,
+  );
+
+  const category = photo.analysis?.extraction.category ?? null;
+  return {
+    id: photo.id,
+    confirmToken,
+    category,
+    isValuable: category !== null && VALUABLE_CATEGORIES.includes(category),
+    message: photo.analysis ? null : REVIEW_MESSAGE,
+    confirmBy: confirmBy.toISOString(),
+  };
+}
+
+/**
+ * POST /found-items/:id/confirm: 두 단계 등록의 2단계. 위치·보관 방식을 받아 등록을 끝낸다.
+ * 분석에 성공했으면 REGISTERED(새 후보 알림), 실패했으면 REVIEW. 습득 시각과 보관 기한은 확정한 때부터 센다.
+ */
+export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): Promise<RegisterFoundItemResponse> {
+  const { building, place } = await resolvePlace(body);
+  const foundAt = new Date();
+
+  const item = await prisma.$transaction(async (tx) => {
+    const draft = await tx.foundItem.findFirst({
+      where: {
+        id,
+        status: "ANALYZING",
+        confirmTokenHash: hmac(`found-confirm:${body.confirmToken}`),
+        expiresAt: { gt: foundAt },
+        dataPurgedAt: null,
+      },
+      select: { category: true },
+    });
+    if (!draft) {
+      // 확정 버튼을 두 번 눌렀을 때. 확정한 물건의 id는 후보 목록에 공개되므로 알려 줘도 된다
+      const done = await tx.foundItem.count({
+        where: { id, status: { in: ["REGISTERED", "REVIEW", "REVEALED", "CLAIMED"] } },
+      });
+      if (done > 0) throw new AppError("ALREADY_CONFIRMED", "이미 등록을 마친 물건이에요.");
+      throw new AppError("NOT_FOUND", "등록 시간이 지났거나 없는 물건이에요. 사진부터 다시 올려 주세요.");
+    }
+    const status = draft.category ? ("REGISTERED" as const) : ("REVIEW" as const);
+    // 같은 초안을 두 번 확정하지 않게 상태를 조건으로 바꾼다
+    const changed = await tx.foundItem.updateMany({
+      where: { id, status: "ANALYZING" },
+      data: {
+        status,
+        buildingId: building?.id ?? null,
+        storageType: body.storageType,
+        storagePlaceId: place?.id ?? null,
+        floor: body.floor ?? null,
+        foundAt,
+        expiresAt: new Date(foundAt.getTime() + env.FOUND_ITEM_RETENTION_DAYS * 86_400_000),
+        confirmTokenHash: null,
+      },
+    });
+    if (changed.count === 0) throw new AppError("ALREADY_CONFIRMED", "이미 등록을 마친 물건이에요.");
+    await tx.foundItemDetail.update({
+      where: { foundItemId: id },
+      data: { locationDetail: body.locationDetail ?? null },
+    });
+    return { status, category: draft.category };
+  });
+
+  if (item.status === "REGISTERED") await alertNewCandidateSafely(id);
+
+  return {
+    id,
+    status: item.status,
+    category: item.category,
+    building,
+    floor: body.floor ?? null,
+    storageType: body.storageType,
+    storagePlace: place,
+    message: item.status === "REVIEW" ? REVIEW_MESSAGE : null,
+    handOverAdvice: await handOverAdvice(item.category, body.storageType, building?.id),
   };
 }

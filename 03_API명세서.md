@@ -41,6 +41,7 @@
 | 409 | `ALREADY_CLAIMED` | 이미 수령 완료된 물건 |
 | 409 | `ALREADY_ANSWERED` | 이미 답한 확인 질문 |
 | 409 | `INVALID_STORAGE_TYPE` | 보관 위치와 맞지 않는 수령 방식 |
+| 409 | `ALREADY_CONFIRMED` | 두 단계 등록에서 이미 확정한 물건을 다시 확정 |
 | 409 | `NOT_IN_PERSON_ITEM` | 대면 확인으로 넘어간 보관 중 물건이 아니라 대면 확인 수령을 할 수 없음 |
 | 410 | `QR_EXPIRED` | 수령 QR 만료 |
 | 413 | `IMAGE_TOO_LARGE` | 사진 용량 초과 |
@@ -59,6 +60,8 @@
 | GET | `/storage-places` | 공개 | F-01 |
 | GET | `/files/*` | 서명 URL | F-10, F-14 |
 | POST | `/found-items` | 공개 | F-01, F-02, F-03 |
+| POST | `/found-items/analyze` | 공개 | F-01, F-02, F-03 (두 단계 등록 1) |
+| POST | `/found-items/:id/confirm` | 공개(확정 토큰) | F-01 (두 단계 등록 2) |
 | POST | `/auth/email/code` | 공개 | F-04 |
 | POST | `/auth/email/verify` | 공개 | F-04 |
 | POST | `/auth/signup` | 공개 | F-04 |
@@ -119,10 +122,11 @@
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | `image` | file | O | 사진 1장 |
-| `buildingId` | number | O | 건물 |
+| `buildingId` | number | `IN_PLACE`면 O | 주운 건물. `HANDED_OVER`면 모를 때 비운다(보관처 건물로 채우지 않는다. 매칭의 "같은 건물" 점수가 틀어지므로) |
 | `storageType` | `IN_PLACE` \| `HANDED_OVER` | O | 보관 위치 (그 자리에 둠 / 보관처에 맡김) |
 | `storagePlaceId` | number | `HANDED_OVER`면 O | 보관처 |
 | `floor` | number | X | 습득 층. 지하는 음수(B1 = -1), -10~30 |
+| `locationDetail` | string | X | 자세한 위치 (예: 3층 엘리베이터 앞 벤치 위). 200자 이내, 앞뒤 공백을 지우고 빈 값은 없는 것으로 본다. 판정 통과 후 상세에서만 보인다 |
 
 **처리**: 지문(기기·IP 해시)으로 등록 제한 확인 → 이미지 저장 → AI 속성 추출·민감 정보 판단 → AI 응답 형식 검증 → 공개본·후보용 블러본 저장 → 임베딩 저장 → 열린 신고와 비교해 알림 생성.
 
@@ -144,13 +148,43 @@
 - **AI 실패 시에도 `201`**로 응답한다. `"status": "REVIEW"`, `"category": null`, `"message": "분석이 늦어져서 관리자가 확인한 뒤 등록돼요."`
 - 물건이 없는 사진이면 `422 NO_OBJECT_DETECTED`, 저장하지 않는다.
 - `HANDED_OVER`인데 `storagePlaceId`가 없거나 비활성 보관처면 `400 VALIDATION_ERROR`.
-- `IN_PLACE`인데 `storagePlaceId`를 보내면 `400 VALIDATION_ERROR`.
+- `IN_PLACE`인데 `storagePlaceId`를 보내거나 `buildingId`가 없으면 `400 VALIDATION_ERROR`.
+- 주운 건물을 모르면(`building: null`) 매칭의 위치 점수는 "모름"(0.5)이고 후보 근거에 `SAME_BUILDING`이 붙지 않는다. 응답·후보·상세의 `building`은 `null`일 수 있다.
 - 사진은 JPG·PNG·WEBP·HEIC, 10MB 이하. 아니면 `400` / `413 IMAGE_TOO_LARGE`. 서버는 회전을 적용하고 위치(GPS)를 포함한 EXIF를 모두 지운 뒤 긴 변 1600px로 저장한다. 사진은 세 가지로 저장한다: 원본(관리자만), 공개본(판정 통과 후, 1024px, 개인정보 영역만 블러. 민감한데 영역을 모르면 전체 블러), 후보용 블러본(판정 전 후보 카드, 320px, 항상 강한 블러).
 - 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안)
 - AI 분석은 호출마다 제한 시간(기본 8초)이 있고 실패하면 한 번 재시도한다. AI 실패로 민감 여부를 모르면 공개본은 블러 처리한다.
 - 동의 필드: `consentVersion`, `consentExternalAi`(`"true"` 필수), `consentLocation`(`"true"`/`"false"`). 물건에 버전과 위치 동의 여부를 남긴다.
 - **고가품 안내**: AI가 고가품으로 본 물건을 `IN_PLACE`로 등록하면 `handOverAdvice`에 "보관처에 맡겨 주세요" 문구와 가까운 보관처 최대 3곳(같은 건물 먼저)을 준다. 아니면 `null`. 등록 단계 차단은 P1. (open-issues #32)
 - AI 응답이 4장의 형식과 다르면(허용 밖 색·종류·특징 키, 특징 5개 이상, 사진 밖 영역, 임베딩 차원 불일치) 실패로 보고 `REVIEW`로 저장한다.
+
+#### 두 단계 등록: `POST /found-items/analyze` → `POST /found-items/:id/confirm`
+등록 화면에서 AI가 알아본 물건 이름을 먼저 보여 주고 위치를 고르게 하는 흐름용이다. 위의 한 번에 등록과 같은 규칙(사진 처리, 가리기, AI, 등록 제한)을 쓰고, 나눠서 받을 뿐이다.
+
+**1단계 `POST /found-items/analyze`** · 공개 · `multipart/form-data` · 캡차 필요
+- 필드: `image`, `consentVersion`, `consentExternalAi`, `consentLocation` (위치 필드는 받지 않는다)
+- 사진을 분석해 **확정 전(`ANALYZING`)**으로 저장한다. 확정 전 물건은 후보·알림에 나오지 않는다.
+- 물건이 없는 사진이면 `422 NO_OBJECT_DETECTED`, 저장하지 않는다. 등록 제한(10분에 5건)에 들어간다.
+
+```json
+{
+  "id": "6a1f...",
+  "confirmToken": "q3J...(확정할 때 그대로 보낸다)",
+  "category": "EARPHONE",
+  "isValuable": true,
+  "message": null,
+  "confirmBy": "2026-10-28T13:00:00.000Z"
+}
+```
+- `category`: AI가 알아본 종류. AI가 실패하면 `null`이고 `message`에 검토 대기 안내가 온다. 이때도 확정할 수 있고, 확정하면 `REVIEW`가 된다.
+- `isValuable`: 귀중품이면 `true`. 등록 화면에서 "보관처에 맡겨 주세요"를 먼저 권할 때 쓴다. (open-issues #32)
+- `confirmToken`: 서버는 HMAC만 저장한다. 이 값을 가진 기기만 확정할 수 있다.
+- `confirmBy`(60분)까지 확정하지 않으면 정기 작업이 기한 만료로 바꾸고 사진까지 지운다.
+
+**2단계 `POST /found-items/:id/confirm`** · 공개 · JSON
+- 본문: `confirmToken` + 위 표의 위치 필드(`buildingId`, `storageType`, `storagePlaceId`, `floor`, `locationDetail`). 검증 규칙도 같다.
+- `201` 응답은 한 번에 등록과 같다. 분석에 성공했으면 `REGISTERED`(새 후보 알림), 실패했으면 `REVIEW`.
+- 습득 시각(`foundAt`)과 보관 기한(30일)은 확정한 때부터 센다.
+- 없는 물건·틀린 토큰·확정 시간 지남은 모두 `404 NOT_FOUND`. 이미 확정했으면 `409 ALREADY_CONFIRMED` (버튼을 두 번 눌러도 하나만 확정).
 
 ### 인증
 
@@ -351,6 +385,8 @@
   "color": "WHITE",
   "imageUrl": "https://...signed... (개인정보 영역만 가린 공개본, 10분 만료)",
   "building": { "id": 1, "name": "혜인관" },
+  "floor": 3,
+  "locationDetail": "3층 엘리베이터 앞 벤치 위",
   "storageType": "HANDED_OVER",
   "storagePlace": { "id": 3, "name": "혜인관 경비실", "guideText": "혜인관 1층 정문 옆 경비실" },
   "status": "REVEALED",
@@ -361,7 +397,7 @@
 - 수령·기한 만료로 지운 물건은 수령됨이면 `409 ALREADY_CLAIMED`, 만료면 `404`.
 - 체험 계정이 열람해도 시드 습득물의 `status`는 바뀌지 않는다.
 - 확인 질문 정답(`BORDERLINE` + 정답)도 통과로 본다. 통과하지 않았으면 `403`, 없는 물건 `404`.
-- 응답 필드: `id`, `category`, `color`, `imageUrl`(공개본 서명 URL), `imageUrlExpiresAt`, `building`, `storageType`, `storagePlace`, `status`, `foundAt`, `isSeed`, `pickupNotice`. 브랜드·특징·설명은 주지 않는다.
+- 응답 필드: `id`, `category`, `color`, `imageUrl`(공개본 서명 URL), `imageUrlExpiresAt`, `building`(모르면 `null`), `floor`, `locationDetail`(습득자가 적은 자세한 위치, 없으면 `null`), `storageType`, `storagePlace`, `status`, `foundAt`, `isSeed`, `pickupNotice`. 브랜드·특징·설명은 주지 않는다.
 - 다른 일반 계정이 이미 열람한 물건을 새 계정이 처음 열람하면, 맡은 관리자(보관처 관리자, 없으면 종합서비스센터 관리자)에게 `MULTI_REVEAL` 알림을 만든다. 체험 계정은 세지 않는다.
 
 #### `POST /found-items/:id/pickup-qr` · 회원

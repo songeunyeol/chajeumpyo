@@ -166,12 +166,14 @@ model StoragePlace {
 /// 습득물의 공개 정보만 둔다. 후보 목록·알림은 이 테이블만 읽는다.
 model FoundItem {
   id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  building            Building         @relation(fields: [buildingId], references: [id])
-  buildingId          Int              @map("building_id")
+  /// 주운 건물. 보관처에 맡겼고 주운 곳을 모르면 null (매칭에서 위치 점수를 "모름"으로 본다). 그 자리에 두면 필수 (CHECK 제약)
+  building            Building?        @relation(fields: [buildingId], references: [id])
+  buildingId          Int?             @map("building_id")
   category            Category?
   /// 2순위 종류. 후보 검색에만 쓰고 응답에 넣지 않는다.
   categoryAlt         Category?        @map("category_alt")
-  storageType         StorageType      @map("storage_type")
+  /// 두 단계 등록에서 확정 전(ANALYZING)이면 null
+  storageType         StorageType?     @map("storage_type")
   /// storage_type = HANDED_OVER면 필수 (마이그레이션 SQL의 CHECK 제약)
   storagePlace        StoragePlace?    @relation(fields: [storagePlaceId], references: [id])
   storagePlaceId      Int?             @map("storage_place_id")
@@ -189,6 +191,8 @@ model FoundItem {
   dataPurgedAt        DateTime?        @map("data_purged_at")
   /// 모든 계정의 확인 실패 합계가 한도(10회)에 닿아 온라인 확인을 막은 시각. 이후엔 대면 확인만 (#29)
   claimLockedAt       DateTime?        @map("claim_locked_at")
+  /// 두 단계 등록(analyze → confirm)에서 확정 권한 토큰의 HMAC. 확정하면 지운다
+  confirmTokenHash    String?          @map("confirm_token_hash")
   detail              FoundItemDetail?
   attempts            MatchAttempt[]
   reveals             RevealLog[]
@@ -218,6 +222,8 @@ model FoundItemDetail {
   description      String?
   /// 관리자 목록용 제목 (비공개 정보 포함)
   title            String?
+  /// 습득자가 적은 자세한 위치 (예: 3층 엘리베이터 앞 벤치 위). 판정 통과 후에만 보인다
+  locationDetail   String?                      @map("location_detail")
   /// 차원(1536)은 임베딩 모델 확정 후 맞춘다. 읽기·쓰기는 src/repositories/embedding.ts의 raw SQL로만.
   embedding        Unsupported("vector(1536)")?
   rawAiResponse    Json?                        @map("raw_ai_response")

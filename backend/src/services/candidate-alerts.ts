@@ -44,7 +44,7 @@ export async function alertNewCandidate(foundItemId: string): Promise<number> {
         type: "NEW_CANDIDATE",
         foundItemId,
         lostReportId: report.id,
-        message: newCandidateMessage(item.building.name, CATEGORY_LABELS[item.category]),
+        message: newCandidateMessage(item.building?.name ?? null, CATEGORY_LABELS[item.category]),
       },
     });
     sent++;

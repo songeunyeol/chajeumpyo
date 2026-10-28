@@ -28,9 +28,11 @@ export const AdminFoundItemSummary = z.object({
   category: Category.nullable(),
   /** AI가 만든 짧은 제목. 비공개 정보가 들어가므로 관리자 화면에만 (open-issues #38) */
   title: z.string().nullable(),
-  building: BuildingSummary,
+  /** 주운 건물. 모르면(보관처에 맡김) 또는 확정 전이면 null */
+  building: BuildingSummary.nullable(),
   floor: z.number().int().nullable(),
-  storageType: StorageType,
+  /** 두 단계 등록에서 확정 전(ANALYZING)이면 null */
+  storageType: StorageType.nullable(),
   storagePlace: StoragePlaceSummary.nullable(),
   foundAt: z.iso.datetime(),
   isSeed: z.boolean(),

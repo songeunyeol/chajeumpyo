@@ -7,7 +7,9 @@
 | `buildings.json` | 건물 이름, 중심 좌표(위도·경도), 표시 순서 | 기획 (기능 명세서 7장 "건물 목록과 좌표") |
 | `storage-places.json` | 보관처 이름, 건물 이름, 위치 안내 문구, `CENTER`/`GUARD` | 기획 |
 
-좌표는 지도 앱에서 건물 중심을 찍어 소수점 6자리까지 적는다. 아직 확정 전이라 비워 두었다.
+건물 좌표는 OpenStreetMap에서 캠퍼스 안 `building=university` 건물 윤곽의 중심을 뽑았다 (2026-10-28, © OpenStreetMap contributors, ODbL). 건물 이름도 OSM 표기를 따랐다. 생활관은 OSM의 "서경대학교 생활관3동" 위치다.
+
+**보관처는 임시다.** 실제로 분실물을 받는 곳이 정해지기 전까지 센터 1곳·경비실 2곳을 넣어 두었고, 안내 문구에 "(임시)"를 붙였다. 정해지면 이 파일만 고치고 `npm run db:seed`를 다시 돌리면 이름 기준으로 덮어쓴다.
 
 ```json
 // buildings.json 형식
