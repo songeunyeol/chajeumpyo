@@ -1,4 +1,5 @@
 import type { Prisma } from "../generated/prisma/client";
+import { withJosa } from "../lib/josa";
 import { prisma } from "../lib/prisma";
 
 type Db = Pick<Prisma.TransactionClient, "user" | "notification">;
@@ -36,5 +37,5 @@ export async function notifyUsers(
 
 /** 새 후보 알림 문구: "혜인관에서 무선 이어폰이 새로 등록됐어요." */
 export function newCandidateMessage(buildingName: string | null, categoryLabel: string): string {
-  return `${buildingName ? `${buildingName}에서 ` : ""}${categoryLabel}이(가) 새로 등록됐어요.`;
+  return `${buildingName ? `${buildingName}에서 ` : ""}${withJosa(categoryLabel, "이/가")} 새로 등록됐어요.`;
 }

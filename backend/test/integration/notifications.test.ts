@@ -67,7 +67,7 @@ describe("기준 1. 새 습득물이 내 신고의 후보가 되면 알림", () 
     const n = await prisma.notification.findMany();
     expect(n).toHaveLength(1);
     expect(n[0]).toMatchObject({ userId: user.user.id, type: "NEW_CANDIDATE", lostReportId: r, foundItemId: itemId });
-    expect(n[0]?.message).toBe("혜인관에서 무선 이어폰이(가) 새로 등록됐어요.");
+    expect(n[0]?.message).toBe("혜인관에서 무선 이어폰이 새로 등록됐어요.");
     expect(n[0]?.message).not.toMatch(/흰색|Apple|곰돌이/);
   });
 });
