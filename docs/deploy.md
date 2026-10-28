@@ -53,6 +53,7 @@ DB는 **pgvector가 들어 있는 이미지**로 만든다. Railway 기본 Postg
 | `STORAGE_LOCAL_DIR` | `/data/uploads` | 볼륨 아래 경로 (절대 경로) | 필수 |
 | `CAPTCHA_MODE` | `turnstile` | production에서 `off`면 서버가 뜨지 않는다 | 필수 |
 | `TURNSTILE_SECRET_KEY` | `<Turnstile 비밀 키>` | Cloudflare 대시보드 → Turnstile → 사이트 추가 (아래 참고) | 필수 |
+| `TURNSTILE_SITE_KEY` | `<Turnstile 사이트 키>` | 같은 곳에서 받는 공개 키. `CAPTCHA_MODE=turnstile`이면 없을 때 서버가 뜨지 않고(PR #47), 화면은 `GET /api/v1/config`로 받아 위젯을 띄운다 | 필수 |
 | `AI_MODE` | `gemini` | 시연용으로 AI 없이 띄우려면 `mock` | 권장 |
 | `GEMINI_API_KEY` | `<Gemini 키>` | Google AI Studio. `AI_MODE=gemini`이면 필수 | 조건부 |
 | `GEMINI_MODEL` / `GEMINI_FALLBACK_MODEL` / `GEMINI_EMBED_MODEL` | 기본값 | 바꿀 때만 | 선택 |
@@ -75,9 +76,12 @@ DB는 **pgvector가 들어 있는 이미지**로 만든다. Railway 기본 Postg
 ```sh
 railway ssh                      # 앱 서비스 컨테이너 셸 (/app/backend)
 npm run db:seed                  # 건물·보관처 (prisma/seed-data). 다시 돌려도 upsert라 안전
+npm run seed:demo                # 심사위원 체험용 습득물 (PR #47). 사진이 볼륨(STORAGE_LOCAL_DIR)에 저장되므로 꼭 ssh 안에서 돌린다
 npm run admin:create -- --email <관리자 메일> --password '<비밀번호>' --place "<보관처 이름>"   # --place는 선택
 exit
 ```
+
+`AI_MODE`를 나중에 바꾸면(예: `mock` → `gemini`) 시드 습득물의 임베딩이 이전 모드 기준이라 매칭이 맞지 않는다. 바꾼 뒤 `railway ssh`에서 `npm run seed:demo`를 다시 돌린다.
 
 `railway run npm run db:seed -w backend`는 내 PC에서 Railway 변수만 빌려 실행하므로, DB에 공개 주소(TCP Proxy)를 열어 둔 경우에만 된다.
 
@@ -88,12 +92,13 @@ curl https://<도메인>/health                # {"ok":true}
 curl https://<도메인>/api/v1/buildings      # 시드한 건물 목록
 ```
 
-브라우저로 `https://<도메인>/`과 `/found/consent.html`이 열리고, 사진 등록 후 볼륨 `/data/uploads`에 파일이 생기면 된다. `_tester.html`과 `.md` 메모는 배포에서 내려주지 않는다(404).
+브라우저로 `https://<도메인>/`과 `/found/consent.html`이 열리고, 사진 등록 후 볼륨 `/data/uploads`에 파일이 생기면 된다. `_tester.html`, `.md` 메모, 디자인 확인 화면(`팔레트.html`, `한눈에.html`)은 배포에서 내려주지 않는다(404).
 
 ## 참고
 
 - **HTTPS·도메인**: Railway 도메인은 HTTPS가 자동이다. 학교·개인 도메인을 붙이면 Settings → Networking → Custom Domain에 CNAME을 걸고, `PUBLIC_BASE_URL`, `CORS_ORIGIN`을 새 주소로 바꾼 뒤 재배포한다. 위치 권한·카메라는 HTTPS에서만 동작한다.
-- **Turnstile**: Cloudflare 대시보드 → Turnstile → Add site에서 도메인(`<이름>.up.railway.app`, 커스텀 도메인)을 넣고 사이트 키와 비밀 키를 받는다. 비밀 키는 `TURNSTILE_SECRET_KEY`에, 사이트 키는 화면 쪽 위젯에 쓴다. 도메인을 바꾸면 Turnstile 사이트 설정에도 추가해야 한다.
+- **Turnstile**: Cloudflare 대시보드 → Turnstile → Add site에서 도메인(`<이름>.up.railway.app`, 커스텀 도메인)을 넣고 사이트 키와 비밀 키를 받는다. 비밀 키는 `TURNSTILE_SECRET_KEY`에, 사이트 키는 `TURNSTILE_SITE_KEY`에 넣는다. 사이트 키는 서버가 `GET /api/v1/config`로 화면에 내려주고, 화면은 그 값으로 위젯을 띄운다(화면 코드에 키를 적지 않는다). 도메인을 바꾸면 Turnstile 사이트 설정에도 추가해야 한다.
+- **메일 발송(위험 요소)**: Railway 요금제에 따라 바깥으로 나가는 SMTP(465·587)가 막혀 있을 수 있다. 배포 직후 학교 메일 주소로 인증 코드를 실제로 한 번 보내 받는지 확인한다. 막혀 있으면 HTTP로 보내는 메일 API(Resend·SendGrid 등)로 바꿔야 한다(지금은 구현하지 않았다). 그 전까지는 시연에 `MAIL_MODE=console`(로그로 코드 확인)을 임시로 쓸 수 있다.
 - **Gemini 요금**: 무료 등급은 분당·일일 한도가 낮고 입력이 학습에 쓰일 수 있다. 시연 전 Google AI Studio에서 결제(Billing)를 켜고 예산 알림을 걸어 둔다. 한도를 넘거나 키가 막히면 등록이 검토 대기로 빠진다.
 - **사진 저장**: 지금은 `STORAGE_DRIVER=local`만 있어 앱 인스턴스는 하나로 둔다(볼륨은 한 인스턴스에만 붙는다). 사진 URL은 `PUBLIC_BASE_URL/files/...` 서명 링크로만 열린다.
 - **로컬에서 이미지 확인**: `docker build --platform linux/amd64 -t chajeumpyo:local .` 후 위 변수를 `-e`로 넣고 `-p 8080:8080 -v <폴더>:/data`로 띄운다.

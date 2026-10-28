@@ -2,6 +2,10 @@
 # onnxruntime-node·sharp 네이티브 바이너리가 glibc 기준이라 alpine이 아닌 bookworm-slim을 쓴다.
 
 FROM node:22-bookworm-slim AS build
+# prisma 엔진(schema-engine)은 openssl을 찾아 맞는 바이너리를 고른다. slim 이미지엔 없어서 넣는다
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/
@@ -12,8 +16,17 @@ RUN npm ci --ignore-scripts
 COPY packages/shared packages/shared
 COPY backend backend
 RUN npm run db:generate -w backend && npm run build -w backend
+# --ignore-scripts로 @prisma/engines postinstall이 빠져 migrate deploy에 쓸 schema-engine이 없다.
+# 여기서 받아 두고, 리눅스용 바이너리가 없으면 빌드를 실패시킨다 (배포 후 CMD에서 터지는 것보다 낫다)
+RUN node node_modules/@prisma/engines/scripts/postinstall.js \
+  && ls node_modules/@prisma/engines/ | grep -q '^schema-engine-debian-openssl-3\.0\.x$' \
+  || (echo "schema-engine(debian-openssl-3.0.x)이 없다" && ls -la node_modules/@prisma/engines/ && exit 1)
 
 FROM node:22-bookworm-slim AS runtime
+# prisma 엔진(schema-engine)은 openssl을 찾아 맞는 바이너리를 고른다. slim 이미지엔 없어서 넣는다
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 # 시드·관리자 만들기(tsx)와 migrate deploy(prisma CLI)를 railway ssh로 돌릴 수 있게 개발 의존성도 남긴다
@@ -32,4 +45,5 @@ WORKDIR /app/backend
 ENV PORT=8080
 EXPOSE 8080
 # 마이그레이션은 추가만 하는 방식이라 배포 때마다 deploy로 맞춘다 (reset·dev는 절대 쓰지 않는다)
-CMD ["sh", "-c", "npx prisma migrate deploy && exec node dist/server.js"]
+# npx가 다른 버전을 내려받지 않게 설치된 prisma CLI를 직접 부른다 (WORKDIR /app/backend 기준)
+CMD ["sh", "-c", "../node_modules/.bin/prisma migrate deploy && exec node dist/server.js"]

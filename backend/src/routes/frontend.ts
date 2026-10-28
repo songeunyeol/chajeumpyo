@@ -11,15 +11,21 @@ const defaultDir =
     .map((rel) => resolve(import.meta.dirname, rel))
     .find((dir) => existsSync(resolve(dir, "index.html"))) ?? resolve(import.meta.dirname, "../../frontend");
 
-/** 화면에 필요한 바깥 리소스만 연다. 화면이 인라인 <script>·style을 써서 unsafe-inline이 필요하다 */
+/** 네이버 지도 SDK(frontend/naver-map.js)가 불러오는 스크립트·지도 타일 출처. 키가 없으면 그림 지도로 대신한다 */
+const naverMap = ["https://oapi.map.naver.com", "https://*.map.naver.net", "https://*.pstatic.net"];
+
+/**
+ * 화면에 필요한 바깥 리소스만 연다. 화면이 인라인 <script>·style을 써서 unsafe-inline이 필요하다.
+ * helmet 기본값이 합쳐져 script-src-attr 'none'이 붙으므로 onclick 같은 인라인 속성은 쓰지 않는다(리스너로 단다).
+ */
 const pageCsp = helmet.contentSecurityPolicy({
   directives: {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
+    "script-src": ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com", ...naverMap],
     "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
     "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net"],
-    "img-src": ["'self'", "data:", "blob:"],
-    "connect-src": ["'self'"],
+    "img-src": ["'self'", "data:", "blob:", ...naverMap],
+    "connect-src": ["'self'", ...naverMap],
     "frame-src": ["https://challenges.cloudflare.com"],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
@@ -28,13 +34,16 @@ const pageCsp = helmet.contentSecurityPolicy({
   },
 });
 
-/** 개발용 파일(_tester.html 같은 _로 시작하는 파일)과 작업 메모(.md)는 배포에서 내려주지 않는다 */
+/** 디자인 확인용 화면. 사용자 화면이 아니라 배포에서 내려주지 않는다 */
+const designCheckPages = new Set(["팔레트.html", "한눈에.html"]);
+
+/** 개발용 파일(_tester.html 같은 _로 시작하는 파일), 작업 메모(.md), 디자인 확인 화면은 배포에서 내려주지 않는다 */
 function isHidden(path: string) {
   let name = basename(path);
   try {
     name = decodeURIComponent(name);
   } catch {}
-  return name.startsWith("_") || extname(name).toLowerCase() === ".md";
+  return name.startsWith("_") || extname(name).toLowerCase() === ".md" || designCheckPages.has(name.normalize("NFC"));
 }
 
 export function createFrontendRouter(dir = env.FRONTEND_DIR ?? defaultDir) {

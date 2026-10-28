@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
@@ -28,5 +30,26 @@ describe("정적 화면", () => {
     expect((await request(app).get("/_tester.html")).status).toBe(404);
     expect((await request(app).get("/found/README.md")).status).toBe(404);
     expect((await request(app).get(`/found/${encodeURIComponent("단계.md")}`)).status).toBe(404);
+  });
+
+  it("디자인 확인 화면(팔레트·한눈에)은 내려주지 않는다", async () => {
+    expect((await request(app).get(`/${encodeURIComponent("팔레트.html")}`)).status).toBe(404);
+    expect((await request(app).get(`/${encodeURIComponent("한눈에.html")}`)).status).toBe(404);
+    // macOS에서 온 NFD 이름도 같은 파일로 본다
+    expect((await request(app).get(`/${encodeURIComponent("한눈에.html".normalize("NFD"))}`)).status).toBe(404);
+    expect((await request(app).get("/palette.css")).status).toBe(200);
+  });
+});
+
+describe("인라인 이벤트 속성", () => {
+  // helmet 기본값 script-src-attr 'none' 때문에 onclick 같은 속성은 배포에서 동작하지 않는다
+  it("배포되는 화면에 onclick 같은 인라인 이벤트 속성이 없다", () => {
+    const root = resolve(import.meta.dirname, "../../../frontend");
+    const htmls = (readdirSync(root, { recursive: true }) as string[]).filter(
+      (f) => f.endsWith(".html") && !f.split("/").some((part) => part.startsWith("_")),
+    );
+    expect(htmls).toContain("offline.html");
+    const offenders = htmls.filter((f) => /\son[a-z]+\s*=/i.test(readFileSync(join(root, f), "utf8")));
+    expect(offenders).toEqual([]);
   });
 });

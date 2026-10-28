@@ -1,3 +1,4 @@
+import { isAbsolute } from "node:path";
 import { z } from "zod";
 
 const Env = z.object({
@@ -84,6 +85,13 @@ export const EnvSchema = Env.superRefine((v, ctx) => {
   }
   if (v.MAIL_MODE === "smtp" && !(v.SMTP_HOST && v.SMTP_USER && v.SMTP_PASS)) {
     fail("MAIL_MODE", "MAIL_MODE=smtp이면 SMTP_HOST, SMTP_USER, SMTP_PASS가 필요합니다.");
+  }
+  // 배포에서 사진 서명 URL이 http로 나가거나, 업로드가 볼륨 밖(작업 폴더 기준 상대 경로)에 쌓이는 실수를 막는다
+  if (v.NODE_ENV === "production" && !v.PUBLIC_BASE_URL.startsWith("https://")) {
+    fail("PUBLIC_BASE_URL", "production에서는 https://로 시작해야 해요.");
+  }
+  if (v.NODE_ENV === "production" && !isAbsolute(v.STORAGE_LOCAL_DIR)) {
+    fail("STORAGE_LOCAL_DIR", "production에서는 볼륨 아래 절대 경로(예: /data/uploads)여야 해요.");
   }
 });
 
