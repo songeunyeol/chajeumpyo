@@ -58,6 +58,7 @@ DB는 **pgvector가 들어 있는 이미지**로 만든다. Railway 기본 Postg
 | `AI_MODE` | `gemini` | 시연용으로 AI 없이 띄우려면 `mock` | 권장 |
 | `GEMINI_API_KEY` | `<Gemini 키>` | Google AI Studio. `AI_MODE=gemini`이면 필수 | 조건부 |
 | `GEMINI_MODEL` / `GEMINI_FALLBACK_MODEL` / `GEMINI_EMBED_MODEL` | 기본값 | 바꿀 때만 | 선택 |
+| `GEMINI_THINKING_LEVEL` | 기본값(`MINIMAL`) | 사진·신고 분석의 생각 정도. `DEFAULT`면 모델 기본값(느림). `docs/ai-stack.md` 측정 참고 | 선택 |
 | `MAIL_MODE` | `smtp` | `console`이면 인증 메일이 로그에만 찍힌다 | 권장 |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | `smtp.gmail.com` / `465` / `<계정>` / `<앱 비밀번호>` | 메일 계정. `MAIL_MODE=smtp`이면 필수 | 조건부 |
 | `MAIL_FROM` | `찾음표 <no-reply@도메인>` | 보내는 사람 표시 | 선택 |
