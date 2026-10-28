@@ -1,7 +1,7 @@
 import { CATEGORY_LABELS, type Category, relatedCategories } from "@chajeumpyo/shared";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
-import { findCandidates } from "../matching/candidates";
+import { findCandidates, recordExposure } from "../matching/candidates";
 import { newCandidateMessage } from "./notifications";
 
 /**
@@ -34,19 +34,16 @@ export async function alertNewCandidate(foundItemId: string): Promise<number> {
     include: { user: { select: { role: true } } },
   });
 
+  const message = newCandidateMessage(item.building?.name ?? null, CATEGORY_LABELS[item.category]);
   let sent = 0;
   for (const report of reports) {
     const candidates = await findCandidates(report, report.user.role);
     if (!candidates.some((c) => c.foundItemId === foundItemId)) continue;
     await prisma.notification.create({
-      data: {
-        userId: report.userId,
-        type: "NEW_CANDIDATE",
-        foundItemId,
-        lostReportId: report.id,
-        message: newCandidateMessage(item.building?.name ?? null, CATEGORY_LABELS[item.category]),
-      },
+      data: { userId: report.userId, type: "NEW_CANDIDATE", foundItemId, lostReportId: report.id, message },
     });
+    // 알림으로 알려 준 물건도 보여 준 후보로 남긴다 (나중에 상위에서 밀려나도 판정할 수 있게)
+    await recordExposure(report.id, [foundItemId]);
     sent++;
   }
   return sent;

@@ -3,10 +3,12 @@ import {
   type Category,
   type FoundItemDetailResponse,
   type Role,
+  type StorageType,
   subCategoryWithin,
   VALUABLE_CATEGORIES,
 } from "@chajeumpyo/shared";
 import { AppError } from "../lib/errors";
+import { withJosa } from "../lib/josa";
 import { prisma } from "../lib/prisma";
 import { storage } from "../storage";
 import { adminsInChargeOf, notifyUsers } from "./notifications";
@@ -14,6 +16,19 @@ import { adminsInChargeOf, notifyUsers } from "./notifications";
 /** 고가품은 앱 확인을 통과해도 보관처에서 대면으로 돌려준다 (QA W3, 위협 모델 T11) */
 export const VALUABLE_PICKUP_NOTICE =
   "귀중품은 보관처에서 직원이 한 번 더 확인한 뒤 돌려드려요. 학생증을 가져가 주세요(저장하지 않아요).";
+
+/**
+ * 그 자리에 둔(IN_PLACE) 귀중품. 직원이 맡고 있지 않아 대면 확인을 약속할 수 없다.
+ * 앞으로는 귀중품을 그 자리에 둘 수 없지만, 그 전에 등록된 물건을 위해 남긴다.
+ */
+export const VALUABLE_IN_PLACE_NOTICE =
+  "귀중품이라 되도록 빨리 찾아가 주세요. 그 자리에 없으면 종합서비스센터에 문의해 주세요.";
+
+/** 수령 안내: 귀중품만, 보관 방식에 맞춰 */
+export function pickupNoticeFor(category: Category, storageType: StorageType): string | null {
+  if (!VALUABLE_CATEGORIES.includes(category)) return null;
+  return storageType === "HANDED_OVER" ? VALUABLE_PICKUP_NOTICE : VALUABLE_IN_PLACE_NOTICE;
+}
 
 /** 상세에 주는 사진 링크 유효 시간 (초안) */
 export const DETAIL_IMAGE_TTL_SECONDS = 10 * 60;
@@ -73,7 +88,7 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
           {
             type: "MULTI_REVEAL",
             foundItemId,
-            message: `${item.building ? `${item.building.name}의 ` : ""}${label}을(를) ${others.length + 1}개 계정이 확인했어요. 수령할 때 본인 확인에 주의해 주세요.`,
+            message: `${item.building ? `${item.building.name}의 ` : ""}${withJosa(label, "을/를")} ${others.length + 1}개 계정이 확인했어요. 수령할 때 본인 확인에 주의해 주세요.`,
           },
           tx,
         );
@@ -98,6 +113,6 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
     status,
     foundAt: item.foundAt.toISOString(),
     isSeed: item.isSeed,
-    pickupNotice: VALUABLE_CATEGORIES.includes(item.category) ? VALUABLE_PICKUP_NOTICE : null,
+    pickupNotice: pickupNoticeFor(item.category, item.storageType),
   };
 }
