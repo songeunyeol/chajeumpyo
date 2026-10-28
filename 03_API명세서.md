@@ -33,6 +33,7 @@
 | 400 | `INVALID_EMAIL_DOMAIN` | 학교 이메일이 아님 |
 | 400 | `INVALID_CODE` | 인증 코드 불일치·만료 |
 | 400 | `CAPTCHA_FAILED` | 캡차 토큰이 없거나 틀림, 캡차 검증 서버 오류 |
+| 400 | `VALUABLE_HAND_OVER_REQUIRED` | AI가 귀중품으로 본 물건을 `IN_PLACE`(그 자리에 둠)로 등록하려 함. 보관처(`HANDED_OVER`)만 받는다 (QA B11) |
 | 401 | `UNAUTHORIZED` | 토큰 없음·만료 |
 | 403 | `FORBIDDEN` | 권한 없음 (일치 판정을 통과하지 않은 습득물 상세 조회, 후보가 아닌 습득물에 판정 시도, 다른 보관처 물건 수령 처리 등) |
 | 404 | `NOT_FOUND` | 대상 없음 |
@@ -169,7 +170,9 @@
 - 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안)
 - AI 분석은 호출마다 제한 시간(기본 8초)이 있고 실패하면 한 번 재시도한다. AI 실패로 민감 여부를 모르면 공개본은 블러 처리한다.
 - 동의 필드: `consentVersion`, `consentExternalAi`(`"true"` 필수), `consentLocation`(`"true"`/`"false"`). 물건에 버전과 위치 동의 여부를 남긴다.
-- **고가품 안내**: AI가 고가품으로 본 물건을 `IN_PLACE`로 등록하면 `handOverAdvice`에 "보관처에 맡겨 주세요" 문구와 가까운 보관처 최대 3곳(같은 건물 먼저)을 준다. 아니면 `null`. 등록 단계 차단은 P1. (open-issues #32)
+- **고가품은 보관처에만** (QA B11, open-issues #32): AI가 고가품(`VALUABLE_CATEGORIES`, 지갑·카드·휴대폰·이어폰 등)으로 본 물건을 `IN_PLACE`로 보내면 `400 VALUABLE_HAND_OVER_REQUIRED` ("귀중품은 보관처(센터·경비실)에 맡겨 주세요.", `details[0].path = "storageType"`). 한 번에 등록은 AI 분석 뒤에야 종류를 알기 때문에, 분석 직후 **사진을 저장하기 전에** 거절한다(물건 행·사진 파일이 남지 않고 등록 횟수에도 세지 않는다). 같은 사진을 `HANDED_OVER`로 다시 보내면 된다. 이 거절은 요청 형식이 아니라 서버 AI 결과에 따라 갈리므로 `VALIDATION_ERROR`와 따로 둬서 화면이 "보관처 고르기"로 바로 이어지게 한다.
+- AI가 실패해 종류를 모르면(`REVIEW`) 막지 않는다. 관리자가 검토할 때 종류를 확인한다.
+- `handOverAdvice`: 예전 고가품 안내 필드(P0). 고가품을 그 자리에 두는 등록을 이제 거절하므로 **늘 `null`**이다. 응답 호환을 위해 남겨 둔다.
 - AI 응답이 4장의 형식과 다르면(허용 밖 색·종류·특징 키, 특징 5개 이상, 사진 밖 영역, 임베딩 차원 불일치) 실패로 보고 `REVIEW`로 저장한다.
 
 #### 두 단계 등록: `POST /found-items/analyze` → `POST /found-items/:id/confirm`
@@ -191,7 +194,7 @@
 }
 ```
 - `category`: AI가 알아본 종류. AI가 실패하면 `null`이고 `message`에 검토 대기 안내가 온다. 이때도 확정할 수 있고, 확정하면 `REVIEW`가 된다.
-- `isValuable`: 귀중품이면 `true`. 등록 화면에서 "보관처에 맡겨 주세요"를 먼저 권할 때 쓴다. (open-issues #32)
+- `isValuable`: 귀중품이면 `true`. 이때 확정은 `HANDED_OVER`만 받으므로 등록 화면은 "그 자리에 둠"을 감추고 "보관처에 맡김"을 미리 고른다. (open-issues #32, QA B11)
 - `confirmToken`: 서버는 HMAC만 저장한다. 이 값을 가진 기기만 확정할 수 있다.
 - `confirmBy`(60분)까지 확정하지 않으면 정기 작업이 기한 만료로 바꾸고 사진까지 지운다.
 
@@ -200,6 +203,7 @@
 - `201` 응답은 한 번에 등록과 같다. 분석에 성공했으면 `REGISTERED`(새 후보 알림), 실패했으면 `REVIEW`.
 - 습득 시각(`foundAt`)과 보관 기한(30일)은 확정한 때부터 센다.
 - 없는 물건·틀린 토큰·확정 시간 지남은 모두 `404 NOT_FOUND`. 이미 확정했으면 `409 ALREADY_CONFIRMED` (버튼을 두 번 눌러도 하나만 확정).
+- 분석 결과(초안의 `category`)가 귀중품인데 `storageType: IN_PLACE`면 `400 VALUABLE_HAND_OVER_REQUIRED`. 초안은 `ANALYZING` 그대로 남으므로 같은 `confirmToken`으로 보관처를 골라 다시 확정하면 된다. 종류를 모르면(`category: null`, 확정 시 `REVIEW`) 막지 않는다. (QA B11)
 
 ### 인증
 

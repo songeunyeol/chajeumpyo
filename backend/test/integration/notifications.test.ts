@@ -14,6 +14,7 @@ import { noisyJpeg } from "../helpers/images";
 
 let app: ReturnType<typeof createApp>;
 let A: number;
+let placeId: number;
 let user: Awaited<ReturnType<typeof signupUser>>;
 let image: Buffer;
 const as = (t: string) => ({ Authorization: `Bearer ${t}` });
@@ -24,7 +25,8 @@ async function registerItem(ua = `ua-${Math.random()}`) {
     .post("/api/v1/found-items")
     .set("User-Agent", ua)
     .field("buildingId", String(A))
-    .field("storageType", "IN_PLACE")
+    .field("storageType", "HANDED_OVER") // 이어폰은 귀중품이라 보관처에만 (QA B11)
+    .field("storagePlaceId", String(placeId))
     .field("consentVersion", CONSENT_VERSION)
     .field("consentExternalAi", "true")
     .attach("image", image, "p.jpg");
@@ -54,6 +56,7 @@ beforeEach(async () => {
   resetAiClient();
   app = createApp();
   A = (await createBuilding("혜인관")).id;
+  placeId = (await createStoragePlace("혜인관 경비실", A)).id;
   user = await signupUser(app);
   image ??= await noisyJpeg();
 });
@@ -204,7 +207,7 @@ describe("기준 8. 읽음 처리", () => {
 
 describe("기준 9. 관리자도 자기 알림을 본다, 비로그인 401", () => {
   it("여러 계정 열람 알림을 관리자가 조회", async () => {
-    const place = await createStoragePlace("혜인관 경비실", A);
+    const place = { id: placeId }; // beforeEach에서 만든 혜인관 경비실
     await createAdmin("guard@skuniv.ac.kr", "adminpass1", place.id);
     const admin = (
       await request(app).post("/api/v1/admin/auth/login").send({ email: "guard@skuniv.ac.kr", password: "adminpass1" })

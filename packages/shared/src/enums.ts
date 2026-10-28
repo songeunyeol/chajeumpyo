@@ -411,7 +411,7 @@ export const FEATURE_KEY_LABELS: Record<FeatureKey, string> = {
 export const MAX_FEATURES = 4;
 
 /**
- * 고가품 (open-issues #32, QA B11). 그 자리에 두면 보관처에 맡겨 달라고 안내하고, 공개 화면에 대면 수령 안내를 붙인다.
+ * 고가품 (open-issues #32, QA B11). 보관 방식은 보관처(센터·경비실)만 받고, 공개 화면에 대면 수령 안내를 붙인다.
  * 돈·신분·결제에 쓰이거나 비싼 전자기기·귀금속.
  */
 export const VALUABLE_CATEGORIES: readonly Category[] = [

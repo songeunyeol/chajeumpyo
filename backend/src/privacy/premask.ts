@@ -36,9 +36,17 @@ const TEXT_BLOB_AREA = 0.02;
 const TEXT_MIN_ASPECT = 1.6;
 const TEXT_SOLID_ASPECT = 3;
 const TEXT_SOLID_FILL = 0.5;
-/** 글자 상자는 줄 높이의 60%만큼 넓혀 획 끝까지 가린다 */
-const TEXT_PADDING = 0.6;
-const MASK_COLOR = "#6b6b6b";
+/**
+ * 글자 상자 넓히기. PP-OCR(DBNet) 확률 지도는 글자 줄을 안쪽으로 줄여서 내놓으므로, 원래 후처리처럼
+ * "넓이 × 비율 ÷ 둘레"만큼 다시 넓힌다 (PaddleOCR 기본 비율 1.5). 긴 줄이면 줄 높이의 비율/2배, 네모난 덩어리면 비율/4배다.
+ * 예전 "줄 높이의 0.6배"는 긴 줄에서 원래 후처리(약 0.75배)보다 작아서, 가까이 찍은 카드의 큰 글자 윗부분과
+ * 끝 글자가 상자 밖에 남았다 (QA B3, 10/28). 가짜 카드·학생증 17종에서 남은 글자 픽셀이 0이 되는 최소 비율(1.8)에
+ * 여유를 더해 2.4로 하고, 위아래는 획이 더 튀어나와서 1.2배 더 넓힌다. 네모난 덩어리(글자처럼 보이는 손잡이 등)는
+ * 예전과 비슷하게(0.6배) 넓혀서 물건 몸통을 덜 가린다.
+ */
+const TEXT_UNCLIP = 2.4;
+const TEXT_UNCLIP_Y = 1.2;
+export const MASK_COLOR = "#6b6b6b";
 
 function modelsDir(): string {
   // src/privacy/에서 실행(tsx)하든 dist/에서 실행하든 backend/models를 찾는다
@@ -152,8 +160,10 @@ async function detectText(session: ort.InferenceSession, image: Buffer, W: numbe
     const solid = count / (bw * bh) > TEXT_SOLID_FILL;
     if ((bw * bh) / (w * h) > TEXT_BLOB_AREA && (aspect < TEXT_MIN_ASPECT || (aspect < TEXT_SOLID_ASPECT && solid)))
       continue;
-    const pad = Math.max(3, bh * TEXT_PADDING);
-    boxes.push([((x1 - pad) / w) * W, ((y1 - pad) / h) * H, ((x2 + pad) / w) * W, ((y2 + pad) / h) * H]);
+    const offset = (TEXT_UNCLIP * bw * bh) / (2 * (bw + bh));
+    const px = Math.max(3, offset);
+    const py = Math.max(3, offset * TEXT_UNCLIP_Y);
+    boxes.push([((x1 - px) / w) * W, ((y1 - py) / h) * H, ((x2 + px) / w) * W, ((y2 + py) / h) * H]);
   }
   return boxes;
 }

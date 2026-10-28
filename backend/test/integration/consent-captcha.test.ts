@@ -1,4 +1,4 @@
-// 동의 기록, 캡차, 고가품 보관 안내 (#24, open-issues #32·#35·#38): 이슈의 완료 기준 10개
+// 동의 기록, 캡차, 고가품 보관 제한 (#24, open-issues #32·#35·#38): 이슈의 완료 기준 10개
 import { CONSENT_VERSION, type FoundItemExtraction } from "@chajeumpyo/shared";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -20,7 +20,6 @@ import { noisyJpeg } from "../helpers/images";
 
 let app: ReturnType<typeof createApp>;
 let A: number;
-let B: number;
 const EMAIL = "student@skuniv.ac.kr";
 
 async function verifiedToken(email = EMAIL) {
@@ -39,6 +38,7 @@ async function register(fields: Record<string, string | number>, headers: Record
   for (const [k, v] of Object.entries(fields)) req = req.field(k, String(v));
   return req.attach("image", await noisyJpeg(), "p.jpg");
 }
+/** 그 자리에 둠. 가짜 AI(이어폰)는 귀중품이라 등록이 성공해야 하는 테스트는 extractAs로 귀중품이 아닌 종류를 고른다 (QA B11) */
 const base = () => ({ ...finderConsentFields(), buildingId: A, storageType: "IN_PLACE" });
 
 function extractAs(category: FoundItemExtraction["category"]) {
@@ -71,7 +71,6 @@ beforeEach(async () => {
   resetAiClient();
   app = createApp();
   A = (await createBuilding("혜인관")).id;
-  B = (await createBuilding("청운관")).id;
 });
 
 const ORIGINAL_BASE_URL = env.PUBLIC_BASE_URL;
@@ -135,6 +134,7 @@ describe("기준 3. 습득물 등록도 동의가 필요하고, 물건에 동의
 
   it("동의 버전과 위치 동의 여부를 저장", async () => {
     // 저장값이 DB 기본값(false)과 같으면 저장을 빠뜨려도 모르므로 둘 다 확인한다
+    extractAs("UMBRELLA");
     for (const location of [true, false]) {
       const res = await register({ ...base(), consentLocation: String(location) });
       expect(res.status).toBe(201);
@@ -172,6 +172,7 @@ describe("기준 5. 맞는 토큰이면 통과하고, 비밀 키·토큰·IP를 
       .send({ consent: demoConsent() });
     expect(res.status).toBe(201);
     expect(calls).toEqual([{ secret: "secret-key", token: "good:demo-login", ip: expect.any(String) }]);
+    extractAs("UMBRELLA");
     expect((await register(base(), { "X-Captcha-Token": "good:found-analyze" })).status).toBe(201);
     expect(
       (
@@ -306,32 +307,29 @@ describe("기준 7. 캡차 끄기는 개발에서만", () => {
   });
 });
 
-describe("기준 8. 고가품을 그 자리에 두면 보관처에 맡겨 달라고 안내한다", () => {
-  it("안내 문구 + 가까운 보관처 최대 3곳 (같은 건물 먼저)", async () => {
-    await createStoragePlace("종합서비스센터", B, "CENTER");
-    await createStoragePlace("청운관 경비실", B);
-    await createStoragePlace("혜인관 경비실", A);
-    await createStoragePlace("북악관 경비실", B);
+describe("기준 8. 고가품을 그 자리에 두면 등록하지 않고 보관처에 맡겨 달라고 한다 (QA B11)", () => {
+  it("400 VALUABLE_HAND_OVER_REQUIRED, 아무것도 저장하지 않는다", async () => {
     extractAs("WALLET");
     const res = await register(base());
-    expect(res.status).toBe(201);
-    expect(res.body.handOverAdvice.message).toContain("보관처에 맡겨");
-    const places = res.body.handOverAdvice.storagePlaces;
-    expect(places).toHaveLength(3);
-    expect(places[0]).toMatchObject({ name: "혜인관 경비실", sameBuilding: true, building: { id: A } });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatchObject({
+      code: "VALUABLE_HAND_OVER_REQUIRED",
+      message: "귀중품은 보관처(센터·경비실)에 맡겨 주세요.",
+    });
+    expect(await prisma.foundItem.count()).toBe(0);
     expect(JSON.stringify(res.body)).not.toMatch(/WHITE|Apple|곰돌이/);
   });
 });
 
-describe("기준 9. 고가품이 아니거나, 맡겼거나, AI가 실패하면 안내 없음", () => {
-  it("세 경우 모두 null", async () => {
+describe("기준 9. 고가품이 아니거나, 맡겼거나, AI가 실패하면 그 자리에 둠도 등록 (안내 필드는 늘 null)", () => {
+  it("세 경우 모두 201, handOverAdvice는 null", async () => {
     const place = await createStoragePlace("혜인관 경비실", A);
     extractAs("UMBRELLA");
-    expect((await register(base())).body.handOverAdvice).toBeNull();
+    const umbrella = await register(base());
+    expect([umbrella.status, umbrella.body.handOverAdvice]).toEqual([201, null]);
     extractAs("WALLET");
-    expect(
-      (await register({ ...base(), storageType: "HANDED_OVER", storagePlaceId: place.id })).body.handOverAdvice,
-    ).toBeNull();
+    const wallet = await register({ ...base(), storageType: "HANDED_OVER", storagePlaceId: place.id });
+    expect([wallet.status, wallet.body.handOverAdvice]).toEqual([201, null]);
     setAiClient({
       ...mockAiClient,
       extractFoundItem: async () => {

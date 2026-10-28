@@ -22,7 +22,6 @@ import { prisma } from "../lib/prisma";
 import { premaskSafely } from "../privacy/premask";
 import { setFoundItemEmbedding } from "../repositories/embedding";
 import { storage } from "../storage";
-import { listStoragePlaces } from "./buildings";
 import { alertNewCandidateSafely } from "./candidate-alerts";
 
 /** 비회원 등록 제한: 같은 지문으로 10분에 5건 (초안, F-01) */
@@ -31,27 +30,24 @@ export const REGISTER_LIMIT = { windowMinutes: 10, count: 5 };
 export const DRAFT_TTL_MINUTES = 60;
 
 export const REVIEW_MESSAGE = "분석이 늦어져서 관리자가 확인한 뒤 등록돼요.";
-export const HAND_OVER_MESSAGE = "귀중품이에요. 잃어버린 사람이 안전하게 찾을 수 있게 가까운 보관처에 맡겨 주세요.";
-/** 고가품 안내에 보여 줄 보관처 수 */
-const HAND_OVER_SUGGESTIONS = 3;
+/** 고가품을 그 자리에 두려 할 때의 거절 문구 (QA B11) */
+export const HAND_OVER_REQUIRED_MESSAGE = "귀중품은 보관처(센터·경비실)에 맡겨 주세요.";
+
+export function isValuableCategory(category: Category | null | undefined): boolean {
+  return !!category && VALUABLE_CATEGORIES.includes(category);
+}
 
 /**
- * 고가품을 그 자리에 두면 보관처에 맡겨 달라고 안내한다 (open-issues #32 P0 단계, QA B11).
- * 등록 전에는 종류를 몰라 막을 수 없으므로 완료 응답에서 안내하고, 등록 단계 차단은 P1(두 단계 등록)에서 한다.
+ * 고가품은 보관 방식으로 센터·경비실(HANDED_OVER)만 고를 수 있다 (QA B11, open-issues #32).
+ * AI가 종류를 못 읽었으면(null → REVIEW) 막지 않고 관리자 검토에 맡긴다.
+ * 요청 형식 오류(VALIDATION_ERROR)와 달리 서버의 AI 결과에 따라 갈리므로 화면이 따로 처리하게 전용 코드를 쓴다.
  */
-async function handOverAdvice(category: Category | null, storageType: string, buildingId: number | undefined) {
-  if (!category || storageType !== "IN_PLACE" || !VALUABLE_CATEGORIES.includes(category)) return null;
-  const places = await listStoragePlaces(buildingId);
-  return {
-    message: HAND_OVER_MESSAGE,
-    storagePlaces: places.slice(0, HAND_OVER_SUGGESTIONS).map((p) => ({
-      id: p.id,
-      name: p.name,
-      guideText: p.guideText,
-      building: p.building,
-      sameBuilding: p.sameBuilding,
-    })),
-  };
+function assertHandOverIfValuable(category: Category | null | undefined, storageType: string) {
+  if (storageType === "IN_PLACE" && isValuableCategory(category)) {
+    throw new AppError("VALUABLE_HAND_OVER_REQUIRED", HAND_OVER_REQUIRED_MESSAGE, [
+      { path: "storageType", message: "귀중품은 보관처에 맡김(HANDED_OVER)만 고를 수 있어요." },
+    ]);
+  }
 }
 
 /** 습득자 기기·IP 지문. 원문은 저장하지 않고 서버 키로 HMAC한 값만 남긴다. */
@@ -138,7 +134,7 @@ type ProcessedPhoto = {
  * 사진을 정리하고, 가린 사본으로 AI 분석을 한 뒤 원본·공개본·후보용 사본을 저장한다.
  * 물건이 없다고 분석되면 아무것도 저장하지 않고 NO_OBJECT_DETECTED.
  */
-async function processPhoto(image: Buffer): Promise<ProcessedPhoto> {
+async function processPhoto(image: Buffer, beforeStore?: (analysis: Analysis | null) => void): Promise<ProcessedPhoto> {
   const original = await normalizeImage(image);
   // 얼굴·글자 영역을 먼저 가린 사본만 AI로 보내고 공개본·후보용 사본도 이것으로 만든다 (QA B3, T4).
   // 가리기에 실패하면 원본을 보내지 않고 AI 없이 검토 대기로 저장한다. 원본은 관리자만 본다.
@@ -150,6 +146,9 @@ async function processPhoto(image: Buffer): Promise<ProcessedPhoto> {
   if (analysis && !analysis.extraction.hasObject) {
     throw new AppError("NO_OBJECT_DETECTED", "사진에서 물건을 찾지 못했어요. 물건이 잘 보이게 다시 찍어 주세요.");
   }
+
+  // 저장 전에 막아야 할 조건(고가품을 그 자리에 둠 등). 여기서 던지면 사진은 하나도 남지 않는다
+  beforeStore?.(analysis);
 
   const ex = analysis?.extraction;
   // AI가 실패해 민감 여부를 모르면 흐리게 처리하는 쪽이 기본 (F-03)
@@ -221,7 +220,10 @@ export async function registerFoundItem(input: {
   const { fields, fingerprint } = input;
   await checkRegisterLimit(fingerprint);
   const { building, place } = await resolvePlace(fields);
-  const photo = await processPhoto(input.image);
+  // 한 번에 등록은 AI 분석 뒤에야 종류를 안다. 고가품인데 그 자리에 둠이면 사진을 저장하기 전에 거절한다
+  const photo = await processPhoto(input.image, (analysis) =>
+    assertHandOverIfValuable(analysis?.extraction.category, fields.storageType),
+  );
 
   const foundAt = new Date();
   const status = photo.analysis ? "REGISTERED" : "REVIEW";
@@ -255,7 +257,8 @@ export async function registerFoundItem(input: {
     storageType: fields.storageType,
     storagePlace: place,
     message: photo.analysis ? null : REVIEW_MESSAGE,
-    handOverAdvice: await handOverAdvice(category, fields.storageType, building?.id),
+    // 고가품을 그 자리에 두는 등록은 이제 거절하므로 늘 null. 응답 호환을 위해 필드만 남긴다
+    handOverAdvice: null,
   };
 }
 
@@ -295,7 +298,7 @@ export async function analyzeFoundItem(input: {
     confirmToken,
     category,
     subCategory: subCategoryWithin(category, photo.analysis?.extraction.subCategory),
-    isValuable: category !== null && VALUABLE_CATEGORIES.includes(category),
+    isValuable: isValuableCategory(category),
     message: photo.analysis ? null : REVIEW_MESSAGE,
     confirmBy: confirmBy.toISOString(),
   };
@@ -328,6 +331,8 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
       if (done > 0) throw new AppError("ALREADY_CONFIRMED", "이미 등록을 마친 물건이에요.");
       throw new AppError("NOT_FOUND", "등록 시간이 지났거나 없는 물건이에요. 사진부터 다시 올려 주세요.");
     }
+    // 거절해도 초안은 그대로 남아 같은 토큰으로 보관처를 골라 다시 확정할 수 있다
+    assertHandOverIfValuable(draft.category, body.storageType);
     const status = draft.category ? ("REGISTERED" as const) : ("REVIEW" as const);
     // 같은 초안을 두 번 확정하지 않게 상태를 조건으로 바꾼다
     const changed = await tx.foundItem.updateMany({
@@ -363,6 +368,6 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
     storageType: body.storageType,
     storagePlace: place,
     message: item.status === "REVIEW" ? REVIEW_MESSAGE : null,
-    handOverAdvice: await handOverAdvice(item.category, body.storageType, building?.id),
+    handOverAdvice: null,
   };
 }
