@@ -176,7 +176,14 @@ describe("기준 6. 캡차 검증 서버 오류면 통과시키지 않는다", (
 describe("기준 7. 캡차 끄기는 개발에서만", () => {
   it("꺼져 있으면 토큰 없이 동작, production에서 끄거나 비밀 키 없이 켜면 설정 오류", async () => {
     expect((await request(app).post("/api/v1/auth/demo").send({ consent: demoConsent() })).status).toBe(201);
-    const ok = { DATABASE_URL: "postgresql://x", JWT_SECRET: "a".repeat(32), ALLOWED_EMAIL_DOMAINS: "skuniv.ac.kr" };
+    // PUBLIC_BASE_URL·STORAGE_LOCAL_DIR는 production 규칙(https·절대 경로)을 맞춘 값 (규칙 자체는 unit/env.test.ts)
+    const ok = {
+      DATABASE_URL: "postgresql://x",
+      JWT_SECRET: "a".repeat(32),
+      ALLOWED_EMAIL_DOMAINS: "skuniv.ac.kr",
+      PUBLIC_BASE_URL: "https://example.test",
+      STORAGE_LOCAL_DIR: "/data/uploads",
+    };
     expect(EnvSchema.safeParse({ ...ok, NODE_ENV: "production" }).success).toBe(false);
     expect(EnvSchema.safeParse({ ...ok, CAPTCHA_MODE: "turnstile" }).success).toBe(false);
     expect(
