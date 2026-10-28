@@ -1,3 +1,4 @@
+import { isAbsolute } from "node:path";
 import { z } from "zod";
 
 const Env = z.object({
@@ -50,12 +51,26 @@ const Env = z.object({
   STORAGE_DRIVER: z.enum(["local"]).default("local"),
   /** local 저장 위치 (backend 폴더 기준) */
   STORAGE_LOCAL_DIR: z.string().default("uploads"),
-  /** 서명 URL에 쓰는 이 서버의 외부 주소 */
+  /** 서명 URL에 쓰는 이 서버의 외부 주소. 배포에서는 https://도메인 (끝에 / 없이) */
   PUBLIC_BASE_URL: z.string().default("http://localhost:4000"),
   /** 습득물 보관 기한(일). 지나면 기한 만료 (초안, F-18) */
   FOUND_ITEM_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
   /** AI 호출 한 번의 제한 시간 */
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
+  /**
+   * 앞단 프록시 신뢰 설정(express trust proxy). 숫자는 홉 수, true/false, 또는 IP·서브넷 목록.
+   * Railway는 프록시 한 겹이라 기본 1. 틀리면 req.ip가 프록시 IP가 돼 IP 기준 제한이 모두에게 같이 걸린다.
+   */
+  TRUST_PROXY: z
+    .string()
+    .default("1")
+    .transform((v): number | boolean | string => {
+      if (/^\d+$/.test(v)) return Number(v);
+      if (v === "true" || v === "false") return v === "true";
+      return v;
+    }),
+  /** production에서 백엔드가 같이 내려줄 정적 화면 폴더. 비우면 레포의 frontend/ */
+  FRONTEND_DIR: z.string().optional(),
 });
 
 /** 칸끼리 맞물리는 규칙. 테스트에서 설정 규칙을 확인할 수 있게 내보낸다 */
@@ -70,6 +85,13 @@ export const EnvSchema = Env.superRefine((v, ctx) => {
   }
   if (v.MAIL_MODE === "smtp" && !(v.SMTP_HOST && v.SMTP_USER && v.SMTP_PASS)) {
     fail("MAIL_MODE", "MAIL_MODE=smtp이면 SMTP_HOST, SMTP_USER, SMTP_PASS가 필요합니다.");
+  }
+  // 배포에서 사진 서명 URL이 http로 나가거나, 업로드가 볼륨 밖(작업 폴더 기준 상대 경로)에 쌓이는 실수를 막는다
+  if (v.NODE_ENV === "production" && !v.PUBLIC_BASE_URL.startsWith("https://")) {
+    fail("PUBLIC_BASE_URL", "production에서는 https://로 시작해야 해요.");
+  }
+  if (v.NODE_ENV === "production" && !isAbsolute(v.STORAGE_LOCAL_DIR)) {
+    fail("STORAGE_LOCAL_DIR", "production에서는 볼륨 아래 절대 경로(예: /data/uploads)여야 해요.");
   }
 });
 

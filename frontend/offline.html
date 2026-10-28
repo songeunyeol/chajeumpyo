@@ -17,9 +17,16 @@
   <p class="lead">연결되면 다시 시도해 주세요.<br>사진과 분실물 정보는 연결된 상태에서만 볼 수 있어요.</p>
 
   <div class="dock">
-    <a class="btn" href="/" onclick="location.reload(); return false;">다시 시도</a>
+    <a class="btn" href="/" id="retry">다시 시도</a>
     <a class="btn line" href="/">처음 화면</a>
   </div>
 </main>
+<script>
+  // 인라인 onclick은 CSP(script-src-attr 'none')에 막혀 리스너로 단다. 연결이 끊겼던 지금 주소를 다시 연다
+  document.getElementById("retry").addEventListener("click", function (e) {
+    e.preventDefault();
+    location.reload();
+  });
+</script>
 </body>
 </html>

@@ -10,19 +10,131 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
 </head>
 <body>
-<main class="screen">
-  <header class="bar"><a class="back" href="pass.html">←</a><h2>내 물건</h2></header>
-  <div class="photo" role="img" aria-label="확인 뒤에 열린 물건 사진"></div>
-  <h1>무선 이어폰</h1>
-  <table class="kv">
-    <tr><th>주운 곳</th><td>혜인관</td></tr>
-    <tr><th>보관</th><td>그 자리에 둠</td></tr>
-    <tr><th>습득</th><td>10월 23일(금) 14:10</td></tr>
-  </table>
-  <p class="note">이 사진 링크는 10분 뒤 닫혀요.</p>
-  <div class="dock">
-    <a class="btn" href="home.html">확인했어요</a>
+<main class="screen" style="overflow:hidden">
+  <header class="bar"><a class="back" href="candidates.html">←</a><h2 id="barTitle">확인 결과</h2></header>
+
+  <div class="pass-to-item-viewport" id="passToItemViewport">
+    <!-- 1단계: 먼저 나타났다가 위로 올라가며 사라지는 통과 문구 -->
+    <section class="pass-intro" id="passIntro" aria-live="polite">
+      <div class="pass-intro-inner">
+        <span class="pass-badge">✓ 확인 질문 3/3 통과</span>
+        <h1>내 물건이 맞아요</h1>
+        <p class="lead" style="margin-bottom:0">설명한 특징이 물건과 모두 맞았어요.</p>
+      </div>
+    </section>
+
+    <!-- 2단계: 통과 문구가 위로 올라가면서 아래에서 올라오는 내 물건 상세 화면 -->
+    <section class="item-reveal" id="itemReveal">
+      <div class="done-photo" role="img" aria-label="확인 뒤에 열린 물건 사진" style="margin-top:8px">
+        <img id="itemPhotoImg" alt="습득물 사진" hidden>
+        <svg id="itemFallbackSvg" viewBox="0 0 360 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#efe8dc"/>
+              <stop offset="100%" stop-color="#d5cbbd"/>
+            </linearGradient>
+          </defs>
+          <rect width="360" height="200" fill="url(#bgGrad)"/>
+          <rect x="121" y="68" width="118" height="72" rx="26" fill="#ffffff" stroke="#d0c6b6" stroke-width="2"/>
+          <line x1="123" y1="100" x2="237" y2="100" stroke="#e2d9ca" stroke-width="2"/>
+          <rect x="166" y="76" width="14" height="10" rx="3" fill="#1e5b3d" opacity="0.85"/>
+          <circle cx="152" cy="58" r="15" fill="#1c1915"/>
+          <circle cx="208" cy="58" r="15" fill="#1c1915"/>
+        </svg>
+      </div>
+
+      <!-- 물건 위치를 등록한 곳에 뜨는 네이버 지도 -->
+      <div class="map-box" id="itemMapBox" aria-label="물건이 놓인 위치 지도"></div>
+
+      <h1 id="itemTitle" style="margin:6px 0 8px;font-size:26px">무선 이어폰</h1>
+      <table class="kv">
+        <tr><th>주운 곳</th><td id="itemBuilding">혜인관</td></tr>
+        <tr><th>보관</th><td>그 자리에 둠</td></tr>
+        <tr><th>습득</th><td id="itemTime">10월 28일(수) 14:10</td></tr>
+      </table>
+      <p class="note" id="expireNote" style="margin-top:8px">이 사진과 위치는 10분 뒤 닫혀요.</p>
+      <div class="dock" style="padding-top:14px">
+        <a class="btn" href="home.html">확인했어요</a>
+      </div>
+    </section>
   </div>
 </main>
+<script src="../naver-map.js"></script>
+<script>
+  const viewport = document.getElementById("passToItemViewport");
+  const barTitle = document.getElementById("barTitle");
+  const backLink = document.querySelector(".bar .back");
+  const itemPhotoImg = document.getElementById("itemPhotoImg");
+  const itemFallbackSvg = document.getElementById("itemFallbackSvg");
+  const itemBuildingEl = document.getElementById("itemBuilding");
+  const expireNoteEl = document.getElementById("expireNote");
+  const params = new URLSearchParams(location.search);
+  const isFromClosed = params.get("from") === "closed";
+
+  if (isFromClosed && backLink) {
+    backLink.href = "home.html";
+  }
+
+  let buildingName = "혜인관";
+  let expiresAt = Date.now() + 10 * 60 * 1000;
+
+  try {
+    const savedPhoto = sessionStorage.getItem("foundPhoto");
+    if (savedPhoto) {
+      itemPhotoImg.src = savedPhoto;
+      itemPhotoImg.hidden = false;
+      itemFallbackSvg.setAttribute("hidden", "");
+    }
+    const foundBldg = sessionStorage.getItem("foundBuilding");
+    if (foundBldg) buildingName = foundBldg;
+
+    const report = JSON.parse(sessionStorage.getItem("lostReport") || "null");
+    if (report) {
+      if (report.item) document.getElementById("itemTitle").textContent = report.item;
+      if (!foundBldg && report.building && report.building !== "잘 모르겠음") {
+        buildingName = report.building;
+      }
+      if (report.expiresAt) {
+        expiresAt = Number(report.expiresAt);
+      }
+    }
+    itemBuildingEl.textContent = buildingName;
+
+    const regTime = sessionStorage.getItem("registeredAt");
+    if (regTime) {
+      document.getElementById("itemTime").textContent = regTime;
+    }
+  } catch (_) {}
+
+  if (window.NaverCampusMap) {
+    window.NaverCampusMap.mount(document.getElementById("itemMapBox"), { buildingName });
+  }
+
+  function updateExpireNote() {
+    const remainMs = expiresAt - Date.now();
+    if (remainMs <= 0) {
+      expireNoteEl.textContent = "열람 가능 시간(10분)이 지나 닫혔어요.";
+      window.location.href = "home.html";
+      return;
+    }
+    const totalSec = Math.ceil(remainMs / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = String(totalSec % 60).padStart(2, "0");
+    expireNoteEl.textContent = `이 사진과 위치는 ${m}분 ${s}초 뒤 닫혀요.`;
+  }
+
+  updateExpireNote();
+  setInterval(updateExpireNote, 1000);
+
+  if (isFromClosed) {
+    viewport.classList.add("is-shifted");
+    barTitle.textContent = "내 물건";
+  } else {
+    setTimeout(() => {
+      viewport.classList.add("is-shifted");
+      barTitle.textContent = "내 물건";
+    }, 950);
+  }
+</script>
 </body>
 </html>
