@@ -43,7 +43,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   SMARTWATCH: "스마트워치",
   TABLET: "태블릿",
   LAPTOP: "노트북",
-  CHARGER: "충전기·기타 전자기기",
+  CHARGER: "기타 전자기기",
   BAG: "가방",
   CLOTHING: "의류",
   HAT: "모자",
@@ -57,6 +57,77 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   STATIONERY: "필기구·필통",
   ETC: "기타",
 };
+
+/**
+ * 세부 종류. 큰 종류(24개, LOST112 매핑·후보 검색 기준)는 그대로 두고, 나누는 의미가 큰 종류에만 한 단계 더 붙인다.
+ * 후보 점수에서 같은 큰 종류 안의 세부 종류가 다르면 깎는다(matching/policy.ts). 공개 정보이며 화면에 이름으로 보여 준다.
+ */
+export const SUB_CATEGORY_LABELS = {
+  CABLE_CHARGER: "충전기·케이블",
+  POWER_BANK: "보조배터리",
+  MOUSE: "마우스",
+  KEYBOARD: "키보드",
+  USB_MEMORY: "USB·메모리",
+  CAMERA: "카메라",
+  GAME_CONSOLE: "게임기",
+  WIRELESS_EARBUDS: "무선 이어폰",
+  WIRED_EARPHONE: "유선 이어폰",
+  HEADPHONE: "헤드폰",
+  BACKPACK: "백팩",
+  SHOULDER_BAG: "숄더·토트백",
+  ECO_BAG: "에코백",
+  POUCH: "파우치",
+  SHOPPING_BAG: "쇼핑백",
+  OUTER: "외투",
+  TOP: "상의",
+  BOTTOM: "하의",
+  SCARF_GLOVES: "목도리·장갑",
+  SHOES: "신발",
+  LONG_WALLET: "장지갑",
+  BIFOLD_WALLET: "반지갑",
+  CARD_WALLET: "카드지갑",
+  WRISTWATCH: "손목시계",
+  JEWELRY: "반지·목걸이·귀걸이",
+  HAIR_ACCESSORY: "머리핀·머리끈",
+  TEXTBOOK: "전공책",
+  NOTEBOOK: "노트·공책",
+  PENCIL_CASE: "필통",
+  CALCULATOR: "계산기",
+  PEN: "펜",
+  DOOR_KEY: "열쇠",
+  CAR_KEY: "자동차 키",
+  DOLL_KEYRING: "인형·키링",
+  COSMETICS: "화장품",
+  MEDICINE: "약·의약품",
+} as const;
+
+export type SubCategory = keyof typeof SUB_CATEGORY_LABELS;
+export const SubCategory = z.enum(Object.keys(SUB_CATEGORY_LABELS) as [SubCategory, ...SubCategory[]]);
+
+/** 큰 종류별 세부 종류. 없는 큰 종류는 세부 종류를 쓰지 않는다 */
+export const SUB_CATEGORIES: Partial<Record<Category, readonly SubCategory[]>> = {
+  CHARGER: ["CABLE_CHARGER", "POWER_BANK", "MOUSE", "KEYBOARD", "USB_MEMORY", "CAMERA", "GAME_CONSOLE"],
+  EARPHONE: ["WIRELESS_EARBUDS", "WIRED_EARPHONE", "HEADPHONE"],
+  BAG: ["BACKPACK", "SHOULDER_BAG", "ECO_BAG", "POUCH", "SHOPPING_BAG"],
+  CLOTHING: ["OUTER", "TOP", "BOTTOM", "SCARF_GLOVES", "SHOES"],
+  WALLET: ["LONG_WALLET", "BIFOLD_WALLET", "CARD_WALLET"],
+  ACCESSORY: ["WRISTWATCH", "JEWELRY", "HAIR_ACCESSORY"],
+  BOOK: ["TEXTBOOK", "NOTEBOOK"],
+  STATIONERY: ["PENCIL_CASE", "CALCULATOR", "PEN"],
+  KEY: ["DOOR_KEY", "CAR_KEY"],
+  ETC: ["DOLL_KEYRING", "COSMETICS", "MEDICINE"],
+};
+
+/** 세부 종류가 그 큰 종류에 속하면 그대로, 아니면(다른 종류의 세부 종류·없음) null */
+export function subCategoryWithin(category: Category | null, sub: unknown): SubCategory | null {
+  if (!category || typeof sub !== "string") return null;
+  return (SUB_CATEGORIES[category] as readonly string[] | undefined)?.includes(sub) ? (sub as SubCategory) : null;
+}
+
+/** 화면에 보여 줄 이름: 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름 */
+export function itemLabel(category: Category, sub: SubCategory | null | undefined): string {
+  return sub ? SUB_CATEGORY_LABELS[sub] : CATEGORY_LABELS[category];
+}
 
 /** LOST112 물품분류 코드. `prdtCl02`가 null이면 대분류 전체 */
 export type Lost112CategoryCode = { prdtCl01: string; prdtCl02: string | null };

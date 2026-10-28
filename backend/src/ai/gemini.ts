@@ -7,6 +7,10 @@ import {
   LostReportExtraction,
   MAX_FEATURES,
   type SensitiveRegion,
+  SUB_CATEGORIES,
+  SUB_CATEGORY_LABELS,
+  SubCategory,
+  subCategoryWithin,
 } from "@chajeumpyo/shared";
 import type { GoogleGenAI } from "@google/genai";
 import { logger } from "../lib/logger";
@@ -33,6 +37,7 @@ const FOUND_ITEM_RESPONSE_SCHEMA = {
     hasObject: { type: "boolean" },
     category: { type: "string", enum: Category.options },
     categoryAlt: nullable({ type: "string", enum: Category.options }),
+    subCategory: nullable({ type: "string", enum: SubCategory.options }),
     color: nullable({ type: "string", enum: Color.options }),
     brand: nullable({ type: "string" }),
     features: {
@@ -57,6 +62,7 @@ const FOUND_ITEM_RESPONSE_SCHEMA = {
     "hasObject",
     "category",
     "categoryAlt",
+    "subCategory",
     "color",
     "brand",
     "features",
@@ -71,18 +77,24 @@ const LOST_REPORT_RESPONSE_SCHEMA = {
   type: "object",
   properties: {
     category: FOUND_ITEM_RESPONSE_SCHEMA.properties.category,
+    subCategory: FOUND_ITEM_RESPONSE_SCHEMA.properties.subCategory,
     color: FOUND_ITEM_RESPONSE_SCHEMA.properties.color,
     brand: FOUND_ITEM_RESPONSE_SCHEMA.properties.brand,
     features: FOUND_ITEM_RESPONSE_SCHEMA.properties.features,
     description: FOUND_ITEM_RESPONSE_SCHEMA.properties.description,
   },
-  required: ["category", "color", "brand", "features", "description"],
+  required: ["category", "subCategory", "color", "brand", "features", "description"],
 } as const;
 
 const COMMON_RULES = `
 - category: 아래 중 하나. 애매하면 ETC.
   ${Category.options.map((c) => `${c}(${CATEGORY_LABELS[c]})`).join(", ")}
   카드는 학생증·주민등록증은 ID_CARD, 체크·신용카드는 PAYMENT_CARD, 교통카드는 TRANSIT_CARD, 그 밖의 카드는 OTHER_CARD. 자동차 열쇠·스마트키도 KEY. 손목시계는 ACCESSORY, 스마트워치는 SMARTWATCH.
+- subCategory: category에 세부 종류가 있으면 그중 하나, 없거나 애매하면 null. 다른 category의 세부 종류는 쓰지 않는다.
+  ${Object.entries(SUB_CATEGORIES)
+    .map(([c, subs]) => `${c}: ${subs.map((s) => `${s}(${SUB_CATEGORY_LABELS[s]})`).join(", ")}`)
+    .join("\n  ")}
+  마우스·키보드·보조배터리·USB·카메라·게임기는 CHARGER(기타 전자기기)의 세부 종류다. 헤드폰·유선 이어폰도 EARPHONE이다. 신발·장갑·목도리는 CLOTHING이다.
 - color: ${Color.options.join(", ")} 중 하나. 물건의 주된 색. 모르면 null.
 - brand: 로고·글자로 확인되는 브랜드만. 추측하지 말고 모르면 null.
 - features: 주인만 알 만한 숨은 특징을 최대 ${MAX_FEATURES}개. key는 ${FeatureKey.options.join(", ")} 중 하나, value는 한국어 짧은 구절(예: "곰돌이 스티커", "오른쪽 아래 긁힘").
@@ -171,6 +183,7 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
         const raw = parseJson(res.text) as Record<string, unknown>;
         return FoundItemExtraction.parse({
           ...raw,
+          subCategory: subCategoryWithin(raw.category as Category, raw.subCategory),
           features: Array.isArray(raw.features) ? raw.features.slice(0, MAX_FEATURES) : raw.features,
           sensitiveRegions: boxesToRegions(raw.sensitiveBoxes),
           sensitiveBoxes: undefined,
@@ -193,6 +206,7 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
         const raw = parseJson(res.text) as Record<string, unknown>;
         return LostReportExtraction.parse({
           ...raw,
+          subCategory: subCategoryWithin(raw.category as Category, raw.subCategory),
           features: Array.isArray(raw.features) ? raw.features.slice(0, MAX_FEATURES) : raw.features,
         });
       });

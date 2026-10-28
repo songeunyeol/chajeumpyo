@@ -4659,6 +4659,51 @@
                         null
                       ]
                     },
+                    "subCategory": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "CABLE_CHARGER",
+                        "POWER_BANK",
+                        "MOUSE",
+                        "KEYBOARD",
+                        "USB_MEMORY",
+                        "CAMERA",
+                        "GAME_CONSOLE",
+                        "WIRELESS_EARBUDS",
+                        "WIRED_EARPHONE",
+                        "HEADPHONE",
+                        "BACKPACK",
+                        "SHOULDER_BAG",
+                        "ECO_BAG",
+                        "POUCH",
+                        "SHOPPING_BAG",
+                        "OUTER",
+                        "TOP",
+                        "BOTTOM",
+                        "SCARF_GLOVES",
+                        "SHOES",
+                        "LONG_WALLET",
+                        "BIFOLD_WALLET",
+                        "CARD_WALLET",
+                        "WRISTWATCH",
+                        "JEWELRY",
+                        "HAIR_ACCESSORY",
+                        "TEXTBOOK",
+                        "NOTEBOOK",
+                        "PENCIL_CASE",
+                        "CALCULATOR",
+                        "PEN",
+                        "DOOR_KEY",
+                        "CAR_KEY",
+                        "DOLL_KEYRING",
+                        "COSMETICS",
+                        "MEDICINE",
+                        null
+                      ]
+                    },
                     "isValuable": {
                       "type": "boolean"
                     },
@@ -4677,6 +4722,7 @@
                     "id",
                     "confirmToken",
                     "category",
+                    "subCategory",
                     "isValuable",
                     "message",
                     "confirmBy"
@@ -5088,6 +5134,51 @@
                         null
                       ]
                     },
+                    "subCategory": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "CABLE_CHARGER",
+                        "POWER_BANK",
+                        "MOUSE",
+                        "KEYBOARD",
+                        "USB_MEMORY",
+                        "CAMERA",
+                        "GAME_CONSOLE",
+                        "WIRELESS_EARBUDS",
+                        "WIRED_EARPHONE",
+                        "HEADPHONE",
+                        "BACKPACK",
+                        "SHOULDER_BAG",
+                        "ECO_BAG",
+                        "POUCH",
+                        "SHOPPING_BAG",
+                        "OUTER",
+                        "TOP",
+                        "BOTTOM",
+                        "SCARF_GLOVES",
+                        "SHOES",
+                        "LONG_WALLET",
+                        "BIFOLD_WALLET",
+                        "CARD_WALLET",
+                        "WRISTWATCH",
+                        "JEWELRY",
+                        "HAIR_ACCESSORY",
+                        "TEXTBOOK",
+                        "NOTEBOOK",
+                        "PENCIL_CASE",
+                        "CALCULATOR",
+                        "PEN",
+                        "DOOR_KEY",
+                        "CAR_KEY",
+                        "DOLL_KEYRING",
+                        "COSMETICS",
+                        "MEDICINE",
+                        null
+                      ]
+                    },
                     "building": {
                       "type": [
                         "object",
@@ -5209,6 +5300,7 @@
                     "id",
                     "status",
                     "category",
+                    "subCategory",
                     "building",
                     "floor",
                     "storageType",
@@ -5560,6 +5652,51 @@
                         null
                       ]
                     },
+                    "subCategory": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "CABLE_CHARGER",
+                        "POWER_BANK",
+                        "MOUSE",
+                        "KEYBOARD",
+                        "USB_MEMORY",
+                        "CAMERA",
+                        "GAME_CONSOLE",
+                        "WIRELESS_EARBUDS",
+                        "WIRED_EARPHONE",
+                        "HEADPHONE",
+                        "BACKPACK",
+                        "SHOULDER_BAG",
+                        "ECO_BAG",
+                        "POUCH",
+                        "SHOPPING_BAG",
+                        "OUTER",
+                        "TOP",
+                        "BOTTOM",
+                        "SCARF_GLOVES",
+                        "SHOES",
+                        "LONG_WALLET",
+                        "BIFOLD_WALLET",
+                        "CARD_WALLET",
+                        "WRISTWATCH",
+                        "JEWELRY",
+                        "HAIR_ACCESSORY",
+                        "TEXTBOOK",
+                        "NOTEBOOK",
+                        "PENCIL_CASE",
+                        "CALCULATOR",
+                        "PEN",
+                        "DOOR_KEY",
+                        "CAR_KEY",
+                        "DOLL_KEYRING",
+                        "COSMETICS",
+                        "MEDICINE",
+                        null
+                      ]
+                    },
                     "building": {
                       "type": [
                         "object",
@@ -5681,6 +5818,7 @@
                     "id",
                     "status",
                     "category",
+                    "subCategory",
                     "building",
                     "floor",
                     "storageType",
@@ -6038,6 +6176,51 @@
                         "ETC"
                       ]
                     },
+                    "subCategory": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "CABLE_CHARGER",
+                        "POWER_BANK",
+                        "MOUSE",
+                        "KEYBOARD",
+                        "USB_MEMORY",
+                        "CAMERA",
+                        "GAME_CONSOLE",
+                        "WIRELESS_EARBUDS",
+                        "WIRED_EARPHONE",
+                        "HEADPHONE",
+                        "BACKPACK",
+                        "SHOULDER_BAG",
+                        "ECO_BAG",
+                        "POUCH",
+                        "SHOPPING_BAG",
+                        "OUTER",
+                        "TOP",
+                        "BOTTOM",
+                        "SCARF_GLOVES",
+                        "SHOES",
+                        "LONG_WALLET",
+                        "BIFOLD_WALLET",
+                        "CARD_WALLET",
+                        "WRISTWATCH",
+                        "JEWELRY",
+                        "HAIR_ACCESSORY",
+                        "TEXTBOOK",
+                        "NOTEBOOK",
+                        "PENCIL_CASE",
+                        "CALCULATOR",
+                        "PEN",
+                        "DOOR_KEY",
+                        "CAR_KEY",
+                        "DOLL_KEYRING",
+                        "COSMETICS",
+                        "MEDICINE",
+                        null
+                      ]
+                    },
                     "color": {
                       "type": [
                         "string",
@@ -6138,6 +6321,7 @@
                   "required": [
                     "id",
                     "category",
+                    "subCategory",
                     "color",
                     "imageUrl",
                     "imageUrlExpiresAt",
@@ -6499,6 +6683,51 @@
                               "ETC"
                             ]
                           },
+                          "subCategory": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "CABLE_CHARGER",
+                              "POWER_BANK",
+                              "MOUSE",
+                              "KEYBOARD",
+                              "USB_MEMORY",
+                              "CAMERA",
+                              "GAME_CONSOLE",
+                              "WIRELESS_EARBUDS",
+                              "WIRED_EARPHONE",
+                              "HEADPHONE",
+                              "BACKPACK",
+                              "SHOULDER_BAG",
+                              "ECO_BAG",
+                              "POUCH",
+                              "SHOPPING_BAG",
+                              "OUTER",
+                              "TOP",
+                              "BOTTOM",
+                              "SCARF_GLOVES",
+                              "SHOES",
+                              "LONG_WALLET",
+                              "BIFOLD_WALLET",
+                              "CARD_WALLET",
+                              "WRISTWATCH",
+                              "JEWELRY",
+                              "HAIR_ACCESSORY",
+                              "TEXTBOOK",
+                              "NOTEBOOK",
+                              "PENCIL_CASE",
+                              "CALCULATOR",
+                              "PEN",
+                              "DOOR_KEY",
+                              "CAR_KEY",
+                              "DOLL_KEYRING",
+                              "COSMETICS",
+                              "MEDICINE",
+                              null
+                            ]
+                          },
                           "foundAt": {
                             "type": "string",
                             "format": "date-time"
@@ -6519,12 +6748,6 @@
                             "required": [
                               "id",
                               "name"
-                            ]
-                          },
-                          "floor": {
-                            "type": [
-                              "integer",
-                              "null"
                             ]
                           },
                           "thumbnailUrl": {
@@ -6562,9 +6785,9 @@
                         "required": [
                           "foundItemId",
                           "category",
+                          "subCategory",
                           "foundAt",
                           "building",
-                          "floor",
                           "thumbnailUrl",
                           "reasons",
                           "attemptsLeft",
@@ -7058,6 +7281,51 @@
                               "ETC"
                             ]
                           },
+                          "subCategory": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "CABLE_CHARGER",
+                              "POWER_BANK",
+                              "MOUSE",
+                              "KEYBOARD",
+                              "USB_MEMORY",
+                              "CAMERA",
+                              "GAME_CONSOLE",
+                              "WIRELESS_EARBUDS",
+                              "WIRED_EARPHONE",
+                              "HEADPHONE",
+                              "BACKPACK",
+                              "SHOULDER_BAG",
+                              "ECO_BAG",
+                              "POUCH",
+                              "SHOPPING_BAG",
+                              "OUTER",
+                              "TOP",
+                              "BOTTOM",
+                              "SCARF_GLOVES",
+                              "SHOES",
+                              "LONG_WALLET",
+                              "BIFOLD_WALLET",
+                              "CARD_WALLET",
+                              "WRISTWATCH",
+                              "JEWELRY",
+                              "HAIR_ACCESSORY",
+                              "TEXTBOOK",
+                              "NOTEBOOK",
+                              "PENCIL_CASE",
+                              "CALCULATOR",
+                              "PEN",
+                              "DOOR_KEY",
+                              "CAR_KEY",
+                              "DOLL_KEYRING",
+                              "COSMETICS",
+                              "MEDICINE",
+                              null
+                            ]
+                          },
                           "foundAt": {
                             "type": "string",
                             "format": "date-time"
@@ -7078,12 +7346,6 @@
                             "required": [
                               "id",
                               "name"
-                            ]
-                          },
-                          "floor": {
-                            "type": [
-                              "integer",
-                              "null"
                             ]
                           },
                           "thumbnailUrl": {
@@ -7121,9 +7383,9 @@
                         "required": [
                           "foundItemId",
                           "category",
+                          "subCategory",
                           "foundAt",
                           "building",
-                          "floor",
                           "thumbnailUrl",
                           "reasons",
                           "attemptsLeft",
@@ -7315,6 +7577,51 @@
                               "ETC"
                             ]
                           },
+                          "subCategory": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "CABLE_CHARGER",
+                              "POWER_BANK",
+                              "MOUSE",
+                              "KEYBOARD",
+                              "USB_MEMORY",
+                              "CAMERA",
+                              "GAME_CONSOLE",
+                              "WIRELESS_EARBUDS",
+                              "WIRED_EARPHONE",
+                              "HEADPHONE",
+                              "BACKPACK",
+                              "SHOULDER_BAG",
+                              "ECO_BAG",
+                              "POUCH",
+                              "SHOPPING_BAG",
+                              "OUTER",
+                              "TOP",
+                              "BOTTOM",
+                              "SCARF_GLOVES",
+                              "SHOES",
+                              "LONG_WALLET",
+                              "BIFOLD_WALLET",
+                              "CARD_WALLET",
+                              "WRISTWATCH",
+                              "JEWELRY",
+                              "HAIR_ACCESSORY",
+                              "TEXTBOOK",
+                              "NOTEBOOK",
+                              "PENCIL_CASE",
+                              "CALCULATOR",
+                              "PEN",
+                              "DOOR_KEY",
+                              "CAR_KEY",
+                              "DOLL_KEYRING",
+                              "COSMETICS",
+                              "MEDICINE",
+                              null
+                            ]
+                          },
                           "foundAt": {
                             "type": "string",
                             "format": "date-time"
@@ -7335,12 +7642,6 @@
                             "required": [
                               "id",
                               "name"
-                            ]
-                          },
-                          "floor": {
-                            "type": [
-                              "integer",
-                              "null"
                             ]
                           },
                           "thumbnailUrl": {
@@ -7378,9 +7679,9 @@
                         "required": [
                           "foundItemId",
                           "category",
+                          "subCategory",
                           "foundAt",
                           "building",
-                          "floor",
                           "thumbnailUrl",
                           "reasons",
                           "attemptsLeft",

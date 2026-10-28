@@ -114,9 +114,7 @@ describe("기준 6. 가장 몰리는 건물·시간대·종류를 한 문장으�
     await add(LIB, "CHARGER", kst("2026-10-07", 13, 30));
     await add(HYE, "UMBRELLA", kst("2026-10-05", 9));
     await add(HYE, "UMBRELLA", kst("2026-10-05", 18));
-    expect((await get(range)).body.topInsight).toBe(
-      "학술정보관에서 오후 1시~3시에 충전기·기타 전자기기 분실이 가장 많아요.",
-    );
+    expect((await get(range)).body.topInsight).toBe("학술정보관에서 오후 1시~3시에 기타 전자기기 분실이 가장 많아요.");
   });
 
   it("가장 많은 구간이 1건뿐이면 데이터가 적다고 안내", async () => {

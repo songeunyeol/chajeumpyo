@@ -8,6 +8,7 @@ import {
 } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { getAuth, requireMember } from "../middlewares/auth";
+import { ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import * as service from "../services/claims";
@@ -60,8 +61,21 @@ export function createClaimsRouter() {
     return { userId: a.userId, role: a.role };
   };
 
+  // 계정·물건별 잠금(3회, 10회)과 별개로, 한 네트워크에서 계정을 바꿔 가며 몰아치는 시도를 막는다 (위협 모델 T2)
+  const claimLimit = ipRateLimit({
+    windowMinutes: 10,
+    limit: 20,
+    message: "확인 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
+  });
+  const answerLimit = ipRateLimit({
+    windowMinutes: 10,
+    limit: 20,
+    message: "답변 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
+  });
+
   router.post(
     "/lost-reports/:id/claims",
+    claimLimit,
     requireMember(),
     validate("params", LostReportIdParams),
     validate("body", ClaimRequest),
@@ -73,6 +87,7 @@ export function createClaimsRouter() {
 
   router.post(
     "/claims/:attemptId/answer",
+    answerLimit,
     requireMember(),
     validate("params", AttemptIdParams),
     validate("body", AnswerRequest),

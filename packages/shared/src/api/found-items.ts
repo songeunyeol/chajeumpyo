@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Category, FoundStatus, StorageType } from "../enums";
+import { Category, FoundStatus, StorageType, SubCategory } from "../enums";
 import { BuildingSummary } from "./buildings";
 import { FinderConsentFields } from "./consent";
 
@@ -57,6 +57,8 @@ export const AnalyzeFoundItemResponse = z.object({
   confirmToken: z.string(),
   /** AI가 알아본 종류. 분석이 실패하면 null이고 확정하면 관리자 검토 대기(REVIEW)가 된다 */
   category: Category.nullable(),
+  /** 세부 종류 (예: CHARGER 안의 MOUSE). 없으면 null. 화면 이름은 itemLabel(category, subCategory) */
+  subCategory: SubCategory.nullable(),
   /** 귀중품이면 true. 등록 화면에서 보관처에 맡기기를 권한다 (open-issues #32, QA B11) */
   isValuable: z.boolean(),
   /** 분석 실패 안내 문구. 성공하면 null */
@@ -86,6 +88,8 @@ export const RegisterFoundItemResponse = z.object({
   status: FoundStatus,
   /** REVIEW면 null */
   category: Category.nullable(),
+  /** 세부 종류. 없으면 null */
+  subCategory: SubCategory.nullable(),
   /** 주운 건물. 보관처에 맡겼고 모르면 null */
   building: BuildingSummary.nullable(),
   floor: z.number().int().nullable(),
@@ -109,6 +113,8 @@ export const FoundItemIdParams = z.object({ id: z.uuid() });
 export const FoundItemDetailResponse = z.object({
   id: z.string(),
   category: Category,
+  /** 세부 종류. 없으면 null */
+  subCategory: SubCategory.nullable(),
   color: z.string().nullable(),
   /** 공개본(민감하면 블러) 서명 URL. 10분 뒤 만료 */
   imageUrl: z.string(),

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Category, Color, FeatureKey, MAX_FEATURES } from "./enums";
+import { Category, Color, FeatureKey, MAX_FEATURES, SubCategory } from "./enums";
 
 // API 명세서 4장 "AI 응답 형식 (고정 계약)".
 // 모델이 바뀌어도 백엔드는 이 형식만 받는다. 서버 내부 전용이며 클라이언트로 그대로 내려보내지 않는다.
@@ -29,6 +29,8 @@ export const FoundItemExtraction = z.object({
   category: Category,
   /** 2순위 종류. 확신이 높으면 null. 후보 검색에만 쓰고 화면에 보여주지 않는다. */
   categoryAlt: Category.nullable(),
+  /** 세부 종류 (SUB_CATEGORIES). category에 속하지 않으면 AI 클라이언트가 null로 바꿔서 넘긴다. 없으면 모름 */
+  subCategory: SubCategory.nullable().optional(),
   /** 기본 12색 중 하나 (LOST112 색 묶음) */
   color: Color.nullable(),
   brand: z.string().trim().min(1).max(40).nullable(),

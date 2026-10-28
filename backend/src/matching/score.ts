@@ -1,8 +1,10 @@
 import { type Category, RELATED_CATEGORIES } from "@chajeumpyo/shared";
-import { ATTR_WEIGHTS, CATEGORY_SCORE, PLACE_SCORE, TIME_SCORE, WEIGHTS } from "./policy";
+import { ATTR_WEIGHTS, CATEGORY_SCORE, PLACE_SCORE, SUB_CATEGORY_MISMATCH_SCORE, TIME_SCORE, WEIGHTS } from "./policy";
 
 export type ReportSide = {
   category: Category;
+  /** 신고 설명에서 AI가 읽은 세부 종류 (신고 종류에 속한 값만) */
+  subCategory?: string | null;
   lostFrom: Date;
   lostTo: Date;
   buildingId: number | null;
@@ -13,6 +15,7 @@ export type ReportSide = {
 export type ItemSide = {
   category: Category | null;
   categoryAlt: Category | null;
+  subCategory?: string | null;
   foundAt: Date;
   buildingId: number | null;
   color: string | null;
@@ -21,8 +24,15 @@ export type ItemSide = {
 
 export type ScoreBreakdown = { attr: number; place: number; time: number; emb: number; total: number };
 
-export function categoryScore(reported: Category, item: Pick<ItemSide, "category" | "categoryAlt">): number {
-  if (item.category === reported) return CATEGORY_SCORE.exact;
+export function categoryScore(
+  reported: Category,
+  item: Pick<ItemSide, "category" | "categoryAlt" | "subCategory">,
+  reportedSub: string | null = null,
+): number {
+  if (item.category === reported) {
+    const bothKnown = reportedSub && item.subCategory;
+    return bothKnown && reportedSub !== item.subCategory ? SUB_CATEGORY_MISMATCH_SCORE : CATEGORY_SCORE.exact;
+  }
   if (item.categoryAlt === reported) return CATEGORY_SCORE.alt;
   const related = RELATED_CATEGORIES[reported] ?? [];
   if ((item.category && related.includes(item.category)) || (item.categoryAlt && related.includes(item.categoryAlt))) {
@@ -58,7 +68,7 @@ export function scoreCandidate(
   embeddingSimilarity: number | undefined,
 ): ScoreBreakdown {
   const attr =
-    ATTR_WEIGHTS.category * categoryScore(report.category, item) +
+    ATTR_WEIGHTS.category * categoryScore(report.category, item, report.subCategory ?? null) +
     ATTR_WEIGHTS.color * (sameText(report.color, item.color) ? 1 : 0) +
     ATTR_WEIGHTS.brand * (sameText(report.brand, item.brand) ? 1 : 0);
   const place = placeScore(report.buildingId, item.buildingId);

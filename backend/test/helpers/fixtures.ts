@@ -11,6 +11,7 @@ type FoundOpts = {
   buildingId: number;
   category: Category | null;
   categoryAlt?: Category | null;
+  subCategory?: string | null;
   foundAt?: Date;
   status?: "ANALYZING" | "REVIEW" | "REGISTERED" | "REVEALED" | "CLAIMED" | "EXPIRED";
   isSeed?: boolean;
@@ -31,6 +32,7 @@ export async function createFoundItem(o: FoundOpts) {
       buildingId: o.buildingId,
       category: o.category,
       categoryAlt: o.categoryAlt ?? null,
+      subCategory: o.subCategory ?? null,
       storageType: o.storageType ?? "IN_PLACE",
       storagePlaceId: o.storagePlaceId ?? null,
       status: o.status ?? "REGISTERED",

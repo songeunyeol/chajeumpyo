@@ -1,9 +1,11 @@
 import {
   type Candidate,
   type CandidateReason,
+  type Category,
   RELATED_CATEGORIES,
   type Role,
   relatedCategories,
+  subCategoryWithin,
 } from "@chajeumpyo/shared";
 import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
@@ -45,11 +47,16 @@ export function publicReasons(
   return reasons;
 }
 
-function attrsOf(extracted: unknown): { color: string | null; brand: string | null } {
-  const e = (extracted ?? {}) as { color?: unknown; brand?: unknown };
+/** 신고 설명에서 AI가 읽은 속성. 세부 종류는 신고자가 고른 종류에 속할 때만 쓴다 */
+function attrsOf(
+  extracted: unknown,
+  category: Category,
+): { color: string | null; brand: string | null; subCategory: string | null } {
+  const e = (extracted ?? {}) as { color?: unknown; brand?: unknown; subCategory?: unknown };
   return {
     color: typeof e.color === "string" ? e.color : null,
     brand: typeof e.brand === "string" ? e.brand : null,
+    subCategory: subCategoryWithin(category, e.subCategory),
   };
 }
 
@@ -100,9 +107,9 @@ export async function findCandidates(report: ReportForMatching, viewerRole: Role
       id: true,
       category: true,
       categoryAlt: true,
+      subCategory: true,
       foundAt: true,
       buildingId: true,
-      floor: true,
       isSeed: true,
       claimLockedAt: true,
       building: { select: { id: true, name: true } },
@@ -116,7 +123,7 @@ export async function findCandidates(report: ReportForMatching, viewerRole: Role
     similarityToFoundItems(report.id, ids),
     failedAttemptCounts(report.userId, ids),
   ]);
-  const reportSide = { ...report, ...attrsOf(report.extractedAttributes) };
+  const reportSide = { ...report, ...attrsOf(report.extractedAttributes, report.category) };
 
   const scored = items
     .filter((i) => i.category !== null)
@@ -143,9 +150,9 @@ export async function findCandidates(report: ReportForMatching, viewerRole: Role
       return {
         foundItemId: item.id,
         category,
+        subCategory: subCategoryWithin(category, item.subCategory),
         foundAt: item.foundAt.toISOString(),
         building: item.building,
-        floor: item.floor,
         thumbKey: item.detail?.imageThumbKey ?? null,
         reasons: publicReasons(report, { category, buildingId: item.buildingId, foundAt: item.foundAt }),
         attemptsLeft: left,

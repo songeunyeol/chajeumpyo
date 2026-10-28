@@ -3,6 +3,7 @@ import {
   type Category,
   type FoundItemDetailResponse,
   type Role,
+  subCategoryWithin,
   VALUABLE_CATEGORIES,
 } from "@chajeumpyo/shared";
 import { AppError } from "../lib/errors";
@@ -85,6 +86,7 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
   return {
     id: item.id,
     category: item.category,
+    subCategory: subCategoryWithin(item.category, item.subCategory),
     color: item.detail.color,
     imageUrl: await storage.signedUrl(publicKey, DETAIL_IMAGE_TTL_SECONDS),
     imageUrlExpiresAt: imageUrlExpiresAt.toISOString(),

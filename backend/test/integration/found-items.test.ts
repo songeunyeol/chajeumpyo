@@ -76,6 +76,7 @@ describe("기준 1. 정상 등록은 201, 응답에는 공개 정보만", () => 
       id: expect.any(String),
       status: "REGISTERED",
       category: "EARPHONE",
+      subCategory: "WIRELESS_EARBUDS",
       building: { id: buildingId, name: "혜인관" },
       floor: null,
       storageType: "HANDED_OVER",

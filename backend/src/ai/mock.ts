@@ -7,6 +7,8 @@ import {
   FoundItemExtraction,
   LostReportExtraction,
   MAX_FEATURES,
+  type SubCategory,
+  subCategoryWithin,
 } from "@chajeumpyo/shared";
 import { compareByRules } from "../matching/compare";
 import { rawWords, sameWord } from "../matching/text";
@@ -22,7 +24,10 @@ const KEYWORDS: [string, Category][] = [
   ["스마트워치", "SMARTWATCH"],
   ["애플워치", "SMARTWATCH"],
   ["갤럭시워치", "SMARTWATCH"],
+  ["헤드폰", "EARPHONE"],
   ["충전", "CHARGER"],
+  ["보조배터리", "CHARGER"],
+  ["키보드", "CHARGER"],
   ["배터리", "CHARGER"],
   ["마우스", "CHARGER"],
   ["휴대폰", "PHONE"],
@@ -119,6 +124,37 @@ const FEATURE_WORDS: [string, FeatureKey][] = [
   ["그림", "pattern"],
 ];
 
+/** 세부 종류 낱말. 큰 종류에 속하지 않으면 버린다(subCategoryWithin) */
+const SUB_KEYWORDS: [string, SubCategory][] = [
+  ["에어팟", "WIRELESS_EARBUDS"],
+  ["버즈", "WIRELESS_EARBUDS"],
+  ["무선 이어폰", "WIRELESS_EARBUDS"],
+  ["유선 이어폰", "WIRED_EARPHONE"],
+  ["헤드폰", "HEADPHONE"],
+  ["마우스", "MOUSE"],
+  ["키보드", "KEYBOARD"],
+  ["보조배터리", "POWER_BANK"],
+  ["충전기", "CABLE_CHARGER"],
+  ["케이블", "CABLE_CHARGER"],
+  ["백팩", "BACKPACK"],
+  ["에코백", "ECO_BAG"],
+  ["파우치", "POUCH"],
+  ["장지갑", "LONG_WALLET"],
+  ["반지갑", "BIFOLD_WALLET"],
+  ["카드지갑", "CARD_WALLET"],
+  ["패딩", "OUTER"],
+  ["코트", "OUTER"],
+  ["필통", "PENCIL_CASE"],
+  ["계산기", "CALCULATOR"],
+  ["전공책", "TEXTBOOK"],
+  ["노트", "NOTEBOOK"],
+];
+
+function guessSubCategory(text: string, category: Category): SubCategory | null {
+  const hit = SUB_KEYWORDS.find(([w]) => text.includes(w));
+  return subCategoryWithin(category, hit?.[1]);
+}
+
 /**
  * 설명을 쉼표·마침표로 나눠, 특징 낱말이 든 구절을 특징으로 본다. 구절에 낱말이 여럿이면 뒤에 나온 것
  * (예: "케이스에 곰돌이 스티커" → sticker). 키 없이 개발할 때도 확인 통과까지 흘려 보기 위한 흉내다.
@@ -157,6 +193,7 @@ export const mockAiClient: AiClient = {
       hasObject: true,
       category: "EARPHONE",
       categoryAlt: "CHARGER",
+      subCategory: "WIRELESS_EARBUDS",
       color: "WHITE",
       brand: "Apple",
       features: [
@@ -171,8 +208,10 @@ export const mockAiClient: AiClient = {
   },
 
   async extractLostReport(description) {
+    const category = guessCategory(description);
     return LostReportExtraction.parse({
-      category: guessCategory(description),
+      category,
+      subCategory: guessSubCategory(description, category),
       color: guessColor(description),
       brand: null,
       features: guessFeatures(description),

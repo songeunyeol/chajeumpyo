@@ -1,4 +1,13 @@
-import { Category, FoundItemExtraction, relatedCategories } from "@chajeumpyo/shared";
+import {
+  Category,
+  FoundItemExtraction,
+  itemLabel,
+  relatedCategories,
+  SUB_CATEGORIES,
+  SUB_CATEGORY_LABELS,
+  SubCategory,
+  subCategoryWithin,
+} from "@chajeumpyo/shared";
 import { describe, expect, it } from "vitest";
 import { mockAiClient } from "../../src/ai/mock";
 import { EMBEDDING_DIM } from "../../src/ai/types";
@@ -53,5 +62,30 @@ describe("mockAiClient 분실 신고 분석 (키 없이 개발할 때 확인 통
     const cmp = await mockAiClient.compareFeatures(report, found);
     expect(cmp.features[0]?.verdict).toBe("MATCH");
     expect(cmp.color).toBe("MATCH");
+  });
+});
+
+describe("세부 종류 목록", () => {
+  it("모든 세부 종류는 정확히 한 큰 종류에 속하고, 이름이 있다", () => {
+    const owners = new Map<string, string[]>();
+    for (const [c, subs] of Object.entries(SUB_CATEGORIES))
+      for (const s of subs ?? []) owners.set(s, [...(owners.get(s) ?? []), c]);
+    for (const s of SubCategory.options) {
+      expect(owners.get(s), s).toHaveLength(1);
+      expect(SUB_CATEGORY_LABELS[s]).toBeTruthy();
+    }
+  });
+
+  it("subCategoryWithin은 큰 종류에 속할 때만 돌려준다", () => {
+    expect(subCategoryWithin("CHARGER", "MOUSE")).toBe("MOUSE");
+    expect(subCategoryWithin("EARPHONE", "MOUSE")).toBeNull();
+    expect(subCategoryWithin("UMBRELLA", "MOUSE")).toBeNull();
+    expect(subCategoryWithin(null, "MOUSE")).toBeNull();
+    expect(subCategoryWithin("CHARGER", 3)).toBeNull();
+  });
+
+  it("화면 이름은 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름", () => {
+    expect(itemLabel("CHARGER", "MOUSE")).toBe("마우스");
+    expect(itemLabel("CHARGER", null)).toBe("기타 전자기기");
   });
 });

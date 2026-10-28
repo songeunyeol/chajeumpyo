@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATEGORY_SCORE, WEIGHTS } from "../../src/matching/policy";
+import { CATEGORY_SCORE, SUB_CATEGORY_MISMATCH_SCORE, WEIGHTS } from "../../src/matching/policy";
 import { categoryScore, placeScore, scoreCandidate, timeScore } from "../../src/matching/score";
 
 const h = (n: number) => new Date(Date.UTC(2026, 9, 13, 12) + n * 3600_000);
@@ -38,5 +38,17 @@ describe("후보 점수", () => {
       1,
     );
     expect(s.total).toBeCloseTo(1);
+  });
+});
+
+describe("세부 종류 점수", () => {
+  const item = { category: "CHARGER" as const, categoryAlt: null };
+  it("큰 종류가 같고 세부 종류가 다르면 깎는다, 같거나 한쪽이라도 모르면 그대로", () => {
+    expect(categoryScore("CHARGER", { ...item, subCategory: "MOUSE" }, "MOUSE")).toBe(CATEGORY_SCORE.exact);
+    expect(categoryScore("CHARGER", { ...item, subCategory: "POWER_BANK" }, "MOUSE")).toBe(SUB_CATEGORY_MISMATCH_SCORE);
+    expect(categoryScore("CHARGER", { ...item, subCategory: null }, "MOUSE")).toBe(CATEGORY_SCORE.exact);
+    expect(categoryScore("CHARGER", { ...item, subCategory: "MOUSE" }, null)).toBe(CATEGORY_SCORE.exact);
+    // 세부 종류가 달라도 연관 종류보다는 높다
+    expect(SUB_CATEGORY_MISMATCH_SCORE).toBeGreaterThan(CATEGORY_SCORE.related);
   });
 });
