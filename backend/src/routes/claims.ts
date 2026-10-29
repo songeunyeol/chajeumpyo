@@ -44,11 +44,12 @@ registry.registerPath({
   tags,
   security,
   summary: "확인 질문 답하기 (F-09)",
-  description: "질문 하나당 한 번만. 질문에 나온 낱말은 답에서 빼고 판정한다. 틀리면 실패 횟수가 1 늘어난다.",
+  description:
+    "질문 하나당 한 번만. choices(객관식 보기 번호, 질문 순서대로)는 모두 맞아야 통과한다. answer(자유 입력)는 질문에 나온 낱말을 빼고 판정한다. 틀리면 실패 횟수가 1 늘어난다.",
   request: { params: AttemptIdParams, body: json(AnswerRequest) },
   responses: {
     200: { description: "답 판정", ...json(AnswerResponse) },
-    400: errorResponse("VALIDATION_ERROR: 질문이 없는 시도"),
+    400: errorResponse("VALIDATION_ERROR: 질문이 없는 시도, 보기 수가 질문 수와 다름"),
     404: errorResponse("NOT_FOUND"),
     409: errorResponse("ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감"),
   },
@@ -92,11 +93,7 @@ export function createClaimsRouter() {
     validate("params", AttemptIdParams),
     validate("body", AnswerRequest),
     async (_req, res) => {
-      const result: AnswerResponse = await service.answer(
-        viewer(res),
-        res.locals.params.attemptId,
-        res.locals.body.answer,
-      );
+      const result: AnswerResponse = await service.answer(viewer(res), res.locals.params.attemptId, res.locals.body);
       res.json(result);
     },
   );

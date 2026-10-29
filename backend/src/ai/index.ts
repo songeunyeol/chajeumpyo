@@ -36,4 +36,5 @@ export const ai: AiClient = {
   embed: (...args) => current.embed(...args),
   compareFeatures: (...args) => current.compareFeatures(...args),
   judgeAnswer: (...args) => current.judgeAnswer(...args),
+  quizOptions: (...args) => current.quizOptions(...args),
 };

@@ -1,8 +1,11 @@
 import {
   AiFeature,
+  type AnswerRequest,
   type AnswerResponse,
   CATEGORY_LABELS,
   type ClaimResponse,
+  COLOR_LABELS,
+  Color,
   itemLabel,
   LostReportExtraction,
   type Role,
@@ -20,7 +23,17 @@ import { judgeAnswer } from "../matching/answer";
 import { FAILED_ATTEMPT, failedAttemptCounts, findClaimableCandidate } from "../matching/candidates";
 import { judge } from "../matching/judge";
 import { MAX_FAILED_ATTEMPTS, MAX_ITEM_FAILED_ATTEMPTS } from "../matching/policy";
-import { questionFor } from "../matching/questions";
+import { colorQuestionFor, isAskable, PRESET_DISTRACTORS, questionFor } from "../matching/questions";
+import {
+  colorDistractors,
+  makeQuestion,
+  pickDistractors,
+  QUIZ_QUESTIONS,
+  type QuizQuestion,
+  quizOf,
+  shuffle,
+} from "../matching/quiz";
+import { looselyContains, words } from "../matching/text";
 import { adminsInChargeOf, notifyUsers } from "./notifications";
 
 type Viewer = { userId: string; role: Role };
@@ -87,9 +100,56 @@ async function toResponse(a: Attempt, reused: boolean, db: Prisma.TransactionCli
     return { attemptId: a.id, reused, result: "PASS", matchedFields: fields, foundItemId: a.foundItemId };
   }
   if (a.result === "BORDERLINE" && a.answerCorrect === null && a.question) {
-    return { attemptId: a.id, reused, result: "BORDERLINE", question: a.question };
+    const questions = quizOf(a.matchedFields).map(({ text, options }) => ({ text, options }));
+    return { attemptId: a.id, reused, result: "BORDERLINE", question: a.question, questions };
   }
   return { attemptId: a.id, reused, result: "FAIL", ...(await failFields(a.userId, a.foundItemId, db)) };
+}
+
+/** 특징 질문 하나. AI가 다듬은 정답이 저장 값과 낱말이 하나도 안 겹치면 저장 값을 그대로 쓴다 */
+async function featureQuestion(feature: AiFeature, itemName: string | null): Promise<QuizQuestion> {
+  const text = questionFor(feature, itemName);
+  let correct = feature.value;
+  let fromAi: string[] = [];
+  try {
+    const out = await withTimeout(
+      ai.quizOptions({ question: text, stored: feature.value }),
+      env.AI_TIMEOUT_MS,
+      "보기 만들기",
+    );
+    const shared = words(out.correct).some((w) => w.length >= 2 && looselyContains(feature.value, w));
+    if (shared && out.correct.trim().length <= 30) correct = out.correct.trim();
+    fromAi = out.distractors;
+  } catch (err) {
+    logger.warn({ err }, "확인 질문 보기 만들기 실패 → 준비된 보기");
+  }
+  const pool = [...fromAi, ...shuffle(PRESET_DISTRACTORS[feature.key] ?? [])];
+  return makeQuestion(text, feature.key, correct, pickDistractors([correct, feature.value], pool, text));
+}
+
+/**
+ * 경계 판정의 객관식 질문 (F-09, 10/29 은열 의견: 서술형은 맞히기 어렵다).
+ * 신고에 적지 않은 숨은 특징부터 묻고, 하나뿐이면 신고에 색을 적지 않았을 때 색을 함께 묻는다. 모두 맞혀야 통과.
+ */
+async function buildQuiz(
+  first: AiFeature,
+  stored: AiFeature[],
+  reportedKeys: string[],
+  color: { stored: string | null; reported: string | null },
+  itemName: string | null,
+): Promise<QuizQuestion[]> {
+  const mentioned = new Set(reportedKeys);
+  const features = [first, ...stored.filter((f) => f !== first && isAskable(f) && !mentioned.has(f.key))].slice(
+    0,
+    QUIZ_QUESTIONS,
+  );
+  const quiz = await Promise.all(features.map((f) => featureQuestion(f, itemName)));
+  const storedColor = Color.safeParse(color.stored);
+  if (quiz.length < QUIZ_QUESTIONS && !color.reported && storedColor.success && storedColor.data !== "OTHER") {
+    const label = COLOR_LABELS[storedColor.data];
+    quiz.push(makeQuestion(colorQuestionFor(itemName), "color", label, colorDistractors(storedColor.data)));
+  }
+  return quiz;
 }
 
 /**
@@ -141,6 +201,17 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
     storedFeatures,
     reportedFeatures.map((f) => f.key),
   );
+  const itemName = item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null;
+  // 보기 만들기(AI)도 트랜잭션 밖에서 한다
+  const quiz = j.questionFeature
+    ? await buildQuiz(
+        j.questionFeature,
+        storedFeatures,
+        reportedFeatures.map((f) => f.key),
+        { stored: item.detail?.color ?? null, reported: extracted.color ?? null },
+        itemName,
+      )
+    : [];
   const publicFields = [
     ...comparison.features.filter((f) => f.verdict === "MATCH").map((f) => `feature:${f.storedKey ?? f.reportedKey}`),
     ...(comparison.color === "MATCH" ? ["color"] : []),
@@ -168,14 +239,10 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
           matches: j.matches,
           contradictions: j.contradictions,
           public: [...new Set(publicFields)],
+          quiz,
         },
         result: j.result,
-        question: j.questionFeature
-          ? questionFor(
-              j.questionFeature,
-              item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null,
-            )
-          : null,
+        question: j.questionFeature ? questionFor(j.questionFeature, itemName) : null,
         questionFeatureKey: j.questionFeature?.key ?? null,
       },
     });
@@ -209,8 +276,11 @@ async function reuseOrLock(
   return null;
 }
 
-/** POST /claims/:attemptId/answer (F-09). 질문 하나당 한 번만 답할 수 있다. */
-export async function answer(viewer: Viewer, attemptId: string, rawAnswer: string): Promise<AnswerResponse> {
+/**
+ * POST /claims/:attemptId/answer (F-09). 질문 하나당 한 번만 답할 수 있다.
+ * choices: 객관식 보기 번호(질문 순서대로), 모두 맞아야 통과. answer: 자유 입력, 첫 질문의 특징과 대조.
+ */
+export async function answer(viewer: Viewer, attemptId: string, body: AnswerRequest): Promise<AnswerResponse> {
   const attempt = await prisma.matchAttempt.findFirst({
     where: { id: attemptId, userId: viewer.userId },
     include: { foundItem: { include: { detail: true } } },
@@ -224,8 +294,13 @@ export async function answer(viewer: Viewer, attemptId: string, rawAnswer: strin
   if (attempt.foundItem.claimLockedAt) throw new AppError("IN_PERSON_REQUIRED", IN_PERSON_MESSAGE);
 
   const stored = Features.parse(attempt.foundItem.detail?.features).find((f) => f.key === attempt.questionFeatureKey);
+  const quiz = quizOf(attempt.matchedFields);
+  const { choices, answer: rawAnswer } = body;
   let verdict: "MATCH" | "NO_MATCH" = "NO_MATCH";
-  if (stored) {
+  if (choices) {
+    if (choices.length !== quiz.length) throw new AppError("VALIDATION_ERROR", "모든 질문에 답을 골라 주세요.");
+    verdict = quiz.every((q, i) => q.answer === choices[i]) ? "MATCH" : "NO_MATCH";
+  } else if (stored && rawAnswer) {
     try {
       verdict = await judgeAnswer(attempt.question, stored.value, rawAnswer);
     } catch (err) {

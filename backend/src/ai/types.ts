@@ -31,4 +31,9 @@ export interface AiClient {
   compareFeatures(reported: ComparableAttributes, stored: ComparableAttributes): Promise<FeatureComparison>;
   /** 확인 질문 답이 저장 값과 같은 뜻인지 (F-09). 실제 구현은 온도 0으로 고정 */
   judgeAnswer(input: { question: string; stored: string; answer: string }): Promise<AnswerVerdict>;
+  /**
+   * 객관식 확인 질문 보기 (F-09). correct는 저장 값을 보기 길이로 다듬은 정답, distractors는 같은 꼴의 그럴듯한 오답.
+   * 오답이 모자라거나 정답과 겹치면 호출한 쪽이 미리 준비한 보기로 채운다.
+   */
+  quizOptions(input: { question: string; stored: string }): Promise<{ correct: string; distractors: string[] }>;
 }

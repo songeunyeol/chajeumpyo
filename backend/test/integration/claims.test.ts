@@ -64,6 +64,13 @@ const claim = (reportId: string, foundItemId: string, t = token) =>
 const answer = (attemptId: string, text: string, t = token) =>
   request(app).post(`/api/v1/claims/${attemptId}/answer`).set("Authorization", `Bearer ${t}`).send({ answer: text });
 const feature = (key: FeatureKey, value: string) => ({ key, value });
+const choose = (attemptId: string, choices: number[], t = token) =>
+  request(app).post(`/api/v1/claims/${attemptId}/answer`).set("Authorization", `Bearer ${t}`).send({ choices });
+/** 저장된 객관식 정답 위치 (서버만 안다) */
+async function correctChoices(attemptId: string) {
+  const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: attemptId } });
+  return ((a.matchedFields as { quiz: { answer: number }[] }).quiz ?? []).map((q) => q.answer);
+}
 
 beforeEach(async () => {
   await resetDb();
@@ -166,7 +173,7 @@ describe("기준 4. 경계 판정은 신고에 적지 않은 특징으로 질문
     const res = await claim(r, it1.id);
     expect(res.body.result).toBe("BORDERLINE");
     expect(res.body.question).toMatch(/^이 .+에 달려 있는 키링은 어떤 모양인가요\?$/); // sticker·scratch는 신고에 있음 → keyring
-    expect(Object.keys(res.body).sort()).toEqual(["attemptId", "question", "result", "reused"]);
+    expect(Object.keys(res.body).sort()).toEqual(["attemptId", "question", "questions", "result", "reused"]);
     expect(res.body.question).not.toContain("고양이");
   });
 
@@ -454,5 +461,125 @@ describe("IP 요청 제한 (계정을 바꿔 가며 몰아치기 방지, 위협 
 
     for (let i = 0; i < 20; i++) expect((await answer(missing, "곰돌이")).status).not.toBe(429);
     expect((await answer(missing, "곰돌이")).status).toBe(429);
+  });
+});
+
+describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 통과 (10/29)", () => {
+  async function borderline() {
+    const it1 = await item();
+    // sticker·scratch는 신고에 있음 → keyring을 묻고, 색을 안 적었으니 색도 묻는다
+    const r = await newReport({ features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "왼쪽 위 긁힘")] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    return { res, reportId: r, itemId: it1.id };
+  }
+
+  it("질문 2개, 보기 4개씩, 정답이 보기에 있고 정답 위치는 응답에 없다", async () => {
+    const { res } = await borderline();
+    const qs = res.body.questions as { text: string; options: string[] }[];
+    expect(qs).toHaveLength(2);
+    expect(qs[0]?.text).toMatch(/키링/);
+    expect(qs[1]?.text).toMatch(/무슨 색/);
+    for (const q of qs) {
+      expect(q.options).toHaveLength(4);
+      expect(new Set(q.options).size).toBe(4);
+      expect(Object.keys(q).sort()).toEqual(["options", "text"]);
+    }
+    expect(qs[0]?.options).toContain("고양이 키링");
+    expect(qs[1]?.options).toContain("흰색");
+    expect(qs[1]?.options).not.toContain("회색·은색"); // 이웃 색은 보기에 넣지 않는다
+  });
+
+  it("모두 맞히면 PASS, 하나라도 틀리면 FAIL로 센다", async () => {
+    const { res } = await borderline();
+    const right = await correctChoices(res.body.attemptId);
+    expect((await choose(res.body.attemptId, right)).body).toEqual({ result: "PASS", foundItemId: expect.any(String) });
+
+    const other = await signupUser(app, "other@skuniv.ac.kr");
+    const r2 = await newReport(
+      { features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "왼쪽 위 긁힘")] },
+      other.accessToken,
+    );
+    const b2 = await claim(
+      r2,
+      res.body.foundItemId ??
+        (await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } })).foundItemId,
+      other.accessToken,
+    );
+    const ans = await correctChoices(b2.body.attemptId);
+    const wrong = [ans[0] as number, ((ans[1] as number) + 1) % 4];
+    expect((await choose(b2.body.attemptId, wrong, other.accessToken)).body).toEqual({
+      result: "FAIL",
+      attemptsLeft: 2,
+      inPersonOnly: false,
+    });
+  });
+
+  it("보기 수가 질문 수와 다르거나 답이 없으면 400, 시도는 그대로", async () => {
+    const { res } = await borderline();
+    expect((await choose(res.body.attemptId, [0])).status).toBe(400);
+    const empty = await request(app)
+      .post(`/api/v1/claims/${res.body.attemptId}/answer`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({});
+    expect(empty.status).toBe(400);
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
+    expect(a.answerCorrect).toBeNull();
+  });
+
+  it("같은 설명으로 다시 확인하면 같은 보기를 같은 순서로 준다", async () => {
+    const { res, reportId, itemId } = await borderline();
+    const again = await claim(reportId, itemId);
+    expect(again.body).toMatchObject({ result: "BORDERLINE", reused: true, questions: res.body.questions });
+  });
+
+  it("AI 보기는 정답과 겹치는 것을 빼고, 실패하면 준비된 보기로 채운다", async () => {
+    setAiClient({
+      ...mockAiClient,
+      extractLostReport: async (description) => ({
+        category: "EARPHONE",
+        color: null,
+        brand: null,
+        features: [],
+        description,
+        ...nextExtraction,
+      }),
+      quizOptions: async () => ({ correct: "고양이 키링", distractors: ["고양이 모양 키링", "토끼 키링", "곰 키링"] }),
+    });
+    app = createApp();
+    const { res } = await borderline();
+    const opts = res.body.questions[0].options as string[];
+    expect(opts).toContain("토끼 키링");
+    expect(opts).not.toContain("고양이 모양 키링");
+    expect(opts).toHaveLength(4);
+
+    setAiClient({
+      ...mockAiClient,
+      extractLostReport: async (description) => ({
+        category: "EARPHONE",
+        color: null,
+        brand: null,
+        features: [],
+        description,
+        ...nextExtraction,
+      }),
+      quizOptions: async () => {
+        throw new Error("down");
+      },
+    });
+    app = createApp();
+    const other = await signupUser(app, "other@skuniv.ac.kr");
+    const r = await newReport(
+      { features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "왼쪽 위 긁힘")] },
+      other.accessToken,
+    );
+    const b = await claim(
+      r,
+      (await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } })).foundItemId,
+      other.accessToken,
+    );
+    expect(b.body.result).toBe("BORDERLINE");
+    expect(b.body.questions[0].options).toHaveLength(4);
+    expect(b.body.questions[0].options).toContain("고양이 키링");
   });
 });
