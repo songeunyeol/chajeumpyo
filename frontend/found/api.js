@@ -90,6 +90,25 @@
     MEDICINE: "약·의약품",
   };
 
+  /** packages/shared/src/enums.ts의 SUB_CATEGORIES (큰 종류별 세부 종류) */
+  const SUB_CATEGORIES = {
+    CHARGER: ["CABLE_CHARGER", "POWER_BANK", "MOUSE", "KEYBOARD", "USB_MEMORY", "CAMERA", "GAME_CONSOLE"],
+    EARPHONE: ["WIRELESS_EARBUDS", "WIRED_EARPHONE", "HEADPHONE"],
+    BAG: ["BACKPACK", "SHOULDER_BAG", "ECO_BAG", "POUCH", "SHOPPING_BAG"],
+    CLOTHING: ["OUTER", "TOP", "BOTTOM", "SCARF_GLOVES", "SHOES"],
+    WALLET: ["LONG_WALLET", "BIFOLD_WALLET", "CARD_WALLET"],
+    ACCESSORY: ["WRISTWATCH", "JEWELRY", "HAIR_ACCESSORY"],
+    BOOK: ["TEXTBOOK", "NOTEBOOK"],
+    STATIONERY: ["PENCIL_CASE", "CALCULATOR", "PEN"],
+    KEY: ["DOOR_KEY", "CAR_KEY"],
+    ETC: ["DOLL_KEYRING", "COSMETICS", "MEDICINE"],
+  };
+  /** packages/shared/src/enums.ts의 VALUABLE_CATEGORIES. 보관처에만 맡길 수 있다 (QA B11) */
+  const VALUABLE_CATEGORIES = [
+    "WALLET", "ID_CARD", "DRIVER_LICENSE", "PAYMENT_CARD", "PHONE", "EARPHONE",
+    "SMARTWATCH", "TABLET", "LAPTOP", "ACCESSORY", "CASH",
+  ];
+
   /** 화면 이름: 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름 (shared itemLabel) */
   const itemLabel = (category, sub) => (sub && SUB_CATEGORY_LABELS[sub]) || CATEGORY_LABELS[category] || "";
 
@@ -211,6 +230,9 @@
     CAPTCHA_KEY,
     config,
     CATEGORY_LABELS,
+    SUB_CATEGORY_LABELS,
+    SUB_CATEGORIES,
+    VALUABLE_CATEGORIES,
     itemLabel,
     ApiError,
     store,
