@@ -605,6 +605,14 @@ h1 {
   display: grid;
   place-items: center;
   padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms var(--ease);
+}
+/* 다른 화면의 확인 창들은 is-open으로만 연다(hidden을 쓰지 않는다). 그래서 기본은 투명하고 눌리지 않게 둔다 (#96에서 빠져 후보 화면이 막혔다) */
+.modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
 }
 .modal-backdrop[hidden] {
   display: none;
