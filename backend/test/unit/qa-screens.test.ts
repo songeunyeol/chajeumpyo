@@ -86,6 +86,22 @@ describe("QA 화면", () => {
     expect(read("frontend/found/done-handover.html")).toContain('id="doneMapBox"');
     expect(read("frontend/found/register.html")).toContain('id="registerMap"');
     expect(read("frontend/naver-map.js")).toContain("/campus-map.png");
-    expect(read("frontend/sw.js")).toContain('VERSION = "v22"');
+    // 캠퍼스 지도가 SHELL 캐시에 있다 (버전 숫자는 배포마다 바뀌니 고정하지 않는다)
+    expect(read("frontend/sw.js")).toContain('"/campus-map.png"');
+  });
+
+  it("is-open으로 여닫는 확인 창은 기본이 투명하고 눌리지 않는다 (#96 회귀: 후보 화면이 막혔다)", () => {
+    const css = read("frontend/palette.css");
+    const base = css.match(/\.modal-backdrop \{[^}]*\}/)?.[0] ?? "";
+    expect(base).toContain("opacity: 0");
+    expect(base).toContain("pointer-events: none");
+    expect(css).toMatch(/\.modal-backdrop\.is-open \{[^}]*pointer-events: auto/);
+  });
+
+  it("확인 전에는 통과 화면을 숨긴다 (display: flex가 hidden을 덮지 않게)", () => {
+    expect(read("frontend/palette.css")).toContain(
+      ".pass-to-item-viewport[hidden], .pass-intro[hidden] { display: none; }",
+    );
+    expect(read("frontend/lost/item-handover.html")).not.toContain("✓ 확인 통과</span>");
   });
 });
