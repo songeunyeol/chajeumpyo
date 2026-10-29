@@ -37,6 +37,13 @@ const TEXT_MIN_ASPECT = 1.6;
 const TEXT_SOLID_ASPECT = 3;
 const TEXT_SOLID_FILL = 0.5;
 /**
+ * 이미지의 5%를 넘으면서 속이 꽉 찬(채움 60% 초과) 긴 덩어리는 글자 줄이 아니라 물건 몸통이다.
+ * 안경테 전체가 글자 한 줄로 잡혀 안경이 통째로 가려지고 AI가 "가려진 카드"로 본 일이 있었다 (10/29, 면적 6.9%·가로 5.4배·채움 68%).
+ * 웹 사진 89장의 카드 글자 덩어리는 5%를 넘어도 채움 7~10%라 남는다.
+ */
+const TEXT_THICK_AREA = 0.05;
+const TEXT_THICK_FILL = 0.6;
+/**
  * 글자 상자 넓히기. PP-OCR(DBNet) 확률 지도는 글자 줄을 안쪽으로 줄여서 내놓으므로, 원래 후처리처럼
  * "넓이 × 비율 ÷ 둘레"만큼 다시 넓힌다 (PaddleOCR 기본 비율 1.5). 긴 줄이면 줄 높이의 비율/2배, 네모난 덩어리면 비율/4배다.
  * 예전 "줄 높이의 0.6배"는 긴 줄에서 원래 후처리(약 0.75배)보다 작아서, 가까이 찍은 카드의 큰 글자 윗부분과
@@ -157,9 +164,11 @@ async function detectText(session: ort.InferenceSession, image: Buffer, W: numbe
     const bw = x2 - x1 + 1;
     const bh = y2 - y1 + 1;
     const aspect = bw / bh;
-    const solid = count / (bw * bh) > TEXT_SOLID_FILL;
-    if ((bw * bh) / (w * h) > TEXT_BLOB_AREA && (aspect < TEXT_MIN_ASPECT || (aspect < TEXT_SOLID_ASPECT && solid)))
-      continue;
+    const fill = count / (bw * bh);
+    const area = (bw * bh) / (w * h);
+    const solid = fill > TEXT_SOLID_FILL;
+    if (area > TEXT_BLOB_AREA && (aspect < TEXT_MIN_ASPECT || (aspect < TEXT_SOLID_ASPECT && solid))) continue;
+    if (area > TEXT_THICK_AREA && fill > TEXT_THICK_FILL) continue;
     const offset = (TEXT_UNCLIP * bw * bh) / (2 * (bw + bh));
     const px = Math.max(3, offset);
     const py = Math.max(3, offset * TEXT_UNCLIP_Y);
