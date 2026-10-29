@@ -88,8 +88,8 @@
     return { x, y };
   }
 
-  /** 위성 사진도 못 받으면 캠퍼스 약도에 핀만 남긴다. 캔버스 전체를 지우면 위에 올린 네이버 지도까지 사라진다 */
-  function renderFallbackCampusMap(canvasEl, loc) {
+  /** 그림 지도 위 핀 위치. 북쪽이 위, 가장자리는 그림의 여백 */
+  function pinPoint(lng, lat) {
     const names = Object.keys(CAMPUS_BUILDINGS);
     const lats = names.map((name) => CAMPUS_BUILDINGS[name].lat);
     const lngs = names.map((name) => CAMPUS_BUILDINGS[name].lng);
@@ -97,28 +97,54 @@
     const maxLat = Math.max(...lats);
     const minLng = Math.min(...lngs);
     const maxLng = Math.max(...lngs);
-    const pad = 0.12;
-    const xOf = (lng) => ((lng - minLng) / (maxLng - minLng || 1)) * (1 - pad * 2) + pad;
-    const yOf = (lat) => (1 - (lat - minLat) / (maxLat - minLat || 1)) * (1 - pad * 2) + pad;
-    const dots = names.map((name) => {
+    const pad = 0.14;
+    const x = ((lng - minLng) / (maxLng - minLng || 1)) * (1 - pad * 2) + pad;
+    const y = (1 - (lat - minLat) / (maxLat - minLat || 1)) * (1 - pad * 2) + pad;
+    return { left: `${(x * 100).toFixed(2)}%`, top: `${(y * 100).toFixed(2)}%` };
+  }
+
+  function pinMarkup(name, point, strong) {
+    const dot = strong
+      ? `<span style="width:16px;height:16px;border-radius:999px;background:#1e5b3d;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)"></span><span style="margin-top:2px;background:#1e5b3d;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap">${esc(name)}</span>`
+      : `<span style="width:8px;height:8px;border-radius:999px;background:#1e5b3d;border:1.5px solid #fff"></span>`;
+    return `<div style="position:absolute;left:${point.left};top:${point.top};transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none">${dot}</div>`;
+  }
+
+  /**
+   * 네이버·위성 타일이 없어도 캠퍼스 그림과 핀이 남는다.
+   * 캔버스 전체를 지우면 위에 올린 네이버 지도까지 사라지므로 그림 층만 바꾼다.
+   */
+  function renderCampusPhoto(canvasEl, loc, showAll) {
+    const names = showAll ? Object.keys(CAMPUS_BUILDINGS) : [loc.buildingName];
+    const pins = names.map((name) => {
       const spot = CAMPUS_BUILDINGS[name];
-      const x = (xOf(spot.lng) * 360).toFixed(1);
-      const y = (yOf(spot.lat) * 176).toFixed(1);
-      const here = name === loc.buildingName;
-      const pin = here
-        ? `<circle cx="${x}" cy="${y}" r="8" fill="#1e5b3d" stroke="#fff" stroke-width="2"/><text x="${x}" y="${Math.max(14, Number(y) - 12)}" text-anchor="middle" font-size="12" font-weight="700" fill="#1c1915">${esc(name)}</text>`
-        : `<circle cx="${x}" cy="${y}" r="3.5" fill="#8a8378"/>`;
-      return pin;
+      if (!spot) return "";
+      return pinMarkup(name, pinPoint(spot.lng, spot.lat), name === loc.buildingName);
     }).join("");
+    const box = document.createElement("div");
+    box.className = "sat-stage";
+    box.style.cssText = "position:absolute;inset:0;background:#e7e1d4";
+    box.innerHTML = `
+      <img src="/campus-map.png" alt="서경대학교 캠퍼스 지도. ${esc(loc.buildingName)}" style="width:100%;height:100%;object-fit:cover;display:block">
+      ${pins}
+    `;
+    const stage = canvasEl.querySelector(".sat-stage");
+    if (stage) stage.replaceWith(box);
+    else canvasEl.prepend(box);
+    const img = box.querySelector("img");
+    img.addEventListener("error", () => renderFallbackCampusMap(canvasEl, loc));
+  }
+
+  /** 그림 파일을 못 받을 때만 쓰는 단순 약도 */
+  function renderFallbackCampusMap(canvasEl, loc) {
+    const point = pinPoint(loc.lng, loc.lat);
     const stage = canvasEl.querySelector(".sat-stage");
     const box = document.createElement("div");
     box.className = "sat-stage";
+    box.style.cssText = "position:absolute;inset:0;background:#e7e1d4";
     box.innerHTML = `
-      <svg viewBox="0 0 360 176" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="서경대학교 ${esc(loc.buildingName)} 약도">
-        <rect width="360" height="176" fill="#e7e1d4"/>
-        <rect x="18" y="18" width="324" height="140" rx="18" fill="#f3efe6" stroke="#d7d2c6"/>
-        ${dots}
-      </svg>
+      <div style="position:absolute;inset:12px;border-radius:16px;background:#f3efe6;box-shadow:inset 0 0 0 1px #d7d2c6"></div>
+      ${pinMarkup(loc.buildingName, point, true)}
     `;
     if (stage) stage.replaceWith(box);
     else canvasEl.prepend(box);
@@ -254,8 +280,12 @@
     const loc = resolveLocation(opts.buildingName);
     const caption = opts.caption || `서경대 ${loc.buildingName} · 그 자리 보관`;
 
+    containerEl.hidden = false;
+    if (!containerEl.style.height) containerEl.style.height = "176px";
+    containerEl.style.position = "relative";
+    containerEl.style.overflow = "hidden";
     containerEl.innerHTML = `
-      <div class="map-canvas" id="naverMapCanvas"></div>
+      <div class="map-canvas" id="naverMapCanvas" style="position:relative;width:100%;height:100%;background:#e7e1d4"></div>
       <div class="map-badge-bar">
         <span class="map-loc-pill"><i></i><span>${esc(caption)}</span></span>
       </div>
@@ -263,7 +293,7 @@
     const canvasEl = containerEl.querySelector(".map-canvas");
     const apiKey = getSavedKey();
 
-    renderSatelliteTiles(canvasEl, loc);
+    renderCampusPhoto(canvasEl, loc, opts.showAll === true);
     if (!apiKey || location.protocol === "file:") return;
 
     const holder = document.createElement("div");
@@ -274,6 +304,7 @@
     try {
       await loadNaverSdk(apiKey);
       await mountNaverSatellite(holder, loc);
+      if (naverAuthFailed(holder)) throw new Error("NAVER_AUTH");
       const sat = canvasEl.querySelector(".sat-stage");
       if (sat) sat.remove();
     } catch (_) {

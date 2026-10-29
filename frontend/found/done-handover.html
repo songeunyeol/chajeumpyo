@@ -29,6 +29,8 @@
     </svg>
   </div>
 
+  <div class="map-box" id="doneMapBox" aria-label="주운 곳 지도"></div>
+
   <table class="kv">
     <tr><th>보관</th><td>보관처에 맡김</td></tr>
     <tr><th>맡긴 곳</th><td id="handoverPlace">교무처 · 혜인관 1층 교무처 · 평일 9~18시</td></tr>
@@ -39,6 +41,7 @@
     <a class="btn" href="../index.html">처음 화면</a>
   </div>
 </main>
+<script src="../naver-map.js"></script>
 <script>
   function formatKoreanTime(d) {
     const days = ["일", "월", "화", "수", "목", "금", "토"];
@@ -88,6 +91,20 @@
       }
     }
   } catch (_) {}
+
+  let pinName = "혜인관";
+  try {
+    const result = JSON.parse(sessionStorage.getItem("foundResult") || "null");
+    if (result && result.building && result.building.name) pinName = result.building.name;
+    const savedBuilding = sessionStorage.getItem("foundBuilding");
+    if (savedBuilding) pinName = savedBuilding.split(" · ")[0].trim();
+  } catch (_) {}
+  if (window.NaverCampusMap) {
+    window.NaverCampusMap.mount(document.getElementById("doneMapBox"), {
+      buildingName: pinName,
+      caption: `서경대 ${pinName} · 주운 곳`,
+    });
+  }
 </script>
 </body>
 </html>

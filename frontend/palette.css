@@ -605,13 +605,9 @@ h1 {
   display: grid;
   place-items: center;
   padding: 20px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 200ms var(--ease);
 }
-.modal-backdrop.is-open {
-  opacity: 1;
-  pointer-events: auto;
+.modal-backdrop[hidden] {
+  display: none;
 }
 .modal-card {
   width: min(100%, 360px);

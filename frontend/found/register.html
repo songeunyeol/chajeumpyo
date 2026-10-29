@@ -46,6 +46,7 @@
           <option value="" selected>층 모름</option>
         </select>
       </div>
+      <div class="map-box" id="registerMap" aria-label="고른 건물 지도" hidden></div>
     </div>
 
     <label class="field" style="margin-bottom:8px">
@@ -53,6 +54,7 @@
       <textarea id="locationDetail" class="compact" rows="2" placeholder="예: 3층 엘리베이터 앞 벤치 위, 204호 강의실 뒤쪽 책상"></textarea>
     </label>
     <p class="note" id="locNote" style="margin-top:0;margin-bottom:4px">보관처에 맡겨도 교무처 직원이 볼 수 있게 같이 전달돼요.</p>
+    <p class="note danger" id="locStatus" hidden></p>
   </div>
 
   <p class="section">보관<span style="color:var(--danger);margin-left:2px">*</span></p>
@@ -78,6 +80,7 @@
     <button type="button" class="btn" id="submitBtn" style="width:100%;cursor:pointer">등록 완료</button>
   </div>
 </main>
+<script src="../naver-map.js"></script>
 <script src="api.js"></script>
 <script src="../leave-guard.js"></script>
 <script>
@@ -105,6 +108,7 @@
   let autoBuilding = null;
   /** autoBuilding을 현재 위치가 아니라 사진 위치(EXIF, 사진 화면에서 건물로 바꿔 둠)로 골랐는지 */
   let fromPhoto = false;
+  let paintedBuilding = "";
   let submitting = false;
 
   // 분석 결과 (uploading.html이 저장). 없으면 사진부터
@@ -132,8 +136,8 @@
   } catch (_) {}
   if (draft) {
     LeaveGuard.install({
-      title: "분실물 등록을 그만하시겠습니까?",
-      message: "다시 처음부터 시작해야 합니다. 그래도 나가시겠습니까?",
+      title: "습득물 등록을 그만할까요?",
+      message: "지금까지 올린 내용은 지워져요. 그래도 나갈까요?",
       leaveLabel: "그만하기",
       leaveTo: "photo.html",
       onLeave: () => {
@@ -198,6 +202,20 @@
     return `${m}월 ${day}일(${dow}) ${hh}:${mm}`;
   }
 
+  function paintRegisterMap() {
+    const box = document.getElementById("registerMap");
+    const name = (foundBuildingSelect.selectedOptions[0]?.textContent || "").trim();
+    const known = name && window.NaverCampusMap && window.NaverCampusMap.CAMPUS_BUILDINGS[name];
+    if (!known) {
+      paintedBuilding = "";
+      box.hidden = true;
+      return;
+    }
+    if (name === paintedBuilding) return;
+    paintedBuilding = name;
+    window.NaverCampusMap.mount(box, { buildingName: name, caption: `서경대 ${name}` });
+  }
+
   // 주운 위치·자세한 위치는 그 자리에 둠과 보관처에 맡김이 같이 쓴다(맡겨도 교무처 직원에게 전달된다).
   // 위치로 가까운 건물을 찾았으면 미리 골라 두고, 보관처 칸은 맡길 때만 보인다
   function syncPanels() {
@@ -222,6 +240,7 @@
       locPermToggle.textContent = "위치로 찾기";
       locPermToggle.classList.add("is-manual");
     }
+    paintRegisterMap();
   }
 
   try {
@@ -256,14 +275,22 @@
     const located = await FoundApi.nearestBuilding(buildings);
     if (seq !== locateSeq) return;
     locating = false;
+    const locStatus = document.getElementById("locStatus");
+    const tellLoc = (text) => {
+      locStatus.hidden = !text;
+      locStatus.textContent = text;
+    };
     if (located.status === "granted") {
       hasLocationPermission = true;
       browserPermission = "granted";
+      tellLoc(located.building ? "" : "근처에서 건물을 찾지 못했어요. 목록에서 골라 주세요.");
     } else if (located.status === "denied") {
       hasLocationPermission = false;
       browserPermission = "denied";
+      tellLoc("위치 권한을 허용하지 않아 건물을 찾지 못했어요. 목록에서 골라 주세요.");
     } else {
       hasLocationPermission = browserPermission === "granted";
+      tellLoc("위치를 받지 못했어요. 목록에서 건물을 골라 주세요.");
     }
     try {
       if (located.status === "granted") sessionStorage.setItem("locationConsent", "granted");
@@ -288,6 +315,7 @@
 
   foundBuildingSelect.addEventListener("change", () => {
     foundBuildingSelect.style.boxShadow = "";
+    paintRegisterMap();
   });
 
   choiceInplace.addEventListener("click", () => {
