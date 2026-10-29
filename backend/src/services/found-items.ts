@@ -139,6 +139,7 @@ async function processPhoto(image: Buffer, beforeStore?: (analysis: Analysis | n
   const original = await normalizeImage(image);
   // 얼굴·글자 영역을 먼저 가린 사본만 AI로 보내고 공개본·후보용 사본도 이것으로 만든다 (QA B3, T4).
   // 가리기에 실패하면 원본을 보내지 않고 AI 없이 검토 대기로 저장한다. 원본은 관리자만 본다.
+  // 저장하는 원본도 가린 사본으로 둔다 (QA B3 결정 10/29). 가리기에 실패했을 때만 가리지 않은 원본이 남는다(검토 대기, 관리자만).
   const masked = await premaskSafely(original);
   if (masked && (masked.faces || masked.texts)) {
     logger.info({ faces: masked.faces, texts: masked.texts }, "AI 전송 전 가림");
@@ -164,7 +165,7 @@ async function processPhoto(image: Buffer, beforeStore?: (analysis: Analysis | n
     makePublicImage(masked?.image ?? original, { sensitive, regions: ex?.sensitiveRegions ?? [] }),
     makeThumbImage(masked?.image ?? original),
   ]);
-  await storage.put(keys.original, original, "image/jpeg");
+  await storage.put(keys.original, masked?.image ?? original, "image/jpeg");
   await storage.put(keys.public, publicImage, "image/jpeg");
   await storage.put(keys.thumb, thumbImage, "image/jpeg");
   return { id, keys, analysis, sensitive };

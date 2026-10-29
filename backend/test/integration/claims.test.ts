@@ -120,21 +120,30 @@ describe("기준 2. 종류만 적거나 특징을 나열하면 통과하지 못�
     expect((await claim(r, it1.id)).body.result).toBe("FAIL");
   });
 
-  it("저장되지 않은 종류의 특징만 맞혀도 FAIL", async () => {
+  it("저장되지 않은 종류의 특징만 적으면 통과가 아니라 숨은 특징을 묻는다", async () => {
     const it1 = await item();
     const r = await newReport({ features: [feature("text", "홍길동")] });
-    expect((await claim(r, it1.id)).body.result).toBe("FAIL");
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    expect(res.body.question).not.toContain("곰돌이");
   });
 });
 
 describe("기준 3. 색·브랜드는 일치로 세지 않고, 모순일 때만 반영한다", () => {
-  it("종류·색·브랜드·장소만 맞으면(설명에 특징 없음) 400, 확인 기회는 쓰지 않는다", async () => {
+  it("종류·색·브랜드·장소만 맞으면(설명에 특징 없음) 통과가 아니라 유도 질문, 틀리면 실패로 센다 (10/29)", async () => {
     const it1 = await item();
     const r = await newReport({ color: "WHITE", brand: "애플 Apple", features: [] });
     const res = await claim(r, it1.id);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatchObject({ code: "VALIDATION_ERROR", details: [{ path: "description" }] });
-    expect(await prisma.matchAttempt.count()).toBe(0);
+    expect(res.body.result).toBe("BORDERLINE");
+    expect(res.body.question).toMatch(/^이 .+에 붙어 있는 스티커는 어떤 그림이나 글자인가요\?$/);
+    const wrong = await answer(res.body.attemptId, "토끼");
+    expect(wrong.body).toEqual({ result: "FAIL", attemptsLeft: 2, inPersonOnly: false });
+  });
+
+  it("특징이 모순이면 질문 없이 FAIL", async () => {
+    const it1 = await item();
+    const r = await newReport({ features: [feature("sticker", "토끼 스티커")] });
+    expect((await claim(r, it1.id)).body.result).toBe("FAIL");
   });
 
   it("특징은 맞는데 색이 모순이면 BORDERLINE", async () => {
@@ -156,7 +165,7 @@ describe("기준 4. 경계 판정은 신고에 적지 않은 특징으로 질문
     const r = await newReport({ features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "왼쪽 위 긁힘")] });
     const res = await claim(r, it1.id);
     expect(res.body.result).toBe("BORDERLINE");
-    expect(res.body.question).toBe("달려 있는 키링은 어떤 모양인가요?"); // sticker·scratch는 신고에 있음 → keyring
+    expect(res.body.question).toMatch(/^이 .+에 달려 있는 키링은 어떤 모양인가요\?$/); // sticker·scratch는 신고에 있음 → keyring
     expect(Object.keys(res.body).sort()).toEqual(["attemptId", "question", "result", "reused"]);
     expect(res.body.question).not.toContain("고양이");
   });
@@ -335,7 +344,7 @@ describe("기준 8. 확인 질문 정답 판정", () => {
     const r = await newReport({ color: "BLACK", features: [feature("scratch", "오른쪽 아래")] });
     const res = await claim(r, it1.id);
     expect(res.body.result).toBe("BORDERLINE");
-    expect(res.body.question).toBe("붙어 있는 스티커는 어떤 그림이나 글자인가요?");
+    expect(res.body.question).toMatch(/^이 .+에 붙어 있는 스티커는 어떤 그림이나 글자인가요\?$/);
     return { attemptId: res.body.attemptId as string, itemId: it1.id };
   }
 

@@ -416,7 +416,7 @@ describe("기준 10. 사진은 서명된 링크로만 볼 수 있다", () => {
 });
 
 describe("기준 11. AI에는 얼굴·글자를 가린 사본만 보낸다 (QA B3)", () => {
-  it("가린 사본이 AI로 가고, 공개본도 가린 사본으로 만든다. 원본은 관리자용으로만 남는다", async () => {
+  it("가린 사본이 AI로 가고, 공개본과 저장 원본도 가린 사본으로 만든다 (10/29 결정)", async () => {
     const masked = await sharp({ create: { width: 400, height: 300, channels: 3, background: "#6b6b6b" } })
       .jpeg()
       .toBuffer();
@@ -437,8 +437,9 @@ describe("기준 11. AI에는 얼굴·글자를 가린 사본만 보낸다 (QA B
     expect(res.status).toBe(201);
     expect(aiInput).toBe(masked);
     const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: res.body.id } });
-    // 원본은 가리기 전 사진(정규화본), 공개본은 단색인 가린 사본에서 나와 거의 평평하다
-    expect(await readLocalFile(d.imageOriginalKey as string)).toEqual(premaskInput);
+    // 저장 원본도 가린 사본이다(가리기 전 사진은 남기지 않는다). 공개본은 단색인 가린 사본에서 나와 거의 평평하다
+    expect(premaskInput).not.toBeNull();
+    expect(await readLocalFile(d.imageOriginalKey as string)).toEqual(masked);
     expect(await sharpness((await readLocalFile(d.imagePublicKey as string)) as Buffer)).toBeLessThan(3);
   });
 
