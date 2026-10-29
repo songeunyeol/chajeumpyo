@@ -142,6 +142,38 @@ describe("Gemini 확인 질문 답 판정", () => {
   });
 });
 
+describe("Gemini 특징 대조: 규칙이 모순으로 본 것만 AI가 다시 본다 (10/29 평가)", () => {
+  const stored = { color: null, brand: null, features: [{ key: "sticker" as const, value: "곰돌이 스티커" }] };
+  const reported = (value: string) => ({ color: null, brand: null, features: [{ key: "sticker" as const, value }] });
+
+  it("AI가 같은 대상이라 하면 일치로 바꾸고, 아니면 모순 그대로", async () => {
+    const yes = fakeModels({ lite: { verdict: "MATCH" } });
+    expect(
+      (await createGeminiClient(yes.models, CONFIG).compareFeatures(reported("곰 캐릭터 스티커"), stored)).features[0]
+        ?.verdict,
+    ).toBe("MATCH");
+    expect(JSON.stringify(yes.calls[0]?.params.contents)).toContain("곰 캐릭터 스티커");
+    const no = fakeModels({ lite: { verdict: "NO_MATCH" } });
+    expect(
+      (await createGeminiClient(no.models, CONFIG).compareFeatures(reported("토끼 스티커"), stored)).features[0]
+        ?.verdict,
+    ).toBe("CONTRADICT");
+  });
+
+  it("규칙으로 일치면 AI를 부르지 않고, AI가 실패하면 모순 그대로", async () => {
+    const quiet = fakeModels({ lite: { verdict: "NO_MATCH" } });
+    expect(
+      (await createGeminiClient(quiet.models, CONFIG).compareFeatures(reported("곰돌이"), stored)).features[0]?.verdict,
+    ).toBe("MATCH");
+    expect(quiet.calls).toHaveLength(0);
+    const down = fakeModels({ lite: new Error("down"), flash: new Error("down") });
+    expect(
+      (await createGeminiClient(down.models, CONFIG).compareFeatures(reported("곰 캐릭터 스티커"), stored)).features[0]
+        ?.verdict,
+    ).toBe("CONTRADICT");
+  });
+});
+
 describe("Gemini 임베딩", () => {
   it("요청 차원으로 받고 길이 1로 정규화", async () => {
     const { models } = fakeModels({});
