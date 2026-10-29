@@ -177,9 +177,18 @@ describe("기준 4. 경계 판정은 신고에 적지 않은 특징으로 질문
     expect(res.body.question).not.toContain("고양이");
   });
 
-  it("물어볼 특징이 남아 있지 않으면 FAIL", async () => {
+  it("적지 않은 특징이 없고 일치가 있으면 모순된 특징을 객관식으로 다시 묻는다 (10/29 평가)", async () => {
     const it1 = await item({ features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "오른쪽 아래 긁힘")] });
     const r = await newReport({ features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "왼쪽 위 긁힘")] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    expect(res.body.question).toMatch(/흠집은 어느 쪽에 있나요/);
+    expect(res.body.questions[0].options).toContain("오른쪽 아래 긁힘");
+  });
+
+  it("적지 않은 특징이 없고 일치도 없으면 FAIL (찍을 기회를 늘리지 않는다)", async () => {
+    const it1 = await item({ features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "오른쪽 아래 긁힘")] });
+    const r = await newReport({ features: [feature("sticker", "토끼 스티커"), feature("scratch", "왼쪽 위 긁힘")] });
     expect((await claim(r, it1.id)).body.result).toBe("FAIL");
   });
 

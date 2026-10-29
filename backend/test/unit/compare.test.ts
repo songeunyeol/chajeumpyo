@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { judgeAnswer } from "../../src/matching/answer";
-import { compareByRules, compareColor } from "../../src/matching/compare";
+import { compareBrand, compareByRules, compareColor } from "../../src/matching/compare";
 
 const stored = { color: "WHITE", brand: "Apple", features: [{ key: "sticker" as const, value: "곰돌이 스티커" }] };
 
@@ -42,6 +42,34 @@ describe("규칙 기반 대조", () => {
       { reportedKey: "other", verdict: "MATCH", storedKey: "pattern" },
       { reportedKey: "other", verdict: "UNKNOWN", storedKey: null },
     ]);
+  });
+
+  it("10/29 평가에서 진짜 주인이 떨어지던 표현: 이니셜, 한 글자, 색 표기, 브랜드 한글", () => {
+    const f = (key: string, value: string) => ({ key: key as "text", value });
+    const run = (reported: string, storedValue: string, key = "text") =>
+      compareByRules(
+        { color: null, brand: null, features: [f(key, reported)] },
+        { color: null, brand: null, features: [f(key, storedValue)] },
+      ).features[0]?.verdict;
+    expect(run("J.H 각인", "안쪽에 J.H 각인")).toBe("MATCH");
+    expect(run("별 스티커", "케이스 안 별 스티커", "sticker")).toBe("MATCH");
+    expect(run("액정 우측 상단 금 간 자국", "화면 오른쪽 위 금", "scratch")).toBe("MATCH");
+    expect(run("빨간색 케이스", "빨간 안경집", "case")).toBe("MATCH");
+    expect(compareBrand("삼성", "Samsung")).toBe("MATCH");
+    expect(compareBrand("애플", "Apple")).toBe("MATCH");
+    expect(compareBrand("LG", "Apple")).toBe("CONTRADICT");
+  });
+
+  it("종류 이름이나 색·위치만 겹치면 일치가 아니다 (사칭 방지)", () => {
+    const f = (key: string, value: string) => ({ key: key as "case", value });
+    const run = (reported: string, storedValue: string, key = "case") =>
+      compareByRules(
+        { color: null, brand: null, features: [f(key, reported)] },
+        { color: null, brand: null, features: [f(key, storedValue)] },
+      ).features[0]?.verdict;
+    expect(run("파란 안경집", "빨간 안경집")).toBe("CONTRADICT");
+    expect(run("빨간 가죽 케이스", "빨간 하트 키링", "keyring")).toBe("CONTRADICT");
+    expect(run("왼쪽 위 고양이 스티커", "왼쪽 위 곰돌이 스티커", "sticker")).toBe("CONTRADICT");
   });
 
   it("색(12색 키): 같은 색 일치, 이웃 색 확인 불가, 다른 색 모순, 기타·모르는 값 확인 불가", () => {
