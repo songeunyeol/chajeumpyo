@@ -18,7 +18,7 @@
     <!-- 확인을 통과한 뒤에만 연다. 주소로 바로 들어오면 통과라고 보여 주지 않는다 -->
     <section class="pass-intro" id="passIntro" hidden aria-live="polite">
       <div class="pass-intro-inner">
-        <span class="pass-badge" id="passBadge">✓ 확인 통과</span>
+        <span class="pass-badge" id="passBadge"></span>
         <h1>내 물건이 맞아요</h1>
         <p class="lead" style="margin-bottom:0">이제 사진과 맡긴 곳을 볼 수 있어요.</p>
       </div>
@@ -96,7 +96,7 @@
       if (backLink) backLink.href = "home.html";
       pageStatus.hidden = false;
       pageStatus.classList.add("danger");
-      pageStatus.textContent = message;
+      pageStatus.textContent = LostApi.itemBlockedMessage(err);
       return;
     }
     expireNote.hidden = false;

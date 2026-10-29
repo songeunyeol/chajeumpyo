@@ -97,7 +97,7 @@
     if (backLink) backLink.href = "home.html";
     pageStatus.hidden = false;
     pageStatus.classList.add("danger");
-    pageStatus.textContent = LostApi.friendlyMessage(err);
+    pageStatus.textContent = LostApi.itemBlockedMessage(err);
   }
 
   function showPassed() {
