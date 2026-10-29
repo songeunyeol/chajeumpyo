@@ -28,7 +28,7 @@
     <div class="field">
       <div class="field-head">
         <label for="foundBuildingSelect"><span>주운 위치 (건물)</span></label>
-        <span class="loc-chip is-manual" style="cursor:default">위치 권한 없음 · 직접 선택</span>
+        <span class="loc-chip is-manual" id="manualChip" style="cursor:default">위치 권한 없음 · 직접 선택</span>
       </div>
       <select id="foundBuildingSelect" aria-label="주운 건물 선택">
         <option value="" selected>주운 건물을 선택해 주세요</option>
@@ -47,7 +47,7 @@
       <span>자세한 위치 설명</span>
       <textarea id="locationDetail" class="compact" rows="2" placeholder="예: 3층 엘리베이터 앞 벤치 위, 204호 강의실 뒤쪽 책상"></textarea>
     </label>
-    <p class="note" style="margin-top:0;margin-bottom:4px">위치 권한이 없어 주운 건물을 직접 고르고 자세한 위치 설명을 적어 주세요.</p>
+    <p class="note" id="locNote" style="margin-top:0;margin-bottom:4px">주운 건물을 고르고 자세한 위치를 적어 주세요. 보관처에 맡겨도 교무처 직원이 확인할 수 있게 같이 전달돼요.</p>
   </div>
 
   <p class="section">보관</p>
@@ -61,7 +61,7 @@
 
   <div class="handover-panel" id="handoverPanel">
     <label class="field" style="margin-bottom:0">
-      <span>맡긴 건물 선택</span>
+      <span>맡긴 곳</span>
       <select id="handoverSelect" aria-label="보관처 건물 선택">
         <option value="">혜인관 · 교무처</option>
       </select>
@@ -125,10 +125,14 @@
     return `${m}월 ${day}일(${dow}) ${hh}:${mm}`;
   }
 
+  // 주운 위치·자세한 위치는 그 자리에 둠과 보관처에 맡김이 같이 쓴다(맡겨도 교무처 직원에게 전달된다).
+  // 위치로 가까운 건물을 찾았으면 미리 골라 두고, 보관처 칸은 맡길 때만 보인다
   function syncPanels() {
-    const showManual = (!hasLocationPermission || !autoBuilding) && mode === "inplace";
-    manualLocPanel.classList.toggle("is-open", showManual);
+    manualLocPanel.classList.add("is-open");
     handoverPanel.classList.toggle("is-open", mode === "handover");
+    const auto = hasLocationPermission && autoBuilding;
+    document.getElementById("manualChip").hidden = !!auto;
+    if (auto && !foundBuildingSelect.value) foundBuildingSelect.value = String(autoBuilding.id);
 
     if (hasLocationPermission && autoBuilding) {
       locPermToggle.textContent = `가까운 건물: ${autoBuilding.name}`;
@@ -229,19 +233,19 @@
 
   submitBtn.addEventListener("click", async () => {
     if (submitting || !draft) return;
-    const needManualLoc = (!hasLocationPermission || !autoBuilding) && mode === "inplace";
-    if (needManualLoc && !foundBuildingSelect.value) {
+    // 그 자리에 두면 건물이 필요하고, 맡기면 모를 때 비워도 된다
+    if (mode === "inplace" && !foundBuildingSelect.value) {
       foundBuildingSelect.style.boxShadow = "inset 0 0 0 2px var(--danger)";
       foundBuildingSelect.focus();
       return;
     }
-    const buildingId = needManualLoc ? Number(foundBuildingSelect.value) : autoBuilding?.id;
+    const buildingId = foundBuildingSelect.value ? Number(foundBuildingSelect.value) : undefined;
     const body = {
       confirmToken: draft.confirmToken,
       storageType: mode === "handover" ? "HANDED_OVER" : "IN_PLACE",
       ...(buildingId ? { buildingId } : {}),
       ...(mode === "handover" ? { storagePlaceId: Number(handoverSelect.value) } : {}),
-      ...(needManualLoc && locationDetail.value.trim() ? { locationDetail: locationDetail.value.trim() } : {}),
+      ...(locationDetail.value.trim() ? { locationDetail: locationDetail.value.trim() } : {}),
     };
     // AI가 본 것과 다르게 골랐을 때만 보낸다
     if (draft.category && itemSelect.value !== aiItem) Object.assign(body, pickedItem());

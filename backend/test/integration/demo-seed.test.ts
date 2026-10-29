@@ -43,7 +43,7 @@ describe("seedDemoItems", () => {
     expect(await prisma.foundItem.count()).toBe(0);
   });
 
-  it("두 번 돌려도 시드 8개 그대로, 사진·임베딩·숨은 특징이 있고 기한이 없다", async () => {
+  it("두 번 돌려도 시드 개수 그대로, 사진·임베딩·숨은 특징이 있고 기한이 없다", async () => {
     await seedPlaces();
     expect(await seedDemoItems()).toEqual({ created: DEMO_SEED_ITEMS.length, updated: 0 });
     expect(await seedDemoItems()).toEqual({ created: 0, updated: DEMO_SEED_ITEMS.length });

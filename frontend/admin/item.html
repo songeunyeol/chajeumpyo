@@ -31,6 +31,7 @@
     <table class="kv">
       <tr><th>상태</th><td id="kvStatus"></td></tr>
       <tr><th>주운 곳</th><td id="kvPlace"></td></tr>
+      <tr><th>자세한 위치</th><td id="kvDetail"></td></tr>
       <tr><th>보관</th><td id="kvStorage"></td></tr>
       <tr><th>주운 시각</th><td id="kvFound"></td></tr>
       <tr><th>보관 기한</th><td id="kvExpires"></td></tr>
@@ -201,6 +202,7 @@
     A.show($("lockBanner"), !!item.claimLockedAt && EDITABLE.includes(item.status));
     $("kvStatus").textContent = A.STATUS[item.status]?.label || item.status;
     $("kvPlace").textContent = A.placeText(item);
+    $("kvDetail").textContent = item.locationDetail || "적지 않음";
     $("kvStorage").textContent = !item.storageType
       ? "정하기 전"
       : item.storageType === "HANDED_OVER"
