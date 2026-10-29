@@ -2,10 +2,10 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app";
-import { hotspots } from "../../src/services/hotspots";
+import { alertHotspot, hotspots } from "../../src/services/hotspots";
 import { createAdmin, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
-import { createBuilding, createFoundItem } from "../helpers/fixtures";
+import { createBuilding, createFoundItem, createStoragePlace } from "../helpers/fixtures";
 
 let app: ReturnType<typeof createApp>;
 let admin: string;
@@ -261,5 +261,26 @@ describe("기준 12. 분실 신고가 반복되는 곳 (10/29)", () => {
     });
     expect(reportHotspots[0].summary).toBe("혜인관 무선 이어폰 분실 신고 3건 (못 찾음 2건, 같은 곳 습득 등록 1건)");
     expect(reportHotspots[0].action).toContain("QR");
+  });
+});
+
+describe("기준 13. 구간이 높음이 되면 관리자에게 미리 알림, 7일에 한 번 (10/29)", () => {
+  it("높음 구간 등록 → 교무처 관리자 알림 1번, 같은 구간 다시 등록해도 7일 안엔 안 보냄, 시드는 안 봄", async () => {
+    const place = await createStoragePlace("교무처", HYE, "CENTER");
+    const center = await createAdmin("gyomu@skuniv.ac.kr", "adminpass1", place.id);
+    const now = kst("2026-10-10", 20);
+    // 최근 30일 기준: 2건이면 점수 2 + 보관 1 + 증가 1 = 4(보통), 3건이면 5.5(높음)
+    await add(LIB, "CHARGER", kst("2026-10-07", 13, 30));
+    expect(await alertHotspot((await add(LIB, "CHARGER", kst("2026-10-08", 14))).id, now)).toBe(0);
+    const third = await add(LIB, "CHARGER", kst("2026-10-09", 14, 10));
+    expect(await alertHotspot(third.id, now)).toBe(1);
+    const notes = await prisma.notification.findMany({ where: { userId: center.id } });
+    expect(notes).toHaveLength(1);
+    expect(notes[0]?.message).toMatch(
+      /^반복 분실 알림 · 학술정보관 오후 1시~3시 기타 전자기기 분실 3건 .*제안: .*콘센트/,
+    );
+    expect(await alertHotspot((await add(LIB, "CHARGER", kst("2026-10-10", 13))).id, now)).toBe(0);
+    const seed = await add(LIB, "CHARGER", kst("2026-10-10", 13, 20), true);
+    expect(await alertHotspot(seed.id, now)).toBe(0);
   });
 });
