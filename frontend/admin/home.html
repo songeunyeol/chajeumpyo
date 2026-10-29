@@ -32,7 +32,7 @@
     <b id="countAll" style="color:var(--green)"></b>
   </a>
   <a class="choice" id="linkStats" href="stats.html">
-    <span>분실 다발 통계<small>어느 건물, 몇 시에 많이 잃어버리는지</small></span>
+    <span>분실 다발 통계<small id="topPriority">어느 건물, 몇 시에 많이 잃어버리는지</small></span>
     <span style="color:var(--green);font-weight:650">→</span>
   </a>
   <a class="choice" id="linkAlerts" href="alerts.html">
@@ -71,6 +71,14 @@
       document.getElementById("countAll").textContent = `${all}개`;
     })
     .catch((err) => AdminApi.showError(error, err));
+
+  // 가장 먼저 손볼 곳 한 줄 (최근 30일)
+  AdminApi.hotspots({ from: AdminApi.seoulDate(-29), to: AdminApi.seoulDate(0) })
+    .then((r) => {
+      const top = (r.priorities || [])[0];
+      if (top) document.getElementById("topPriority").textContent = `먼저 손볼 곳: ${top.summary}`;
+    })
+    .catch(() => {});
 
   AdminApi.notifications()
     .then((r) => {

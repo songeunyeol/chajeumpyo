@@ -2445,6 +2445,98 @@
                     },
                     "topInsight": {
                       "type": "string"
+                    },
+                    "priorities": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "building": {
+                            "type": "string"
+                          },
+                          "startHour": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 23
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "WALLET",
+                              "ID_CARD",
+                              "DRIVER_LICENSE",
+                              "PAYMENT_CARD",
+                              "TRANSIT_CARD",
+                              "OTHER_CARD",
+                              "PHONE",
+                              "EARPHONE",
+                              "SMARTWATCH",
+                              "TABLET",
+                              "LAPTOP",
+                              "CHARGER",
+                              "BAG",
+                              "CLOTHING",
+                              "HAT",
+                              "BOOK",
+                              "GLASSES",
+                              "ACCESSORY",
+                              "CASH",
+                              "UMBRELLA",
+                              "TUMBLER",
+                              "KEY",
+                              "STATIONERY",
+                              "ETC"
+                            ]
+                          },
+                          "count": {
+                            "type": "integer"
+                          },
+                          "recent": {
+                            "type": "integer"
+                          },
+                          "earlier": {
+                            "type": "integer"
+                          },
+                          "trend": {
+                            "type": "string",
+                            "enum": [
+                              "UP",
+                              "SAME",
+                              "DOWN"
+                            ]
+                          },
+                          "unclaimed": {
+                            "type": "integer"
+                          },
+                          "level": {
+                            "type": "string",
+                            "enum": [
+                              "HIGH",
+                              "MEDIUM",
+                              "LOW"
+                            ]
+                          },
+                          "summary": {
+                            "type": "string"
+                          },
+                          "action": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "building",
+                          "startHour",
+                          "category",
+                          "count",
+                          "recent",
+                          "earlier",
+                          "trend",
+                          "unclaimed",
+                          "level",
+                          "summary",
+                          "action"
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -2455,7 +2547,8 @@
                     "byBuilding",
                     "byHour",
                     "byCategory",
-                    "topInsight"
+                    "topInsight",
+                    "priorities"
                   ]
                 }
               }
