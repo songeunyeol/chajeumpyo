@@ -41,6 +41,24 @@ export const HotspotPriority = z.object({
 });
 export type HotspotPriority = z.infer<typeof HotspotPriority>;
 
+/**
+ * 분실 신고가 반복되는 곳 (10/29). 분실 신고(학생 민원)를 건물 × 종류로 묶어 2건 이상인 곳을 찾고,
+ * 같은 곳·종류의 습득 등록 수와 견줘 "찾는 사람은 많은데 들어오는 물건이 적은 곳"을 드러낸다. 체험 계정 신고는 뺀다.
+ */
+export const ReportHotspot = z.object({
+  /** 건물을 모른다고 한 신고는 null */
+  building: z.string().nullable(),
+  category: Category,
+  reports: z.number().int(),
+  /** 아직 열려 있는(못 찾은) 신고 수 */
+  open: z.number().int(),
+  /** 같은 기간·건물·종류의 습득 등록 수 (건물 모름이면 종류만) */
+  found: z.number().int(),
+  summary: z.string(),
+  action: z.string(),
+});
+export type ReportHotspot = z.infer<typeof ReportHotspot>;
+
 export const HotspotResponse = z.object({
   from: Day,
   to: Day,
@@ -55,5 +73,7 @@ export const HotspotResponse = z.object({
   topInsight: z.string(),
   /** 먼저 손볼 구간, 우선순위 높은 순 최대 5개. 반복(2건 이상)이 없으면 빈 배열 */
   priorities: z.array(HotspotPriority),
+  /** 분실 신고가 반복되는 곳, 신고 많은 순 최대 5개 */
+  reportHotspots: z.array(ReportHotspot),
 });
 export type HotspotResponse = z.infer<typeof HotspotResponse>;

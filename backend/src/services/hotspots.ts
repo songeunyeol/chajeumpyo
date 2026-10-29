@@ -5,6 +5,7 @@ import {
   type HotspotPriority,
   type HotspotQuery,
   type HotspotResponse,
+  type ReportHotspot,
 } from "@chajeumpyo/shared";
 import { prisma } from "../lib/prisma";
 
@@ -188,6 +189,48 @@ export function buildPriorities(rows: Row[], start: Date, end: Date): HotspotPri
     .map((x) => x.priority);
 }
 
+type ReportRow = { building: string | null; category: Category; open: boolean };
+type FoundKey = { building: string | null; category: Category | null };
+
+/**
+ * 분실 신고가 반복되는 곳. 건물 × 종류로 2건 이상 신고된 곳을 신고 많은 순으로.
+ * 같은 곳·종류 습득 등록이 신고보다 적으면 "주운 물건이 들어오지 않는다"고 보고 등록 안내를 제안한다.
+ */
+export function buildReportHotspots(reports: ReportRow[], found: FoundKey[]): ReportHotspot[] {
+  const groups = new Map<string, ReportRow[]>();
+  for (const r of reports) {
+    const key = `${r.building ?? ""}|${r.category}`;
+    groups.set(key, [...(groups.get(key) ?? []), r]);
+  }
+  return [...groups.entries()]
+    .filter(([, rows]) => rows.length >= MIN_INSIGHT_COUNT)
+    .map(([key, rows]) => {
+      const [b, category] = key.split("|") as [string, Category];
+      const building = b || null;
+      const open = rows.filter((r) => r.open).length;
+      const foundCount = found.filter(
+        (f) => f.category === category && (building === null || f.building === building),
+      ).length;
+      const where = building ?? "건물 모름";
+      const label = CATEGORY_LABELS[category];
+      const action =
+        foundCount < rows.length
+          ? `찾는 신고보다 들어온 물건이 적어요. ${building ?? "건물"} 출입구·강의실에 "주운 물건은 사진 한 장으로 등록" QR 안내를 붙여요.`
+          : `들어온 물건은 있어요. 신고자에게 후보 확인을 안내하고, 못 찾은 신고는 교무처에서 직접 확인해요.`;
+      return {
+        building,
+        category,
+        reports: rows.length,
+        open,
+        found: foundCount,
+        summary: `${where} ${label} 분실 신고 ${rows.length}건 (못 찾음 ${open}건, 같은 곳 습득 등록 ${foundCount}건)`,
+        action,
+      };
+    })
+    .sort((a, b) => b.reports - a.reports || b.open - a.open || a.summary.localeCompare(b.summary, "ko"))
+    .slice(0, MAX_PRIORITIES);
+}
+
 /** GET /admin/stats/hotspots (F-15). 실제 데이터만 집계하고, 없으면 시드 데이터로 집계해 표시한다. */
 export async function hotspots(query: HotspotQuery, now = new Date()): Promise<HotspotResponse> {
   const to = query.to ?? kstDate(now);
@@ -205,6 +248,11 @@ export async function hotspots(query: HotspotQuery, now = new Date()): Promise<H
     FROM found_item f JOIN building b ON b.id = f.building_id
     WHERE f.found_at >= ${start} AND f.found_at < ${end}`;
 
+  const reports = await prisma.$queryRaw<ReportRow[]>`
+    SELECT b.name AS building, r.category::text AS category, (r.status = 'OPEN') AS open
+    FROM lost_report r JOIN "user" u ON u.id = r.user_id LEFT JOIN building b ON b.id = r.building_id
+    WHERE u.role <> 'DEMO' AND r.created_at >= ${start} AND r.created_at < ${end}`;
+
   const real = all.filter((r) => !r.isSeed);
   const isSeedData = real.length === 0 && all.length > 0;
   const rows = isSeedData ? all : real;
@@ -219,5 +267,6 @@ export async function hotspots(query: HotspotQuery, now = new Date()): Promise<H
     byCategory: ranked(countBy(rows, (r) => r.category)).map(([category, count]) => ({ category, count })),
     topInsight: buildInsight(rows),
     priorities: buildPriorities(rows, start, end),
+    reportHotspots: buildReportHotspots(reports, real),
   };
 }
