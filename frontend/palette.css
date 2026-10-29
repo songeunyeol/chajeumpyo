@@ -711,6 +711,8 @@ h1 {
   flex-direction: column;
   overflow: hidden;
 }
+/* 확인을 통과하기 전에는 hidden으로 숨긴다. 위 display: flex가 hidden을 덮지 않게 한다 */
+.pass-to-item-viewport[hidden], .pass-intro[hidden] { display: none; }
 .pass-intro {
   position: absolute;
   inset: 0;

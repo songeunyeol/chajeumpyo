@@ -263,6 +263,12 @@
    * @param {unknown} err
    * @returns {string}
    */
+  /** 확인 결과 화면에 주소로 바로 들어왔거나 볼 수 없는 물건일 때 */
+  function itemBlockedMessage(err) {
+    if (err instanceof ApiError && ["VALIDATION_ERROR", "NOT_FOUND", "FORBIDDEN"].includes(err.code))
+      return "확인 질문을 통과한 물건만 볼 수 있어요.";
+    return friendlyMessage(err);
+  }
   function friendlyMessage(err) {
     if (!(err instanceof ApiError)) return "알 수 없는 문제가 생겼어요. 다시 시도해 주세요.";
     if (err.code === "VALIDATION_ERROR")
@@ -668,6 +674,7 @@
     kstParts,
     kstIso,
     adjustLostWindow,
+    itemBlockedMessage,
     lostRange,
     formatKst,
     formatRange,
