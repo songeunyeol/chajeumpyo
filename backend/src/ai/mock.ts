@@ -235,4 +235,9 @@ export const mockAiClient: AiClient = {
       ? "MATCH"
       : "NO_MATCH";
   },
+
+  /** 정답은 저장 값 그대로, 오답은 호출한 쪽의 준비된 보기로 */
+  async quizOptions({ stored }) {
+    return { correct: stored, distractors: [] };
+  },
 };

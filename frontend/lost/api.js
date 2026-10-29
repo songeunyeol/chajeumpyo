@@ -767,7 +767,7 @@
 
     // ── 일치 판정 ──
     /**
-     * POST /lost-reports/:id/claims → PASS { matchedFields, foundItemId } | BORDERLINE { question } | FAIL { attemptsLeft, inPersonOnly }
+     * POST /lost-reports/:id/claims → PASS { matchedFields, foundItemId } | BORDERLINE { question, questions[{ text, options }] } | FAIL { attemptsLeft, inPersonOnly }
      * 다음 화면은 claimScreen(응답 또는 오류). 오류: 409 MATCH_LOCKED, 409 IN_PERSON_REQUIRED, 403, 429, 502
      */
     async claim(reportId, foundItemId) {
@@ -777,9 +777,13 @@
       else store.set(KEYS.foundItemId, foundItemId);
       return r;
     },
-    /** POST /claims/:attemptId/answer { answer(1~50자) } → PASS { foundItemId } | FAIL { attemptsLeft, inPersonOnly } */
+    /**
+     * POST /claims/:attemptId/answer → PASS { foundItemId } | FAIL { attemptsLeft, inPersonOnly }
+     * answer: 객관식 보기 번호 배열(질문 순서대로) → { choices }, 문자열(1~50자) → { answer }
+     */
     async answer(attemptId, answer) {
-      const r = await call(`/claims/${attemptId}/answer`, { method: "POST", body: { answer } });
+      const body = Array.isArray(answer) ? { choices: answer } : { answer };
+      const r = await call(`/claims/${attemptId}/answer`, { method: "POST", body });
       // 답 응답에는 attemptId가 없어 붙여서 저장한다 (실패 화면에서 어떤 시도였는지 알 수 있게)
       store.set(KEYS.claim, { ...r, attemptId });
       if (r.result === "PASS") store.set(KEYS.foundItemId, r.foundItemId);

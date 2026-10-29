@@ -4079,13 +4079,35 @@
                         },
                         "question": {
                           "type": "string"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "text": {
+                                "type": "string"
+                              },
+                              "options": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "text",
+                              "options"
+                            ]
+                          }
                         }
                       },
                       "required": [
                         "attemptId",
                         "reused",
                         "result",
-                        "question"
+                        "question",
+                        "questions"
                       ]
                     },
                     {
@@ -4493,7 +4515,7 @@
           }
         ],
         "summary": "확인 질문 답하기 (F-09)",
-        "description": "질문 하나당 한 번만. 질문에 나온 낱말은 답에서 빼고 판정한다. 틀리면 실패 횟수가 1 늘어난다.",
+        "description": "질문 하나당 한 번만. choices(객관식 보기 번호, 질문 순서대로)는 모두 맞아야 통과한다. answer(자유 입력)는 질문에 나온 낱말을 빼고 판정한다. 틀리면 실패 횟수가 1 늘어난다.",
         "parameters": [
           {
             "schema": {
@@ -4515,11 +4537,18 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 50
+                  },
+                  "choices": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9
+                    },
+                    "minItems": 1,
+                    "maxItems": 3
                   }
-                },
-                "required": [
-                  "answer"
-                ]
+                }
               }
             }
           }
@@ -4578,7 +4607,7 @@
             }
           },
           "400": {
-            "description": "VALIDATION_ERROR: 질문이 없는 시도",
+            "description": "VALIDATION_ERROR: 질문이 없는 시도, 보기 수가 질문 수와 다름",
             "content": {
               "application/json": {
                 "schema": {
