@@ -1,5 +1,6 @@
 // 관리자 화면 ↔ 백엔드 연결. 화면마다 이 파일 하나만 불러온다.
-// API 주소는 found/api.js와 같은 규칙: ?api=... 로 한 번 주면 기억하고, 없으면 이 페이지를 연 호스트의 4000 포트(백엔드 기본 PORT).
+// API 주소는 found/api.js와 같은 규칙: ?api=... 로 한 번 주면 기억하고, 없으면
+// 개발(정적 서버 5500 포트)은 이 호스트의 4000 포트, 배포는 같은 주소의 /api/v1.
 // 로그인 토큰은 sessionStorage에만 둔다(탭을 닫으면 사라진다).
 (function () {
   const params = new URLSearchParams(location.search);
@@ -10,7 +11,9 @@
   try {
     saved = sessionStorage.getItem("apiBase");
   } catch (_) {}
-  const API_BASE = saved || `${location.protocol}//${location.hostname}:4000/api/v1`;
+  const devStatic = location.port === "5500";
+  const API_BASE =
+    saved || (devStatic ? `${location.protocol}//${location.hostname}:4000/api/v1` : `${location.origin}/api/v1`);
 
   const AUTH_KEY = "adminAuth";
 
