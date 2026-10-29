@@ -41,10 +41,18 @@
    * 토큰이 만료되면 위젯이 스스로 새로 받는다(refresh-expired: auto). 대부분은 체크 없이 통과하고,
    * 의심스러울 때만 상자가 나타난다(appearance: interaction-only).
    * ready()는 위젯 오류(예: 도메인 미등록)나 30초 시간 초과면 실패(reject)한다. 화면은 버튼을 되돌리고 다시 누르게 한다.
+   * appearance: "always"면 상자를 늘 보여 준다(사진 화면). onToken(token|null)은 토큰을 받거나 잃을 때마다 부른다.
    */
   async function mount(
     container,
-    { onError, action = "found-analyze", getConfig = () => window.FoundApi.config(), persist = true } = {},
+    {
+      onError,
+      onToken,
+      action = "found-analyze",
+      getConfig = () => window.FoundApi.config(),
+      persist = true,
+      appearance = "interaction-only",
+    } = {},
   ) {
     const { captcha } = await getConfig();
     if (captcha.mode !== "turnstile" || !captcha.siteKey) return OFF;
@@ -62,6 +70,7 @@
     const settle = (t) => {
       token = t;
       keep(t);
+      onToken?.(t);
       if (t) {
         lastError = null;
         flush();
@@ -73,7 +82,7 @@
     const widgetId = turnstile.render(container, {
       sitekey: captcha.siteKey,
       action,
-      appearance: "interaction-only",
+      appearance,
       "refresh-expired": "auto",
       callback: (t) => settle(t),
       "expired-callback": () => settle(null),

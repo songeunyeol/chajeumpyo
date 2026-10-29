@@ -660,6 +660,12 @@
                         "null"
                       ]
                     },
+                    "locationDetail": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "isSensitive": {
                       "type": "boolean"
                     },
@@ -828,6 +834,7 @@
                     "brand",
                     "features",
                     "description",
+                    "locationDetail",
                     "isSensitive",
                     "originalImageUrl",
                     "publicImageUrl",
@@ -1458,6 +1465,12 @@
                         "null"
                       ]
                     },
+                    "locationDetail": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "isSensitive": {
                       "type": "boolean"
                     },
@@ -1626,6 +1639,7 @@
                     "brand",
                     "features",
                     "description",
+                    "locationDetail",
                     "isSensitive",
                     "originalImageUrl",
                     "publicImageUrl",
