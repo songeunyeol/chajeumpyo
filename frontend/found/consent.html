@@ -8,60 +8,72 @@
 <link rel="stylesheet" href="../palette.css">
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
+<style>.btn[aria-disabled="true"] { opacity: .45; }</style>
 </head>
 <body>
 <main class="screen">
   <header class="bar"><a class="back" href="../index.html">←</a></header>
   <h1>두 가지를 확인합니다</h1>
-  <div class="check">
+  <p class="lead">눌러서 동의해 주세요.</p>
+  <div class="check is-toggle is-off" id="aiConsent" role="checkbox" aria-checked="false" tabindex="0">
     <span class="mark">✓</span>
     <div>
-      <b>사진 외부 AI <span class="check-tag">(필수)</span></b>
-      <p>종류와 색을 읽어요. 얼굴과 카드 번호는 보내기 전에 가려요.</p>
+      <b>사진 분석 <span class="check-tag">(필수)</span></b>
+      <p>올린 사진을 AI가 보고 물건 종류와 색을 알아봐요.<br>얼굴과 카드 번호는 AI로 보내기 전에 가려요.</p>
     </div>
   </div>
-  <div class="check is-toggle" id="locConsent" role="checkbox" aria-checked="true" tabindex="0">
+  <div class="check is-toggle is-off" id="locConsent" role="checkbox" aria-checked="false" tabindex="0">
     <span class="mark">✓</span>
     <div>
       <b>위치 <span class="check-tag">(선택)</span></b>
-      <p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요. 허용하지 않으면 건물을 직접 고를 수 있어요.</p>
+      <p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요.<br>허용하지 않아도 건물을 직접 고를 수 있어요.</p>
     </div>
   </div>
   <div class="dock">
-    <a class="btn" id="consentNextBtn" href="photo.html">동의하고 계속</a>
+    <p class="note" id="consentNote" style="margin:0" hidden>사진 분석에 동의해야 등록할 수 있어요.</p>
+    <a class="btn" id="consentNextBtn" href="photo.html" aria-disabled="true">동의하고 계속</a>
   </div>
 </main>
 <script>
+  // 동의는 사용자가 직접 누른다(처음엔 모두 꺼 둠, QA 10/29). 사진 분석(필수)을 켜야 다음으로 간다
+  const aiConsent = document.getElementById("aiConsent");
   const locConsent = document.getElementById("locConsent");
   const consentNextBtn = document.getElementById("consentNextBtn");
+  const consentNote = document.getElementById("consentNote");
+  const isOn = (el) => !el.classList.contains("is-off");
 
-  try {
-    if (sessionStorage.getItem("locationConsent") === "denied") {
-      locConsent.classList.add("is-off");
-      locConsent.setAttribute("aria-checked", "false");
-    }
-  } catch (_) {}
-
-  function toggleLocConsent() {
-    const isOff = locConsent.classList.toggle("is-off");
-    locConsent.setAttribute("aria-checked", String(!isOff));
-    try {
-      sessionStorage.setItem("locationConsent", isOff ? "denied" : "granted");
-    } catch (_) {}
+  function sync() {
+    consentNextBtn.setAttribute("aria-disabled", String(!isOn(aiConsent)));
+    if (isOn(aiConsent)) consentNote.hidden = true;
   }
 
-  locConsent.addEventListener("click", toggleLocConsent);
-  locConsent.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      toggleLocConsent();
-    }
-  });
+  function bindToggle(el) {
+    const toggle = () => {
+      const off = el.classList.toggle("is-off");
+      el.setAttribute("aria-checked", String(!off));
+      sync();
+    };
+    el.addEventListener("click", toggle);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggle();
+      }
+    });
+  }
+  bindToggle(aiConsent);
+  bindToggle(locConsent);
+  sync();
 
-  consentNextBtn.addEventListener("click", () => {
+  consentNextBtn.addEventListener("click", (e) => {
+    if (!isOn(aiConsent)) {
+      e.preventDefault();
+      consentNote.hidden = false;
+      return;
+    }
     try {
-      const isOff = locConsent.classList.contains("is-off");
-      sessionStorage.setItem("locationConsent", isOff ? "denied" : "granted");
+      sessionStorage.setItem("foundConsent", "granted");
+      sessionStorage.setItem("locationConsent", isOn(locConsent) ? "granted" : "denied");
     } catch (_) {}
   });
 </script>
