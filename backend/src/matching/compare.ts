@@ -202,7 +202,14 @@ const BRAND_ALIASES: Record<string, string> = {
   레노버: "lenovo",
   에이수스: "asus",
 };
-const brandKey = (b: string) => BRAND_ALIASES[compact(b)] ?? compact(b);
+const BRAND_NAMES = [...new Set(Object.values(BRAND_ALIASES))];
+/** "삼성 갤럭시북"·"Samsung Galaxy"처럼 모델명이 붙어도 브랜드만 꺼낸다 */
+function brandKey(b: string): string {
+  const c = compact(b);
+  const alias = Object.keys(BRAND_ALIASES).find((k) => c.includes(compact(k)));
+  if (alias) return BRAND_ALIASES[alias] as string;
+  return BRAND_NAMES.find((name) => c.includes(name)) ?? c;
+}
 
 export function compareBrand(reported: string | null, stored: string | null): FeatureVerdict {
   if (!reported || !stored) return "UNKNOWN";

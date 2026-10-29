@@ -58,6 +58,8 @@ describe("규칙 기반 대조", () => {
     expect(compareBrand("삼성", "Samsung")).toBe("MATCH");
     expect(compareBrand("애플", "Apple")).toBe("MATCH");
     expect(compareBrand("LG", "Apple")).toBe("CONTRADICT");
+    expect(compareBrand("삼성 갤럭시북", "Samsung")).toBe("MATCH");
+    expect(compareBrand("Samsung Galaxy", "삼성")).toBe("MATCH");
   });
 
   it("종류 이름이나 색·위치만 겹치면 일치가 아니다 (사칭 방지)", () => {

@@ -191,6 +191,33 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
   /** 속성 추출에만 붙이는 생각 설정 */
   const extractThinking = config.thinkingLevel ? { thinkingConfig: { thinkingLevel: config.thinkingLevel } } : {};
 
+  function judgeAnswer({ question, stored, answer }: { question: string; stored: string; answer: string }) {
+    return withFallback("확인 질문 답 판정", async (model) => {
+      const res = await models.generateContent({
+        model,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `<question>${asData(question)}</question>\n<stored>${asData(stored)}</stored>\n<answer>${asData(answer)}</answer>`,
+              },
+            ],
+          },
+        ],
+        config: {
+          systemInstruction: ANSWER_INSTRUCTION,
+          temperature: 0,
+          responseMimeType: "application/json",
+          responseJsonSchema: ANSWER_RESPONSE_SCHEMA,
+        },
+      });
+      const verdict = (parseJson(res.text) as { verdict?: unknown }).verdict;
+      if (verdict !== "MATCH" && verdict !== "NO_MATCH") throw new Error("판정 형식 오류");
+      return verdict;
+    });
+  }
+
   return {
     extractFoundItem(image, mimeType) {
       return withFallback("습득물 사진 분석", async (model) => {
@@ -238,37 +265,36 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
       });
     },
 
-    /** 특징 대조는 규칙으로 한다. 같은 입력엔 항상 같은 결과가 나와야 하기 때문 */
+    /**
+     * 특징 대조는 규칙으로 먼저 한다(같은 입력엔 같은 결과). 규칙이 "모순"으로 본 특징만 AI에 같은 대상인지 다시 묻는다:
+     * "곰돌이 스티커" ↔ "곰 캐릭터 스티커"처럼 뜻은 같고 낱말이 다른 진짜 주인이 떨어지지 않게 (10/29 평가).
+     * AI가 MATCH라고 할 때만 바꾸고, 실패하거나 애매하면 모순 그대로 둔다. 같은 설명 재확인은 저장된 결과를 쓰므로 결과가 흔들리지 않는다.
+     */
     async compareFeatures(reported, stored) {
-      return compareByRules(reported, stored);
+      const result = compareByRules(reported, stored);
+      const features = await Promise.all(
+        result.features.map(async (f, i) => {
+          const r = reported.features[i];
+          if (f.verdict !== "CONTRADICT" || !r) return f;
+          for (const s of stored.features.filter((x) => x.key === f.storedKey)) {
+            try {
+              const verdict = await judgeAnswer({
+                question: "분실물의 같은 특징을 가리키는지",
+                stored: s.value,
+                answer: r.value,
+              });
+              if (verdict === "MATCH") return { ...f, verdict: "MATCH" as const };
+            } catch (err) {
+              logger.warn({ err }, "특징 다시 보기 실패 → 모순 그대로");
+            }
+          }
+          return f;
+        }),
+      );
+      return { ...result, features };
     },
 
-    judgeAnswer({ question, stored, answer }) {
-      return withFallback("확인 질문 답 판정", async (model) => {
-        const res = await models.generateContent({
-          model,
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: `<question>${asData(question)}</question>\n<stored>${asData(stored)}</stored>\n<answer>${asData(answer)}</answer>`,
-                },
-              ],
-            },
-          ],
-          config: {
-            systemInstruction: ANSWER_INSTRUCTION,
-            temperature: 0,
-            responseMimeType: "application/json",
-            responseJsonSchema: ANSWER_RESPONSE_SCHEMA,
-          },
-        });
-        const verdict = (parseJson(res.text) as { verdict?: unknown }).verdict;
-        if (verdict !== "MATCH" && verdict !== "NO_MATCH") throw new Error("판정 형식 오류");
-        return verdict;
-      });
-    },
+    judgeAnswer,
 
     quizOptions({ question, stored }) {
       return withFallback("확인 질문 보기 만들기", async (model) => {
