@@ -15,6 +15,15 @@
     --ease-rubber: cubic-bezier(0.2, 1.4, 0.32, 1);
   }
   * { box-sizing: border-box; }
+  .guide-link {
+    position: fixed;
+    top: max(14px, env(safe-area-inset-top));
+    right: clamp(16px, 5vw, 24px);
+    font-size: 13px;
+    color: #9a948c;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
   html, body { margin: 0; height: 100%; }
   body {
     color: var(--ink);
@@ -213,6 +222,7 @@
         잃어버린 사람
       </a>
     </nav>
+    <a class="guide-link" href="guide.html">체험 안내</a>
   </main>
   <script>
     document.documentElement.classList.add("js");
