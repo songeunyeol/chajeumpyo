@@ -41,10 +41,10 @@
 <script src="api.js"></script>
 <script src="../leave-guard.js"></script>
 <script>
-  // 가입 단계 중 뒤로 가기: 처음부터 다시 해야 하므로 한 번 묻는다 (QA 10/29)
+  // 가입 단계 중 뒤로 가기는 한 번 묻는다 (QA 10/29). 보낸 코드는 유효 시간 안이면 돌아와서 그대로 쓸 수 있다
   LeaveGuard.install({
-    title: "가입을 그만할까요?",
-    message: "다시 처음부터 해야 해요. 그래도 나갈까요?",
+    title: "이전 화면으로 갈까요?",
+    message: "5분 안에 돌아오면 보낸 코드를 그대로 쓸 수 있어요.",
     leaveTo: "signup.html",
   });
 </script>
