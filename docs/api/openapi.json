@@ -2516,6 +2516,9 @@
                               "LOW"
                             ]
                           },
+                          "expectedNextWeek": {
+                            "type": "number"
+                          },
                           "summary": {
                             "type": "string"
                           },
@@ -2533,6 +2536,7 @@
                           "trend",
                           "unclaimed",
                           "level",
+                          "expectedNextWeek",
                           "summary",
                           "action"
                         ]

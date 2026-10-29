@@ -131,6 +131,8 @@ const hourDistance = (a: number, b: number) => Math.min((a - b + 24) % 24, (b - 
  */
 export function buildPriorities(rows: Row[], start: Date, end: Date): HotspotPriority[] {
   const mid = start.getTime() + (end.getTime() - start.getTime()) / 2;
+  /** 뒤쪽 절반의 날 수 */
+  const recentDays = Math.max(1, (end.getTime() - mid) / 86_400_000);
   const groups = new Map<string, Row[]>();
   for (const r of rows) {
     if (!r.category) continue;
@@ -167,6 +169,7 @@ export function buildPriorities(rows: Row[], start: Date, end: Date): HotspotPri
       const level: HotspotPriority["level"] = score >= 5 ? "HIGH" : score >= 3 ? "MEDIUM" : "LOW";
       const slot = slotLabel(c.startHour);
       const trendText = trend === "UP" ? "늘고 있어요" : trend === "DOWN" ? "줄고 있어요" : "비슷해요";
+      const expectedNextWeek = Math.round((c.recent / recentDays) * 7 * 10) / 10;
       return {
         score,
         priority: {
@@ -179,6 +182,7 @@ export function buildPriorities(rows: Row[], start: Date, end: Date): HotspotPri
           trend,
           unclaimed,
           level,
+          expectedNextWeek,
           summary: `${c.building} ${slot} ${CATEGORY_LABELS[c.category]} 분실 ${count}건 (최근 ${trendText}, 보관 중 ${unclaimed}건)`,
           action: preventiveAction(c.category, c.building, slot),
         },
