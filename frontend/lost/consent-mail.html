@@ -28,15 +28,23 @@
 <script>
   // 가입 단계 중 뒤로 가기: 처음부터 다시 해야 하므로 한 번 묻는다 (QA 10/29)
   LeaveGuard.install({
-    title: "가입을 그만할까요?",
-    message: "다시 처음부터 해야 해요. 그래도 나갈까요?",
+    title: "가입을 그만하시겠습니까?",
+    message: "다시 처음부터 시작해야 합니다. 그래도 나가시겠습니까?",
     leaveTo: "signup.html",
+    onLeave: () => {
+      LostApi.store.set(LostApi.KEYS.verification, null);
+      LostApi.store.set(LostApi.KEYS.signupPassword, null);
+      LostApi.store.set(LostApi.KEYS.codeSent, null);
+    },
   });
   // POST /auth/signup: 인증 코드 화면이 저장한 verificationToken + 회원가입 화면이 잠깐 둔 비밀번호 + 동의
   // 이메일·외부 AI는 필수, 위치는 선택(처음엔 꺼 둠, 눌러야 동의). 위치 동의 여부를 그대로 보낸다 (QA B14·B15)
   const agreeBtn = document.getElementById("agreeBtn");
   const consentErr = document.getElementById("consentErr");
   if (!LostApi.store.get(LostApi.KEYS.verification)) location.replace("signup.html");
+  window.addEventListener("pageshow", () => {
+    if (!LostApi.store.get(LostApi.KEYS.verification)) location.replace("signup.html");
+  });
   // 동의는 모두 처음엔 꺼 두고 사용자가 직접 누른다. 필수(이메일·사진 분석)를 켜야 버튼이 켜진다 (QA 10/29)
   const locConsent = document.getElementById("locConsent");
   const required = [document.getElementById("mailConsent"), document.getElementById("aiConsent")];

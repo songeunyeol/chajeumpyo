@@ -74,22 +74,33 @@
   // 단계 확인: 이 사진의 분석이 이미 끝났으면(앞으로·뒤로 가기, 새로고침) 다시 올리지 않고 등록 화면으로,
   // 사진이 없으면 사진 화면으로 (QA 10/29). 미리보기(?preview)는 그대로 재생한다
   const isPreview = new URLSearchParams(window.location.search).has("preview");
-  let redirectTo = null;
-  if (!isPreview) {
+  // 동의 없으면 첫 화면, 분석이 끝났으면 등록, 사진이 없으면 사진. 앞으로·뒤로 가기로 단계를 건너뛰지 않는다.
+  function stepGuard() {
     try {
-      if (sessionStorage.getItem("foundDraft")) redirectTo = "register.html";
-      else if (!sessionStorage.getItem("foundPhoto")) redirectTo = "photo.html";
+      if (sessionStorage.getItem("foundConsent") !== "granted") return "consent.html";
+      if (sessionStorage.getItem("foundDraft")) return "register.html";
+      if (!sessionStorage.getItem("foundPhoto")) return "photo.html";
     } catch (_) {}
+    return null;
   }
+  const redirectTo = isPreview ? null : stepGuard();
   if (redirectTo) location.replace(redirectTo);
   else if (!isPreview) {
     LeaveGuard.install({
-      title: "분실물 등록을 그만할까요?",
-      message: "올리던 사진은 등록되지 않아요.",
+      title: "분실물 등록을 그만하시겠습니까?",
+      message: "다시 처음부터 시작해야 합니다. 그래도 나가시겠습니까?",
       leaveLabel: "그만하기",
       leaveTo: "photo.html",
+      onLeave: () => {
+        for (const k of ["foundDraft", "foundPhoto", "photoBuilding"]) sessionStorage.removeItem(k);
+      },
     });
   }
+  window.addEventListener("pageshow", (e) => {
+    if (isPreview || !e.persisted) return;
+    const next = stepGuard();
+    if (next) location.replace(next);
+  });
 
   const mover = document.getElementById("ticketMover");
   const flipper = document.getElementById("ticketFlipper");

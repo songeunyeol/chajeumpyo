@@ -26,5 +26,10 @@ export async function sendMail(mail: Mail): Promise<void> {
     logger.info({ to: mail.to, subject: mail.subject, text: mail.text }, "메일 (MAIL_MODE=console, 실제 발송 안 함)");
     return;
   }
-  await transport.sendMail({ from: env.MAIL_FROM, ...mail });
+  try {
+    await transport.sendMail({ from: env.MAIL_FROM, ...mail });
+  } catch (err) {
+    logger.error({ err, to: mail.to, subject: mail.subject }, "메일 발송 실패");
+    throw err;
+  }
 }

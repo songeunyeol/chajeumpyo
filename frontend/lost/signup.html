@@ -18,19 +18,19 @@
   <!-- 오류는 칸마다 바로 밑에 보여 준다 (QA 10/29). 칸을 벗어나면 바로 검사한다 -->
   <label class="field">
     <span>학교 이메일 <b class="req" aria-hidden="true">*</b></span>
-    <input id="signupEmail" type="email" placeholder="아이디@skuniv.ac.kr" autocomplete="email" required aria-describedby="emailErr">
+    <input id="signupEmail" type="email" placeholder="아이디@skuniv.ac.kr" autocomplete="email" required aria-describedby="emailErr" aria-invalid="false">
+    <p class="note danger field-err" id="emailErr" hidden></p>
   </label>
-  <p class="note danger field-err" id="emailErr" hidden></p>
   <label class="field">
     <span>비밀번호 <b class="req" aria-hidden="true">*</b></span>
-    <input id="signupPw" type="password" placeholder="8자 이상" autocomplete="new-password" required aria-describedby="pwErr">
+    <input id="signupPw" type="password" placeholder="8자 이상" autocomplete="new-password" required aria-describedby="pwErr" aria-invalid="false">
+    <p class="note danger field-err" id="pwErr" hidden></p>
   </label>
-  <p class="note danger field-err" id="pwErr" hidden></p>
   <label class="field">
     <span>비밀번호 확인 <b class="req" aria-hidden="true">*</b></span>
-    <input id="signupPwConfirm" type="password" placeholder="비밀번호 다시 입력" autocomplete="new-password" required aria-describedby="pwConfirmErr">
+    <input id="signupPwConfirm" type="password" placeholder="비밀번호 다시 입력" autocomplete="new-password" required aria-describedby="pwConfirmErr" aria-invalid="false">
+    <p class="note danger field-err" id="pwConfirmErr" hidden></p>
   </label>
-  <p class="note danger field-err" id="pwConfirmErr" hidden></p>
   <p class="note danger" id="signupErr" hidden style="margin-top:-6px;margin-bottom:4px"></p>
 
   <div class="dock">
@@ -78,6 +78,7 @@
 
   function showField(input, errEl, message) {
     input.classList.toggle("is-invalid", Boolean(message));
+    input.setAttribute("aria-invalid", message ? "true" : "false");
     errEl.textContent = message;
     errEl.hidden = !message;
   }
@@ -148,6 +149,18 @@
       .finally(() => {
         signupBtn.disabled = false;
       });
+  });
+</script>
+<script src="../leave-guard.js"></script>
+<script>
+  LeaveGuard.install({
+    title: "가입을 그만하시겠습니까?",
+    message: "다시 처음부터 시작해야 합니다. 그래도 나가시겠습니까?",
+    leaveTo: "login.html",
+    onLeave: () => {
+      LostApi.store.set(LostApi.KEYS.signupPassword, null);
+      LostApi.store.set(LostApi.KEYS.codeSent, null);
+    },
   });
 </script>
 </body>

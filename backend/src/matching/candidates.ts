@@ -12,7 +12,7 @@ import { prisma } from "../lib/prisma";
 import { similarityToFoundItems } from "../repositories/embedding";
 import { storage } from "../storage";
 import { CANDIDATE_LIMIT, MAX_FAILED_ATTEMPTS } from "./policy";
-import { type ScoreBreakdown, scoreCandidate } from "./score";
+import { type ScoreBreakdown, categoryScore, scoreCandidate } from "./score";
 
 type ReportForMatching = {
   id: string;
@@ -93,7 +93,7 @@ type EligibleItem = {
   isSeed: boolean;
   claimLockedAt: Date | null;
   building: { id: number; name: string } | null;
-  detail: { imageThumbKey: string | null } | null;
+  detail: { imageThumbKey: string | null; title?: string | null; description?: string | null } | null;
 };
 type Ranked = { item: EligibleItem & { category: Category }; score: ScoreBreakdown };
 
@@ -136,7 +136,7 @@ async function rankEligible(report: ReportForMatching, viewerRole: Role): Promis
       isSeed: true,
       claimLockedAt: true,
       building: { select: { id: true, name: true } },
-      detail: { select: { color: true, brand: true, imageThumbKey: true } },
+      detail: { select: { color: true, brand: true, imageThumbKey: true, title: true, description: true } },
     },
   });
   if (items.length === 0) return [];
@@ -158,6 +158,14 @@ async function rankEligible(report: ReportForMatching, viewerRole: Role): Promis
           similarity.get(i.id),
         ),
       }))
+      // 종류가 신고와 무관하면 임베딩이 비슷해도 후보에서 뺀다.
+      // 세부 종류가 비어 있어도 제목·설명의 인형·키링은 다른 종류 신고에서 뺀다 (QA 10/29).
+      .filter(({ item }) => {
+        if (categoryScore(report.category, item, reportSide.subCategory ?? null) <= 0) return false;
+        if (report.category === "ETC" || item.category !== "ETC") return true;
+        const text = `${item.detail?.title ?? ""} ${item.detail?.description ?? ""}`;
+        return !/인형|피규어|키링/.test(text);
+      })
       // 동점이면 최근 습득물 우선, 그다음 id로 고정해 같은 입력엔 같은 결과
       .sort(
         (a, b) =>

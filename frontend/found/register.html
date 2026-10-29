@@ -49,7 +49,7 @@
     </div>
 
     <label class="field" style="margin-bottom:8px">
-      <span>위치 세부 설명<span class="hint">선택</span></span>
+      <span>위치 세부 설명<span class="hint">(선택)</span></span>
       <textarea id="locationDetail" class="compact" rows="2" placeholder="예: 3층 엘리베이터 앞 벤치 위, 204호 강의실 뒤쪽 책상"></textarea>
     </label>
     <p class="note" id="locNote" style="margin-top:0;margin-bottom:4px">보관처에 맡겨도 교무처 직원이 볼 수 있게 같이 전달돼요.</p>
@@ -95,7 +95,10 @@
   const placeText = document.getElementById("placeText");
   const manualChip = document.getElementById("manualChip");
   let mode = "inplace";
-  let hasLocationPermission = true;
+  // 브라우저 위치 권한. 선택 동의(locationConsent)와 섞지 않는다. 동의는 기본 해제.
+  let hasLocationPermission = false;
+  let browserPermission = "unknown";
+  let locateSeq = 0;
   /** 위치를 찾는 중이면 true */
   let locating = false;
   /** 위치로 고른 가장 가까운 건물. 못 고르면(권한 없음·300m 밖) null이고 직접 고른다 */
@@ -106,7 +109,21 @@
 
   // 분석 결과 (uploading.html이 저장). 없으면 사진부터
   const draft = FoundApi.store.get("foundDraft");
-  if (!draft) window.location.replace("photo.html");
+  if (!draft) {
+    let back = "photo.html";
+    try {
+      if (sessionStorage.getItem("foundConsent") !== "granted") back = "consent.html";
+    } catch (_) {}
+    window.location.replace(back);
+  }
+  window.addEventListener("pageshow", () => {
+    if (FoundApi.store.get("foundDraft")) return;
+    let back = "photo.html";
+    try {
+      if (sessionStorage.getItem("foundConsent") !== "granted") back = "consent.html";
+    } catch (_) {}
+    window.location.replace(back);
+  });
   // 이미 등록을 마친 초안이면(완료 화면에서 뒤로 가기) 완료 화면으로 (QA 10/29)
   try {
     if (draft && sessionStorage.getItem("foundConfirmedId") === draft.id) {
@@ -115,8 +132,8 @@
   } catch (_) {}
   if (draft) {
     LeaveGuard.install({
-      title: "분실물 등록을 그만할까요?",
-      message: "고른 사진과 적은 내용이 사라지고 사진부터 다시 해야 해요.",
+      title: "분실물 등록을 그만하시겠습니까?",
+      message: "다시 처음부터 시작해야 합니다. 그래도 나가시겠습니까?",
       leaveLabel: "그만하기",
       leaveTo: "photo.html",
       onLeave: () => {
@@ -208,37 +225,51 @@
   }
 
   try {
-    if (sessionStorage.getItem("locationConsent") === "denied") {
-      hasLocationPermission = false;
-    }
+    hasLocationPermission = sessionStorage.getItem("locationConsent") === "granted";
   } catch (_) {}
 
-  if (navigator.permissions && navigator.permissions.query) {
-    navigator.permissions.query({ name: "geolocation" }).then((res) => {
-      if (res.state === "denied") {
-        hasLocationPermission = false;
-        syncPanels();
-      }
-      // 설정에서 나중에 허용하면 바로 다시 찾는다
+  function readBrowserPermission() {
+    if (!navigator.permissions || !navigator.permissions.query) return Promise.resolve("unknown");
+    return navigator.permissions.query({ name: "geolocation" }).then((res) => {
+      browserPermission = res.state;
       res.onchange = () => {
-        if (res.state === "granted" && (!autoBuilding || fromPhoto)) locate();
+        browserPermission = res.state;
+        if (res.state === "granted") locate();
       };
-    }).catch(() => {});
+      return res.state;
+    }).catch(() => "unknown");
   }
 
   syncPanels();
 
   // 위쪽 칩: 건물을 못 찾았으면 눌러서 위치로 다시 찾는다. 누르는 것이 위치 사용 동의다(좌표는 건물로 바꾼 뒤 버린다)
+  let locateQueued = false;
   async function locate() {
-    if (locating || !buildings.length) return;
+    if (!buildings.length) {
+      locateQueued = true;
+      return;
+    }
+    locateQueued = false;
+    const seq = ++locateSeq;
     locating = true;
     syncPanels();
-    const found = await FoundApi.nearestBuilding(buildings);
+    const located = await FoundApi.nearestBuilding(buildings);
+    if (seq !== locateSeq) return;
     locating = false;
-    hasLocationPermission = true;
+    if (located.status === "granted") {
+      hasLocationPermission = true;
+      browserPermission = "granted";
+    } else if (located.status === "denied") {
+      hasLocationPermission = false;
+      browserPermission = "denied";
+    } else {
+      hasLocationPermission = browserPermission === "granted";
+    }
     try {
-      sessionStorage.setItem("locationConsent", "granted");
+      if (located.status === "granted") sessionStorage.setItem("locationConsent", "granted");
+      else if (located.status === "denied") sessionStorage.setItem("locationConsent", "denied");
     } catch (_) {}
+    const found = located.building;
     if (found) {
       // 습득자가 이미 다른 건물을 골랐으면 그대로 둔다
       const prev = autoBuilding;
@@ -315,13 +346,10 @@
     .then(async (list) => {
       buildings = list;
       fillSelect(foundBuildingSelect, list.map((b) => ({ label: b.name, value: b.id })), "건물 선택");
-      if (hasLocationPermission) {
-        locating = true;
-        syncPanels();
-        autoBuilding = await FoundApi.nearestBuilding(list);
-        locating = false;
-      }
-      if (hasLocationPermission && !autoBuilding) {
+      const state = await readBrowserPermission();
+      if (state === "denied") hasLocationPermission = false;
+      if (locateQueued || (hasLocationPermission && state !== "denied")) await locate();
+      if (!autoBuilding) {
         const p = FoundApi.store.get("photoBuilding");
         autoBuilding = (p && list.find((b) => b.id === p.id)) || null;
         fromPhoto = !!autoBuilding;
