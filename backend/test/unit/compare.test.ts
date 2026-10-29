@@ -22,7 +22,11 @@ describe("규칙 기반 대조", () => {
   });
 
   it("종류(key)가 달라도 내용이 같으면 일치, 같은 종류가 없으면 모순이 아니라 확인 불가 (10/29 안경)", () => {
-    const glasses = { color: "BLACK", brand: null, features: [{ key: "pattern" as const, value: "양쪽 프레임 끝 두 개의 점 장식" }] };
+    const glasses = {
+      color: "BLACK",
+      brand: null,
+      features: [{ key: "pattern" as const, value: "양쪽 프레임 끝 두 개의 점 장식" }],
+    };
     const r = compareByRules(
       {
         color: null,
