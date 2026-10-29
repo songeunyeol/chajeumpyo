@@ -504,17 +504,33 @@
     return `${d}T${t}:00+09:00`;
   }
   /**
-   * 분실 시간대(한 날짜, 시작~끝 시각)를 { lostFrom, lostTo }로. 끝이 지금보다 뒤면 지금으로 줄인다
-   * (서버는 미래 시각을 거절한다). 끝이 시작보다 빠르면 전날 밤부터로 본다 (예: 23:00~01:00).
+   * 고른 분실 구간을 서버가 받는 과거 시각으로 맞춘다.
+   * 끝이 시작보다 빠르면 전날 밤부터로 본다 (23:00~01:00).
+   * 구간이 통째로 미래면(지금 00:09인데 오늘 13:00~15:00) 하루 전 같은 시각으로 둔다.
+   * 시작과 끝을 모두 지금으로 붙이면 카드가 00:09~00:09이 되고, 그 시각보다 먼저 등록된 습득물이 후보에서 빠진다.
+   * 끝만 미래면 끝만 지금으로 줄인다.
+   */
+  function adjustLostWindow(from, to, now) {
+    let start = from;
+    let end = to;
+    if (end < start) start -= 24 * 3600_000;
+    if (start > now) {
+      start -= 24 * 3600_000;
+      end -= 24 * 3600_000;
+    }
+    if (end > now) end = now;
+    if (start > end) start = end;
+    return { from: start, to: end };
+  }
+  /**
+   * 분실 시간대(한 날짜, 시작~끝 시각)를 { lostFrom, lostTo }로.
+   * 서버는 미래 시각을 거절하므로 adjustLostWindow로 맞춘다.
    */
   function lostRange(date, fromTime, toTime) {
-    let from = Date.parse(kstIso(date, fromTime));
-    let to = Date.parse(kstIso(date, toTime));
-    if (to < from) from -= 24 * 3600_000;
-    const now = Date.now();
-    if (to > now) to = now;
-    if (from > to) from = to;
-    return { lostFrom: new Date(from).toISOString(), lostTo: new Date(to).toISOString() };
+    const from = Date.parse(kstIso(date, fromTime));
+    const to = Date.parse(kstIso(date, toTime));
+    const adjusted = adjustLostWindow(from, to, Date.now());
+    return { lostFrom: new Date(adjusted.from).toISOString(), lostTo: new Date(adjusted.to).toISOString() };
   }
   /** "10월 23일(금) 14:10" */
   function formatKst(iso, { time = true } = {}) {
@@ -651,6 +667,7 @@
     // 시간
     kstParts,
     kstIso,
+    adjustLostWindow,
     lostRange,
     formatKst,
     formatRange,

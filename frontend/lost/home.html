@@ -60,6 +60,7 @@
 
   <div class="banner" id="demo" hidden>체험 모드 · 시연용 데이터로 움직여요</div>
   <h1>내 분실 신고</h1>
+  <div class="map-box" id="homeMap" aria-label="캠퍼스 지도"></div>
 
   <p class="section section-glow"><span class="glow-dot green" aria-hidden="true"></span><span id="activeHeading">진행 중</span></p>
   <div id="activeList" style="display:flex;flex-direction:column;gap:10px"></div>
@@ -71,6 +72,7 @@
     <a class="btn" href="report.html">분실 신고하기</a>
   </div>
 </main>
+<script src="../naver-map.js"></script>
 <script src="api.js"></script>
 <script>
   // 로그인하지 않았으면 로그인 화면으로 (아래 API 호출은 authed일 때만)
@@ -162,6 +164,19 @@
     return el;
   }
 
+  function paintHomeMap(reports) {
+    const box = document.getElementById("homeMap");
+    if (!window.NaverCampusMap) return;
+    const named = (reports || [])
+      .map((rep) => rep.building && rep.building.name)
+      .find((name) => name && window.NaverCampusMap.CAMPUS_BUILDINGS[name]);
+    window.NaverCampusMap.mount(box, {
+      buildingName: named || "혜인관",
+      caption: named ? `서경대 ${named}` : "서경대학교",
+      showAll: !named,
+    });
+  }
+
   function renderHomeLists(all) {
     const activeItems = all.filter((r) => r.status === "OPEN");
     const closedItems = all.filter((r) => r.status !== "OPEN");
@@ -192,8 +207,12 @@
     }
   }
 
+  paintHomeMap([]);
   if (authed) LostApi.reports()
-    .then(renderHomeLists)
+    .then((all) => {
+      paintHomeMap(all);
+      renderHomeLists(all);
+    })
     .catch((err) => {
       if (err.code === "UNAUTHORIZED") return location.replace("login.html");
       activeHeading.textContent = "진행 중";

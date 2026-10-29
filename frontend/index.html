@@ -38,7 +38,7 @@
     height: 100svh;
     margin: 0 auto;
     display: grid;
-    grid-template-rows: 25svh 1fr 25svh;
+    grid-template-rows: 18svh minmax(0, 1fr) 128px auto;
     padding: 0 clamp(16px, 5vw, 24px);
   }
   .title { display: flex; flex-direction: row; align-items: flex-end; gap: clamp(8px, 2vw, 14px); padding-top: clamp(16px, 3svh, 28px); }
@@ -199,6 +199,7 @@
         </div>
       </div>
     </div>
+    <div id="homeMap" aria-label="서경대학교 캠퍼스 지도" style="height:128px;border-radius:16px;overflow:hidden"></div>
     <nav class="actions" aria-label="시작">
       <a class="door door-find" href="found/consent.html">찾은 사람
         <svg viewBox="0 0 32 32" aria-hidden="true">
@@ -224,6 +225,7 @@
     </nav>
     <a class="guide-link" href="guide.html">체험 안내</a>
   </main>
+  <script src="naver-map.js"></script>
   <script>
     document.documentElement.classList.add("js");
     const steps = ["ㅊ", "차", "찾", "찾ㅇ", "찾으", "찾음", "찾음ㅍ", "찾음표"];
@@ -276,6 +278,14 @@
     const release = () => { dragging = false; };
     card.addEventListener("pointerup", release);
     card.addEventListener("pointercancel", release);
+    if (window.NaverCampusMap) {
+      window.NaverCampusMap.mount(document.getElementById("homeMap"), {
+        buildingName: "혜인관",
+        caption: "서경대학교",
+        showAll: true,
+      });
+    }
+
     const frame = () => {
       if (!dragging && !reduce) {
         ry += vel;
