@@ -177,24 +177,78 @@
     return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
   }
 
+  /** 좌표에서 가장 가까운 건물. 300m 밖이면 null */
+  function nearestTo(here, buildings) {
+    let best = null;
+    for (const b of buildings) {
+      const d = distanceM(here, b);
+      if (!best || d < best.d) best = { b, d };
+    }
+    return best && best.d <= NEAREST_MAX_DISTANCE_M ? best.b : null;
+  }
+
   /** 지금 위치로 가장 가까운 건물. 좌표는 여기서만 쓰고 버린다. 권한 거부·300m 밖이면 null */
   function nearestBuilding(buildings) {
     return new Promise((resolve) => {
       if (!navigator.geolocation) return resolve(null);
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          let best = null;
-          for (const b of buildings) {
-            const d = distanceM(here, b);
-            if (!best || d < best.d) best = { b, d };
-          }
-          resolve(best && best.d <= NEAREST_MAX_DISTANCE_M ? best.b : null);
+          resolve(nearestTo({ lat: pos.coords.latitude, lng: pos.coords.longitude }, buildings));
         },
         () => resolve(null),
         { timeout: 8000, maximumAge: 60_000 },
       );
     });
+  }
+
+  /**
+   * JPEG 파일의 EXIF GPS 좌표 { lat, lng }. 없거나 읽지 못하면 null.
+   * 브라우저 안에서만 읽고, 호출한 쪽이 건물로 바꾼 뒤 버린다. 서버로 보내는 사진은 캔버스로 다시 그려 EXIF가 없다.
+   */
+  async function exifGps(file) {
+    try {
+      const buf = await file.slice(0, 256 * 1024).arrayBuffer();
+      const v = new DataView(buf);
+      if (v.getUint16(0) !== 0xffd8) return null;
+      let off = 2;
+      while (off + 4 <= v.byteLength) {
+        const marker = v.getUint16(off);
+        const size = v.getUint16(off + 2);
+        if (marker === 0xffe1 && v.getUint32(off + 4) === 0x45786966) return readGps(v, off + 10);
+        if ((marker & 0xff00) !== 0xff00 || marker === 0xffda) return null;
+        off += 2 + size;
+      }
+    } catch (_) {}
+    return null;
+  }
+  function readGps(v, tiff) {
+    const le = v.getUint16(tiff) === 0x4949;
+    const u16 = (o) => v.getUint16(tiff + o, le);
+    const u32 = (o) => v.getUint32(tiff + o, le);
+    /** IFD의 태그 → 값 위치(TIFF 기준 오프셋)와 형식 */
+    const tags = (ifd) => {
+      const out = {};
+      const n = u16(ifd);
+      for (let i = 0; i < n; i++) {
+        const e = ifd + 2 + i * 12;
+        out[u16(e)] = { type: u16(e + 2), count: u32(e + 4), at: e + 8 };
+      }
+      return out;
+    };
+    const ifd0 = tags(u32(4));
+    if (!ifd0[0x8825]) return null;
+    const gps = tags(u32(ifd0[0x8825].at));
+    const ref = (t) => (t ? String.fromCharCode(v.getUint8(tiff + t.at)) : "");
+    const dms = (t) => {
+      if (!t || t.type !== 5 || t.count < 3) return null;
+      const base = u32(t.at);
+      const r = (i) => u32(base + i * 8) / (u32(base + i * 8 + 4) || 1);
+      return r(0) + r(1) / 60 + r(2) / 3600;
+    };
+    const lat = dms(gps[2]);
+    const lng = dms(gps[4]);
+    if (lat == null || lng == null || (lat === 0 && lng === 0)) return null;
+    return { lat: ref(gps[1]) === "S" ? -lat : lat, lng: ref(gps[3]) === "W" ? -lng : lng };
   }
 
   // 캡차 (Cloudflare Turnstile). 사이트 키는 GET /config에서 받는다(코드에 박지 않음).
@@ -237,6 +291,8 @@
     ApiError,
     store,
     nearestBuilding,
+    nearestTo,
+    exifGps,
     buildings: () => call("/buildings").then((r) => r.buildings),
     storagePlaces: (buildingId) =>
       call(`/storage-places${buildingId ? `?buildingId=${buildingId}` : ""}`).then((r) => r.storagePlaces),

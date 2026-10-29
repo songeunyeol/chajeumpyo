@@ -90,6 +90,7 @@
     }
     photoReady = false;
     updateNext();
+    suggestBuildingFromPhoto(file);
     if (currentUrl) URL.revokeObjectURL(currentUrl);
     currentUrl = URL.createObjectURL(file);
     preview.src = currentUrl;
@@ -120,6 +121,23 @@
     img.src = currentUrl;
   }
 
+  // 사진에 찍힌 위치(EXIF GPS)로 주운 건물을 추천한다. 위치 동의를 끈 경우엔 읽지 않는다.
+  // 좌표는 브라우저 안에서 건물로 바꾼 뒤 버리고 건물만 둔다. 등록 화면이 현재 위치로 건물을 못 찾았을 때만 쓴다.
+  async function suggestBuildingFromPhoto(file) {
+    try {
+      sessionStorage.removeItem("photoBuilding");
+      if (sessionStorage.getItem("locationConsent") === "denied") return;
+    } catch (_) {
+      return;
+    }
+    const here = await FoundApi.exifGps(file);
+    if (!here) return;
+    try {
+      const b = FoundApi.nearestTo(here, await FoundApi.buildings());
+      if (b) sessionStorage.setItem("photoBuilding", JSON.stringify({ id: b.id, name: b.name }));
+    } catch (_) {}
+  }
+
   function resetToUploadBox() {
     if (currentUrl) {
       URL.revokeObjectURL(currentUrl);
@@ -128,7 +146,10 @@
     preview.removeAttribute("src");
     input.value = "";
     box.classList.remove("has-photo", "is-file", "is-sample", "show-reselect");
-    try { sessionStorage.removeItem("foundPhoto"); } catch (_) {}
+    try {
+      sessionStorage.removeItem("foundPhoto");
+      sessionStorage.removeItem("photoBuilding");
+    } catch (_) {}
     photoReady = false;
     updateNext();
   }

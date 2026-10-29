@@ -88,6 +88,8 @@
   let hasLocationPermission = true;
   /** 위치로 고른 가장 가까운 건물. 못 고르면(권한 없음·300m 밖) null이고 직접 고른다 */
   let autoBuilding = null;
+  /** autoBuilding을 현재 위치가 아니라 사진 위치(EXIF, 사진 화면에서 건물로 바꿔 둠)로 골랐는지 */
+  let fromPhoto = false;
   let submitting = false;
 
   // 분석 결과 (uploading.html이 저장). 없으면 사진부터
@@ -135,7 +137,7 @@
     if (auto && !foundBuildingSelect.value) foundBuildingSelect.value = String(autoBuilding.id);
 
     if (hasLocationPermission && autoBuilding) {
-      locPermToggle.textContent = `가까운 건물: ${autoBuilding.name}`;
+      locPermToggle.textContent = fromPhoto ? `사진 위치로 고른 건물: ${autoBuilding.name}` : `가까운 건물: ${autoBuilding.name}`;
       locPermToggle.classList.remove("is-manual");
     } else if (hasLocationPermission) {
       locPermToggle.textContent = "근처 건물을 못 찾았어요";
@@ -222,6 +224,11 @@
       buildings = list;
       fillSelect(foundBuildingSelect, list.map((b) => ({ label: b.name, value: b.id })), "주운 건물을 선택해 주세요");
       if (hasLocationPermission) autoBuilding = await FoundApi.nearestBuilding(list);
+      if (hasLocationPermission && !autoBuilding) {
+        const p = FoundApi.store.get("photoBuilding");
+        autoBuilding = (p && list.find((b) => b.id === p.id)) || null;
+        fromPhoto = !!autoBuilding;
+      }
       syncPanels();
       return FoundApi.storagePlaces(autoBuilding?.id);
     })
