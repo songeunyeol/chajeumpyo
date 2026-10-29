@@ -66,8 +66,9 @@ describe("production 앱 (API + 정적 화면 한 주소)", () => {
     const csp = home.headers["content-security-policy"];
     expect(csp).toContain("cdn.jsdelivr.net");
     expect(csp).toContain("challenges.cloudflare.com");
-    // 수령 QR 라이브러리와 지도 대체 위성 타일 (QA 10/29: QR이 안 그려지고 지도가 회색으로만 보이던 원인)
-    expect(csp).toMatch(/script-src[^;]*https:\/\/cdnjs\.cloudflare\.com/);
+    // QR 라이브러리는 frontend/vendor에서 내려주므로 바깥 스크립트 CDN은 열지 않는다. 지도 대체 위성 타일은 연다 (QA 10/29)
+    expect(csp).not.toMatch(/script-src[^;]*https:\/\/cdnjs\.cloudflare\.com/);
+    expect(csp).not.toMatch(/script-src[^;]*https:\/\/cdn\.jsdelivr\.net/);
     expect(csp).toMatch(/img-src[^;]*https:\/\/server\.arcgisonline\.com/);
 
     expect((await request(app).get(`/${encodeURIComponent("팔레트.html")}`)).status).toBe(404);
