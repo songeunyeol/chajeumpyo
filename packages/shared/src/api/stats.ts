@@ -34,6 +34,11 @@ export const HotspotPriority = z.object({
   /** 아직 수령되지 않은(보관 중인) 물건 수 */
   unclaimed: z.number().int(),
   level: z.enum(["HIGH", "MEDIUM", "LOW"]),
+  /**
+   * 다음 7일 예상 건수. 기간 뒤쪽 절반의 하루 평균 × 7 (소수 첫째 자리).
+   * 모델 예측이 아니라 최근 추세를 그대로 이어 본 값이다
+   */
+  expectedNextWeek: z.number(),
   /** 한 문장 요약 */
   summary: z.string(),
   /** 제안하는 예방 조치 */

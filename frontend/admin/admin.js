@@ -560,12 +560,12 @@
         topInsight: "유담관에서 오후 1~3시에 기타 전자기기 분실이 가장 많아요.",
         priorities: [
           {
-            building: "유담관", startHour: 13, category: "CHARGER", count: 6, recent: 4, earlier: 2, trend: "UP", unclaimed: 3, level: "HIGH",
+            building: "유담관", startHour: 13, category: "CHARGER", count: 6, recent: 4, earlier: 2, trend: "UP", unclaimed: 3, level: "HIGH", expectedNextWeek: 1.9,
             summary: "유담관 오후 1시~3시 기타 전자기기 분실 6건 (최근 늘고 있어요, 보관 중 3건)",
             action: "유담관 콘센트 자리에 \"충전기 챙기기\" 안내를 붙이고, 오후 1시~3시 직후 순찰 때 콘센트를 확인해요.",
           },
           {
-            building: "혜인관", startHour: 18, category: "UMBRELLA", count: 3, recent: 1, earlier: 2, trend: "DOWN", unclaimed: 1, level: "MEDIUM",
+            building: "혜인관", startHour: 18, category: "UMBRELLA", count: 3, recent: 1, earlier: 2, trend: "DOWN", unclaimed: 1, level: "MEDIUM", expectedNextWeek: 0.5,
             summary: "혜인관 저녁 6시~8시 우산 분실 3건 (최근 줄고 있어요, 보관 중 1건)",
             action: "혜인관 출입구에 우산꽂이 위치를 안내하고, 비 온 날 저녁 6시~8시 뒤 우산꽂이를 정리해요.",
           },

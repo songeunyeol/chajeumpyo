@@ -79,6 +79,7 @@
           el("b", { text: `${i + 1}`, style: "color:var(--green)" }),
           el("span", { class: "chip", text: `우선순위 ${levelText}`, style: `margin:0;color:${color}` })),
         el("p", { text: row.summary, style: "margin:0 0 6px;font-weight:650" }),
+        el("p", { class: "note", text: `다음 7일 예상 약 ${row.expectedNextWeek}건 (최근 추세 기준)`, style: "margin:0 0 4px" }),
         el("p", { class: "note", text: `제안: ${row.action}`, style: "margin:0" })));
     });
     return box;
