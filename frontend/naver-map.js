@@ -11,7 +11,8 @@
 
   const CAMPUS_BUILDINGS = {
     "본관": { lat: 37.615438, lng: 127.012118 },
-    "유담관": { lat: 37.615273, lng: 127.011721 },
+    // 학술정보관(중앙도서관)은 유담관 안이지만, 핀은 서쪽 출입구로 둔다. 같은 좌표면 지도가 도서관에만 찍힌다.
+    "유담관": { lat: 37.61515, lng: 127.01142 },
     "한림관": { lat: 37.615246, lng: 127.012622 },
     "북악관": { lat: 37.616041, lng: 127.011921 },
     "문예관": { lat: 37.615747, lng: 127.012535 },
@@ -87,15 +88,36 @@
     return { x, y };
   }
 
-  /** 위성 사진도 못 받으면 그림 자리만 바꾼다. 캔버스 전체를 지우면 위에 올린 네이버 지도까지 사라진다 */
+  /** 위성 사진도 못 받으면 캠퍼스 약도에 핀만 남긴다. 캔버스 전체를 지우면 위에 올린 네이버 지도까지 사라진다 */
   function renderFallbackCampusMap(canvasEl, loc) {
+    const names = Object.keys(CAMPUS_BUILDINGS);
+    const lats = names.map((name) => CAMPUS_BUILDINGS[name].lat);
+    const lngs = names.map((name) => CAMPUS_BUILDINGS[name].lng);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const pad = 0.12;
+    const xOf = (lng) => ((lng - minLng) / (maxLng - minLng || 1)) * (1 - pad * 2) + pad;
+    const yOf = (lat) => (1 - (lat - minLat) / (maxLat - minLat || 1)) * (1 - pad * 2) + pad;
+    const dots = names.map((name) => {
+      const spot = CAMPUS_BUILDINGS[name];
+      const x = (xOf(spot.lng) * 360).toFixed(1);
+      const y = (yOf(spot.lat) * 176).toFixed(1);
+      const here = name === loc.buildingName;
+      const pin = here
+        ? `<circle cx="${x}" cy="${y}" r="8" fill="#1e5b3d" stroke="#fff" stroke-width="2"/><text x="${x}" y="${Math.max(14, Number(y) - 12)}" text-anchor="middle" font-size="12" font-weight="700" fill="#1c1915">${esc(name)}</text>`
+        : `<circle cx="${x}" cy="${y}" r="3.5" fill="#8a8378"/>`;
+      return pin;
+    }).join("");
     const stage = canvasEl.querySelector(".sat-stage");
     const box = document.createElement("div");
     box.className = "sat-stage";
     box.innerHTML = `
-      <svg viewBox="0 0 360 176" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="서경대학교 ${loc.buildingName} 위치">
-        <rect width="360" height="176" fill="#d7d2c6"/>
-        <text x="180" y="88" text-anchor="middle" font-size="13" fill="#6f685e" font-family="Pretendard Variable, Pretendard, sans-serif">${esc(loc.buildingName)}</text>
+      <svg viewBox="0 0 360 176" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="서경대학교 ${esc(loc.buildingName)} 약도">
+        <rect width="360" height="176" fill="#e7e1d4"/>
+        <rect x="18" y="18" width="324" height="140" rx="18" fill="#f3efe6" stroke="#d7d2c6"/>
+        ${dots}
       </svg>
     `;
     if (stage) stage.replaceWith(box);

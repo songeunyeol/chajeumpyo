@@ -1353,6 +1353,7 @@ h1 {
 /* 필수 칸 표시와 칸 바로 밑 오류, 선택 칸 표시 (QA 10/29) */
 .req { color: var(--danger); font-weight: 700; margin-left: 2px; }
 .note.field-err { margin: -4px 0 12px; }
+.field .note.field-err { margin: 0; }
 .time-range-grid[hidden], .time-range-grid [hidden] { display: none; }
 .claim-desc-view { margin: 6px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--paper); color: var(--ink); font-size: 14px; line-height: 1.45; word-break: keep-all; overflow-wrap: anywhere; }
 .chips-label { color: var(--mute); font-size: 12px; font-weight: 600; align-self: center; margin-right: 2px; }

@@ -15,9 +15,6 @@ const defaultDir =
 const naverMap = ["https://oapi.map.naver.com", "https://*.map.naver.net", "https://*.pstatic.net"];
 /** 네이버 지도 인증이 막힐 때 frontend/naver-map.js가 대신 까는 위성 사진 타일 */
 const esriTiles = "https://server.arcgisonline.com";
-/** 수령 QR을 그리는 qrcodejs (lost/item-handover.html, 버전·SRI 고정) */
-const cdnjs = "https://cdnjs.cloudflare.com";
-
 /**
  * 화면에 필요한 바깥 리소스만 연다. 화면이 인라인 <script>·style을 써서 unsafe-inline이 필요하다.
  * helmet 기본값이 합쳐져 script-src-attr 'none'이 붙으므로 onclick 같은 인라인 속성은 쓰지 않는다(리스너로 단다).
@@ -25,7 +22,7 @@ const cdnjs = "https://cdnjs.cloudflare.com";
 const pageCsp = helmet.contentSecurityPolicy({
   directives: {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com", cdnjs, ...naverMap],
+    "script-src": ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com", ...naverMap],
     "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
     "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net"],
     "img-src": ["'self'", "data:", "blob:", esriTiles, ...naverMap],

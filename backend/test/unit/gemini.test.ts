@@ -1,7 +1,7 @@
 // Gemini 어댑터: 실제 API 대신 SDK 호출을 가짜로 바꿔 끼워, 우리 쪽 변환·검증·대체 모델 동작만 확인한다.
 import { ThinkingLevel } from "@google/genai";
 import { describe, expect, it } from "vitest";
-import { boxesToRegions, createGeminiClient, type GeminiModels } from "../../src/ai/gemini";
+import { boxesToRegions, correctMisreadObject, createGeminiClient, type GeminiModels } from "../../src/ai/gemini";
 import { EMBEDDING_DIM } from "../../src/ai/types";
 
 const CONFIG = { model: "lite", fallbackModel: "flash", embedModel: "embed" };
@@ -70,6 +70,34 @@ describe("Gemini 습득물 분석", () => {
     const instruction = String(calls[0]?.params.config?.systemInstruction);
     expect(instruction).toContain("회색 단색 상자");
     expect(instruction).toContain("메모리카드");
+  });
+
+  it("인형을 옷(사람)으로 보면 기타 인형·키링으로 고친다", async () => {
+    const doll = {
+      ...GOOD,
+      category: "CLOTHING",
+      subCategory: "TOP",
+      title: "사람",
+      description: "갈색 곰 인형",
+      hasObject: true,
+    };
+    const { models } = fakeModels({ lite: doll });
+    const out = await createGeminiClient(models, CONFIG).extractFoundItem(image, "image/jpeg");
+    expect(out.category).toBe("ETC");
+    expect(out.subCategory).toBe("DOLL_KEYRING");
+    expect(out.hasObject).toBe(true);
+  });
+
+  it("사람만 있고 물건이 없으면 물건으로 보지 않는다", () => {
+    const out = correctMisreadObject({
+      hasObject: true,
+      category: "CLOTHING",
+      subCategory: "TOP",
+      title: "행인",
+      description: "캠퍼스를 걷는 사람",
+    });
+    expect(out.hasObject).toBe(false);
+    expect(out.category).toBe("ETC");
   });
 
   it("기본 모델이 오류면 대체 모델로", async () => {

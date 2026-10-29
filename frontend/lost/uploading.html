@@ -100,8 +100,18 @@
 
   // POST /lost-reports: 애니메이션과 함께 바로 보낸다 (AI가 설명을 읽느라 몇 초 걸린다)
   const draft = LostApi.store.get(LostApi.KEYS.reportDraft);
-  if (!LostApi.isLoggedIn()) location.replace("login.html");
-  else if (!draft) location.replace("report.html");
+  function guardReportStep() {
+    if (!LostApi.isLoggedIn()) return "login.html";
+    if (!LostApi.store.get(LostApi.KEYS.reportDraft)) return "report.html";
+    return null;
+  }
+  const reportRedirect = guardReportStep();
+  if (reportRedirect) location.replace(reportRedirect);
+  window.addEventListener("pageshow", () => {
+    if (reportRedirect) return;
+    const next = guardReportStep();
+    if (next) location.replace(next);
+  });
   const created = draft ? LostApi.createReport(draft) : Promise.reject(new Error("no draft"));
   created.catch(() => {}); // 아래에서 기다린다. 먼저 끝나도 처리되지 않은 거부로 보이지 않게
 

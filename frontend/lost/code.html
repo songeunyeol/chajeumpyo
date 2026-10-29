@@ -105,6 +105,29 @@
 
   const attemptLine = (left) => `남은 입력 ${left}/${MAX_WRONG} · ${MAX_WRONG}번 틀리면 코드는 버려져요`;
   attemptText.textContent = sent ? attemptLine(remainingAttempts) : "코드를 다시 받아 주세요";
+  if (!sent) {
+    document.querySelector("h1").textContent = "코드를 다시 받아 주세요";
+    resendBtn.disabled = false;
+  }
+  window.addEventListener("pageshow", () => {
+    if (!LostApi.store.get(LostApi.KEYS.signupEmail)) {
+      location.replace("signup.html");
+      return;
+    }
+    const again = LostApi.recentCode(signupEmail);
+    if (!again) {
+      sentAt = 0;
+      remainingAttempts = 0;
+      document.querySelector("h1").textContent = "코드를 다시 받아 주세요";
+      attemptText.textContent = "코드를 다시 받아 주세요";
+      resendBtn.disabled = false;
+      resendBtn.textContent = "다시 보내기";
+      return;
+    }
+    sentAt = again.at;
+    remainingAttempts = MAX_WRONG - again.wrong;
+    renderResend();
+  });
 
   /** 다시 보내기는 1분에 한 번. 남은 초를 버튼에 보여 준다 */
   function renderResend() {

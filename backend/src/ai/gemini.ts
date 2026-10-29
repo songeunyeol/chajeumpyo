@@ -101,6 +101,7 @@ const COMMON_RULES = `
   · 카드 모양이어도 메모리카드(SD·마이크로SD·메모리스틱)는 CHARGER/USB_MEMORY. ID_CARD는 학생증·신분증처럼 사람 이름·사진이 들어가는 카드만이다.
   · 머리띠로 귀를 덮는 것은 무선이어도 HEADPHONE, 귀 안에 넣는 작은 것만 WIRELESS_EARBUDS(줄이 있으면 WIRED_EARPHONE).
   · 지퍼 주머니는 필기구가 보이거나 펜 길이로 길쭉하면 STATIONERY/PENCIL_CASE, 아니면 BAG/POUCH. 헷갈리면 다른 쪽을 categoryAlt에 넣는다.
+  · 인형·피규어·키링은 ETC의 세부 종류다. 사람·얼굴·전신만 있고 물건이 없으면 hasObject는 false다. 사람 감지 결과를 물건 종류로 쓰지 않는다.
 - color: ${Color.options.join(", ")} 중 하나. 물건의 주된 색. 모르면 null.
 - brand: 로고·글자로 확인되는 브랜드만. 추측하지 말고 모르면 null.
 - features: 주인만 알 만한 숨은 특징을 최대 ${MAX_FEATURES}개. key는 ${FeatureKey.options.join(", ")} 중 하나, value는 한국어 짧은 구절(예: "곰돌이 스티커", "오른쪽 아래 긁힘").
@@ -145,6 +146,25 @@ const QUIZ_RESPONSE_SCHEMA = {
 
 /** 태그를 닫거나 새로 여는 걸 막기 위해 꺾쇠를 지운다 */
 const asData = (text: string) => text.replace(/[<>]/g, "");
+
+/**
+ * 사람 감지 결과를 물건 종류로 쓰지 않는다.
+ * 인형·피규어·키링을 옷(사람)으로 읽으면 기타(인형·키링)로 되돌리고,
+ * 사람·행인·전신만 있고 물건이 없으면 물건이 없는 것으로 본다.
+ */
+export function correctMisreadObject(raw: Record<string, unknown>): Record<string, unknown> {
+  const text = [raw.title, raw.description].filter((v): v is string => typeof v === "string").join(" ");
+  const doll = /인형|피규어|키링/.test(text);
+  const person = /사람|행인|전신/.test(text);
+  const loose = raw.category === "CLOTHING" || raw.category === "ETC";
+  if (doll && loose) {
+    return { ...raw, hasObject: true, category: "ETC", subCategory: "DOLL_KEYRING" };
+  }
+  if (person && !doll && loose) {
+    return { ...raw, hasObject: false, category: "ETC", subCategory: null, categoryAlt: null };
+  }
+  return raw;
+}
 
 /** [ymin, xmin, ymax, xmax] (0~1000) → 계약 형식(0~1 비율). 뒤집히거나 넓이가 없는 영역은 버린다 */
 export function boxesToRegions(boxes: unknown): SensitiveRegion[] {
@@ -232,7 +252,7 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
             ...extractThinking,
           },
         });
-        const raw = parseJson(res.text) as Record<string, unknown>;
+        const raw = correctMisreadObject(parseJson(res.text) as Record<string, unknown>);
         return FoundItemExtraction.parse({
           ...raw,
           subCategory: subCategoryWithin(raw.category as Category, raw.subCategory),

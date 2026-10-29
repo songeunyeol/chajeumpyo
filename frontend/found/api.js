@@ -187,15 +187,21 @@
     return best && best.d <= NEAREST_MAX_DISTANCE_M ? best.b : null;
   }
 
-  /** 지금 위치로 가장 가까운 건물. 좌표는 여기서만 쓰고 버린다. 권한 거부·300m 밖이면 null */
+  /**
+   * 지금 위치로 가장 가까운 건물. 좌표는 여기서만 쓰고 버린다.
+   * status: granted(허용, 300m 밖이면 building은 null) · denied(거부) · unavailable(기능 없음·시간 초과)
+   */
   function nearestBuilding(buildings) {
     return new Promise((resolve) => {
-      if (!navigator.geolocation) return resolve(null);
+      if (!navigator.geolocation) return resolve({ status: "unavailable", building: null });
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          resolve(nearestTo({ lat: pos.coords.latitude, lng: pos.coords.longitude }, buildings));
+          resolve({
+            status: "granted",
+            building: nearestTo({ lat: pos.coords.latitude, lng: pos.coords.longitude }, buildings),
+          });
         },
-        () => resolve(null),
+        (err) => resolve({ status: err && err.code === 1 ? "denied" : "unavailable", building: null }),
         { timeout: 8000, maximumAge: 60_000 },
       );
     });

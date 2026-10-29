@@ -16,7 +16,7 @@
   <p class="lead">확인에 쓰는 특징은 나중에 질문으로만 나와요.</p>
 
   <label class="field">
-    <span>물건 <small class="opt">선택</small></span>
+    <span>물건 <small class="opt">(선택)</small></span>
     <input id="lostItemInput" placeholder="무선 이어폰">
   </label>
 
@@ -55,7 +55,7 @@
 
   <div class="field">
     <div class="field-head">
-      <label for="memoInput"><span>기억나는 점 <small class="opt">선택 · 특징을 적으면 확인이 빨라요</small></span></label>
+      <label for="memoInput"><span>기억나는 점 <small class="opt">(선택) 특징을 적으면 확인이 빨라요</small></span></label>
       <span class="loc-chip" id="memoCount" style="cursor:default">0 / 200자</span>
     </div>
     <textarea id="memoInput" class="auto-grow" maxlength="200" placeholder="공개 목록에는 이 문장만 보여요."></textarea>
@@ -68,6 +68,15 @@
   </div>
 </main>
 <script src="api.js"></script>
+<script src="../leave-guard.js"></script>
+<script>
+  LeaveGuard.install({
+    title: "분실물 등록을 그만하시겠습니까?",
+    message: "다시 처음부터 시작해야 합니다. 그래도 나가시겠습니까?",
+    leaveTo: "home.html",
+    onLeave: () => LostApi.store.set(LostApi.KEYS.reportDraft, null),
+  });
+</script>
 <script>
   const authed = LostApi.requireLogin();
   const dateSelect = document.getElementById("lostDateSelect");
