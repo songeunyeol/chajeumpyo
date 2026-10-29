@@ -39,6 +39,15 @@
   </div>
 </main>
 <script src="api.js"></script>
+<script src="../leave-guard.js"></script>
+<script>
+  // 가입 단계 중 뒤로 가기: 처음부터 다시 해야 하므로 한 번 묻는다 (QA 10/29)
+  LeaveGuard.install({
+    title: "가입을 그만할까요?",
+    message: "다시 처음부터 해야 해요. 그래도 나갈까요?",
+    leaveTo: "signup.html",
+  });
+</script>
 <script src="../found/captcha.js"></script>
 <script>
   // 코드는 서버가 메일로 보낸다 (개발 서버 MAIL_MODE=console이면 백엔드 로그). 화면에 정답을 두지 않는다

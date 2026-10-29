@@ -8,50 +8,56 @@
 <link rel="stylesheet" href="../palette.css">
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
+<style>
+  /* 보조 설명은 회색 작은 글씨, 필수는 * (QA 10/29) */
+  .field .hint { font-size: 12.5px; font-weight: 500; color: var(--mute); margin-left: 4px; }
+  .field .req { color: var(--danger); margin-left: 2px; }
+  .field .req[hidden] { display: none; }
+  .floor-row { display: grid; grid-template-columns: 1fr 112px; gap: 8px; }
+  .place-text { border-radius: 14px; background: var(--white); padding: 14px 16px; font-size: 15px; font-weight: 650; }
+  .place-text small { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--mute); }
+  .manual-loc-panel.is-open { max-height: 420px; }
+</style>
 </head>
 <body>
 <main class="screen">
   <header class="bar" style="justify-content:space-between">
     <a class="back" href="photo.html">←</a>
-    <button type="button" class="loc-chip" id="locPermToggle" title="테스트용: 위치 권한 허용/미허용 상태 전환">
-      위치 권한 허용됨
-    </button>
+    <button type="button" class="loc-chip" id="locPermToggle">위치 확인 중</button>
   </header>
   <h1>어디에 두었나요</h1>
 
   <label class="field">
-    <span>물건 (다르면 눌러서 고쳐 주세요)</span>
+    <span>물건<span class="req">*</span><span class="hint">다르면 눌러서 고쳐 주세요</span></span>
     <select id="itemSelect" aria-label="물건 종류"></select>
   </label>
 
   <div class="manual-loc-panel" id="manualLocPanel">
     <div class="field">
       <div class="field-head">
-        <label for="foundBuildingSelect"><span>주운 위치 (건물)</span></label>
-        <span class="loc-chip is-manual" id="manualChip" style="cursor:default">위치 권한 없음 · 직접 선택</span>
+        <label for="foundBuildingSelect"><span>주운 위치/건물<span class="req" id="buildingReq">*</span></span></label>
+        <span class="loc-chip is-manual" id="manualChip" style="cursor:default">직접 골라 주세요</span>
       </div>
-      <select id="foundBuildingSelect" aria-label="주운 건물 선택">
-        <option value="" selected>주운 건물을 선택해 주세요</option>
-        <option value="혜인관">혜인관</option>
-        <option value="유담관">유담관</option>
-        <option value="청운관">청운관</option>
-        <option value="북악관">북악관</option>
-        <option value="본관">본관</option>
-        <option value="한림관">한림관</option>
-        <option value="중앙도서관">중앙도서관</option>
-        <option value="학생회관">학생회관</option>
-      </select>
+      <div class="floor-row">
+        <select id="foundBuildingSelect" aria-label="주운 건물 선택">
+          <option value="" selected>건물 선택</option>
+        </select>
+        <select id="floorSelect" aria-label="층 선택">
+          <option value="" selected>층 모름</option>
+        </select>
+      </div>
     </div>
 
     <label class="field" style="margin-bottom:8px">
-      <span>자세한 위치 설명</span>
+      <span>위치 세부 설명<span class="hint">선택</span></span>
       <textarea id="locationDetail" class="compact" rows="2" placeholder="예: 3층 엘리베이터 앞 벤치 위, 204호 강의실 뒤쪽 책상"></textarea>
     </label>
-    <p class="note" id="locNote" style="margin-top:0;margin-bottom:4px">주운 건물을 고르고 자세한 위치를 적어 주세요. 보관처에 맡겨도 교무처 직원이 확인할 수 있게 같이 전달돼요.</p>
+    <p class="note" id="locNote" style="margin-top:0;margin-bottom:4px">보관처에 맡겨도 교무처 직원이 볼 수 있게 같이 전달돼요.</p>
   </div>
 
-  <p class="section">보관</p>
-  <p class="note" id="valuableNote" style="margin-top:0;margin-bottom:8px" hidden>귀중품은 보관처(교무처)에 맡겨 주세요. 잃어버린 사람이 직원 확인을 거쳐 안전하게 찾아가요.</p>
+  <p class="section">보관<span style="color:var(--danger);margin-left:2px">*</span></p>
+  <p class="note" id="valuableNote" style="margin-top:0;margin-bottom:8px" hidden>이 물건은 귀중품이라 보관처에 맡겨 주세요. 잃어버린 사람이 직원 확인을 거쳐 찾아가요.</p>
+  <p class="note" id="valuableInfo" style="margin-top:0;margin-bottom:8px"></p>
   <button type="button" class="choice on" id="choiceInplace" style="width:100%;border:0;cursor:pointer;text-align:left">
     <span>그 자리에 둠</span>
   </button>
@@ -60,12 +66,12 @@
   </button>
 
   <div class="handover-panel" id="handoverPanel">
-    <label class="field" style="margin-bottom:0">
-      <span>맡긴 곳</span>
-      <select id="handoverSelect" aria-label="보관처 건물 선택">
-        <option value="">혜인관 · 교무처</option>
-      </select>
-    </label>
+    <div class="field" style="margin-bottom:0">
+      <span>맡길 곳</span>
+      <!-- 보관처가 한 곳이면 글자로 보여 주고, 여러 곳이 되면 고르게 한다 -->
+      <div class="place-text" id="placeText" hidden></div>
+      <select id="handoverSelect" aria-label="보관처 선택" hidden></select>
+    </div>
   </div>
 
   <div class="dock">
@@ -73,6 +79,7 @@
   </div>
 </main>
 <script src="api.js"></script>
+<script src="../leave-guard.js"></script>
 <script>
   const manualLocPanel = document.getElementById("manualLocPanel");
   const foundBuildingSelect = document.getElementById("foundBuildingSelect");
@@ -84,8 +91,13 @@
   const handoverSelect = document.getElementById("handoverSelect");
   const submitBtn = document.getElementById("submitBtn");
 
+  const floorSelect = document.getElementById("floorSelect");
+  const placeText = document.getElementById("placeText");
+  const manualChip = document.getElementById("manualChip");
   let mode = "inplace";
   let hasLocationPermission = true;
+  /** 위치를 찾는 중이면 true */
+  let locating = false;
   /** 위치로 고른 가장 가까운 건물. 못 고르면(권한 없음·300m 밖) null이고 직접 고른다 */
   let autoBuilding = null;
   /** autoBuilding을 현재 위치가 아니라 사진 위치(EXIF, 사진 화면에서 건물로 바꿔 둠)로 골랐는지 */
@@ -95,20 +107,62 @@
   // 분석 결과 (uploading.html이 저장). 없으면 사진부터
   const draft = FoundApi.store.get("foundDraft");
   if (!draft) window.location.replace("photo.html");
+  // 이미 등록을 마친 초안이면(완료 화면에서 뒤로 가기) 완료 화면으로 (QA 10/29)
+  try {
+    if (draft && sessionStorage.getItem("foundConfirmedId") === draft.id) {
+      window.location.replace(sessionStorage.getItem("foundDonePage") || "done-inplace.html");
+    }
+  } catch (_) {}
+  if (draft) {
+    LeaveGuard.install({
+      title: "분실물 등록을 그만할까요?",
+      message: "고른 사진과 적은 내용이 사라지고 사진부터 다시 해야 해요.",
+      leaveLabel: "그만하기",
+      leaveTo: "photo.html",
+      onLeave: () => {
+        for (const k of ["foundDraft", "foundPhoto", "photoBuilding"]) sessionStorage.removeItem(k);
+      },
+    });
+  }
   // 물건 종류: AI가 알아본 것을 고르고, 잘못 봤으면 습득자가 고친다. 값은 "큰종류" 또는 "큰종류:세부종류"
   const itemSelect = document.getElementById("itemSelect");
   const aiItem = draft?.category ? (draft.subCategory ? `${draft.category}:${draft.subCategory}` : draft.category) : "";
-  if (!draft?.category) itemSelect.add(new Option("확인 중인 물건 (관리자가 확인해요)", "", true, true));
-  for (const [cat, label] of Object.entries(FoundApi.CATEGORY_LABELS)) {
-    const subs = FoundApi.SUB_CATEGORIES[cat];
-    if (!subs) {
-      itemSelect.add(new Option(label, cat));
-      continue;
-    }
+  if (!draft?.category) itemSelect.add(new Option("확인 중인 물건 · 관리자가 확인해요", "", true, true));
+  // 분류별로 묶고, 세부 종류가 있는 종류의 나머지("기타 ○○")는 분류 맨 뒤에 둔다 (QA 10/29)
+  const ITEM_GROUPS = [
+    ["카드·신분증", ["ID_CARD", "DRIVER_LICENSE", "PAYMENT_CARD", "TRANSIT_CARD", "OTHER_CARD"]],
+    ["지갑·현금", ["WALLET", "CASH"]],
+    ["전자기기", ["PHONE", "TABLET", "LAPTOP", "SMARTWATCH", "EARPHONE", "CHARGER"]],
+    ["가방·옷", ["BAG", "CLOTHING", "HAT"]],
+    ["생활용품", ["GLASSES", "ACCESSORY", "UMBRELLA", "TUMBLER", "KEY"]],
+    ["책·필기구", ["BOOK", "STATIONERY"]],
+    ["그 밖의 물건", ["ETC"]],
+  ];
+  /** 세부 종류에 없는 나머지 이름. 기타 카드·기타처럼 이미 나머지인 종류도 맨 뒤로 */
+  const REST_LABELS = {
+    OTHER_CARD: "기타 카드",
+    WALLET: "기타 지갑",
+    EARPHONE: "기타 이어폰",
+    CHARGER: "기타 전자기기",
+    BAG: "기타 가방",
+    CLOTHING: "기타 옷",
+    ACCESSORY: "기타 액세서리",
+    KEY: "기타 열쇠",
+    BOOK: "기타 책",
+    STATIONERY: "기타 필기구",
+    ETC: "기타 물건",
+  };
+  for (const [name, cats] of ITEM_GROUPS) {
     const group = document.createElement("optgroup");
-    group.label = label;
-    group.append(new Option(`${label} (기타)`, cat));
-    for (const sub of subs) group.append(new Option(FoundApi.SUB_CATEGORY_LABELS[sub], `${cat}:${sub}`));
+    group.label = name;
+    const rest = [];
+    for (const cat of cats) {
+      const subs = FoundApi.SUB_CATEGORIES[cat] || [];
+      for (const sub of subs) group.append(new Option(FoundApi.SUB_CATEGORY_LABELS[sub], `${cat}:${sub}`));
+      if (REST_LABELS[cat]) rest.push(new Option(REST_LABELS[cat], cat));
+      else group.append(new Option(FoundApi.CATEGORY_LABELS[cat], cat));
+    }
+    group.append(...rest);
     itemSelect.append(group);
   }
   itemSelect.value = aiItem;
@@ -132,18 +186,23 @@
   function syncPanels() {
     manualLocPanel.classList.add("is-open");
     handoverPanel.classList.toggle("is-open", mode === "handover");
-    const auto = hasLocationPermission && autoBuilding;
-    document.getElementById("manualChip").hidden = !!auto;
+    const auto = !!autoBuilding;
+    // .loc-chip은 display:inline-flex라 hidden 속성으로 안 숨는다 → style로 숨긴다 (QA: 허용해도 "권한 없음"이 남던 문제)
+    manualChip.style.display = auto ? "none" : "";
     if (auto && !foundBuildingSelect.value) foundBuildingSelect.value = String(autoBuilding.id);
+    document.getElementById("buildingReq").hidden = mode !== "inplace";
 
-    if (hasLocationPermission && autoBuilding) {
+    if (locating) {
+      locPermToggle.textContent = "위치 확인 중";
+      locPermToggle.classList.remove("is-manual");
+    } else if (autoBuilding) {
       locPermToggle.textContent = fromPhoto ? `사진 위치로 고른 건물: ${autoBuilding.name}` : `가까운 건물: ${autoBuilding.name}`;
       locPermToggle.classList.remove("is-manual");
     } else if (hasLocationPermission) {
-      locPermToggle.textContent = "근처 건물을 못 찾았어요";
+      locPermToggle.textContent = "근처 건물을 못 찾았어요 · 다시 찾기";
       locPermToggle.classList.add("is-manual");
     } else {
-      locPermToggle.textContent = "위치 권한 없음";
+      locPermToggle.textContent = "위치로 찾기";
       locPermToggle.classList.add("is-manual");
     }
   }
@@ -160,17 +219,40 @@
         hasLocationPermission = false;
         syncPanels();
       }
+      // 설정에서 나중에 허용하면 바로 다시 찾는다
+      res.onchange = () => {
+        if (res.state === "granted" && (!autoBuilding || fromPhoto)) locate();
+      };
     }).catch(() => {});
   }
 
   syncPanels();
 
-  locPermToggle.addEventListener("click", () => {
-    hasLocationPermission = !hasLocationPermission;
-    try {
-      sessionStorage.setItem("locationConsent", hasLocationPermission ? "granted" : "denied");
-    } catch (_) {}
+  // 위쪽 칩: 건물을 못 찾았으면 눌러서 위치로 다시 찾는다. 누르는 것이 위치 사용 동의다(좌표는 건물로 바꾼 뒤 버린다)
+  async function locate() {
+    if (locating || !buildings.length) return;
+    locating = true;
     syncPanels();
+    const found = await FoundApi.nearestBuilding(buildings);
+    locating = false;
+    hasLocationPermission = true;
+    try {
+      sessionStorage.setItem("locationConsent", "granted");
+    } catch (_) {}
+    if (found) {
+      // 습득자가 이미 다른 건물을 골랐으면 그대로 둔다
+      const prev = autoBuilding;
+      if (!foundBuildingSelect.value || (prev && foundBuildingSelect.value === String(prev.id))) {
+        foundBuildingSelect.value = String(found.id);
+      }
+      autoBuilding = found;
+      fromPhoto = false;
+    }
+    syncPanels();
+  }
+  locPermToggle.addEventListener("click", () => {
+    if (autoBuilding && !fromPhoto) return;
+    locate();
   });
 
   foundBuildingSelect.addEventListener("change", () => {
@@ -191,7 +273,17 @@
     syncPanels();
   });
 
-  // 귀중품은 보관처(센터·경비실)에만 맡길 수 있다. 서버도 그 자리에 둠을 400으로 거절한다 (QA B11)
+  // 귀중품이 무엇인지 미리 알려 준다 (QA 10/29)
+  document.getElementById("valuableInfo").textContent =
+    `귀중품(${FoundApi.VALUABLE_CATEGORIES.map((c) => (c === "EARPHONE" ? "이어폰" : FoundApi.CATEGORY_LABELS[c])).join(", ")})은 보관처에 맡겨 주세요.`;
+
+  // 층: 지하 2층 ~ 15층. 모르면 비운다
+  for (let f = -2; f <= 15; f++) {
+    if (f === 0) continue;
+    floorSelect.add(new Option(f < 0 ? `지하 ${-f}층` : `${f}층`, String(f)));
+  }
+
+  // 귀중품은 보관처(교무처)에만 맡길 수 있다. 서버도 그 자리에 둠을 400으로 거절한다 (QA B11)
   function lockToHandover() {
     choiceInplace.style.display = "none"; // .choice가 display:flex라 hidden 속성으로는 안 숨는다
     choiceInplace.disabled = true;
@@ -222,8 +314,13 @@
   FoundApi.buildings()
     .then(async (list) => {
       buildings = list;
-      fillSelect(foundBuildingSelect, list.map((b) => ({ label: b.name, value: b.id })), "주운 건물을 선택해 주세요");
-      if (hasLocationPermission) autoBuilding = await FoundApi.nearestBuilding(list);
+      fillSelect(foundBuildingSelect, list.map((b) => ({ label: b.name, value: b.id })), "건물 선택");
+      if (hasLocationPermission) {
+        locating = true;
+        syncPanels();
+        autoBuilding = await FoundApi.nearestBuilding(list);
+        locating = false;
+      }
       if (hasLocationPermission && !autoBuilding) {
         const p = FoundApi.store.get("photoBuilding");
         autoBuilding = (p && list.find((b) => b.id === p.id)) || null;
@@ -235,6 +332,20 @@
     .then((places) => {
       fillSelect(handoverSelect, places.map((p) => ({ label: `${p.building.name} · ${p.name}`, value: p.id })));
       handoverSelect._places = places;
+      // 보관처가 한 곳이면 고를 것 없이 글자로 보여 준다 (QA 10/29)
+      if (places.length === 1) {
+        const p = places[0];
+        placeText.innerHTML = "";
+        placeText.append(`${p.building.name} · ${p.name}`);
+        const small = document.createElement("small");
+        small.textContent = p.guideText;
+        placeText.append(small);
+        placeText.hidden = false;
+        handoverSelect.hidden = true;
+      } else {
+        placeText.hidden = true;
+        handoverSelect.hidden = false;
+      }
     })
     .catch((err) => alert(err.message));
 
@@ -253,6 +364,7 @@
       ...(buildingId ? { buildingId } : {}),
       ...(mode === "handover" ? { storagePlaceId: Number(handoverSelect.value) } : {}),
       ...(locationDetail.value.trim() ? { locationDetail: locationDetail.value.trim() } : {}),
+      ...(floorSelect.value ? { floor: Number(floorSelect.value) } : {}),
     };
     // AI가 본 것과 다르게 골랐을 때만 보낸다
     if (draft.category && itemSelect.value !== aiItem) Object.assign(body, pickedItem());
@@ -283,7 +395,10 @@
     }
 
     FoundApi.store.set("foundResult", result);
+    const donePage = mode === "handover" ? "done-handover.html" : "done-inplace.html";
     try {
+      sessionStorage.setItem("foundConfirmedId", draft.id);
+      sessionStorage.setItem("foundDonePage", donePage);
       sessionStorage.setItem("registeredAt", formatKoreanTime(new Date()));
       sessionStorage.setItem("foundBuilding", result?.building?.name || "");
       if (body.locationDetail) sessionStorage.setItem("locationDetail", body.locationDetail);
@@ -292,7 +407,8 @@
         sessionStorage.setItem("handoverBuilding", `${result.storagePlace.name} · ${result.storagePlace.guideText}`);
       }
     } catch (_) {}
-    window.location.href = mode === "handover" ? "done-handover.html" : "done-inplace.html";
+    // 등록 화면은 history에서 빼서, 완료 화면에서 뒤로 가도 다시 등록하지 않게 한다
+    window.location.replace(donePage);
   });
 </script>
 </body>
