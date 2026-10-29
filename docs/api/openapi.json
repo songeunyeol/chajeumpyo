@@ -7333,6 +7333,9 @@
                           "locked": {
                             "type": "boolean"
                           },
+                          "awaitingPickup": {
+                            "type": "boolean"
+                          },
                           "inPersonOnly": {
                             "type": "boolean"
                           },
@@ -7350,6 +7353,7 @@
                           "reasons",
                           "attemptsLeft",
                           "locked",
+                          "awaitingPickup",
                           "inPersonOnly",
                           "isSeed"
                         ]
@@ -7935,6 +7939,9 @@
                           "locked": {
                             "type": "boolean"
                           },
+                          "awaitingPickup": {
+                            "type": "boolean"
+                          },
                           "inPersonOnly": {
                             "type": "boolean"
                           },
@@ -7952,6 +7959,7 @@
                           "reasons",
                           "attemptsLeft",
                           "locked",
+                          "awaitingPickup",
                           "inPersonOnly",
                           "isSeed"
                         ]
@@ -8232,6 +8240,9 @@
                           "locked": {
                             "type": "boolean"
                           },
+                          "awaitingPickup": {
+                            "type": "boolean"
+                          },
                           "inPersonOnly": {
                             "type": "boolean"
                           },
@@ -8249,6 +8260,7 @@
                           "reasons",
                           "attemptsLeft",
                           "locked",
+                          "awaitingPickup",
                           "inPersonOnly",
                           "isSeed"
                         ]

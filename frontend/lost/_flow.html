@@ -342,9 +342,16 @@
       const info = document.createElement("div");
       info.className = "muted";
       info.textContent =
-        state === "open" ? `확인 기회 ${c.attemptsLeft}번 남음` : state === "locked" ? "잠김 · 확인 기회를 모두 썼어요" : "대면 확인만";
+        state === "passed"
+          ? "확인 완료·수령 대기"
+          : state === "open"
+            ? `확인 기회 ${c.attemptsLeft}번 남음`
+            : state === "locked"
+              ? "잠김 · 확인 기회를 모두 썼어요"
+              : "대면 확인만";
       const btn = document.createElement("button");
-      btn.textContent = state === "open" ? "내 물건인지 확인" : "찾는 방법 보기";
+      btn.textContent =
+        state === "open" ? "내 물건인지 확인" : state === "passed" ? "확인 완료·수령 대기" : "찾는 방법 보기";
       btn.disabled = state !== "open";
       btn.className = "claim";
       btn.addEventListener("click", () => doClaim(c, btn));

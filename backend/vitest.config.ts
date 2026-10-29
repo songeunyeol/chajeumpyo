@@ -9,6 +9,8 @@ export default defineConfig({
     globalSetup: ["test/helpers/global-setup.ts"],
     // 통합 테스트가 같은 DB를 비우고 채우므로 파일을 순서대로 돌린다.
     fileParallelism: false,
+    // 기본 5초는 사진 축소·가리기가 느린 컴퓨터에서 끊긴다. 판정이 느려진 건 아니다.
+    testTimeout: 15_000,
     env: {
       NODE_ENV: "test",
       DATABASE_URL: TEST_DATABASE_URL,

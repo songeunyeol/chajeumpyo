@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { TEST_DATABASE_URL } from "./test-db";
 
@@ -17,7 +18,7 @@ export default async function setup() {
   await admin.end();
 
   execSync("npx prisma migrate deploy", {
-    cwd: new URL("../..", import.meta.url).pathname,
+    cwd: fileURLToPath(new URL("../..", import.meta.url)),
     env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
     stdio: "pipe",
   });

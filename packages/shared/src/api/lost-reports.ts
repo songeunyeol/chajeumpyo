@@ -76,6 +76,8 @@ export const Candidate = z.object({
   attemptsLeft: z.number().int().min(0),
   /** 온라인 확인 불가 (이 계정이 횟수를 다 썼거나, 물건이 대면 확인으로 넘어감) */
   locked: z.boolean(),
+  /** 이 계정이 확인을 통과했다. 교무처에서 QR로 수령 완료하기 전까지 신고는 OPEN */
+  awaitingPickup: z.boolean(),
   /** 모든 계정의 실패가 쌓여 대면 확인만 되는 물건 (#29) */
   inPersonOnly: z.boolean(),
   isSeed: z.boolean(),
