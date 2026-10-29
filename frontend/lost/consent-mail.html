@@ -13,38 +13,61 @@
 <main class="screen">
   <header class="bar"><a class="back" href="code.html">←</a></header>
   <h1>세 가지를 확인합니다</h1>
-  <p class="lead">학교 이메일로 가입할 때 물어봐요.</p>
-  <div class="check"><span class="mark">✓</span><div><b>학교 이메일</b><p>가입과, 누가 가져갔는지만 적어요. 이름은 받지 않아요.</p></div></div>
-  <div class="check is-toggle is-off" id="locConsent" role="checkbox" aria-checked="false" tabindex="0"><span class="mark">✓</span><div><b>위치 <span class="check-tag">(선택)</span></b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요. 누르면 동의해요.</p></div></div>
-  <div class="check"><span class="mark">✓</span><div><b>사진 외부 AI</b><p>종류와 색을 읽어요. 얼굴과 카드 번호는 보내기 전에 가려요.</p></div></div>
+  <p class="lead">눌러서 동의해 주세요.</p>
+  <div class="check is-toggle is-off" id="mailConsent" role="checkbox" aria-checked="false" tabindex="0"><span class="mark">✓</span><div><b>학교 이메일 <span class="check-tag">(필수)</span></b><p>가입과 물건을 찾아간 사람 기록에만 써요.</p></div></div>
+  <div class="check is-toggle is-off" id="aiConsent" role="checkbox" aria-checked="false" tabindex="0"><span class="mark">✓</span><div><b>사진 분석 <span class="check-tag">(필수)</span></b><p>올린 사진을 AI가 보고 물건 종류와 색을 알아봐요.<br>얼굴과 카드 번호는 AI로 보내기 전에 가려요.</p></div></div>
+  <div class="check is-toggle is-off" id="locConsent" role="checkbox" aria-checked="false" tabindex="0"><span class="mark">✓</span><div><b>위치 <span class="check-tag">(선택)</span></b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요.<br>허용하지 않아도 건물을 직접 고를 수 있어요.</p></div></div>
   <p class="note danger" id="consentErr" hidden></p>
   <div class="dock">
-    <a class="btn" id="agreeBtn" href="home.html">동의하고 계속</a>
+    <a class="btn" id="agreeBtn" href="home.html" aria-disabled="true">동의하고 계속</a>
   </div>
 </main>
+<style>.btn[aria-disabled="true"] { opacity: .45; }</style>
 <script src="api.js"></script>
+<script src="../leave-guard.js"></script>
 <script>
+  // 가입 단계 중 뒤로 가기: 처음부터 다시 해야 하므로 한 번 묻는다 (QA 10/29)
+  LeaveGuard.install({
+    title: "가입을 그만할까요?",
+    message: "다시 처음부터 해야 해요. 그래도 나갈까요?",
+    leaveTo: "signup.html",
+  });
   // POST /auth/signup: 인증 코드 화면이 저장한 verificationToken + 회원가입 화면이 잠깐 둔 비밀번호 + 동의
   // 이메일·외부 AI는 필수, 위치는 선택(처음엔 꺼 둠, 눌러야 동의). 위치 동의 여부를 그대로 보낸다 (QA B14·B15)
   const agreeBtn = document.getElementById("agreeBtn");
   const consentErr = document.getElementById("consentErr");
   if (!LostApi.store.get(LostApi.KEYS.verification)) location.replace("signup.html");
+  // 동의는 모두 처음엔 꺼 두고 사용자가 직접 누른다. 필수(이메일·사진 분석)를 켜야 버튼이 켜진다 (QA 10/29)
   const locConsent = document.getElementById("locConsent");
-  const toggleLoc = () => {
-    const off = locConsent.classList.toggle("is-off");
-    locConsent.setAttribute("aria-checked", String(!off));
-  };
-  locConsent.addEventListener("click", toggleLoc);
-  locConsent.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      toggleLoc();
-    }
-  });
+  const required = [document.getElementById("mailConsent"), document.getElementById("aiConsent")];
+  const isOn = (el) => !el.classList.contains("is-off");
+  const allRequired = () => required.every(isOn);
+  const sync = () => agreeBtn.setAttribute("aria-disabled", String(!allRequired()));
+  for (const el of [...required, locConsent]) {
+    const toggle = () => {
+      const off = el.classList.toggle("is-off");
+      el.setAttribute("aria-checked", String(!off));
+      sync();
+      if (allRequired()) consentErr.hidden = true;
+    };
+    el.addEventListener("click", toggle);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggle();
+      }
+    });
+  }
+  sync();
   let busy = false;
   agreeBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     if (busy) return;
+    if (!allRequired()) {
+      consentErr.textContent = "필수 항목에 동의해야 가입할 수 있어요.";
+      consentErr.hidden = false;
+      return;
+    }
     busy = true;
     consentErr.hidden = true;
     try {

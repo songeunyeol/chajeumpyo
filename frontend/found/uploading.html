@@ -69,7 +69,28 @@
   </div>
 </main>
 <script src="api.js"></script>
+<script src="../leave-guard.js"></script>
 <script>
+  // 단계 확인: 이 사진의 분석이 이미 끝났으면(앞으로·뒤로 가기, 새로고침) 다시 올리지 않고 등록 화면으로,
+  // 사진이 없으면 사진 화면으로 (QA 10/29). 미리보기(?preview)는 그대로 재생한다
+  const isPreview = new URLSearchParams(window.location.search).has("preview");
+  let redirectTo = null;
+  if (!isPreview) {
+    try {
+      if (sessionStorage.getItem("foundDraft")) redirectTo = "register.html";
+      else if (!sessionStorage.getItem("foundPhoto")) redirectTo = "photo.html";
+    } catch (_) {}
+  }
+  if (redirectTo) location.replace(redirectTo);
+  else if (!isPreview) {
+    LeaveGuard.install({
+      title: "분실물 등록을 그만할까요?",
+      message: "올리던 사진은 등록되지 않아요.",
+      leaveLabel: "그만하기",
+      leaveTo: "photo.html",
+    });
+  }
+
   const mover = document.getElementById("ticketMover");
   const flipper = document.getElementById("ticketFlipper");
   const statusEl = document.getElementById("padStatus");
@@ -137,7 +158,8 @@
 
     // 5. 완료 즉시 다음 페이지(register.html)로 자동 이동
     if (!new URLSearchParams(window.location.search).has("preview")) {
-      window.location.href = "register.html";
+      // 올리는 중 화면은 history에 남기지 않는다. 등록 화면에서 뒤로 가면 다시 분석하지 않고 사진 화면으로 간다
+      window.location.replace("register.html");
     } else {
       // 한눈에.html의 3번 슬롯 프리뷰에서는 빈 화면으로 멈추지 않도록 잠시 후 다시 재생
       await wait(1200);
@@ -149,7 +171,9 @@
   let photo = null;
   try { photo = sessionStorage.getItem("foundPhoto"); } catch (_) {}
   const locationConsent = (() => { try { return sessionStorage.getItem("locationConsent") !== "denied"; } catch (_) { return true; } })();
-  const uploadTask = photo
+  const uploadTask = redirectTo
+    ? new Promise(() => {}) // 다른 화면으로 옮기는 중: 올리지 않는다
+    : photo
     ? FoundApi.analyze(photo, locationConsent).then((r) => {
         FoundApi.store.set("foundDraft", r);
         return {
