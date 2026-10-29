@@ -45,6 +45,20 @@
     ETC: "기타",
   };
 
+  /** packages/shared/src/enums.ts의 SUB_CATEGORIES (물건 상세에서 세부 종류를 고칠 때 보기) */
+  const SUB_CATEGORIES = {
+    CHARGER: ["CABLE_CHARGER", "POWER_BANK", "MOUSE", "KEYBOARD", "USB_MEMORY", "CAMERA", "GAME_CONSOLE"],
+    EARPHONE: ["WIRELESS_EARBUDS", "WIRED_EARPHONE", "HEADPHONE"],
+    BAG: ["BACKPACK", "SHOULDER_BAG", "ECO_BAG", "POUCH", "SHOPPING_BAG"],
+    CLOTHING: ["OUTER", "TOP", "BOTTOM", "SCARF_GLOVES", "SHOES"],
+    WALLET: ["LONG_WALLET", "BIFOLD_WALLET", "CARD_WALLET"],
+    ACCESSORY: ["WRISTWATCH", "JEWELRY", "HAIR_ACCESSORY"],
+    BOOK: ["TEXTBOOK", "NOTEBOOK"],
+    STATIONERY: ["PENCIL_CASE", "CALCULATOR", "PEN"],
+    KEY: ["DOOR_KEY", "CAR_KEY"],
+    ETC: ["DOLL_KEYRING", "COSMETICS", "MEDICINE"],
+  };
+
   /** packages/shared/src/enums.ts의 SUB_CATEGORY_LABELS (관리자 API가 세부 종류를 주면 이 이름으로 보인다) */
   const SUB_CATEGORY_LABELS = {
     CABLE_CHARGER: "충전기·케이블",
@@ -713,6 +727,7 @@
   window.AdminApi = {
     API_BASE,
     CATEGORY_LABELS,
+    SUB_CATEGORIES,
     SUB_CATEGORY_LABELS,
     COLOR_LABELS,
     FEATURE_KEY_LABELS,
