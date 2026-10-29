@@ -13,6 +13,10 @@ const defaultDir =
 
 /** 네이버 지도 SDK(frontend/naver-map.js)가 불러오는 스크립트·지도 타일 출처. 키가 없으면 그림 지도로 대신한다 */
 const naverMap = ["https://oapi.map.naver.com", "https://*.map.naver.net", "https://*.pstatic.net"];
+/** 네이버 지도 인증이 막힐 때 frontend/naver-map.js가 대신 까는 위성 사진 타일 */
+const esriTiles = "https://server.arcgisonline.com";
+/** 수령 QR을 그리는 qrcodejs (lost/item-handover.html, 버전·SRI 고정) */
+const cdnjs = "https://cdnjs.cloudflare.com";
 
 /**
  * 화면에 필요한 바깥 리소스만 연다. 화면이 인라인 <script>·style을 써서 unsafe-inline이 필요하다.
@@ -21,10 +25,10 @@ const naverMap = ["https://oapi.map.naver.com", "https://*.map.naver.net", "http
 const pageCsp = helmet.contentSecurityPolicy({
   directives: {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com", ...naverMap],
+    "script-src": ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com", cdnjs, ...naverMap],
     "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
     "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net"],
-    "img-src": ["'self'", "data:", "blob:", ...naverMap],
+    "img-src": ["'self'", "data:", "blob:", esriTiles, ...naverMap],
     "connect-src": ["'self'", ...naverMap],
     "frame-src": ["https://challenges.cloudflare.com"],
     "object-src": ["'none'"],

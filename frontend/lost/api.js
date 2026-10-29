@@ -46,6 +46,10 @@
   const DESCRIPTION_MAX = 500;
   /** packages/shared/src/api/claims.ts AnswerRequest 최대 길이 */
   const ANSWER_MAX = 50;
+  /** 인증 코드: 서버 기준 5분 유효, 1분에 한 번 다시 받기, 5번 틀리면 버림 (backend/src/services/auth.ts) */
+  const CODE_TTL_SECONDS = 300;
+  const CODE_RESEND_SECONDS = 60;
+  const CODE_MAX_WRONG = 5;
 
   /** packages/shared/src/enums.ts의 CATEGORY_LABELS (순서도 Category enum 그대로) */
   const CATEGORY_LABELS = {
@@ -141,7 +145,7 @@
   };
 
   /** 신고 상태 (ReportStatus) */
-  const REPORT_STATUS_LABELS = { OPEN: "진행 중", RESOLVED: "찾음", CLOSED: "닫힘" };
+  const REPORT_STATUS_LABELS = { OPEN: "진행 중", RESOLVED: "찾음", CLOSED: "종료" };
   /** 보관 방식 (StorageType) */
   const STORAGE_TYPE_LABELS = { IN_PLACE: "그 자리에 둠", HANDED_OVER: "보관처에 맡김" };
 
@@ -289,6 +293,7 @@
   const KEYS = {
     auth: "lost.auth", // { accessToken, expiresAt, user: { id, email, role } }
     signupEmail: "lost.signupEmail", // 회원가입 → 인증 코드 화면
+    codeSent: "lost.codeSent", // { email, at, wrong } 마지막으로 인증 코드를 보낸 시각과 그 코드로 틀린 횟수
     signupPassword: "lost.signupPassword", // 회원가입 → 동의 화면. 이 탭에만 10분까지 두고, 가입·흐름 이탈 때 지운다
     verification: "lost.verification", // { verificationToken, expiresAt } 인증 코드 → 동의 화면
     reportDraft: "lost.reportDraft", // 신고 화면 ↔ 건물 화면 왕복
@@ -605,6 +610,9 @@
     DESCRIPTION_MIN,
     DESCRIPTION_MAX,
     ANSWER_MAX,
+    CODE_TTL_SECONDS,
+    CODE_RESEND_SECONDS,
+    CODE_MAX_WRONG,
     CATEGORIES,
     CATEGORY_LABELS,
     SUB_CATEGORY_LABELS,
@@ -661,14 +669,34 @@
 
     // ── 인증 ──
     /** POST /auth/email/code (캡차). 204. 가입된 이메일도 204 (가입 여부를 드러내지 않음) */
-    requestCode(email) {
-      store.set(KEYS.signupEmail, String(email).trim().toLowerCase());
-      return call("/auth/email/code", {
+    async requestCode(email) {
+      const normalized = String(email).trim().toLowerCase();
+      store.set(KEYS.signupEmail, normalized);
+      await call("/auth/email/code", {
         method: "POST",
         body: { email },
         auth: false,
         captcha: CAPTCHA_ACTIONS.emailCode,
       });
+      store.set(KEYS.codeSent, { email: normalized, at: Date.now(), wrong: 0 });
+    },
+    /**
+     * 이 이메일로 보낸 코드가 아직 쓸 수 있으면 { at, wrong }, 아니면 null.
+     * 앞 화면에 갔다 와도 같은 코드를 쓰게 한다. 다시 보내면 서버가 1분 대기(429)를 걸어 메일이 안 오던 문제 (QA 10/29)
+     */
+    recentCode(email) {
+      const sent = store.get(KEYS.codeSent);
+      const normalized = String(email || "")
+        .trim()
+        .toLowerCase();
+      if (!sent || sent.email !== normalized) return null;
+      if (Date.now() - sent.at >= CODE_TTL_SECONDS * 1000 || (sent.wrong ?? 0) >= CODE_MAX_WRONG) return null;
+      return { at: sent.at, wrong: sent.wrong ?? 0 };
+    },
+    /** 지금 코드로 틀린 횟수를 남긴다 (화면을 다시 열어도 남은 횟수가 맞게) */
+    noteWrongCode() {
+      const sent = store.get(KEYS.codeSent);
+      if (sent) store.set(KEYS.codeSent, { ...sent, wrong: (sent.wrong ?? 0) + 1 });
     },
     /** POST /auth/email/verify → { verificationToken, expiresAt(10분) }. 저장해 두고 동의 화면에서 signup */
     async verifyCode(email, code) {

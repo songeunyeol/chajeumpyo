@@ -166,6 +166,28 @@ describe("기준 5. 종류: 같은 종류, 2순위 종류, 연관 묶음, 기타
     const ids = (await post(report())).body.candidates.map((c: { foundItemId: string }) => c.foundItemId).sort();
     expect(ids).toEqual([alt.id, related.id, etc.id].sort());
   });
+
+  it("세부 종류가 정해진 기타(인형·키링 등)는 다른 종류 신고에 뜨지 않고, 기타 신고에는 뜬다 (QA 10/29)", async () => {
+    const doll = await createFoundItem({
+      buildingId: A,
+      category: "ETC",
+      subCategory: "DOLL_KEYRING",
+      foundAt: hoursAgo(1),
+    });
+    const dollAsAlt = await createFoundItem({
+      buildingId: A,
+      category: "UMBRELLA",
+      categoryAlt: "ETC",
+      foundAt: hoursAgo(1),
+    });
+    const unknown = await createFoundItem({ buildingId: A, category: "ETC", foundAt: hoursAgo(1) });
+    const earphone = (await post(report())).body.candidates.map((c: { foundItemId: string }) => c.foundItemId);
+    expect(earphone).toEqual([unknown.id]);
+    const etc = (await post(report({ category: "ETC" }))).body.candidates.map(
+      (c: { foundItemId: string }) => c.foundItemId,
+    );
+    expect(etc).toEqual(expect.arrayContaining([doll.id, dollAsAlt.id, unknown.id]));
+  });
 });
 
 describe("기준 6. 점수로 최대 3개를 고른다", () => {

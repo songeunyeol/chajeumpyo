@@ -16,15 +16,9 @@
     <h2>알림</h2>
   </header>
   <h1>알림</h1>
+  <!-- 시안의 예시 카드는 두지 않는다(새로고침·첫 진입 때 가짜 알림이 잠깐 보이던 문제, QA 10/29) -->
   <div id="alertList" style="display:flex;flex-direction:column">
-  <a class="card" href="candidates.html">
-    <h3>후보 3개</h3>
-    <p class="meta">무선 이어폰 · 오늘 14:20</p>
-  </a>
-  <a class="card" href="item.html">
-    <h3>확인을 통과했어요</h3>
-    <p class="meta">우산 · 10월 20일</p>
-  </a>
+    <p class="note" id="alertLoading">알림을 불러오는 중이에요.</p>
   </div>
 </main>
 <script src="api.js"></script>
@@ -70,7 +64,7 @@
           empty.className = "card";
           empty.style.color = "var(--mute)";
           empty.style.fontSize = "14px";
-          empty.textContent = "아직 알림이 없어요. 신고한 물건과 비슷한 물건이 들어오면 알려 줘요.";
+          empty.textContent = "아직 알림이 없어요. 신고한 물건과 비슷한 물건이 들어오면 알려 줄게요.";
           list.replaceChildren(empty);
         } else {
           list.replaceChildren(...r.notifications.map(card));

@@ -16,8 +16,8 @@
     <span class="loc-chip" id="testCodeChip" style="cursor:default;display:none">테스트 코드: 123456</span>
   </header>
   <h1>코드를 보냈어요</h1>
-  <p class="lead"><span id="maskedEmail">ab***@skuniv.ac.kr</span> 로 보낸 숫자 6개를 입력해요. 5분이 지나면 다시 받아야 해요.</p>
-  <p class="note" style="margin-top:0">메일이 안 보이면 <b>스팸함</b>도 확인해 주세요. 보낸 사람은 "찾음표"예요.</p>
+  <p class="lead"><span id="maskedEmail"></span>로 보낸 숫자 6개를 입력해 주세요.<br>5분이 지나면 다시 받아야 해요.</p>
+  <p class="note" style="margin-top:0;margin-bottom:22px">메일이 안 보이면 <b>스팸함</b>도 확인해 주세요. 보낸 사람은 "찾음표"예요.</p>
 
   <div class="codes is-enter" id="codeTiles" aria-label="인증 코드 6자리">
     <input style="--i:0" inputmode="numeric" maxlength="1" aria-label="1">
@@ -29,7 +29,7 @@
   </div>
 
   <p class="timer" id="timerLine">
-    <span id="timerText">5분 00초</span> · <span id="attemptText">5번 틀리면 코드는 버려져요</span>
+    <span id="timerText">5분 00초</span> · <span id="attemptText">남은 입력 5/5 · 5번 틀리면 코드는 버려져요</span>
   </p>
   <button type="button" class="resend-btn" id="resendBtn">다시 보내기</button>
 
@@ -81,16 +81,29 @@
   }
 
   try {
-    const savedEmail = sessionStorage.getItem("signupEmail");
-    if (savedEmail) {
-      maskedEmailEl.textContent = maskEmail(savedEmail);
-    }
+    maskedEmailEl.textContent = maskEmail(sessionStorage.getItem("signupEmail") || signupEmail);
   } catch (_) {}
 
   // 2. 실시간 5분 타이머 및 다시 보내기 초기화 + 깜박임
-  let remainingSeconds = 300;
-  let remainingAttempts = 5;
+  // 코드를 보낸 시각부터 센다. 앞 화면에 갔다 와도 처음 받은 코드의 남은 시간·횟수가 그대로 보인다 (QA 10/29)
+  const MAX_WRONG = LostApi.CODE_MAX_WRONG;
+  const sent = LostApi.recentCode(signupEmail);
+  // 쓸 수 있는 코드가 없으면(만료·5번 틀림) 바로 다시 받게 한다
+  let sentAt = sent?.at ?? 0;
+  let remainingSeconds = Math.max(0, LostApi.CODE_TTL_SECONDS - Math.floor((Date.now() - sentAt) / 1000));
+  let remainingAttempts = sent ? MAX_WRONG - sent.wrong : 0;
   let isTransitioning = false;
+
+  const attemptLine = (left) => `남은 입력 ${left}/${MAX_WRONG} · ${MAX_WRONG}번 틀리면 코드는 버려져요`;
+  attemptText.textContent = sent ? attemptLine(remainingAttempts) : "코드를 다시 받아 주세요";
+
+  /** 다시 보내기는 1분에 한 번. 남은 초를 버튼에 보여 준다 */
+  function renderResend() {
+    const wait = LostApi.CODE_RESEND_SECONDS - Math.floor((Date.now() - sentAt) / 1000);
+    resendBtn.disabled = wait > 0;
+    resendBtn.textContent = wait > 0 ? `다시 보내기 (${wait}초 뒤)` : "다시 보내기";
+  }
+  renderResend();
 
   function renderTimer() {
     const m = Math.floor(remainingSeconds / 60);
@@ -101,6 +114,7 @@
   renderTimer();
 
   const timerId = setInterval(() => {
+    renderResend();
     if (remainingSeconds > 0) {
       remainingSeconds--;
       renderTimer();
@@ -124,14 +138,15 @@
       await LostApi.requestCode(signupEmail);
     } catch (err) {
       attemptText.textContent = LostApi.friendlyMessage(err);
+      renderResend();
       return;
-    } finally {
-      resendBtn.disabled = false;
     }
-    remainingSeconds = 300;
-    remainingAttempts = 5;
+    sentAt = Date.now();
+    renderResend();
+    remainingSeconds = LostApi.CODE_TTL_SECONDS;
+    remainingAttempts = MAX_WRONG;
     renderTimer();
-    attemptText.textContent = "5번 틀리면 코드는 버려져요";
+    attemptText.textContent = attemptLine(remainingAttempts);
 
     timerLine.classList.remove("is-blink");
     void timerLine.offsetWidth;
@@ -157,9 +172,9 @@
   function triggerWrong() {
     if (remainingAttempts > 0) remainingAttempts--;
     if (remainingAttempts > 0) {
-      attemptText.textContent = `${remainingAttempts}번 더 틀리면 코드는 버려져요`;
+      attemptText.textContent = attemptLine(remainingAttempts);
     } else {
-      attemptText.textContent = "5번 틀려서 코드가 버려졌어요. 다시 받아 주세요";
+      attemptText.textContent = `${MAX_WRONG}번 틀려서 코드가 버려졌어요. 다시 받아 주세요`;
       inputs.forEach((inp) => { inp.disabled = true; });
     }
 
@@ -202,6 +217,7 @@
       triggerSuccess();
     } catch (err) {
       if (err.code === "INVALID_CODE" || err.code === "VALIDATION_ERROR") {
+        LostApi.noteWrongCode();
         triggerWrong();
         // 칸을 비워 처음부터 다시 입력하게 한다 (한 칸만 고칠 때마다 섞인 코드로 다시 확인해 기회를 쓰지 않게)
         setTimeout(() => {

@@ -13,20 +13,24 @@
 <main class="screen">
   <header class="bar"><a class="back" href="login.html">←</a></header>
   <h1>학교 이메일로 가입</h1>
-  <p class="lead">서경대 이메일만 받아요. 이름은 받지 않아요.</p>
+  <p class="lead">서경대 이메일만 받아요.</p>
 
+  <!-- 오류는 칸마다 바로 밑에 보여 준다 (QA 10/29). 칸을 벗어나면 바로 검사한다 -->
   <label class="field">
-    <span>학교 이메일</span>
-    <input id="signupEmail" type="email" placeholder="아이디@skuniv.ac.kr" autocomplete="email">
+    <span>학교 이메일 <b class="req" aria-hidden="true">*</b></span>
+    <input id="signupEmail" type="email" placeholder="아이디@skuniv.ac.kr" autocomplete="email" required aria-describedby="emailErr">
   </label>
+  <p class="note danger field-err" id="emailErr" hidden></p>
   <label class="field">
-    <span>비밀번호</span>
-    <input id="signupPw" type="password" placeholder="8자 이상" autocomplete="new-password">
+    <span>비밀번호 <b class="req" aria-hidden="true">*</b></span>
+    <input id="signupPw" type="password" placeholder="8자 이상" autocomplete="new-password" required aria-describedby="pwErr">
   </label>
+  <p class="note danger field-err" id="pwErr" hidden></p>
   <label class="field">
-    <span>비밀번호 확인</span>
-    <input id="signupPwConfirm" type="password" placeholder="비밀번호를 한 번 더 입력" autocomplete="new-password">
+    <span>비밀번호 확인 <b class="req" aria-hidden="true">*</b></span>
+    <input id="signupPwConfirm" type="password" placeholder="비밀번호 다시 입력" autocomplete="new-password" required aria-describedby="pwConfirmErr">
   </label>
+  <p class="note danger field-err" id="pwConfirmErr" hidden></p>
   <p class="note danger" id="signupErr" hidden style="margin-top:-6px;margin-bottom:4px"></p>
 
   <div class="dock">
@@ -63,57 +67,81 @@
     if (!captcha) throw new LostApi.ApiError(400, { error: { code: "CAPTCHA_FAILED", message: "사람인지 확인하지 못했어요. 잠시 후 다시 눌러 주세요." } });
   }
 
-  function clearErrors() {
-    emailInput.classList.remove("is-invalid");
-    pwInput.classList.remove("is-invalid");
-    pwConfirmInput.classList.remove("is-invalid");
-    signupErr.hidden = true;
+  /** 칸별 검사. 통과하면 빈 문자열 */
+  const RULES = [
+    [emailInput, document.getElementById("emailErr"), () =>
+      /^[^\s@]+@skuniv\.ac\.kr$/i.test(emailInput.value.trim()) ? "" : "서경대 이메일(@skuniv.ac.kr)을 정확히 입력해 주세요."],
+    [pwInput, document.getElementById("pwErr"), () => (pwInput.value.length >= 8 ? "" : "비밀번호는 8자 이상이어야 해요.")],
+    [pwConfirmInput, document.getElementById("pwConfirmErr"), () =>
+      pwConfirmInput.value === pwInput.value ? "" : "비밀번호가 서로 달라요."],
+  ];
+
+  function showField(input, errEl, message) {
+    input.classList.toggle("is-invalid", Boolean(message));
+    errEl.textContent = message;
+    errEl.hidden = !message;
+  }
+  /** 칸 하나 검사 후 표시. 통과하면 true */
+  function checkField(rule) {
+    const [input, errEl, test] = rule;
+    const message = test();
+    showField(input, errEl, message);
+    return !message;
   }
 
-  emailInput.addEventListener("input", clearErrors);
-  pwInput.addEventListener("input", clearErrors);
-  pwConfirmInput.addEventListener("input", clearErrors);
+  for (const rule of RULES) {
+    const [input, errEl] = rule;
+    // 칸을 벗어나면 바로 검사한다. 아무것도 안 적고 지나가면 아직 오류를 띄우지 않는다
+    input.addEventListener("blur", () => {
+      if (input.value) checkField(rule);
+    });
+    input.addEventListener("input", () => {
+      signupErr.hidden = true;
+      if (!errEl.hidden) checkField(rule);
+    });
+  }
+  // 비밀번호를 고치면 확인 칸도 다시 맞춰 본다
+  pwInput.addEventListener("input", () => {
+    if (pwConfirmInput.value) checkField(RULES[2]);
+  });
 
   signupBtn.addEventListener("click", () => {
-    clearErrors();
+    signupErr.hidden = true;
+    const results = RULES.map(checkField);
+    const firstBad = results.indexOf(false);
+    if (firstBad !== -1) {
+      RULES[firstBad][0].focus();
+      return;
+    }
     const email = emailInput.value.trim();
     const pw = pwInput.value;
-    const pwConfirm = pwConfirmInput.value;
-
-    if (!/^[^\s@]+@skuniv\.ac\.kr$/i.test(email)) {
-      emailInput.classList.add("is-invalid");
-      signupErr.textContent = "서경대 이메일(@skuniv.ac.kr)을 정확히 입력해 주세요.";
-      signupErr.hidden = false;
-      return;
-    }
-    if (pw.length < 8) {
-      pwInput.classList.add("is-invalid");
-      signupErr.textContent = "비밀번호는 8자 이상이어야 해요.";
-      signupErr.hidden = false;
-      return;
-    }
-    if (pw !== pwConfirm) {
-      pwConfirmInput.classList.add("is-invalid");
-      signupErr.textContent = "비밀번호와 비밀번호 확인이 일치하지 않아요.";
-      signupErr.hidden = false;
-      return;
-    }
 
     // POST /auth/email/code. 캡차: 지금은 LostApi 기본 dev-pass.
     // PR #47 머지 후 이 화면에 found/captcha.js 위젯(action "email-code")을 붙이고 LostApi.setCaptchaProvider로 넘긴다
+    const goToCode = () => {
+      try {
+        sessionStorage.setItem("signupEmail", email);
+      } catch (_) {}
+      // 비밀번호는 동의 화면에서 가입할 때 보낸다. 이 탭에만 잠깐 두고 가입 직후 지운다
+      LostApi.holdSignupPassword(pw);
+      window.location.href = "code.html";
+    };
+    // 같은 이메일로 방금 보낸 코드가 아직 쓸 수 있으면 다시 보내지 않는다.
+    // 다시 보내면 서버의 1분 대기에 걸려 메일이 안 오던 문제 (QA 10/29). 새 코드는 다음 화면의 "다시 보내기"로 받는다
+    if (LostApi.recentCode(email)) {
+      LostApi.store.set(LostApi.KEYS.signupEmail, email.toLowerCase());
+      goToCode();
+      return;
+    }
     signupBtn.disabled = true;
     captchaOk()
       .then(() => LostApi.requestCode(email))
-      .then(() => {
-        try {
-          sessionStorage.setItem("signupEmail", email);
-        } catch (_) {}
-        // 비밀번호는 동의 화면에서 가입할 때 보낸다. 이 탭에만 잠깐 두고 가입 직후 지운다
-        LostApi.holdSignupPassword(pw);
-        window.location.href = "code.html";
-      })
+      .then(goToCode)
       .catch((err) => {
-        if (err.code === "INVALID_EMAIL_DOMAIN") emailInput.classList.add("is-invalid");
+        if (err.code === "INVALID_EMAIL_DOMAIN") {
+          showField(emailInput, RULES[0][1], LostApi.friendlyMessage(err));
+          return;
+        }
         signupErr.textContent = LostApi.friendlyMessage(err);
         signupErr.hidden = false;
       })

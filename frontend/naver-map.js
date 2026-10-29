@@ -87,13 +87,19 @@
     return { x, y };
   }
 
+  /** 위성 사진도 못 받으면 그림 자리만 바꾼다. 캔버스 전체를 지우면 위에 올린 네이버 지도까지 사라진다 */
   function renderFallbackCampusMap(canvasEl, loc) {
-    canvasEl.innerHTML = `
+    const stage = canvasEl.querySelector(".sat-stage");
+    const box = document.createElement("div");
+    box.className = "sat-stage";
+    box.innerHTML = `
       <svg viewBox="0 0 360 176" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="서경대학교 ${loc.buildingName} 위치">
         <rect width="360" height="176" fill="#d7d2c6"/>
-        <text x="180" y="88" text-anchor="middle" font-size="13" fill="#6f685e" font-family="Pretendard Variable, Pretendard, sans-serif">${loc.buildingName}</text>
+        <text x="180" y="88" text-anchor="middle" font-size="13" fill="#6f685e" font-family="Pretendard Variable, Pretendard, sans-serif">${esc(loc.buildingName)}</text>
       </svg>
     `;
+    if (stage) stage.replaceWith(box);
+    else canvasEl.prepend(box);
   }
 
   function renderSatelliteTiles(canvasEl, loc) {

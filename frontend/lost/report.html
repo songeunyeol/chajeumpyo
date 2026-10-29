@@ -16,21 +16,21 @@
   <p class="lead">확인에 쓰는 특징은 나중에 질문으로만 나와요.</p>
 
   <label class="field">
-    <span>물건</span>
+    <span>물건 <small class="opt">선택</small></span>
     <input id="lostItemInput" placeholder="무선 이어폰">
   </label>
 
   <!-- [연결 추가] 서버는 종류(category)가 꼭 필요하다. 물건 이름으로 미리 고르고 사람이 고칠 수 있게 -->
   <label class="field">
-    <span>종류</span>
+    <span>종류 <b class="req" aria-hidden="true">*</b></span>
     <select id="lostCategorySelect" aria-label="물건 종류 선택"></select>
   </label>
 
   <div class="field">
-    <span>언제</span>
+    <span>언제 <b class="req" aria-hidden="true">*</b></span>
     <div class="when-stack">
       <select id="lostDateSelect" aria-label="잃어버린 날짜 선택"></select>
-      <div class="time-range-grid">
+      <div class="time-range-grid" id="timeRangeGrid">
         <select id="lostStartHour" aria-label="시작 시간 선택"></select>
         <span class="time-range-sep">~</span>
         <select id="lostEndHour" aria-label="종료 시간 선택"></select>
@@ -39,7 +39,7 @@
   </div>
 
   <label class="field">
-    <span>어디 (건물)</span>
+    <span>어디 (건물) <b class="req" aria-hidden="true">*</b></span>
     <select id="lostBuildingSelect" aria-label="잃어버린 건물 선택">
       <option value="혜인관" selected>혜인관</option>
       <option value="유담관">유담관</option>
@@ -55,7 +55,7 @@
 
   <div class="field">
     <div class="field-head">
-      <label for="memoInput"><span>기억나는 점</span></label>
+      <label for="memoInput"><span>기억나는 점 <small class="opt">선택 · 특징을 적으면 확인이 빨라요</small></span></label>
       <span class="loc-chip" id="memoCount" style="cursor:default">0 / 200자</span>
     </div>
     <textarea id="memoInput" class="auto-grow" maxlength="200" placeholder="공개 목록에는 이 문장만 보여요."></textarea>
@@ -91,6 +91,8 @@
     dateSelect.add(opt);
   }
   dateSelect.add(new Option("일주일 이전", "older"));
+  // 언제인지 모를 때 (QA 10/29): 최근 7일 전체로 찾는다
+  dateSelect.add(new Option("잘 모르겠음 (최근 7일)", "unknown"));
 
   // 종류: 물건 이름을 적으면 미리 고른다. 사람이 직접 고르면 그 뒤로는 바꾸지 않는다
   const categorySelect = document.getElementById("lostCategorySelect");
@@ -117,7 +119,8 @@
       .catch(() => {});
   }
 
-  // 2. 몇 시부터 ~ 몇 시까지 시간 셀렉트 생성
+  // 2. 몇 시부터 ~ 몇 시까지 시간 셀렉트 생성. 시간을 모르면 그날 하루 전체
+  startSelect.add(new Option("시간 모름 (하루 전체)", "any"));
   for (let h = 0; h <= 23; h++) {
     const hh = String(h).padStart(2, "0") + ":00";
     startSelect.add(new Option(`${hh} 부터`, String(h), h === 13, h === 13));
@@ -127,7 +130,20 @@
     endSelect.add(new Option(`${hh} 까지`, String(h), h === 15, h === 15));
   }
 
+  const timeGrid = document.getElementById("timeRangeGrid");
+  /** 날짜를 모르거나 "일주일 이전"이면 시간을 고를 필요가 없다. 시간 모름이면 끝 시간도 숨긴다 */
+  function syncWhen() {
+    const wideDate = dateSelect.value === "older" || dateSelect.value === "unknown";
+    timeGrid.hidden = wideDate;
+    const anyTime = startSelect.value === "any";
+    endSelect.hidden = anyTime;
+    timeGrid.querySelector(".time-range-sep").hidden = anyTime;
+  }
+  dateSelect.addEventListener("change", syncWhen);
+  startSelect.addEventListener("change", syncWhen);
+
   startSelect.addEventListener("change", () => {
+    if (startSelect.value === "any") return;
     const sh = Number(startSelect.value);
     const eh = Number(endSelect.value);
     if (eh <= sh) {
@@ -138,7 +154,7 @@
   endSelect.addEventListener("change", () => {
     const sh = Number(startSelect.value);
     const eh = Number(endSelect.value);
-    if (eh <= sh) {
+    if (startSelect.value !== "any" && eh <= sh) {
       startSelect.value = String(Math.max(0, eh - 1));
     }
   });
@@ -182,10 +198,15 @@
       reportErr.hidden = false;
       return;
     }
-    const sh = String(startSelect.value).padStart(2, "0") + ":00";
-    const eh = endSelect.value === "24" ? "23:59" : String(endSelect.value).padStart(2, "0") + ":00";
+    const anyTime = startSelect.value === "any";
+    const sh = anyTime ? "00:00" : String(startSelect.value).padStart(2, "0") + ":00";
+    const eh = anyTime || endSelect.value === "24" ? "23:59" : String(endSelect.value).padStart(2, "0") + ":00";
     let range;
-    if (dateSelect.value === "older") {
+    if (dateSelect.value === "unknown") {
+      // 잘 모르겠음: 7일 전 00:00 ~ 지금
+      const from = LostApi.kstParts(new Date(Date.now() - 7 * DAY_MS)).date;
+      range = { lostFrom: LostApi.kstIso(from, "00:00"), lostTo: new Date().toISOString() };
+    } else if (dateSelect.value === "older") {
       // 일주일 이전: 30일 전 ~ 7일 전 (서버 보관 기한 30일)
       const from = LostApi.kstParts(new Date(Date.now() - 30 * DAY_MS)).date;
       const to = LostApi.kstParts(new Date(Date.now() - 7 * DAY_MS)).date;
@@ -198,7 +219,7 @@
     try {
       sessionStorage.setItem("refreshLeft", "5"); // 새 신고는 후보 새로고침 5번부터
       // 올리는 중 화면의 문구용 (기존 화면 값)
-      const dateLabel = dateSelect.selectedOptions[0]?.dataset.label || "일주일 이전";
+      const dateLabel = dateSelect.selectedOptions[0]?.dataset.label || dateSelect.selectedOptions[0]?.textContent || "";
       sessionStorage.setItem(
         "lostReport",
         JSON.stringify({ item: itemName, date: dateLabel, timeRange: `${sh}~${eh}`, building: buildingSelect.selectedOptions[0]?.textContent || "" }),
