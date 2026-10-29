@@ -177,8 +177,9 @@
   });
 
   // ---- 카메라 ----
-  // BarcodeDetector가 있으면 그것으로, 없으면 jsQR(고정 버전, 무결성 확인)을 그때 불러온다.
-  const JSQR_SRC = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+  // BarcodeDetector가 있으면 그것으로, 없으면 jsQR(1.4.0을 vendor에 두고 무결성 확인)을 그때 불러온다.
+  // 페이지 CSP가 바깥 스크립트를 막으므로 CDN이 아닌 같은 서버 파일을 쓴다 (iPhone Safari는 BarcodeDetector가 없다).
+  const JSQR_SRC = "/vendor/jsQR.js";
   const JSQR_SRI = "sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx";
   let stream = null;
   let timer = null;

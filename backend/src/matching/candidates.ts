@@ -12,7 +12,7 @@ import { prisma } from "../lib/prisma";
 import { similarityToFoundItems } from "../repositories/embedding";
 import { storage } from "../storage";
 import { CANDIDATE_LIMIT, MAX_FAILED_ATTEMPTS } from "./policy";
-import { type ScoreBreakdown, categoryScore, scoreCandidate } from "./score";
+import { categoryScore, type ScoreBreakdown, scoreCandidate } from "./score";
 
 type ReportForMatching = {
   id: string;
