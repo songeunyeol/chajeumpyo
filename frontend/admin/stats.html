@@ -23,6 +23,7 @@
   <div class="banner" id="seed" style="display:none;margin-top:16px">시연용 시드 데이터로 센 결과예요.</div>
   <div class="thanks-box" id="insight" style="margin-top:16px">불러오는 중…</div>
   <div id="priorities"></div>
+  <div id="reportHotspots"></div>
   <div id="charts"></div>
   <p class="note danger" id="error" role="alert" hidden></p>
 </main>
@@ -83,6 +84,23 @@
     return box;
   }
 
+  // 분실 신고(학생 민원)가 반복되는 곳: 같은 곳 습득 등록과 견줘 등록 안내가 필요한 곳을 드러낸다
+  function reportList(rows) {
+    const box = el("div", { style: "margin-top:20px" },
+      el("p", { class: "section", text: "신고가 반복되는 곳" }),
+      el("p", { class: "note", text: "같은 건물·종류로 분실 신고가 2번 이상 들어온 곳이에요. 체험 계정 신고는 빼고 셌어요." }));
+    if (!rows.length) {
+      box.append(el("p", { class: "note", text: "이 기간에는 반복된 신고가 없어요." }));
+      return box;
+    }
+    for (const row of rows) {
+      box.append(el("div", { style: "background:var(--white);border-radius:var(--radius);padding:14px 16px;margin:0 0 10px;box-shadow:inset 0 0 0 1px var(--line)" },
+        el("p", { text: row.summary, style: "margin:0 0 6px;font-weight:650" }),
+        el("p", { class: "note", text: `제안: ${row.action}`, style: "margin:0" })));
+    }
+    return box;
+  }
+
   function bars(title, rows, labelOf) {
     const max = Math.max(1, ...rows.map((row) => row.count));
     const box = el("div", {}, el("p", { class: "section", text: title }));
@@ -113,6 +131,7 @@
     document.getElementById("insight").textContent = data.topInsight;
     AdminApi.show(document.getElementById("seed"), Boolean(data.isSeedData));
     document.getElementById("priorities").replaceChildren(priorityList(data.priorities || []));
+    document.getElementById("reportHotspots").replaceChildren(reportList(data.reportHotspots || []));
     charts.replaceChildren(
       bars("건물", data.byBuilding, (row) => row.building),
       bars("시간", data.byHour, (row) => `${row.hour}시`),

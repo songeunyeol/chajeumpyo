@@ -2537,6 +2537,73 @@
                           "action"
                         ]
                       }
+                    },
+                    "reportHotspots": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "building": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "WALLET",
+                              "ID_CARD",
+                              "DRIVER_LICENSE",
+                              "PAYMENT_CARD",
+                              "TRANSIT_CARD",
+                              "OTHER_CARD",
+                              "PHONE",
+                              "EARPHONE",
+                              "SMARTWATCH",
+                              "TABLET",
+                              "LAPTOP",
+                              "CHARGER",
+                              "BAG",
+                              "CLOTHING",
+                              "HAT",
+                              "BOOK",
+                              "GLASSES",
+                              "ACCESSORY",
+                              "CASH",
+                              "UMBRELLA",
+                              "TUMBLER",
+                              "KEY",
+                              "STATIONERY",
+                              "ETC"
+                            ]
+                          },
+                          "reports": {
+                            "type": "integer"
+                          },
+                          "open": {
+                            "type": "integer"
+                          },
+                          "found": {
+                            "type": "integer"
+                          },
+                          "summary": {
+                            "type": "string"
+                          },
+                          "action": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "building",
+                          "category",
+                          "reports",
+                          "open",
+                          "found",
+                          "summary",
+                          "action"
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -2548,7 +2615,8 @@
                     "byHour",
                     "byCategory",
                     "topInsight",
-                    "priorities"
+                    "priorities",
+                    "reportHotspots"
                   ]
                 }
               }

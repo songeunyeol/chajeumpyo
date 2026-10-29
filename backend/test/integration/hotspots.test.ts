@@ -214,3 +214,50 @@ describe("기준 11. 먼저 손볼 구간: 반복 탐지·우선순위·예방 �
     expect(body.priorities[0]).toMatchObject({ building: "학술정보관", category: "BOOK", count: 2 });
   });
 });
+
+describe("기준 12. 분실 신고가 반복되는 곳 (10/29)", () => {
+  const report = async (
+    userId: string,
+    buildingId: number | null,
+    category: "EARPHONE" | "UMBRELLA",
+    at: Date,
+    status: "OPEN" | "RESOLVED" = "OPEN",
+  ) =>
+    prisma.lostReport.create({
+      data: {
+        userId,
+        buildingId,
+        category,
+        lostFrom: at,
+        lostTo: at,
+        description: "신고",
+        descriptionHash: "h",
+        status,
+        createdAt: at,
+      },
+    });
+
+  it("건물 × 종류로 2건 이상, 못 찾은 수·같은 곳 습득 수·조치, 체험 계정 신고는 뺀다", async () => {
+    const u = await prisma.user.create({ data: { email: "a@skuniv.ac.kr", passwordHash: "x" } });
+    const demo = await prisma.user.create({ data: { email: "demo@skuniv.ac.kr", passwordHash: "x", role: "DEMO" } });
+    await report(u.id, HYE, "EARPHONE", kst("2026-10-02", 10));
+    await report(u.id, HYE, "EARPHONE", kst("2026-10-04", 11), "RESOLVED");
+    await report(u.id, HYE, "EARPHONE", kst("2026-10-06", 12));
+    await add(HYE, "EARPHONE", kst("2026-10-05", 12));
+    await report(u.id, null, "UMBRELLA", kst("2026-10-03", 9));
+    await report(demo.id, null, "UMBRELLA", kst("2026-10-03", 9));
+    await report(u.id, LIB, "UMBRELLA", kst("2026-10-03", 9));
+
+    const { reportHotspots } = (await get(range)).body;
+    expect(reportHotspots).toHaveLength(1);
+    expect(reportHotspots[0]).toMatchObject({
+      building: "혜인관",
+      category: "EARPHONE",
+      reports: 3,
+      open: 2,
+      found: 1,
+    });
+    expect(reportHotspots[0].summary).toBe("혜인관 무선 이어폰 분실 신고 3건 (못 찾음 2건, 같은 곳 습득 등록 1건)");
+    expect(reportHotspots[0].action).toContain("QR");
+  });
+});
