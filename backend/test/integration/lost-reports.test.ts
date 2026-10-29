@@ -141,13 +141,93 @@ describe("기준 4. 후보 범위: 분실 이후, 등록됨·열람됨, 보관 �
       foundAt: hoursAgo(1),
       status: "REVEALED",
     });
-    await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(5) }); // 분실 전 등록
+    // 분실 시작(3시간 전)보다 24시간을 넘겨 전에 주운 물건. 하루 안의 여유에는 남긴다
+    await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(3 + 25) });
     await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(1), status: "REVIEW" });
     await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(1), status: "CLAIMED" });
     await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(1), status: "EXPIRED" });
     await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(1), expiresAt: hoursAgo(0.5) });
     const ids = (await post(report())).body.candidates.map((c: { foundItemId: string }) => c.foundItemId).sort();
     expect(ids).toEqual([ok1.id, ok2.id].sort());
+  });
+});
+
+describe("습득 시각 여유와 인형·키링", () => {
+  it("분실 시작보다 24시간 안에 주운 물건은 후보에 남긴다. 잃어버린 시각을 습득 뒤로 적어도 빠지지 않게", async () => {
+    // 신고 기간은 3시간 전~2시간 전. 12시간 전에 주운 물건은 시작보다 이르지만 하루 여유 안이다
+    const withinGrace = await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(3 + 12) });
+    const tooEarly = await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(3 + 30) });
+    const ids = (await post(report())).body.candidates.map((c: { foundItemId: string }) => c.foundItemId);
+    expect(ids).toContain(withinGrace.id);
+    expect(ids).not.toContain(tooEarly.id);
+  });
+
+  it("인형·키링으로 등록한 금붕어 말랑이는 같은 종류 분실 신고 후보에 나온다", async () => {
+    // 재현: 습득물을 인형·키링으로 두고, 신고 시작이 습득 시각보다 늦다. 예전엔 foundAt >= lostFrom 때문에 빠졌다
+    const doll = await createFoundItem({
+      buildingId: A,
+      category: "ETC",
+      subCategory: "DOLL_KEYRING",
+      description: "금붕어 말랑이",
+      foundAt: hoursAgo(20),
+    });
+    const res = await post(
+      report({
+        category: "ETC",
+        description: "금붕어 말랑이를 잃어버렸어요",
+        lostFrom: hoursAgo(2).toISOString(),
+        lostTo: hoursAgo(1).toISOString(),
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(res.body.candidates.map((c: { foundItemId: string }) => c.foundItemId)).toContain(doll.id);
+  });
+
+  it("말랑이는 인형 글자 필터에 안 걸리고, 인형 종류 신고도 그 필터로 빠지지 않는다", async () => {
+    // 167행 근처 필터는 신고가 기타가 아니고 물건만 기타일 때 제목·설명의 인형|피규어|키링을 뺀다
+    const squish = await createFoundItem({
+      buildingId: A,
+      category: "ETC",
+      description: "금붕어 말랑이",
+      foundAt: hoursAgo(1),
+    });
+    const labeled = await createFoundItem({
+      buildingId: A,
+      category: "ETC",
+      description: "곰 인형",
+      foundAt: hoursAgo(1),
+    });
+    const etcIds = (
+      await post(report({ category: "ETC", description: "인형을 잃어버렸어요. 말랑이예요" }))
+    ).body.candidates.map((c: { foundItemId: string }) => c.foundItemId);
+    expect(etcIds).toEqual(expect.arrayContaining([squish.id, labeled.id]));
+
+    const earIds = (await post(report())).body.candidates.map((c: { foundItemId: string }) => c.foundItemId);
+    expect(earIds).toContain(squish.id);
+    expect(earIds).not.toContain(labeled.id);
+  });
+
+  it("확인을 통과해도 신고는 OPEN이고, 후보에는 수령 대기로 표시한다", async () => {
+    const item = await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(1) });
+    const { body } = await post(report());
+    const me = await prisma.user.findFirstOrThrow({ where: { email: "student@skuniv.ac.kr" } });
+    await prisma.matchAttempt.create({
+      data: {
+        userId: me.id,
+        lostReportId: body.id,
+        foundItemId: item.id,
+        descriptionHash: "h",
+        score: 1,
+        scoreBreakdown: {},
+        matchedFields: {},
+        result: "PASS",
+      },
+    });
+    const listed = await request(app).get(`/api/v1/lost-reports/${body.id}/candidates`).set(auth());
+    expect(listed.body.candidates[0]).toMatchObject({ foundItemId: item.id, awaitingPickup: true });
+    const saved = await prisma.lostReport.findUniqueOrThrow({ where: { id: body.id } });
+    expect(saved.status).toBe("OPEN");
+    expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: item.id } })).status).toBe("REGISTERED");
   });
 });
 
@@ -263,6 +343,7 @@ describe("기준 7. 순서는 습득 시각 최신순, 응답에 비공개 정�
       expect(text).not.toContain(secret);
     expect(Object.keys(res.body.candidates[0]).sort()).toEqual([
       "attemptsLeft",
+      "awaitingPickup",
       "building",
       "category",
       "foundAt",

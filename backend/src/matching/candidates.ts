@@ -32,6 +32,12 @@ export type ScoredCandidate = Omit<Candidate, "thumbnailUrl"> & { thumbKey: stri
 export const THUMBNAIL_URL_TTL_SECONDS = 600;
 /** "잃어버린 뒤 곧 습득" 근거의 기준 */
 const SOON_AFTER_HOURS = 2;
+/**
+ * 분실 시작보다 이만큼 전에 주운 물건까지 후보에 남긴다.
+ * 잃어버린 시각을 실제보다 늦게 적어도(이미 등록된 습득물이 빠지지 않게) 하루 여유를 둔다.
+ * 시간 점수는 그대로다. 분실 시작 전에 주운 물건은 timeScore가 0이라 기간 안 물건보다 뒤에 선다.
+ */
+const FOUND_BEFORE_LOST_GRACE_MS = 24 * 3600_000;
 
 /** 공개 정보와 신고자 본인이 적은 값만으로 근거를 만든다. 2순위 종류(비공개)는 쓰지 않는다 */
 export function publicReasons(
@@ -64,6 +70,21 @@ function attrsOf(
 export const FAILED_ATTEMPT = {
   OR: [{ result: "FAIL" }, { answerCorrect: false }],
 } satisfies Prisma.MatchAttemptWhereInput;
+
+/** 이 계정이 확인을 통과한 습득물. 통과해도 신고는 수령 완료 전까지 OPEN이다 */
+async function passedItemIds(userId: string, foundItemIds: string[]): Promise<Set<string>> {
+  if (foundItemIds.length === 0) return new Set();
+  const rows = await prisma.matchAttempt.findMany({
+    where: {
+      userId,
+      foundItemId: { in: foundItemIds },
+      OR: [{ result: "PASS" }, { answerCorrect: true }],
+    },
+    select: { foundItemId: true },
+    distinct: ["foundItemId"],
+  });
+  return new Set(rows.map((row) => row.foundItemId));
+}
 
 /** 계정·습득물별 실패 횟수 */
 export async function failedAttemptCounts(
@@ -110,7 +131,7 @@ function categoryFilter(reported: Category, categories: Category[]): Prisma.Foun
 
 /**
  * 후보 범위 안의 물건을 모두 점수 순으로 줄 세운다.
- * 범위: 분실 시작 이후 등록, 등록됨·열람됨, 보관 기한 안, 1·2순위 종류가 연관 종류 묶음 안,
+ * 범위: 분실 시작 24시간 전 이후 등록, 등록됨·열람됨, 보관 기한 안, 1·2순위 종류가 연관 종류 묶음 안,
  * 체험 계정은 시드만·일반 계정은 시드 제외
  */
 async function rankEligible(report: ReportForMatching, viewerRole: Role): Promise<Ranked[]> {
@@ -121,7 +142,7 @@ async function rankEligible(report: ReportForMatching, viewerRole: Role): Promis
   const items = await prisma.foundItem.findMany({
     where: {
       status: { in: ["REGISTERED", "REVEALED"] },
-      foundAt: { gte: report.lostFrom },
+      foundAt: { gte: new Date(report.lostFrom.getTime() - FOUND_BEFORE_LOST_GRACE_MS) },
       OR: categoryFilter(report.category, categories),
       AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }],
       isSeed: viewerRole === "DEMO",
@@ -160,6 +181,7 @@ async function rankEligible(report: ReportForMatching, viewerRole: Role): Promis
       }))
       // 종류가 신고와 무관하면 임베딩이 비슷해도 후보에서 뺀다.
       // 세부 종류가 비어 있어도 제목·설명의 인형·키링은 다른 종류 신고에서 뺀다 (QA 10/29).
+      // 기타 신고는 여기서 빼지 않는다. "말랑이"는 인형·피규어·키링 글자에 안 맞아서 이 필터에 안 걸린다.
       .filter(({ item }) => {
         if (categoryScore(report.category, item, reportSide.subCategory ?? null) <= 0) return false;
         if (report.category === "ETC" || item.category !== "ETC") return true;
@@ -175,10 +197,11 @@ async function rankEligible(report: ReportForMatching, viewerRole: Role): Promis
 }
 
 async function toScored(report: ReportForMatching, ranked: Ranked[]): Promise<ScoredCandidate[]> {
-  const failures = await failedAttemptCounts(
-    report.userId,
-    ranked.map((r) => r.item.id),
-  );
+  const ids = ranked.map((r) => r.item.id);
+  const [failures, passed] = await Promise.all([
+    failedAttemptCounts(report.userId, ids),
+    passedItemIds(report.userId, ids),
+  ]);
   return ranked.map(({ item, score }) => {
     const inPersonOnly = item.claimLockedAt !== null;
     const left = inPersonOnly ? 0 : Math.max(0, MAX_FAILED_ATTEMPTS - (failures.get(item.id) ?? 0));
@@ -193,6 +216,7 @@ async function toScored(report: ReportForMatching, ranked: Ranked[]): Promise<Sc
       reasons: publicReasons(report, { category, buildingId: item.buildingId, foundAt: item.foundAt }),
       attemptsLeft: left,
       locked: left === 0,
+      awaitingPickup: passed.has(item.id),
       inPersonOnly,
       isSeed: item.isSeed,
       score,

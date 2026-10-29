@@ -225,7 +225,7 @@
     }
 
     candidates.forEach((c, idx) => {
-      const state = LostApi.candidateState(c); // open · locked · inPerson
+      const state = LostApi.candidateState(c); // passed · open · locked · inPerson
       const article = el("article", "card");
       article.style.setProperty("--idx", String(idx));
       article.dataset.id = c.foundItemId;
@@ -260,6 +260,24 @@
           openClaimModal(c, btn);
         });
         article.appendChild(btn);
+      } else if (state === "passed") {
+        chips.appendChild(el("span", "chip", "확인 완료·수령 대기"));
+        const guide = el("a", "btn white", "수령 안내 보기");
+        guide.href = "#";
+        guide.style.marginTop = "12px";
+        guide.addEventListener("click", async (e) => {
+          e.preventDefault();
+          LostApi.store.set(LostApi.KEYS.candidate, c);
+          LostApi.store.set(LostApi.KEYS.foundItemId, c.foundItemId);
+          try {
+            const d = await LostApi.detail();
+            location.href = d.storageType === "HANDED_OVER" ? "item-handover.html" : "item.html";
+          } catch (err) {
+            candErr.textContent = LostApi.friendlyMessage(err);
+            candErr.hidden = false;
+          }
+        });
+        article.append(chips, guide);
       } else if (state === "locked") {
         chips.appendChild(el("span", "chip danger", "잠김"));
         const note = el("p", "meta", "확인 기회를 모두 썼어요. 학생증을 가지고 교무처(혜인관 1층)에 문의해요.");

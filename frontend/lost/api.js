@@ -560,8 +560,9 @@
     }
     return null;
   }
-  /** 후보 카드의 상태: "open"(확인 가능) · "locked"(이 계정 다 씀) · "inPerson"(대면 확인만) */
-  const candidateState = (c) => (c.inPersonOnly ? "inPerson" : c.locked ? "locked" : "open");
+  /** 후보 카드의 상태: "passed"(확인 통과·수령 대기) · "open" · "locked" · "inPerson" */
+  const candidateState = (c) =>
+    c.awaitingPickup ? "passed" : c.inPersonOnly ? "inPerson" : c.locked ? "locked" : "open";
 
   // ── 사진 ─────────────────────────────────────────────────
   // 서명 URL(thumbnailUrl, imageUrl)은 백엔드 주소의 /files/... 이다. 화면과 백엔드 출처가 다르면
