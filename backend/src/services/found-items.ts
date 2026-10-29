@@ -5,6 +5,7 @@ import {
   type Category,
   type ConfirmFoundItemBody,
   FoundItemExtraction,
+  itemLabel,
   type RegisterFoundItemFields,
   type RegisterFoundItemResponse,
   subCategoryWithin,
@@ -304,12 +305,27 @@ export async function analyzeFoundItem(input: {
   };
 }
 
+/** 습득자가 고친 종류의 이름과 임베딩. 임베딩을 못 만들면 고치지 않고 확정을 막는다 */
+async function correctedCategory(category: Category, sub: unknown) {
+  const subCategory = subCategoryWithin(category, sub);
+  const label = itemLabel(category, subCategory);
+  let embedding: number[];
+  try {
+    embedding = await retryOnce(() => withTimeout(ai.embed(label), env.AI_TIMEOUT_MS, "임베딩"));
+  } catch (err) {
+    logger.warn({ err }, "습득자 종류 수정 임베딩 실패");
+    throw new AppError("AI_UNAVAILABLE", "지금은 저장할 수 없어요. 잠시 후 다시 시도해 주세요.");
+  }
+  return { category, subCategory, label, embedding };
+}
+
 /**
  * POST /found-items/:id/confirm: 두 단계 등록의 2단계. 위치·보관 방식을 받아 등록을 끝낸다.
  * 분석에 성공했으면 REGISTERED(새 후보 알림), 실패했으면 REVIEW. 습득 시각과 보관 기한은 확정한 때부터 센다.
  */
 export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): Promise<RegisterFoundItemResponse> {
   const { building, place } = await resolvePlace(body);
+  const corrected = body.category ? await correctedCategory(body.category, body.subCategory) : null;
   const foundAt = new Date();
 
   const item = await prisma.$transaction(async (tx) => {
@@ -323,6 +339,8 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
       },
       select: { category: true, subCategory: true },
     });
+    // 분석에 실패한 초안(종류 없음)은 습득자가 고쳐도 관리자 확인(REVIEW)을 거친다
+    const fix = draft?.category && corrected && corrected.category !== draft.category ? corrected : null;
     if (!draft) {
       // 확정 버튼을 두 번 눌렀을 때. 확정한 물건의 id는 후보 목록에 공개되므로 알려 줘도 된다
       const done = await tx.foundItem.count({
@@ -332,7 +350,9 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
       throw new AppError("NOT_FOUND", "등록 시간이 지났거나 없는 물건이에요. 사진부터 다시 올려 주세요.");
     }
     // 거절해도 초안은 그대로 남아 같은 토큰으로 보관처를 골라 다시 확정할 수 있다
-    assertHandOverIfValuable(draft.category, body.storageType);
+    const category = fix?.category ?? draft.category;
+    const subCategory = fix ? fix.subCategory : subCategoryWithin(draft.category, draft.subCategory);
+    assertHandOverIfValuable(category, body.storageType);
     const status = draft.category ? ("REGISTERED" as const) : ("REVIEW" as const);
     // 같은 초안을 두 번 확정하지 않게 상태를 조건으로 바꾼다
     const changed = await tx.foundItem.updateMany({
@@ -346,14 +366,21 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
         foundAt,
         expiresAt: new Date(foundAt.getTime() + env.FOUND_ITEM_RETENTION_DAYS * 86_400_000),
         confirmTokenHash: null,
+        // 습득자가 종류를 고쳤으면 AI가 본 종류는 다른 후보(categoryAlt)로 남긴다
+        ...(fix ? { category, subCategory, categoryAlt: draft.category } : {}),
       },
     });
     if (changed.count === 0) throw new AppError("ALREADY_CONFIRMED", "이미 등록을 마친 물건이에요.");
     await tx.foundItemDetail.update({
       where: { foundItemId: id },
-      data: { locationDetail: body.locationDetail ?? null },
+      data: {
+        locationDetail: body.locationDetail ?? null,
+        // AI 제목·설명은 잘못 본 물건 기준이라 고친 종류 이름으로 바꾸고, 임베딩도 그 이름으로 다시 만든다
+        ...(fix ? { title: fix.label, description: fix.label } : {}),
+      },
     });
-    return { status, category: draft.category, subCategory: subCategoryWithin(draft.category, draft.subCategory) };
+    if (fix) await setFoundItemEmbedding(id, fix.embedding, tx);
+    return { status, category, subCategory };
   });
 
   if (item.status === "REGISTERED") await alertNewCandidateSafely(id);

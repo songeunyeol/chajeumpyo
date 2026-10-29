@@ -20,8 +20,8 @@
   <h1>어디에 두었나요</h1>
 
   <label class="field">
-    <span>물건</span>
-    <input id="itemName" value="무선 이어폰" readonly>
+    <span>물건 (다르면 눌러서 고쳐 주세요)</span>
+    <select id="itemSelect" aria-label="물건 종류"></select>
   </label>
 
   <div class="manual-loc-panel" id="manualLocPanel">
@@ -93,8 +93,27 @@
   // 분석 결과 (uploading.html이 저장). 없으면 사진부터
   const draft = FoundApi.store.get("foundDraft");
   if (!draft) window.location.replace("photo.html");
-  const itemName = document.getElementById("itemName");
-  if (draft) itemName.value = draft.category ? FoundApi.itemLabel(draft.category, draft.subCategory) : "확인 중인 물건 (관리자가 확인해요)";
+  // 물건 종류: AI가 알아본 것을 고르고, 잘못 봤으면 습득자가 고친다. 값은 "큰종류" 또는 "큰종류:세부종류"
+  const itemSelect = document.getElementById("itemSelect");
+  const aiItem = draft?.category ? (draft.subCategory ? `${draft.category}:${draft.subCategory}` : draft.category) : "";
+  if (!draft?.category) itemSelect.add(new Option("확인 중인 물건 (관리자가 확인해요)", "", true, true));
+  for (const [cat, label] of Object.entries(FoundApi.CATEGORY_LABELS)) {
+    const subs = FoundApi.SUB_CATEGORIES[cat];
+    if (!subs) {
+      itemSelect.add(new Option(label, cat));
+      continue;
+    }
+    const group = document.createElement("optgroup");
+    group.label = label;
+    group.append(new Option(`${label} (기타)`, cat));
+    for (const sub of subs) group.append(new Option(FoundApi.SUB_CATEGORY_LABELS[sub], `${cat}:${sub}`));
+    itemSelect.append(group);
+  }
+  itemSelect.value = aiItem;
+  const pickedItem = () => {
+    const [category, subCategory = null] = itemSelect.value.split(":");
+    return { category: category || null, subCategory };
+  };
 
   function formatKoreanTime(d) {
     const days = ["일", "월", "화", "수", "목", "금", "토"];
@@ -173,7 +192,19 @@
     document.getElementById("valuableNote").hidden = false;
     choiceHandover.click();
   }
+  function unlockInplace() {
+    choiceInplace.style.display = "";
+    choiceInplace.disabled = false;
+    document.getElementById("valuableNote").hidden = true;
+  }
+  const isValuable = (category) => FoundApi.VALUABLE_CATEGORIES.includes(category);
   if (draft && draft.isValuable) lockToHandover();
+  itemSelect.addEventListener("change", () => {
+    const { category } = pickedItem();
+    if (!category) return;
+    if (isValuable(category)) lockToHandover();
+    else unlockInplace();
+  });
 
   // 건물·보관처 목록을 서버에서 받는다
   let buildings = [];
@@ -212,6 +243,8 @@
       ...(mode === "handover" ? { storagePlaceId: Number(handoverSelect.value) } : {}),
       ...(needManualLoc && locationDetail.value.trim() ? { locationDetail: locationDetail.value.trim() } : {}),
     };
+    // AI가 본 것과 다르게 골랐을 때만 보낸다
+    if (draft.category && itemSelect.value !== aiItem) Object.assign(body, pickedItem());
 
     submitting = true;
     submitBtn.textContent = "등록하는 중…";

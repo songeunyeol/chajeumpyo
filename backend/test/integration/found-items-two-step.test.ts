@@ -389,3 +389,67 @@ describe("④ 귀중품은 보관처(센터·경비실)에만 맡길 수 있다 
     expect(res.body).toMatchObject({ status: "REVIEW", storageType: "IN_PLACE" });
   });
 });
+
+describe("⑤ 습득자가 종류를 고친다 (AI 오인, 10/29 안경 → 학생증)", () => {
+  it("고친 종류·세부 종류로 등록하고, AI가 본 종류는 다른 후보로 남긴다", async () => {
+    const d = await draft(); // 가짜 AI: 무선 이어폰 (귀중품)
+    const res = await confirm(d.id, {
+      confirmToken: d.confirmToken,
+      buildingId,
+      storageType: "IN_PLACE",
+      category: "GLASSES",
+      subCategory: null,
+    });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ status: "REGISTERED", category: "GLASSES", subCategory: null });
+    const row = await prisma.foundItem.findUniqueOrThrow({ where: { id: d.id }, include: { detail: true } });
+    expect(row).toMatchObject({ category: "GLASSES", subCategory: null, categoryAlt: "EARPHONE" });
+    expect(row.detail).toMatchObject({ title: "안경·선글라스", description: "안경·선글라스" });
+  });
+
+  it("고친 종류가 귀중품이면 그 자리에 둘 수 없고, 다른 종류의 세부 종류는 버린다", async () => {
+    setAiClient({
+      ...mockAiClient,
+      extractFoundItem: async (...args) => ({
+        ...(await mockAiClient.extractFoundItem(...args)),
+        category: "UMBRELLA",
+        categoryAlt: null,
+        subCategory: null,
+      }),
+    });
+    const d = await draft();
+    const blocked = await confirm(d.id, {
+      confirmToken: d.confirmToken,
+      buildingId,
+      storageType: "IN_PLACE",
+      category: "WALLET",
+    });
+    expect(blocked.body.error.code).toBe("VALUABLE_HAND_OVER_REQUIRED");
+
+    const ok = await confirm(d.id, { confirmToken: d.confirmToken, ...kept(), category: "BAG", subCategory: "MOUSE" });
+    expect(ok.status).toBe(201);
+    expect(ok.body).toMatchObject({ category: "BAG", subCategory: null });
+  });
+
+  it("같은 종류를 보내면 그대로 두고, 분석 실패 초안은 고쳐도 검토 대기(REVIEW)", async () => {
+    const same = await draft();
+    await confirm(same.id, { confirmToken: same.confirmToken, ...kept(), category: "EARPHONE" });
+    const row = await prisma.foundItem.findUniqueOrThrow({ where: { id: same.id } });
+    expect(row).toMatchObject({ category: "EARPHONE", subCategory: "WIRELESS_EARBUDS", categoryAlt: "CHARGER" });
+
+    setAiClient({
+      ...mockAiClient,
+      extractFoundItem: async () => {
+        throw new Error("AI 장애");
+      },
+    });
+    const failed = await analyze(await noisyJpeg(), "failed-agent");
+    const res = await confirm(failed.body.id, {
+      confirmToken: failed.body.confirmToken,
+      buildingId,
+      storageType: "IN_PLACE",
+      category: "GLASSES",
+    });
+    expect(res.body).toMatchObject({ status: "REVIEW", category: null });
+  });
+});

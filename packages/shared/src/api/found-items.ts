@@ -69,9 +69,13 @@ export const AnalyzeFoundItemResponse = z.object({
 export type AnalyzeFoundItemResponse = z.infer<typeof AnalyzeFoundItemResponse>;
 
 /** POST /found-items/:id/confirm (JSON): 두 단계 등록의 2단계. 응답은 POST /found-items와 같다 */
-export const ConfirmFoundItemBody = FoundPlaceFields.extend({ confirmToken: z.string().min(1).max(200) }).superRefine(
-  checkPlace,
-);
+export const ConfirmFoundItemBody = FoundPlaceFields.extend({
+  confirmToken: z.string().min(1).max(200),
+  /** 습득자가 고친 종류. AI가 잘못 알아봤을 때만 보낸다(생략하면 AI 결과 그대로) */
+  category: Category.optional(),
+  /** 습득자가 고친 세부 종류. category와 같이 보내고, 그 종류에 속하지 않으면 무시한다 */
+  subCategory: SubCategory.nullable().optional(),
+}).superRefine(checkPlace);
 export type ConfirmFoundItemBody = z.infer<typeof ConfirmFoundItemBody>;
 
 export const StoragePlaceSummary = z.object({
