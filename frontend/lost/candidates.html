@@ -334,6 +334,14 @@
     LostApi.store.set(LostApi.KEYS.candidate, c);
     try {
       const r = await LostApi.claim(reportId, c.foundItemId);
+      // 같은 설명으로 이미 확인한 물건이면 서버가 이전 결과를 그대로 준다(기회는 안 씀). 실패 화면 대신 설명을 보완하게 한다
+      if (r.result === "FAIL" && r.reused && r.attemptsLeft > 0) {
+        await openClaimModal(c, btn);
+        claimDescNote.textContent =
+          "이 설명으로는 이미 확인했는데 맞지 않았어요. 물건만의 특징(스티커, 흠집, 장식 등)을 더 적어 주세요. 기회는 줄지 않았어요.";
+        claimDescNote.hidden = false;
+        return;
+      }
       await goNext(LostApi.claimScreen(r));
     } catch (err) {
       const screen = LostApi.claimScreen(err);

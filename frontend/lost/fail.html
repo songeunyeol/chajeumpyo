@@ -12,19 +12,20 @@
 <body>
 <main class="screen">
   <header class="bar"><a class="back" href="candidates.html">←</a><h2>확인</h2></header>
-  <h1>아니에요</h1>
+  <h1>특징이 맞지 않았어요</h1>
   <p class="lead" id="failLead">2번 남았어요.</p>
+  <p class="note">종류·색만으로는 확인할 수 없어요. 스티커, 흠집, 장식, 키링처럼 <b>내 물건만의 특징</b>을 설명에 더 적고 다시 확인해 주세요. 같은 설명으로 다시 누르면 기회가 줄지 않아요.</p>
   <div class="dock near">
-    <a class="btn" id="retryBtn" href="question.html">다시 확인</a>
+    <a class="btn" id="retryBtn" href="question.html">설명 보완하고 다시 확인</a>
   </div>
 </main>
 <script src="api.js"></script>
 <script>
   // 판정·답이 FAIL이고 이 계정에 기회가 남았을 때. 같은 설명으로 다시 판정하면 이전 결과를 그대로 돌려주므로
-  // "다시 확인"은 후보로 돌아간다 (설명을 고쳐 다시 판정하는 화면은 아직 없다: PATCH /lost-reports/:id)
+  // "다시 확인"은 후보로 돌아간다. 후보의 확인 모달에서 설명을 고쳐 다시 판정한다
   const claim = LostApi.store.get(LostApi.KEYS.claim);
   if (claim && typeof claim.attemptsLeft === "number") {
-    document.getElementById("failLead").textContent = `${claim.attemptsLeft}번 남았어요.`;
+    document.getElementById("failLead").textContent = `확인 기회가 ${claim.attemptsLeft}번 남았어요.`;
   }
   document.getElementById("retryBtn").href = "candidates.html";
 </script>

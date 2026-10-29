@@ -21,6 +21,25 @@ describe("규칙 기반 대조", () => {
     expect(r.features.map((f) => f.verdict)).toEqual(["MATCH", "CONTRADICT", "UNKNOWN"]);
   });
 
+  it("종류(key)가 달라도 내용이 같으면 일치, 같은 종류가 없으면 모순이 아니라 확인 불가 (10/29 안경)", () => {
+    const glasses = { color: "BLACK", brand: null, features: [{ key: "pattern" as const, value: "양쪽 프레임 끝 두 개의 점 장식" }] };
+    const r = compareByRules(
+      {
+        color: null,
+        brand: null,
+        features: [
+          { key: "other", value: "양쪽 프레임 끝 두 개의 점 장식" },
+          { key: "other", value: "다리에 금색 로고" },
+        ],
+      },
+      glasses,
+    );
+    expect(r.features).toEqual([
+      { reportedKey: "other", verdict: "MATCH", storedKey: "pattern" },
+      { reportedKey: "other", verdict: "UNKNOWN", storedKey: null },
+    ]);
+  });
+
   it("색(12색 키): 같은 색 일치, 이웃 색 확인 불가, 다른 색 모순, 기타·모르는 값 확인 불가", () => {
     expect(compareColor("WHITE", "WHITE")).toBe("MATCH");
     expect(compareColor("GRAY_SILVER", "WHITE")).toBe("UNKNOWN");
