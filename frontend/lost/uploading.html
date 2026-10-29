@@ -158,7 +158,8 @@
     await wait(620);
 
     if (!new URLSearchParams(window.location.search).has("preview")) {
-      window.location.href = "home.html";
+      // 방금 올린 신고의 후보로 바로 간다. replace라 뒤로 가기로 이 화면에 돌아와 다시 보내지 않는다
+      window.location.replace("candidates.html");
     } else {
       await wait(1200);
       window.location.reload();
