@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app";
 import { hotspots } from "../../src/services/hotspots";
 import { createAdmin, signupUser } from "../helpers/auth";
-import { resetDb } from "../helpers/db";
+import { prisma, resetDb } from "../helpers/db";
 import { createBuilding, createFoundItem } from "../helpers/fixtures";
 
 let app: ReturnType<typeof createApp>;
@@ -160,5 +160,57 @@ describe("기준 10. 데이터가 없으면 빈 집계와 안내", () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ total: 0, isSeedData: false, byBuilding: [], byHour: [], byCategory: [] });
     expect(res.body.topInsight).toContain("데이터가 적어서");
+  });
+});
+
+describe("기준 11. 먼저 손볼 구간: 반복 탐지·우선순위·예방 조치 (10/29)", () => {
+  it("2건 이상 반복된 구간만, 겹치는 창은 하나로, 우선순위·추세·보관 중 수·조치", async () => {
+    // 학술정보관 오후 1~3시 충전기 4건 (뒤쪽 절반에 3건), 1건은 수령됨
+    await add(LIB, "CHARGER", kst("2026-10-02", 13));
+    await add(LIB, "CHARGER", kst("2026-10-07", 13, 30));
+    await add(LIB, "CHARGER", kst("2026-10-08", 14));
+    const claimed = await add(LIB, "CHARGER", kst("2026-10-09", 14, 10));
+    await prisma.foundItem.update({ where: { id: claimed.id }, data: { status: "CLAIMED" } });
+    // 혜인관 오전 10시 우산 2건 (앞쪽 절반)
+    await add(HYE, "UMBRELLA", kst("2026-10-02", 10));
+    await add(HYE, "UMBRELLA", kst("2026-10-03", 10, 20));
+    // 반복 아님
+    await add(HYE, "WALLET", kst("2026-10-05", 18));
+
+    const { priorities } = (await get(range)).body;
+    expect(priorities).toHaveLength(2);
+    const [first, second] = priorities;
+    expect(first).toMatchObject({
+      building: "학술정보관",
+      startHour: 13,
+      category: "CHARGER",
+      count: 4,
+      recent: 3,
+      earlier: 1,
+      trend: "UP",
+      unclaimed: 3,
+      level: "HIGH",
+    });
+    expect(first.summary).toBe("학술정보관 오후 1시~3시 기타 전자기기 분실 4건 (최근 늘고 있어요, 보관 중 3건)");
+    expect(first.action).toContain("콘센트");
+    expect(second).toMatchObject({
+      building: "혜인관",
+      category: "UMBRELLA",
+      count: 2,
+      trend: "DOWN",
+      level: "MEDIUM",
+    });
+    expect(second.action).toContain("우산꽂이");
+  });
+
+  it("반복이 없으면 빈 배열, 시드만 있으면 시드로 계산하고 시드 표시", async () => {
+    await add(LIB, "CHARGER", kst("2026-10-05", 13));
+    expect((await get(range)).body.priorities).toEqual([]);
+    // 실제 데이터가 없는 9월에 시드 2건
+    await add(LIB, "BOOK", kst("2026-09-05", 9), true);
+    await add(LIB, "BOOK", kst("2026-09-06", 9), true);
+    const body = (await get("?from=2026-09-01&to=2026-09-10")).body;
+    expect(body.isSeedData).toBe(true);
+    expect(body.priorities[0]).toMatchObject({ building: "학술정보관", category: "BOOK", count: 2 });
   });
 });
