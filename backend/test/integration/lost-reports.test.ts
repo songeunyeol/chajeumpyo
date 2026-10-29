@@ -162,6 +162,21 @@ describe("습득 시각 여유와 인형·키링", () => {
     expect(ids).not.toContain(tooEarly.id);
   });
 
+  it("신고 기간이 지금 한 순간으로 줄어도(오전에 13~15시를 둔 경우) 방금 주운 물건은 후보에 나온다", async () => {
+    // QA bot 10/30: 00:05에 유담관 지갑 등록 → 00:09에 기본 시간 그대로 신고 → 기간이 "00:09~00:09"로 저장되어 후보 0개
+    const wallet = await createFoundItem({
+      buildingId: A,
+      category: "WALLET",
+      foundAt: new Date(Date.now() - 4 * 60_000),
+    });
+    const now = new Date().toISOString();
+    const res = await post(
+      report({ category: "WALLET", description: "갈색 반지갑이에요", lostFrom: now, lostTo: now }),
+    );
+    expect(res.status).toBe(201);
+    expect(res.body.candidates.map((c: { foundItemId: string }) => c.foundItemId)).toContain(wallet.id);
+  });
+
   it("인형·키링으로 등록한 금붕어 말랑이는 같은 종류 분실 신고 후보에 나온다", async () => {
     // 재현: 습득물을 인형·키링으로 두고, 신고 시작이 습득 시각보다 늦다. 예전엔 foundAt >= lostFrom 때문에 빠졌다
     const doll = await createFoundItem({
