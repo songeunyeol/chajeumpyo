@@ -54,7 +54,7 @@ export const DEMO_SEED_ITEMS: DemoSeedItem[] = [
     id: "5eed0000-0000-4000-8000-000000000001",
     building: "혜인관",
     floor: 3,
-    storagePlace: "종합서비스센터",
+    storagePlace: "교무처",
     locationDetail: "3층 엘리베이터 앞 벤치 위",
     hoursAgo: 1,
     category: "EARPHONE",
@@ -79,7 +79,7 @@ export const DEMO_SEED_ITEMS: DemoSeedItem[] = [
     id: "5eed0000-0000-4000-8000-000000000002",
     building: "북악관",
     floor: 1,
-    storagePlace: "종합서비스센터",
+    storagePlace: "교무처",
     locationDetail: "1층 학생 라운지 소파 틈",
     hoursAgo: 2,
     category: "WALLET",
@@ -154,7 +154,7 @@ export const DEMO_SEED_ITEMS: DemoSeedItem[] = [
     id: "5eed0000-0000-4000-8000-000000000005",
     building: "청운관",
     floor: 2,
-    storagePlace: "청운관 경비실",
+    storagePlace: "교무처",
     locationDetail: "2층 화장실 앞 정수기 위",
     hoursAgo: 5,
     category: "PHONE",
@@ -178,7 +178,7 @@ export const DEMO_SEED_ITEMS: DemoSeedItem[] = [
     id: "5eed0000-0000-4000-8000-000000000006",
     building: "유담관",
     floor: 1,
-    storagePlace: "유담관 경비실",
+    storagePlace: "교무처",
     locationDetail: "1층 주차장 출입문 앞",
     hoursAgo: 6,
     category: "KEY",
@@ -250,6 +250,148 @@ export const DEMO_SEED_ITEMS: DemoSeedItem[] = [
       <circle cx="392" cy="375" r="2.5" fill="#ffe08a"/><circle cx="407" cy="380" r="2.5" fill="#ffe08a"/>
       <circle cx="398" cy="395" r="2.5" fill="#ffe08a"/>
       <rect x="430" y="270" width="150" height="26" rx="8" fill="#5fd068" transform="rotate(-12 505 283)"/>`),
+  },
+  {
+    id: "5eed0000-0000-4000-8000-000000000009",
+    building: "문예관",
+    floor: 2,
+    locationDetail: "2층 세미나실 창가 책상 위",
+    hoursAgo: 2,
+    category: "GLASSES",
+    subCategory: null,
+    color: "BLACK",
+    brand: null,
+    features: [
+      { key: "case", value: "빨간 안경집" },
+      { key: "scratch", value: "왼쪽 렌즈 긁힘" },
+    ],
+    description: "검정 뿔테 안경, 빨간 안경집에 들어 있음, 왼쪽 렌즈에 긁힌 자국",
+    title: "검정 뿔테 안경, 빨간 안경집",
+    svg: scene(`
+      <rect x="230" y="330" width="340" height="110" rx="50" fill="#c8323a"/>
+      <circle cx="330" cy="290" r="62" fill="rgba(220,235,245,0.55)" stroke="#1d1d1d" stroke-width="16"/>
+      <circle cx="470" cy="290" r="62" fill="rgba(220,235,245,0.55)" stroke="#1d1d1d" stroke-width="16"/>
+      <path d="M392 285 q8 -14 16 0" fill="none" stroke="#1d1d1d" stroke-width="12"/>
+      <line x1="300" y1="262" x2="345" y2="300" stroke="#ffffff" stroke-width="3"/>`),
+  },
+  {
+    id: "5eed0000-0000-4000-8000-000000000010",
+    building: "대일관",
+    floor: 3,
+    storagePlace: "교무처",
+    locationDetail: "3층 컴퓨터실 맨 앞자리",
+    hoursAgo: 3,
+    category: "LAPTOP",
+    subCategory: null,
+    color: "GRAY_SILVER",
+    brand: "Samsung",
+    features: [
+      { key: "sticker", value: "우주인 스티커" },
+      { key: "other", value: "키보드 위 투명 덮개" },
+    ],
+    description: "은색 노트북, 덮개에 우주인 스티커, 키보드에 투명 실리콘 덮개",
+    title: "은색 노트북, 우주인 스티커",
+    svg: scene(`
+      <rect x="230" y="190" width="340" height="220" rx="14" fill="#c4c7cc" stroke="#9fa3a9" stroke-width="4"/>
+      <rect x="200" y="410" width="400" height="26" rx="10" fill="#aeb2b8"/>
+      <circle cx="400" cy="290" r="36" fill="#ffffff" stroke="#3b4a6b" stroke-width="5"/>
+      <rect x="380" y="276" width="40" height="22" rx="10" fill="#7fb3e6"/>
+      <rect x="380" y="326" width="40" height="34" rx="8" fill="#ffffff" stroke="#3b4a6b" stroke-width="5"/>`),
+  },
+  {
+    id: "5eed0000-0000-4000-8000-000000000011",
+    building: "상승관",
+    floor: 1,
+    locationDetail: "1층 카페 옆 의자 등받이",
+    hoursAgo: 4,
+    category: "CLOTHING",
+    subCategory: "OUTER",
+    color: "GREEN",
+    brand: null,
+    features: [
+      { key: "pattern", value: "등에 흰 체크무늬 패치" },
+      { key: "contents", value: "주머니에 귤 사탕" },
+    ],
+    description: "초록색 후드 집업, 등에 흰 체크무늬 패치, 주머니에 귤 사탕",
+    title: "초록 후드 집업, 체크 패치",
+    svg: scene(`
+      <path d="M300 170 l-90 60 l30 70 l40 -20 v180 h240 v-180 l40 20 l30 -70 l-90 -60 q-50 40 -100 0 z" fill="#3f7d4e"/>
+      <line x1="400" y1="200" x2="400" y2="460" stroke="#2f5f3b" stroke-width="5"/>
+      <rect x="350" y="300" width="100" height="70" fill="#ffffff"/>
+      <path d="M350 325 h100 M350 350 h100 M375 300 v70 M400 300 v70 M425 300 v70" stroke="#3f7d4e" stroke-width="5"/>`),
+  },
+  {
+    id: "5eed0000-0000-4000-8000-000000000012",
+    building: "은주관",
+    floor: 2,
+    locationDetail: "2층 강의실 맨 뒷줄 책상 서랍",
+    hoursAgo: 5,
+    category: "BOOK",
+    subCategory: "TEXTBOOK",
+    color: "BLUE_TEAL",
+    brand: null,
+    features: [
+      { key: "text", value: "속지에 연필로 쓴 이니셜 S.K" },
+      { key: "other", value: "노란 포스트잇 여러 장" },
+    ],
+    description: "파란 표지 전공 교과서, 노란 포스트잇이 여러 장 붙어 있고 속지에 이니셜 S.K",
+    title: "파란 전공 교과서, 노란 포스트잇",
+    svg: scene(`
+      <rect x="280" y="170" width="240" height="290" rx="8" fill="#2f6f8f"/>
+      <rect x="280" y="170" width="24" height="290" fill="#245a74"/>
+      <rect x="330" y="220" width="150" height="16" rx="4" fill="#d9e8ef"/>
+      <rect x="330" y="248" width="110" height="12" rx="4" fill="#d9e8ef"/>
+      <rect x="505" y="210" width="34" height="26" fill="#f6d64a"/>
+      <rect x="505" y="270" width="34" height="26" fill="#f6d64a"/>
+      <rect x="505" y="330" width="34" height="26" fill="#f6d64a"/>`),
+  },
+  {
+    id: "5eed0000-0000-4000-8000-000000000013",
+    building: "수인관",
+    floor: 1,
+    locationDetail: "1층 콘센트 있는 창가 자리",
+    hoursAgo: 6,
+    category: "CHARGER",
+    subCategory: "POWER_BANK",
+    color: "WHITE",
+    brand: null,
+    features: [
+      { key: "sticker", value: "무지개 스티커" },
+      { key: "other", value: "짧은 C타입 케이블이 꽂혀 있음" },
+    ],
+    description: "흰색 보조배터리, 무지개 스티커, 짧은 C타입 케이블이 꽂혀 있음",
+    title: "흰색 보조배터리, 무지개 스티커",
+    svg: scene(`
+      <rect x="300" y="200" width="200" height="260" rx="26" fill="#f7f7f4" stroke="#cfc7b9" stroke-width="4"/>
+      <path d="M340 360 a60 60 0 0 1 120 0" fill="none" stroke="#e5484d" stroke-width="10"/>
+      <path d="M352 360 a48 48 0 0 1 96 0" fill="none" stroke="#f5a524" stroke-width="10"/>
+      <path d="M364 360 a36 36 0 0 1 72 0" fill="none" stroke="#45a557" stroke-width="10"/>
+      <path d="M376 360 a24 24 0 0 1 48 0" fill="none" stroke="#3b82f6" stroke-width="10"/>
+      <path d="M400 200 v-40 q0 -30 60 -30" fill="none" stroke="#e9e9e6" stroke-width="12"/>`),
+  },
+  {
+    id: "5eed0000-0000-4000-8000-000000000014",
+    building: "생활관",
+    floor: 1,
+    storagePlace: "교무처",
+    locationDetail: "1층 로비 택배함 앞",
+    hoursAgo: 7,
+    category: "SMARTWATCH",
+    subCategory: null,
+    color: "PINK_MAGENTA",
+    brand: "Apple",
+    features: [
+      { key: "other", value: "분홍 실리콘 밴드" },
+      { key: "scratch", value: "화면 오른쪽 위 금" },
+    ],
+    description: "분홍 밴드 스마트워치, 화면 오른쪽 위에 작은 금",
+    title: "분홍 밴드 스마트워치",
+    svg: scene(`
+      <rect x="360" y="130" width="80" height="340" rx="36" fill="#f2a7c3"/>
+      <rect x="320" y="220" width="160" height="170" rx="40" fill="#2a2a2e"/>
+      <rect x="338" y="238" width="124" height="134" rx="28" fill="#111"/>
+      <line x1="430" y1="248" x2="452" y2="270" stroke="#cfcfcf" stroke-width="3"/>
+      <circle cx="400" cy="305" r="22" fill="none" stroke="#5fd068" stroke-width="6"/>`),
   },
 ];
 

@@ -8,6 +8,14 @@
 <link rel="stylesheet" href="../palette.css">
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
+<style>
+  /* 사람 확인: 사진 바로 아래, 늘 보이게 */
+  .captcha-area { margin-top: 18px; }
+  .captcha-area[hidden] { display: none; }
+  .captcha-area .captcha-label { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .captcha-area #captchaBox { display: flex; justify-content: center; min-height: 65px; }
+  .btn[aria-disabled="true"] { opacity: .45; }
+</style>
 </head>
 <body>
 <main class="screen">
@@ -52,11 +60,15 @@
     </div>
   </div>
 
-  <div class="dock">
-    <!-- 사람 확인(Turnstile). 캡차가 켜진 배포에서만 채워지고, 대부분은 보이지 않게 통과한다 -->
+  <!-- 사람 확인(Turnstile). 캡차가 켜진 배포에서만 보인다 -->
+  <section class="captcha-area" id="captchaArea" hidden>
+    <p class="captcha-label">사람 확인</p>
     <div id="captchaBox"></div>
-    <p class="note danger" id="captchaNote" style="margin:0" hidden></p>
-    <a class="btn" id="nextBtn" href="uploading.html">이 사진으로</a>
+  </section>
+
+  <div class="dock">
+    <p class="note danger" id="captchaNote" style="margin:0" role="alert" hidden></p>
+    <a class="btn" id="nextBtn" href="uploading.html" aria-disabled="true">이 사진으로</a>
   </div>
 </main>
 <script src="api.js"></script>
@@ -67,8 +79,17 @@
   const preview = document.getElementById("uploadPreview");
   const reselectBtn = document.getElementById("reselectBtn");
   let currentUrl = null;
+  /** 줄인 사진을 sessionStorage에 넣었으면 true. 그 전에는 다음으로 넘어가지 않는다 */
+  let photoReady = false;
 
   function setUploadedFile(file) {
+    if (!file.type.startsWith("image/")) {
+      resetToUploadBox();
+      showCaptchaNote("사진 파일만 올릴 수 있어요.");
+      return;
+    }
+    photoReady = false;
+    updateNext();
     if (currentUrl) URL.revokeObjectURL(currentUrl);
     currentUrl = URL.createObjectURL(file);
     preview.src = currentUrl;
@@ -83,15 +104,20 @@
       canvas.width = Math.round(img.naturalWidth * scale);
       canvas.height = Math.round(img.naturalHeight * scale);
       canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-      try { sessionStorage.setItem("foundPhoto", canvas.toDataURL("image/jpeg", 0.85)); } catch (_) {}
+      try {
+        sessionStorage.setItem("foundPhoto", canvas.toDataURL("image/jpeg", 0.85));
+        photoReady = true;
+        showCaptchaNote("");
+      } catch (_) {
+        showCaptchaNote("사진을 저장하지 못했어요. 다른 사진으로 다시 골라 주세요.");
+      }
+      updateNext();
+    };
+    img.onerror = () => {
+      resetToUploadBox();
+      showCaptchaNote("사진을 읽지 못했어요. 다른 사진으로 다시 골라 주세요.");
     };
     img.src = currentUrl;
-  }
-
-  function setSamplePhoto() {
-    box.classList.remove("is-file", "show-reselect");
-    box.classList.add("has-photo", "is-sample");
-    try { sessionStorage.removeItem("foundPhoto"); } catch (_) {}
   }
 
   function resetToUploadBox() {
@@ -103,6 +129,8 @@
     input.value = "";
     box.classList.remove("has-photo", "is-file", "is-sample", "show-reselect");
     try { sessionStorage.removeItem("foundPhoto"); } catch (_) {}
+    photoReady = false;
+    updateNext();
   }
 
   box.addEventListener("click", (e) => {
@@ -124,12 +152,6 @@
   input.addEventListener("change", () => {
     if (input.files && input.files[0]) {
       setUploadedFile(input.files[0]);
-    }
-  });
-
-  input.addEventListener("cancel", () => {
-    if (!box.classList.contains("has-photo")) {
-      setSamplePhoto();
     }
   });
 
@@ -156,14 +178,40 @@
     } else {
       nextBtn.removeAttribute("aria-busy");
       nextBtn.textContent = NEXT_LABEL;
+      updateNext();
     }
   };
   const MOUNT_FAILED = "사람 확인을 불러오지 못했어요. 인터넷 연결을 확인하고 '이 사진으로'를 다시 눌러 주세요.";
   const VERIFY_FAILED = "사람인지 확인하지 못했어요. '이 사진으로'를 다시 눌러 주세요.";
 
+  // 사진과 사람 확인이 둘 다 끝나야 버튼이 켜진다. 꺼진 버튼을 누르면 무엇이 남았는지 알려 준다
+  const captchaArea = document.getElementById("captchaArea");
+  let captchaMode = null; // "turnstile" | "off" | null(불러오는 중·실패)
+  let hasToken = false;
+  function missingStep() {
+    if (!photoReady) return box.classList.contains("has-photo") ? "사진을 준비하고 있어요. 잠시만요." : "사진을 먼저 올려 주세요.";
+    if (captchaMode === "turnstile" && !hasToken) return "아래 '사람 확인'을 먼저 마쳐 주세요.";
+    return null;
+  }
+  function updateNext() {
+    if (nextBtn.getAttribute("aria-busy") === "true") return;
+    nextBtn.setAttribute("aria-disabled", missingStep() ? "true" : "false");
+  }
+
   function mountCaptcha() {
     return FoundCaptcha.mount(captchaBox, {
+      appearance: "always",
       onError: () => showCaptchaNote(VERIFY_FAILED),
+      onToken: (t) => {
+        hasToken = !!t;
+        if (t && captchaNote.textContent === VERIFY_FAILED) showCaptchaNote("");
+        updateNext();
+      },
+    }).then((c) => {
+      captchaMode = c.mode;
+      captchaArea.hidden = c.mode !== "turnstile";
+      updateNext();
+      return c;
     }).catch(() => {
       showCaptchaNote(MOUNT_FAILED);
       return null;
@@ -174,6 +222,12 @@
   nextBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     if (nextBtn.getAttribute("aria-busy") === "true") return;
+    const missing = missingStep();
+    if (missing) {
+      showCaptchaNote(missing);
+      if (!photoReady && !box.classList.contains("has-photo")) box.focus();
+      return;
+    }
     setBusy(true);
     let captcha = await captchaReady;
     if (!captcha) {

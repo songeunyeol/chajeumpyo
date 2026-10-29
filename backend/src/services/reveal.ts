@@ -22,7 +22,7 @@ export const VALUABLE_PICKUP_NOTICE =
  * 앞으로는 귀중품을 그 자리에 둘 수 없지만, 그 전에 등록된 물건을 위해 남긴다.
  */
 export const VALUABLE_IN_PLACE_NOTICE =
-  "귀중품이라 되도록 빨리 찾아가 주세요. 그 자리에 없으면 종합서비스센터에 문의해 주세요.";
+  "귀중품이라 되도록 빨리 찾아가 주세요. 그 자리에 없으면 교무처(혜인관 1층, 평일 9~18시)에 문의해 주세요.";
 
 /** 수령 안내: 귀중품만, 보관 방식에 맞춰 */
 export function pickupNoticeFor(category: Category, storageType: StorageType): string | null {

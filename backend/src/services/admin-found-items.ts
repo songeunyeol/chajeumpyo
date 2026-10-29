@@ -124,6 +124,7 @@ export async function getFoundItem(admin: Admin, id: string): Promise<AdminFound
     brand: d.brand,
     features: Features.parse(d.features),
     description: d.description,
+    locationDetail: d.locationDetail,
     isSensitive: d.isSensitive,
     originalImageUrl: d.imageOriginalKey ? await storage.signedUrl(d.imageOriginalKey, ADMIN_IMAGE_TTL_SECONDS) : null,
     publicImageUrl: d.imagePublicKey ? await storage.signedUrl(d.imagePublicKey, ADMIN_IMAGE_TTL_SECONDS) : null,

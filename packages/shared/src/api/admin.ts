@@ -62,6 +62,8 @@ export const AdminFoundItemDetailResponse = AdminFoundItemSummary.extend({
   brand: z.string().nullable(),
   features: z.array(AiFeature),
   description: z.string().nullable(),
+  /** 습득자가 적은 자세한 위치. 그 자리에 둠·보관처에 맡김 모두 받는다. 없으면 null */
+  locationDetail: z.string().nullable(),
   isSensitive: z.boolean(),
   /** 수령·기한 만료로 지웠으면 null */
   originalImageUrl: z.string().nullable(),

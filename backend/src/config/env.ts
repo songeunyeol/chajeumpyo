@@ -15,6 +15,9 @@ const Env = z.object({
   /** 속성 추출 기본 모델과, 실패할 때 쓰는 대체 모델. 2.5 계열은 새 키에서 막혀(10/26 확인) 3.x를 쓴다 */
   GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
   GEMINI_FALLBACK_MODEL: z.string().default("gemini-3.5-flash"),
+  /** 속성 추출(사진·신고)의 생각 정도. 3.x Flash는 생각하는 모델이라 기본값으로 두면 사진 1장 중앙값 5.8초, MINIMAL은 2.6초(10/29 측정).
+   * MINIMAL로 낮춰도 종류 정확도가 줄지 않아 기본값으로 둔다(docs/ai-stack.md 측정). DEFAULT면 모델 기본값을 쓴다 */
+  GEMINI_THINKING_LEVEL: z.enum(["DEFAULT", "MINIMAL", "LOW", "MEDIUM", "HIGH"]).default("MINIMAL"),
   /** 임베딩 모델. 출력 차원은 src/ai/types.ts의 EMBEDDING_DIM */
   GEMINI_EMBED_MODEL: z.string().default("gemini-embedding-001"),
   DATA_GO_KR_SERVICE_KEY: z.string().optional(),

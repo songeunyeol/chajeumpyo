@@ -67,16 +67,21 @@ export function compareBrand(reported: string | null, stored: string | null): Fe
   return looselyContains(reported, stored) ? "MATCH" : "CONTRADICT";
 }
 
-/** 신고 특징 하나를 같은 종류(key)의 저장 특징과 비교 */
+/**
+ * 신고 특징 하나를 저장 특징과 비교한다.
+ * 일치는 종류(key)를 가리지 않는다: 같은 장식을 습득자 사진은 "무늬"로, 신고 설명은 "기타"로 나눠 담는 일이 있어서
+ * 똑같은 문장을 적어도 실패했다 (10/29 운영, 안경 "양쪽 프레임 끝 두 개의 점 장식"). 같은 종류를 먼저 본다.
+ * 모순은 같은 종류의 저장 특징이 있는데 내용이 다를 때만이다.
+ */
 function compareFeature(reported: AiFeature, stored: AiFeature[]): FeatureComparison["features"][number] {
-  const sameKey = stored.filter((s) => s.key === reported.key);
-  if (sameKey.length === 0 || !hasSpecificValue(reported)) {
-    return { reportedKey: reported.key, verdict: "UNKNOWN", storedKey: null };
-  }
+  if (!hasSpecificValue(reported)) return { reportedKey: reported.key, verdict: "UNKNOWN", storedKey: null };
   // 일반 낱말을 뺀 내용 낱말이 저장 값에 들어 있으면 일치
   const content = words(reported.value).filter((w) => !GENERIC_WORDS.has(compact(w)));
-  const hit = sameKey.find((s) => content.some((w) => compact(w).length >= 2 && looselyContains(s.value, w)));
+  const matches = (s: AiFeature) => content.some((w) => compact(w).length >= 2 && looselyContains(s.value, w));
+  const sameKey = stored.filter((s) => s.key === reported.key);
+  const hit = sameKey.find(matches) ?? stored.find(matches);
   if (hit) return { reportedKey: reported.key, verdict: "MATCH", storedKey: hit.key };
+  if (sameKey.length === 0) return { reportedKey: reported.key, verdict: "UNKNOWN", storedKey: null };
   return { reportedKey: reported.key, verdict: "CONTRADICT", storedKey: sameKey[0]?.key ?? null };
 }
 

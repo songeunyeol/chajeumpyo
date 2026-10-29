@@ -11,232 +11,373 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="items.html">←</a><h2>습득물</h2></header>
-  <p class="lead" id="loading">불러오는 중…</p>
-  <div id="view" style="display:none"></div>
-  <p class="note danger" id="error" role="alert" hidden></p>
+  <header class="bar"><a class="back" id="back" href="items.html">←</a><h2>습득물</h2></header>
+  <h1 id="title">불러오는 중…</h1>
+  <div class="chips" id="chips" style="margin:0 0 16px"></div>
+  <p class="note danger" id="loadError" role="alert" hidden></p>
+
+  <div id="body" style="display:none">
+    <!-- 사진: 원본 · 공개본 · 후보용 블러본 -->
+    <div class="done-photo" style="height:240px">
+      <img id="photo" alt="습득물 사진" hidden>
+      <div id="noPhoto" style="height:100%;display:grid;place-items:center;color:var(--mute);font-size:14px;text-align:center;padding:16px">사진이 없어요</div>
+    </div>
+    <div class="chips" id="photoTabs" style="margin:-6px 0 16px"></div>
+
+    <div class="banner" id="lockBanner" style="display:none">
+      확인 실패가 쌓여 온라인 확인을 막은 물건이에요. 찾으러 오면 신분증과 물건 설명으로 직접 본인 확인을 해 주세요.
+    </div>
+
+    <table class="kv">
+      <tr><th>상태</th><td id="kvStatus"></td></tr>
+      <tr><th>주운 곳</th><td id="kvPlace"></td></tr>
+      <tr><th>자세한 위치</th><td id="kvDetail"></td></tr>
+      <tr><th>보관</th><td id="kvStorage"></td></tr>
+      <tr><th>주운 시각</th><td id="kvFound"></td></tr>
+      <tr><th>보관 기한</th><td id="kvExpires"></td></tr>
+      <tr><th>개인정보</th><td id="kvSensitive"></td></tr>
+    </table>
+
+    <!-- 대면 확인 수령 (온라인 확인이 막힌 물건) -->
+    <section id="inPerson" style="display:none">
+      <p class="section" style="margin-top:24px">대면 확인 후 내주기</p>
+      <form id="inPersonForm" novalidate>
+        <label class="field"><span>신분 확인 메모</span>
+          <textarea id="memo" class="compact" maxlength="200" placeholder="예: 학생증 이름·학번 확인, 스티커 모양 설명 일치"></textarea>
+        </label>
+        <p class="note" id="memoCount" style="margin:-8px 0 12px">신분증 번호 전체는 적지 마세요. 메모는 수령 기록과 함께 30일 뒤 지워져요. 0/200</p>
+        <p class="note danger" id="inPersonError" role="alert" hidden></p>
+        <button type="submit" class="btn" id="inPersonBtn" style="width:100%;cursor:pointer">신분 확인하고 내주기</button>
+      </form>
+    </section>
+
+    <!-- 속성: 검토 대기 등록, 보관 중 물건 고치기 -->
+    <section id="editSection">
+      <p class="section" style="margin-top:24px" id="editHead">AI가 읽은 속성</p>
+      <p class="note" id="reviewNote" style="display:none;margin:0 0 12px">AI가 종류를 정하지 못했어요. 사진을 보고 종류와 설명을 정하면 후보에 올라가요.</p>
+      <form id="editForm" novalidate>
+        <label class="field"><span>종류</span><select id="category"></select></label>
+        <label class="field" id="subField"><span>세부 종류</span><select id="subCategory"></select></label>
+        <label class="field"><span>2순위 종류 <small style="color:var(--mute);font-weight:500">후보 검색에만 써요</small></span><select id="categoryAlt"></select></label>
+        <label class="field"><span>색</span><select id="color"></select></label>
+        <label class="field"><span>브랜드</span><input id="brand" maxlength="40" autocomplete="off" placeholder="모르면 비워 두세요"></label>
+        <label class="field"><span>관리자용 제목</span><input id="itemTitle" maxlength="60" autocomplete="off" placeholder="예: 흰색 무선 이어폰, 곰돌이 스티커"></label>
+        <label class="field"><span>설명</span><textarea id="description" maxlength="500" placeholder="후보 찾기에 쓰는 설명이에요"></textarea></label>
+        <div class="field" style="gap:8px">
+          <span>숨은 특징 <small style="color:var(--mute);font-weight:500">최대 4개, 본인 확인 질문에 써요</small></span>
+          <div id="features" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button type="button" class="btn white" id="addFeature" style="height:44px;font-size:15px;cursor:pointer">특징 더하기</button>
+        </div>
+        <p class="note danger" id="editError" role="alert" hidden></p>
+        <p class="thanks-box" id="editDone" style="display:none;margin-top:12px"></p>
+        <div class="dock near">
+          <button type="submit" class="btn" id="saveBtn" style="width:100%;cursor:pointer">고친 내용 저장</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 기록 -->
+    <p class="section" style="margin-top:24px">확인 시도</p>
+    <div id="attempts"></div>
+    <p class="section" style="margin-top:20px">열람</p>
+    <div id="reveals"></div>
+    <p class="section" style="margin-top:20px">수령</p>
+    <div id="pickups"></div>
+  </div>
 </main>
 <script src="admin.js"></script>
 <script>
   AdminApi.requireLogin();
-  const { el } = AdminApi;
-  const id = new URLSearchParams(location.search).get("id");
-  const view = document.getElementById("view");
-  const error = document.getElementById("error");
+  const A = AdminApi;
+  const { el } = A;
+  const $ = (id) => document.getElementById(id);
+  const id = new URLSearchParams(location.search).get("id") || "";
+  // 목록에서 왔으면 그 목록(필터·쪽)으로 돌아간다
+  try {
+    const ref = document.referrer ? new URL(document.referrer) : null;
+    if (ref && ref.origin === location.origin && ref.pathname.endsWith("/items.html")) $("back").href = `items.html${ref.search}`;
+  } catch (_) {}
 
-  function optionList(map, current) {
-    const nodes = [el("option", { value: "", text: "선택" })];
-    for (const [key, label] of Object.entries(map)) {
-      const node = el("option", { value: key, text: label });
-      if (key === current) node.selected = true;
-      nodes.push(node);
+  /** 보관 중이라 속성을 고칠 수 있는 상태 */
+  const EDITABLE = ["REVIEW", "REGISTERED", "REVEALED"];
+  let item = null;
+  let photoKind = "original";
+  let busy = false;
+
+  function options(select, entries, value, emptyLabel) {
+    select.replaceChildren(
+      ...(emptyLabel !== undefined ? [el("option", { value: "", text: emptyLabel })] : []),
+      ...entries.map(([k, label]) => el("option", { value: k, text: label })),
+    );
+    select.value = value || "";
+  }
+
+  function fillSub(category, value) {
+    const subs = A.SUB_CATEGORIES[category] || [];
+    A.show($("subField"), subs.length > 0);
+    options($("subCategory"), subs.map((s) => [s, A.SUB_CATEGORY_LABELS[s]]), subs.includes(value) ? value : "", "정하지 않음");
+  }
+
+  function featureRow(f) {
+    const key = el("select", { "aria-label": "특징 종류", style: "flex:0 0 132px" });
+    options(key, Object.entries(A.FEATURE_KEY_LABELS), f ? f.key : "sticker");
+    const value = el("input", { maxlength: "40", "aria-label": "특징 내용", placeholder: "예: 곰돌이 스티커", autocomplete: "off", style: "flex:1;min-width:0" });
+    value.value = f ? f.value : "";
+    const remove = el("button", {
+      type: "button",
+      class: "text-btn",
+      "aria-label": "이 특징 지우기",
+      style: "cursor:pointer;color:var(--mute);padding:8px 4px",
+      onclick: () => {
+        row.remove();
+        syncFeatureBtn();
+      },
+      text: "지우기",
+    });
+    const row = el("div", { class: "feature", style: "display:flex;gap:8px;align-items:center" }, key, value, remove);
+    return row;
+  }
+  function syncFeatureBtn() {
+    A.show($("addFeature"), $("features").children.length < A.MAX_FEATURES && !$("editForm").inert);
+  }
+  function readFeatures() {
+    return [...$("features").children]
+      .map((row) => ({ key: row.querySelector("select").value, value: row.querySelector("input").value.trim() }))
+      .filter((f) => f.value);
+  }
+
+  function setPhoto() {
+    const urls = { original: item.originalImageUrl, public: item.publicImageUrl, thumb: item.thumbnailUrl };
+    const labels = { original: "원본", public: "공개본", thumb: "후보용 블러" };
+    const kinds = Object.keys(urls).filter((k) => urls[k]);
+    if (!urls[photoKind]) photoKind = kinds[0] || "original";
+    const img = $("photo");
+    if (urls[photoKind]) {
+      img.src = urls[photoKind];
+      img.hidden = false;
+      A.show($("noPhoto"), false);
+    } else {
+      img.hidden = true;
+      img.removeAttribute("src");
+      A.show($("noPhoto"), true);
+      $("noPhoto").textContent = ["CLAIMED", "EXPIRED"].includes(item.status) ? "수령·기한 만료로 사진을 지웠어요" : "사진이 없어요";
     }
-    return nodes;
+    $("photoTabs").replaceChildren(
+      ...(kinds.length > 1
+        ? kinds.map((k) =>
+            el("button", {
+              type: "button",
+              class: "chip",
+              "aria-pressed": k === photoKind ? "true" : "false",
+              style: `border:0;cursor:pointer;${k === photoKind ? "box-shadow:inset 0 0 0 1.5px var(--green)" : "background:var(--white);color:var(--ink)"}`,
+              onclick: () => {
+                photoKind = k;
+                setPhoto();
+              },
+              text: labels[k],
+            }),
+          )
+        : []),
+    );
   }
 
-  function photoTabs(item) {
-    const shots = [
-      ["원본", item.originalImageUrl, "관리자만 봐요"],
-      ["공개본", item.publicImageUrl, "확인을 통과한 학생이 봐요"],
-      ["블러본", item.thumbnailUrl, "후보 목록에 나와요"],
-    ];
-    const img = el("img", { alt: "습득물 사진", style: "width:100%;height:100%;object-fit:cover" });
-    const empty = el("div", { style: "height:100%;display:grid;place-items:center;color:var(--mute);font-size:14px", text: "사진이 없어요. 수령이나 기한 만료 뒤엔 지워요." });
-    const frame = el("div", { class: "done-photo" }, img, empty);
-    const caption = el("p", { class: "note", style: "margin-top:0" });
-    function showShot(url, note) {
-      caption.textContent = note;
-      if (url) {
-        img.src = url;
-        img.hidden = false;
-        AdminApi.show(empty, false);
-      } else {
-        img.hidden = true;
-        AdminApi.show(empty, true);
-      }
+  function recordCard(title, meta) {
+    return el("div", { class: "card", style: "padding:12px 16px" }, el("h3", { style: "font-size:15px", text: title }), el("p", { class: "meta", text: meta }));
+  }
+  function emptyNote(text) {
+    return el("p", { class: "note", style: "margin:0", text });
+  }
+
+  function render() {
+    document.title = `${A.itemTitle(item)} · 찾음표`;
+    $("title").textContent = A.itemTitle(item);
+    const chips = [A.statusChip(item.status)];
+    if (item.claimLockedAt) chips.push(el("span", { class: "chip danger", text: "대면 확인만" }));
+    if (item.isSeed) chips.push(el("span", { class: "chip warn", text: "시드" }));
+    const label = A.itemLabel(item.category, item.subCategory);
+    if (label && label !== item.title) chips.push(el("span", { class: "chip", style: "background:var(--white);color:var(--ink)", text: label }));
+    $("chips").replaceChildren(...chips);
+
+    setPhoto();
+    A.show($("lockBanner"), !!item.claimLockedAt && EDITABLE.includes(item.status));
+    $("kvStatus").textContent = A.STATUS[item.status]?.label || item.status;
+    $("kvPlace").textContent = A.placeText(item);
+    $("kvDetail").textContent = item.locationDetail || "적지 않음";
+    $("kvStorage").textContent = !item.storageType
+      ? "정하기 전"
+      : item.storageType === "HANDED_OVER"
+        ? item.storagePlace?.name || "보관처에 맡김"
+        : A.STORAGE_LABELS.IN_PLACE;
+    $("kvFound").textContent = A.formatTime(item.foundAt);
+    $("kvExpires").textContent = item.expiresAt ? A.formatTime(item.expiresAt, false) : "없음";
+    $("kvSensitive").textContent = item.isSensitive ? "있음 (공개본은 가림)" : "없음";
+
+    // 대면 확인: 잠긴 보관 중 물건만
+    A.show($("inPerson"), !!item.claimLockedAt && ["REGISTERED", "REVEALED"].includes(item.status));
+
+    // 속성
+    const editable = EDITABLE.includes(item.status);
+    const reviewing = item.status === "REVIEW";
+    $("editHead").textContent = reviewing ? "검토하고 등록하기" : editable ? "속성 고치기" : "속성 (보관이 끝나 고칠 수 없어요)";
+    A.show($("reviewNote"), reviewing);
+    const cats = Object.entries(A.CATEGORY_LABELS);
+    options($("category"), cats, item.category, item.category ? undefined : "종류를 고르세요");
+    fillSub(item.category, item.subCategory);
+    options($("categoryAlt"), cats, item.categoryAlt, "없음");
+    options($("color"), Object.entries(A.COLOR_LABELS), item.color, "모름");
+    $("brand").value = item.brand || "";
+    $("itemTitle").value = item.title || "";
+    $("description").value = item.description || "";
+    $("features").replaceChildren(...item.features.map(featureRow));
+    const form = $("editForm");
+    form.inert = !editable;
+    form.style.opacity = editable ? "" : "0.6";
+    A.show(form.querySelector(".dock"), editable);
+    $("saveBtn").textContent = reviewing ? "등록하기" : "고친 내용 저장";
+    syncFeatureBtn();
+
+    // 기록
+    $("attempts").replaceChildren(
+      ...(item.attempts.length
+        ? item.attempts.map((a) =>
+            recordCard(
+              `${a.emailMasked} · ${A.MATCH_RESULT_LABELS[a.result] || a.result}`,
+              [A.formatTime(a.createdAt), a.answerCorrect === null ? null : a.answerCorrect ? "질문 맞힘" : "질문 틀림"].filter(Boolean).join(" · "),
+            ),
+          )
+        : [emptyNote("아직 없어요.")]),
+    );
+    $("reveals").replaceChildren(
+      ...(item.reveals.length ? item.reveals.map((r) => recordCard(r.emailMasked, A.formatTime(r.revealedAt))) : [emptyNote("아직 없어요.")]),
+    );
+    $("pickups").replaceChildren(
+      ...(item.pickups.length
+        ? item.pickups.map((p) => {
+            const who = p.emailMasked || "계정 없음 (대면 확인)";
+            const meta = [
+              A.PICKUP_STATUS_LABELS[p.status] || p.status,
+              A.formatTime(p.completedAt || p.createdAt),
+              p.processedByEmailMasked ? `처리 ${p.processedByEmailMasked}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            const card = recordCard(`${A.PICKUP_METHOD_LABELS[p.method] || p.method} · ${who}`, meta);
+            if (p.verificationNote) card.append(el("p", { class: "note", style: "margin-top:6px;color:var(--ink)", text: `메모: ${p.verificationNote}` }));
+            return card;
+          })
+        : [emptyNote("아직 없어요.")]),
+    );
+    A.show($("body"), true);
+  }
+
+  async function load() {
+    if (!id) {
+      $("title").textContent = "물건을 찾을 수 없어요";
+      return A.showError($("loadError"), "목록에서 물건을 골라 주세요.");
     }
-    const chips = el("div", { class: "chips", style: "margin-top:0" });
-    shots.forEach(([label, url, note], index) => {
-      const button = el("button", {
-        type: "button",
-        class: "chip",
-        style: "border:0;cursor:pointer;background:var(--white);color:var(--ink)",
-        text: label,
-        onclick: () => {
-          [...chips.children].forEach((node) => { node.style.boxShadow = ""; });
-          button.style.boxShadow = "inset 0 0 0 1.5px var(--green)";
-          showShot(url, note);
-        },
-      });
-      if (index === 0) button.style.boxShadow = "inset 0 0 0 1.5px var(--green)";
-      chips.append(button);
-    });
-    showShot(shots[0][1], shots[0][2]);
-    return el("div", {}, chips, frame, caption);
-  }
-
-  function recordList(title, rows) {
-    const box = el("div", {}, el("p", { class: "section", text: title }));
-    if (!rows.length) {
-      box.append(el("p", { class: "note", style: "margin-top:0", text: "기록이 없어요." }));
-      return box;
+    try {
+      item = await A.getItem(id);
+    } catch (err) {
+      $("title").textContent = err.code === "FORBIDDEN" ? "볼 수 없는 물건이에요" : "물건을 찾을 수 없어요";
+      return A.showError($("loadError"), err);
     }
-    for (const row of rows) box.append(el("div", { class: "card" }, el("h3", { text: row.title }), el("p", { class: "meta", text: row.meta })));
-    return box;
+    render();
   }
 
-  function render(item) {
-    document.getElementById("loading").style.display = "none";
-    AdminApi.show(view, true);
-    const holding = ["REGISTERED", "REVEALED"].includes(item.status);
-    const featureText = (item.features || []).map((feature) => `${AdminApi.FEATURE_KEY_LABELS[feature.key] || feature.key}: ${feature.value}`).join(", ");
-    const blocks = [
-      el("h1", { text: AdminApi.itemTitle(item), style: "margin-top:8px" }),
-      el("div", { class: "chips" }, AdminApi.statusChip(item.status), item.claimLockedAt ? el("span", { class: "chip danger", text: "대면 확인" }) : null),
-      photoTabs(item),
-      el("p", { class: "section", text: "AI가 읽은 정보" }),
-      el("table", { class: "kv" },
-        el("tr", {}, el("th", { text: "종류" }), el("td", { text: AdminApi.itemLabel(item.category, item.subCategory) || "확인 전" })),
-        el("tr", {}, el("th", { text: "색" }), el("td", { text: AdminApi.COLOR_LABELS[item.color] || "모름" })),
-        el("tr", {}, el("th", { text: "브랜드" }), el("td", { text: item.brand || "없음" })),
-        el("tr", {}, el("th", { text: "특징" }), el("td", { text: featureText || "없음" })),
-        el("tr", {}, el("th", { text: "설명" }), el("td", { text: item.description || "없음" })),
-        item.hiddenTrait ? el("tr", {}, el("th", { text: "숨은 특징" }), el("td", { text: item.hiddenTrait })) : null),
-      el("p", { class: "note", text: "숨은 특징은 학생 화면에 나오지 않아요. 사진 링크는 10분 뒤 닫혀요." }),
-      el("p", { class: "section", text: "보관" }),
-      el("table", { class: "kv" },
-        el("tr", {}, el("th", { text: "주운 곳" }), el("td", { text: AdminApi.placeText(item) })),
-        el("tr", {}, el("th", { text: "보관" }), el("td", { text: AdminApi.STORAGE_LABELS[item.storageType] || "확인 전" })),
-        el("tr", {}, el("th", { text: "보관처" }), el("td", { text: item.storagePlace?.name || "없음" })),
-        el("tr", {}, el("th", { text: "습득" }), el("td", { text: AdminApi.formatTime(item.foundAt) }))),
-    ];
+  $("category").addEventListener("change", () => fillSub($("category").value, $("subCategory").value));
+  $("addFeature").addEventListener("click", () => {
+    if ($("features").children.length >= A.MAX_FEATURES) return;
+    const row = featureRow(null);
+    $("features").append(row);
+    row.querySelector("input").focus();
+    syncFeatureBtn();
+  });
 
-    if (item.status === "REVIEW") blocks.push(reviewForm(item));
-    if (holding) blocks.push(editForm(item));
-    if (item.claimLockedAt && holding) blocks.push(inPersonForm(item));
-
-    blocks.push(recordList("확인 시도", (item.attempts || []).map((row) => ({
-      title: `${row.emailMasked} · ${AdminApi.MATCH_RESULT_LABELS[row.result] || row.result}`,
-      meta: AdminApi.formatTime(row.createdAt),
-    }))));
-    blocks.push(recordList("열람", (item.reveals || []).map((row) => ({
-      title: row.emailMasked,
-      meta: AdminApi.formatTime(row.revealedAt),
-    }))));
-    blocks.push(recordList("수령", (item.pickups || []).map((row) => ({
-      title: `${AdminApi.PICKUP_METHOD_LABELS[row.method] || row.method} · ${AdminApi.PICKUP_STATUS_LABELS[row.status] || row.status}`,
-      meta: [row.emailMasked || "계정 없음", row.verificationNote, AdminApi.formatTime(row.completedAt || row.createdAt)].filter(Boolean).join(" · "),
-    }))));
-
-    view.replaceChildren(...blocks);
+  /** 처음 값과 달라진 칸만 모은다 */
+  function changes() {
+    const body = {};
+    const category = $("category").value || null;
+    const sub = A.SUB_CATEGORIES[category]?.length ? $("subCategory").value || null : null;
+    const alt = $("categoryAlt").value || null;
+    const color = $("color").value || null;
+    const brand = $("brand").value.trim() || null;
+    const title = $("itemTitle").value.trim();
+    const description = $("description").value.trim();
+    const features = readFeatures();
+    if (category && category !== item.category) body.category = category;
+    if (sub !== (item.subCategory || null)) body.subCategory = sub;
+    if (alt !== (item.categoryAlt || null)) body.categoryAlt = alt;
+    if (color !== (item.color || null)) body.color = color;
+    if (brand !== (item.brand || null)) body.brand = brand;
+    if (title && title !== (item.title || "")) body.title = title;
+    if (description && description !== (item.description || "")) body.description = description;
+    if (JSON.stringify(features) !== JSON.stringify(item.features.map((f) => ({ key: f.key, value: f.value })))) body.features = features;
+    return { body, category, title, description };
   }
 
-  function reviewForm(item) {
-    const category = el("select", {}, ...optionList(AdminApi.CATEGORY_LABELS, item.category || ""));
-    const description = el("textarea", { class: "compact", maxlength: "500", placeholder: "실물과 맞춰 짧게 적어요" });
-    const formError = el("p", { class: "note danger", hidden: true });
-    const button = el("button", { type: "button", class: "btn", style: "width:100%;cursor:pointer", text: "등록" });
-    button.addEventListener("click", async () => {
-      if (!category.value || !description.value.trim()) {
-        AdminApi.showError(formError, "종류와 설명을 적어 주세요.");
-        return;
-      }
-      button.disabled = true;
-      try {
-        const next = await AdminApi.updateItem(item.id, {
-          category: category.value,
-          description: description.value.trim(),
-          title: AdminApi.CATEGORY_LABELS[category.value],
-          status: "REGISTERED",
-        });
-        render(next);
-      } catch (err) {
-        button.disabled = false;
-        AdminApi.showError(formError, err);
-      }
-    });
-    return el("div", {},
-      el("p", { class: "section", text: "검토 대기 · 직접 등록" }),
-      el("p", { class: "lead", text: "종류와 설명을 정하면 등록되고, 비슷한 분실 신고에 후보 알림이 가요." }),
-      el("label", { class: "field" }, el("span", { text: "종류" }), category),
-      el("label", { class: "field" }, el("span", { text: "설명" }), description),
-      formError,
-      button);
-  }
+  $("editForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (busy || !item) return;
+    const reviewing = item.status === "REVIEW";
+    const { body, category, title, description } = changes();
+    A.showError($("editError"));
+    A.show($("editDone"), false);
+    if (!title && item.title) return A.showError($("editError"), "제목은 비울 수 없어요.");
+    if (!description && item.description) return A.showError($("editError"), "설명은 비울 수 없어요.");
+    if (reviewing) {
+      if (!category) return A.showError($("editError"), "종류를 골라야 등록할 수 있어요.");
+      if (!description) return A.showError($("editError"), "설명을 적어야 등록할 수 있어요.");
+      body.status = "REGISTERED";
+    } else if (Object.keys(body).length === 0) {
+      return A.showError($("editError"), "바꾼 내용이 없어요.");
+    }
+    busy = true;
+    $("saveBtn").textContent = "저장하는 중…";
+    try {
+      item = await A.updateItem(item.id, body);
+      render();
+      $("editDone").textContent = reviewing ? "등록했어요. 이제 잃어버린 사람의 후보에 올라가요." : "저장했어요.";
+      A.show($("editDone"), true);
+    } catch (err) {
+      A.showError($("editError"), err);
+      $("saveBtn").textContent = reviewing ? "등록하기" : "고친 내용 저장";
+    } finally {
+      busy = false;
+    }
+  });
 
-  function editForm(item) {
-    const title = el("input", { value: item.title || "", maxlength: "60" });
-    const color = el("select", {}, ...optionList(AdminApi.COLOR_LABELS, item.color || ""));
-    const brand = el("input", { value: item.brand || "", maxlength: "40", placeholder: "없으면 비워요" });
-    const description = el("textarea", { class: "compact", maxlength: "500" });
-    description.value = item.description || "";
-    const formError = el("p", { class: "note danger", hidden: true });
-    const button = el("button", { type: "button", class: "btn white", style: "width:100%;cursor:pointer", text: "바꾼 내용 저장" });
-    button.addEventListener("click", async () => {
-      const body = {};
-      if (title.value.trim() && title.value.trim() !== (item.title || "")) body.title = title.value.trim();
-      if ((color.value || null) !== (item.color || null)) body.color = color.value || null;
-      if ((brand.value.trim() || null) !== (item.brand || null)) body.brand = brand.value.trim() || null;
-      if (description.value.trim() && description.value.trim() !== (item.description || "")) body.description = description.value.trim();
-      if (!Object.keys(body).length) {
-        AdminApi.showError(formError, "바꾼 내용이 없어요.");
-        return;
-      }
-      button.disabled = true;
-      try {
-        const next = await AdminApi.updateItem(item.id, body);
-        render(next);
-      } catch (err) {
-        button.disabled = false;
-        AdminApi.showError(formError, err);
-      }
-    });
-    return el("div", {},
-      el("p", { class: "section", text: "보관 중 · 속성 고치기" }),
-      el("label", { class: "field" }, el("span", { text: "제목" }), title),
-      el("label", { class: "field" }, el("span", { text: "색" }), color),
-      el("label", { class: "field" }, el("span", { text: "브랜드" }), brand),
-      el("label", { class: "field" }, el("span", { text: "설명" }), description),
-      formError,
-      button);
-  }
+  const memo = $("memo");
+  memo.addEventListener("input", () => {
+    $("memoCount").textContent = `신분증 번호 전체는 적지 마세요. 메모는 수령 기록과 함께 30일 뒤 지워져요. ${memo.value.trim().length}/${A.VERIFICATION_NOTE_MAX}`;
+  });
+  $("inPersonForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (busy || !item) return;
+    const note = memo.value.trim();
+    A.showError($("inPersonError"));
+    if (!note) {
+      memo.focus();
+      return A.showError($("inPersonError"), "어떻게 본인 확인을 했는지 적어 주세요.");
+    }
+    if (note.length > A.VERIFICATION_NOTE_MAX) return A.showError($("inPersonError"), `메모는 ${A.VERIFICATION_NOTE_MAX}자까지예요.`);
+    if (!confirm("신분 확인을 마치고 이 물건을 내줄까요? 내주면 사진과 비공개 정보가 바로 지워져요.")) return;
+    busy = true;
+    $("inPersonBtn").textContent = "처리하는 중…";
+    try {
+      await A.inPersonPickup(item.id, note);
+      memo.value = "";
+      busy = false;
+      await load();
+      window.scrollTo(0, 0);
+    } catch (err) {
+      busy = false;
+      A.showError($("inPersonError"), err.code === "ALREADY_CLAIMED" ? "이미 내준 물건이에요." : err);
+    } finally {
+      $("inPersonBtn").textContent = "신분 확인하고 내주기";
+    }
+  });
 
-  function inPersonForm(item) {
-    const note = el("textarea", { class: "compact", maxlength: "200", placeholder: "학생증 이름과 숨은 특징이 맞았는지. 번호 전체는 적지 마세요." });
-    const formError = el("p", { class: "note danger", hidden: true });
-    const button = el("button", { type: "button", class: "btn", style: "width:100%;cursor:pointer", text: "대면 확인 후 수령" });
-    button.addEventListener("click", async () => {
-      const text = note.value.trim();
-      if (text.length < 1 || text.length > 200) {
-        AdminApi.showError(formError, "확인 메모는 1자에서 200자까지예요.");
-        return;
-      }
-      button.disabled = true;
-      try {
-        await AdminApi.inPersonPickup(item.id, text);
-        render(await AdminApi.getItem(item.id));
-      } catch (err) {
-        button.disabled = false;
-        AdminApi.showError(formError, err);
-      }
-    });
-    return el("div", {},
-      el("p", { class: "section", text: "대면 확인" }),
-      el("p", { class: "lead", text: "온라인 확인이 막힌 물건이에요. 학생증과 숨은 특징을 직접 보고 돌려줘요." }),
-      el("label", { class: "field" }, el("span", { text: "확인 메모" }), note),
-      formError,
-      button);
-  }
-
-  if (!id) {
-    document.getElementById("loading").textContent = "";
-    AdminApi.showError(error, "물건을 고르지 않았어요.");
-  } else {
-    AdminApi.getItem(id).then(render).catch((err) => {
-      document.getElementById("loading").textContent = "";
-      AdminApi.showError(error, err);
-    });
-  }
+  load();
 </script>
 </body>
 </html>

@@ -3,8 +3,10 @@ import {
   type AnswerResponse,
   CATEGORY_LABELS,
   type ClaimResponse,
+  itemLabel,
   LostReportExtraction,
   type Role,
+  subCategoryWithin,
 } from "@chajeumpyo/shared";
 import { z } from "zod";
 import { ai } from "../ai";
@@ -168,7 +170,12 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
           public: [...new Set(publicFields)],
         },
         result: j.result,
-        question: j.questionFeature ? questionFor(j.questionFeature) : null,
+        question: j.questionFeature
+          ? questionFor(
+              j.questionFeature,
+              item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null,
+            )
+          : null,
         questionFeatureKey: j.questionFeature?.key ?? null,
       },
     });

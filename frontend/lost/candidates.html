@@ -36,6 +36,23 @@
       </div>
     </div>
   </div>
+  <!-- 확인 전 안내: 설명의 특징으로 대조하고, 안 맞으면 기회가 준다. 설명을 여기서 보완할 수 있다 -->
+  <div class="modal-backdrop" id="claimModal" role="dialog" aria-modal="true" aria-labelledby="claimModalTitle">
+    <div class="modal-card">
+      <span class="chip warn" id="claimRemainChip">확인 기회 3번 중 3번 남음</span>
+      <h3 id="claimModalTitle">내 물건인지 확인할까요?</h3>
+      <p>아래 설명에 적은 <b>물건만의 특징</b>(스티커, 흠집, 장식, 키링 등)과 이 물건의 숨은 특징을 대조해요. 특징을 못 적었으면 숨은 특징을 묻는 질문이 하나 나와요. 특징이 다르거나 질문에 틀리면 <b>기회가 1번 줄어요.</b></p>
+      <label class="field" style="margin-bottom:6px">
+        <span>내 신고 설명</span>
+        <textarea id="claimDesc" rows="3" maxlength="500" style="box-shadow:inset 0 0 0 1px var(--line)"></textarea>
+      </label>
+      <p class="note danger" id="claimDescNote" style="margin:0 0 12px" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn gray" id="cancelClaimBtn">취소</button>
+        <button type="button" class="btn" id="confirmClaimBtn">확인하기</button>
+      </div>
+    </div>
+  </div>
 </main>
 <script src="api.js"></script>
 <script>
@@ -233,12 +250,12 @@
         btn.style.marginTop = "12px";
         btn.addEventListener("click", (e) => {
           e.preventDefault();
-          doClaim(c, btn);
+          openClaimModal(c, btn);
         });
         article.appendChild(btn);
       } else if (state === "locked") {
         chips.appendChild(el("span", "chip danger", "잠김"));
-        const note = el("p", "meta", "확인 기회를 모두 썼어요. 학생증을 가지고 종합서비스센터에 문의해요.");
+        const note = el("p", "meta", "확인 기회를 모두 썼어요. 학생증을 가지고 교무처(혜인관 1층)에 문의해요.");
         note.style.marginTop = "10px";
         article.append(chips, note);
       } else {
@@ -254,6 +271,59 @@
     });
   }
 
+  // 확인 전 안내 모달. 설명을 고치면 먼저 신고를 고친다(다시 분석하고 후보를 다시 고른다)
+  const claimModal = document.getElementById("claimModal");
+  const claimDesc = document.getElementById("claimDesc");
+  const claimDescNote = document.getElementById("claimDescNote");
+  const confirmClaimBtn = document.getElementById("confirmClaimBtn");
+  let claimTarget = null;
+  let savedDesc = null;
+  async function openClaimModal(c, btn) {
+    claimTarget = { c, btn };
+    document.getElementById("claimRemainChip").textContent = `확인 기회 3번 중 ${c.attemptsLeft}번 남음`;
+    claimDescNote.hidden = true;
+    claimModal.classList.add("is-open");
+    if (savedDesc === null) {
+      try {
+        savedDesc = (await LostApi.reports()).find((r) => r.id === reportId)?.description ?? "";
+      } catch (_) {
+        savedDesc = "";
+      }
+    }
+    claimDesc.value = savedDesc;
+  }
+  const closeClaimModal = () => claimModal.classList.remove("is-open");
+  document.getElementById("cancelClaimBtn").addEventListener("click", closeClaimModal);
+  claimModal.addEventListener("click", (e) => {
+    if (e.target === claimModal) closeClaimModal();
+  });
+  confirmClaimBtn.addEventListener("click", async () => {
+    if (!claimTarget || confirmClaimBtn.disabled) return;
+    const text = claimDesc.value.trim();
+    if (text.length < LostApi.DESCRIPTION_MIN) {
+      claimDescNote.textContent = `설명을 ${LostApi.DESCRIPTION_MIN}자 이상 적어 주세요.`;
+      claimDescNote.hidden = false;
+      return;
+    }
+    if (text !== savedDesc) {
+      confirmClaimBtn.disabled = true;
+      confirmClaimBtn.textContent = "설명 저장 중…";
+      try {
+        await LostApi.editReport(reportId, text);
+        savedDesc = text;
+      } catch (err) {
+        claimDescNote.textContent = LostApi.friendlyMessage(err);
+        claimDescNote.hidden = false;
+        return;
+      } finally {
+        confirmClaimBtn.disabled = false;
+        confirmClaimBtn.textContent = "확인하기";
+      }
+    }
+    closeClaimModal();
+    doClaim(claimTarget.c, claimTarget.btn);
+  });
+
   /** POST /lost-reports/:id/claims → 결과에 따라 다음 화면 */
   let claiming = false;
   async function doClaim(c, btn) {
@@ -264,10 +334,25 @@
     LostApi.store.set(LostApi.KEYS.candidate, c);
     try {
       const r = await LostApi.claim(reportId, c.foundItemId);
+      // 같은 설명으로 이미 확인한 물건이면 서버가 이전 결과를 그대로 준다(기회는 안 씀). 실패 화면 대신 설명을 보완하게 한다
+      if (r.result === "FAIL" && r.reused && r.attemptsLeft > 0) {
+        await openClaimModal(c, btn);
+        claimDescNote.textContent =
+          "이 설명으로는 이미 확인했는데 맞지 않았어요. 물건만의 특징(스티커, 흠집, 장식 등)을 더 적어 주세요. 기회는 줄지 않았어요.";
+        claimDescNote.hidden = false;
+        return;
+      }
       await goNext(LostApi.claimScreen(r));
     } catch (err) {
       const screen = LostApi.claimScreen(err);
       if (screen) return goNext(screen);
+      // 설명에 특징이 없으면 기회를 쓰지 않고 돌아온다 → 모달을 다시 열어 바로 보완하게 한다
+      if (err.code === "VALIDATION_ERROR" && err.details?.[0]?.path === "description") {
+        await openClaimModal(c, btn);
+        claimDescNote.textContent = LostApi.friendlyMessage(err);
+        claimDescNote.hidden = false;
+        return;
+      }
       candErr.textContent = LostApi.friendlyMessage(err);
       candErr.hidden = false;
       // 후보가 바뀌었거나(403) 이미 누가 가져갔으면(409) 목록을 다시 받는다

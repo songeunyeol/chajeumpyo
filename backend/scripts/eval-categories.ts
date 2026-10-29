@@ -95,7 +95,9 @@ if (files.length === 0) {
   console.error(`사진이 없어요: ${dir}\n파일 이름에 정답을 넣어 주세요. 예: 마우스_1.jpg, 백팩_2.jpg`);
   process.exit(1);
 }
-console.log(`AI_MODE=${env.AI_MODE}, 모델 ${env.GEMINI_MODEL ?? "-"}, 사진 ${files.length}장, 폴더 ${dir}\n`);
+console.log(
+  `AI_MODE=${env.AI_MODE}, 모델 ${env.GEMINI_MODEL ?? "-"} (생각 ${env.GEMINI_THINKING_LEVEL}), 사진 ${files.length}장, 폴더 ${dir}\n`,
+);
 
 type Row = {
   file: string;

@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type ThinkingLevel } from "@google/genai";
 import { env } from "../config/env";
 import { createGeminiClient } from "./gemini";
 import { mockAiClient } from "./mock";
@@ -14,6 +14,7 @@ function createAiClient(): AiClient {
     model: env.GEMINI_MODEL,
     fallbackModel: env.GEMINI_FALLBACK_MODEL,
     embedModel: env.GEMINI_EMBED_MODEL,
+    thinkingLevel: env.GEMINI_THINKING_LEVEL === "DEFAULT" ? undefined : (env.GEMINI_THINKING_LEVEL as ThinkingLevel),
   });
 }
 
