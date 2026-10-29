@@ -7,7 +7,9 @@ import {
   type HotspotResponse,
   type ReportHotspot,
 } from "@chajeumpyo/shared";
+import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
+import { adminsInChargeOf, notifyUsers } from "./notifications";
 
 /** 한국 시간 (+9, 일광 절약 시간 없음) */
 const KST_OFFSET_MS = 9 * 3600_000;
@@ -273,4 +275,53 @@ export async function hotspots(query: HotspotQuery, now = new Date()): Promise<H
     priorities: buildPriorities(rows, start, end),
     reportHotspots: buildReportHotspots(reports, real),
   };
+}
+
+/** 같은 구간 알림을 다시 보내지 않는 기간 */
+const ALERT_COOLDOWN_DAYS = 7;
+const ALERT_PREFIX = "반복 분실 알림 · ";
+
+/**
+ * 새 등록으로 그 건물·종류 구간이 "높음"이 되면 맡은 관리자에게 미리 알린다 (불편이 문제가 되기 전에).
+ * 같은 구간은 7일에 한 번만. 시드·건물 없는 물건은 보지 않는다. 보낸 알림 수를 돌려준다.
+ */
+export async function alertHotspot(foundItemId: string, now = new Date()): Promise<number> {
+  const item = await prisma.foundItem.findUnique({
+    where: { id: foundItemId },
+    select: { isSeed: true, category: true, storagePlaceId: true, building: { select: { name: true } } },
+  });
+  if (!item || item.isSeed || !item.category || !item.building) return 0;
+  const { priorities, isSeedData } = await hotspots({}, now);
+  if (isSeedData) return 0;
+  const hit = priorities.find(
+    (p) => p.level === "HIGH" && p.building === item.building?.name && p.category === item.category,
+  );
+  if (!hit) return 0;
+  const key = `${ALERT_PREFIX}${hit.building} ${slotLabel(hit.startHour)} ${CATEGORY_LABELS[hit.category]} 분실`;
+  const recent = await prisma.notification.findFirst({
+    where: {
+      type: "SYSTEM",
+      message: { startsWith: key },
+      createdAt: { gte: new Date(now.getTime() - ALERT_COOLDOWN_DAYS * 86_400_000) },
+    },
+    select: { id: true },
+  });
+  if (recent) return 0;
+  const admins = await adminsInChargeOf(item.storagePlaceId);
+  await notifyUsers(admins, {
+    type: "SYSTEM",
+    foundItemId,
+    message: `${ALERT_PREFIX}${hit.summary}. 제안: ${hit.action}`,
+  });
+  return admins.length;
+}
+
+/** 등록 흐름에서 부를 때: 실패해도 throw하지 않고 로그만 남긴다 */
+export function alertHotspotSafely(foundItemId: string): Promise<void> {
+  return alertHotspot(foundItemId).then(
+    (sent) => {
+      if (sent > 0) logger.info({ foundItemId, sent }, "반복 분실 알림");
+    },
+    (err) => logger.error({ err, foundItemId }, "반복 분실 알림 실패"),
+  );
 }

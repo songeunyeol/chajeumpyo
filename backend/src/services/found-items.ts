@@ -24,6 +24,7 @@ import { premaskSafely } from "../privacy/premask";
 import { setFoundItemEmbedding } from "../repositories/embedding";
 import { storage } from "../storage";
 import { alertNewCandidateSafely } from "./candidate-alerts";
+import { alertHotspotSafely } from "./hotspots";
 
 /** 비회원 등록 제한: 같은 지문으로 10분에 5건 (초안, F-01) */
 export const REGISTER_LIMIT = { windowMinutes: 10, count: 5 };
@@ -246,7 +247,10 @@ export async function registerFoundItem(input: {
     fields.locationDetail ?? null,
   );
 
-  if (status === "REGISTERED") await alertNewCandidateSafely(photo.id);
+  if (status === "REGISTERED") {
+    await alertNewCandidateSafely(photo.id);
+    await alertHotspotSafely(photo.id);
+  }
 
   const category = photo.analysis?.extraction.category ?? null;
   return {
@@ -384,7 +388,10 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
     return { status, category, subCategory };
   });
 
-  if (item.status === "REGISTERED") await alertNewCandidateSafely(id);
+  if (item.status === "REGISTERED") {
+    await alertNewCandidateSafely(id);
+    await alertHotspotSafely(id);
+  }
 
   return {
     id,
