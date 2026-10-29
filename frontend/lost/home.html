@@ -37,11 +37,11 @@
         </svg>
         <span class="bell-dot" aria-hidden="true"></span>
       </a>
-      <button type="button" class="icon-btn" id="settingsBtn" aria-label="설정 및 로그인 정보" aria-expanded="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true">
-          <line x1="4" y1="6.5" x2="20" y2="6.5"/>
-          <line x1="4" y1="12" x2="20" y2="12"/>
-          <line x1="4" y1="17.5" x2="20" y2="17.5"/>
+      <button type="button" class="icon-btn" id="settingsBtn" aria-label="내 계정" aria-expanded="false">
+        <!-- 계정 아이콘 (QA 10/29: 메뉴 아이콘처럼 보였음) -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="8.5" r="3.8"/>
+          <path d="M4.5 20c1.2-3.6 4.1-5.4 7.5-5.4s6.3 1.8 7.5 5.4"/>
         </svg>
       </button>
     </div>
@@ -50,9 +50,9 @@
     <div class="settings-popover" id="settingsPopover" role="dialog" aria-label="로그인 정보 및 설정">
       <p class="settings-label">로그인 정보</p>
       <div class="settings-user">
-        <strong id="settingsName">김서경</strong>
-        <p id="settingsEmail">ab***@skuniv.ac.kr</p>
-        <p id="settingsPhone">010-0000-0000</p>
+        <strong id="settingsName">학교 이메일 계정</strong>
+        <p id="settingsEmail"></p>
+        <p id="settingsPhone" hidden></p>
       </div>
       <a class="btn danger" id="logoutBtn" href="login.html">로그아웃</a>
     </div>
@@ -61,10 +61,10 @@
   <div class="banner" id="demo" hidden>체험 모드 · 시연용 데이터로 움직여요</div>
   <h1>내 분실 신고</h1>
 
-  <p class="section section-glow"><span class="glow-dot green" aria-hidden="true"></span><span id="activeHeading">진행 중 1</span></p>
+  <p class="section section-glow"><span class="glow-dot green" aria-hidden="true"></span><span id="activeHeading">진행 중</span></p>
   <div id="activeList" style="display:flex;flex-direction:column;gap:10px"></div>
 
-  <p class="section section-glow" style="margin-top:18px"><span class="glow-dot red" aria-hidden="true"></span><span id="closedHeading">닫힘 1</span></p>
+  <p class="section section-glow" style="margin-top:18px"><span class="glow-dot red" aria-hidden="true"></span><span id="closedHeading">끝난 신고</span></p>
   <div id="closedList" style="display:flex;flex-direction:column;gap:10px"></div>
 
   <div class="dock">
@@ -124,7 +124,7 @@
     if (e.key === "Escape") setSettingsOpen(false);
   });
 
-  // 진행 중(OPEN) & 닫힘(RESOLVED 찾음 · CLOSED 닫음) 분실 신고 목록: GET /lost-reports
+  // 진행 중(OPEN) & 끝난 신고(RESOLVED 찾음 · CLOSED 종료) 목록: GET /lost-reports
   const activeHeading = document.getElementById("activeHeading");
   const closedHeading = document.getElementById("closedHeading");
   const activeListEl = document.getElementById("activeList");
@@ -167,10 +167,11 @@
     const closedItems = all.filter((r) => r.status !== "OPEN");
 
     activeHeading.textContent = `진행 중 ${activeItems.length}`;
-    closedHeading.textContent = `닫힘 ${closedItems.length}`;
+    closedHeading.textContent = `끝난 신고 ${closedItems.length}`;
 
     activeListEl.replaceChildren();
-    if (activeItems.length === 0) activeListEl.appendChild(emptyCard("진행 중인 분실 신고가 없어요."));
+    if (activeItems.length === 0)
+      activeListEl.appendChild(emptyCard(all.length === 0 ? "아직 신고 내역이 없어요." : "진행 중인 분실 신고가 없어요."));
     for (const rep of activeItems) {
       const a = reportCard(rep, "a", "glow-green", [
         ["진행 중", "glow-green"],
@@ -183,10 +184,10 @@
 
     // 닫힌 신고는 서버가 후보를 주지 않고, 찾은 물건 상세는 수령 뒤 닫힌다(409 ALREADY_CLAIMED). 그래서 누를 곳이 없다
     closedListEl.replaceChildren();
-    if (closedItems.length === 0) closedListEl.appendChild(emptyCard("닫힌 신고가 없어요."));
+    if (closedItems.length === 0) closedListEl.appendChild(emptyCard("아직 끝난 신고가 없어요."));
     for (const rep of closedItems) {
       closedListEl.appendChild(
-        reportCard(rep, "div", "glow-red", [[rep.status === "RESOLVED" ? "닫힘 · 찾음" : "닫힘", "glow-red"]]),
+        reportCard(rep, "div", "glow-red", [[rep.status === "RESOLVED" ? "찾음" : "종료", "glow-red"]]),
       );
     }
   }
@@ -196,7 +197,7 @@
     .catch((err) => {
       if (err.code === "UNAUTHORIZED") return location.replace("login.html");
       activeHeading.textContent = "진행 중";
-      closedHeading.textContent = "닫힘";
+      closedHeading.textContent = "끝난 신고";
       activeListEl.replaceChildren(emptyCard(LostApi.friendlyMessage(err)));
     });
 </script>

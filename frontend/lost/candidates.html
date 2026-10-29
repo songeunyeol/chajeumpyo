@@ -36,17 +36,21 @@
       </div>
     </div>
   </div>
-  <!-- 확인 전 안내: 설명의 특징으로 대조하고, 안 맞으면 기회가 준다. 설명을 여기서 보완할 수 있다 -->
+  <!-- 확인 전 안내. 처음 신고 설명은 고칠 수 없고(악용 방지, QA 10/29), 추가 설명만 덧붙인다 -->
   <div class="modal-backdrop" id="claimModal" role="dialog" aria-modal="true" aria-labelledby="claimModalTitle">
     <div class="modal-card">
-      <span class="chip warn" id="claimRemainChip">확인 기회 3번 중 3번 남음</span>
+      <span class="chip warn" id="claimRemainChip">남은 확인 기회 3번</span>
       <h3 id="claimModalTitle">내 물건인지 확인할까요?</h3>
-      <p>아래 설명에 적은 <b>물건만의 특징</b>(스티커, 흠집, 장식, 키링 등)과 이 물건의 숨은 특징을 대조해요. 특징을 못 적었으면 숨은 특징을 고르는 질문이 나와요. 특징이 다르거나 질문에 틀리면 <b>기회가 1번 줄어요.</b></p>
-      <label class="field" style="margin-bottom:6px">
+      <p>설명 속 <b>물건만의 특징</b>(스티커, 흠집, 장식 등)을 이 물건과 비교해요. 다르거나 질문에 틀리면 <b>기회가 1번 줄어요.</b></p>
+      <div class="field" style="margin-bottom:10px">
         <span>내 신고 설명</span>
-        <textarea id="claimDesc" rows="3" maxlength="500" style="box-shadow:inset 0 0 0 1px var(--line)"></textarea>
+        <p class="claim-desc-view" id="claimDescView"></p>
+      </div>
+      <label class="field" style="margin-bottom:6px">
+        <span>추가 설명 <small class="opt">선택 · 빠뜨린 특징을 적어요</small></span>
+        <input id="claimExtra" maxlength="200" placeholder="예: 뒷면 오른쪽에 곰돌이 스티커" autocomplete="off" style="box-shadow:inset 0 0 0 1px var(--line)">
       </label>
-      <p class="note danger" id="claimDescNote" style="margin:0 0 12px" hidden></p>
+      <p class="note danger" id="claimDescNote" style="margin:4px 0 12px" hidden></p>
       <div class="modal-actions">
         <button type="button" class="btn gray" id="cancelClaimBtn">취소</button>
         <button type="button" class="btn" id="confirmClaimBtn">확인하기</button>
@@ -242,9 +246,12 @@
 
       const chips = el("div", "chips");
       if (state === "open") {
+        // 라벨은 이 물건이 후보로 뜬 이유 (QA 10/29: 뜻이 안 보였음)
+        if (c.reasons.length) chips.appendChild(el("span", "chips-label", "비슷한 점"));
         for (const r of c.reasons) chips.appendChild(el("span", "chip", LostApi.REASON_LABELS[r] || r));
         if (c.isSeed) chips.appendChild(el("span", "chip warn", "시연용"));
-        article.append(chips, el("p", "meta", `확인 기회 3번 중 ${c.attemptsLeft}번 남음`));
+        const left = el("p", "meta cand-left", `남은 확인 기회 ${c.attemptsLeft}번 · 틀리면 1번씩 줄어요`);
+        article.append(chips, left);
         const btn = el("a", "btn", "내 물건인지 확인");
         btn.href = "#";
         btn.style.marginTop = "12px";
@@ -271,16 +278,31 @@
     });
   }
 
-  // 확인 전 안내 모달. 설명을 고치면 먼저 신고를 고친다(다시 분석하고 후보를 다시 고른다)
+  // 확인 전 안내 모달. 처음 설명은 그대로 두고 추가 설명만 이어 붙여 신고를 고친다(다시 분석하고 후보를 다시 고른다).
+  // 설명이 바뀌면 새 시도로 센다(서버의 설명 해시). 같은 설명이면 이전 결과를 그대로 받는다
+  const EXTRA_MARK = "\n[추가] ";
   const claimModal = document.getElementById("claimModal");
-  const claimDesc = document.getElementById("claimDesc");
+  const claimDescView = document.getElementById("claimDescView");
+  const claimExtra = document.getElementById("claimExtra");
   const claimDescNote = document.getElementById("claimDescNote");
   const confirmClaimBtn = document.getElementById("confirmClaimBtn");
   let claimTarget = null;
   let savedDesc = null;
+  /** 서버 설명 → { original, extra } */
+  function splitDesc(desc) {
+    const i = desc.indexOf(EXTRA_MARK);
+    return i === -1 ? { original: desc, extra: "" } : { original: desc.slice(0, i), extra: desc.slice(i + EXTRA_MARK.length) };
+  }
+  /** 길면 앞부분만 보여 준다(누르면 전체) */
+  function showOriginal(text) {
+    const SHORT = 60;
+    claimDescView.textContent = text.length > SHORT ? `${text.slice(0, SHORT)}…` : text;
+    claimDescView.title = text;
+    claimDescView.onclick = text.length > SHORT ? () => (claimDescView.textContent = text) : null;
+  }
   async function openClaimModal(c, btn) {
     claimTarget = { c, btn };
-    document.getElementById("claimRemainChip").textContent = `확인 기회 3번 중 ${c.attemptsLeft}번 남음`;
+    document.getElementById("claimRemainChip").textContent = `남은 확인 기회 ${c.attemptsLeft}번`;
     claimDescNote.hidden = true;
     claimModal.classList.add("is-open");
     if (savedDesc === null) {
@@ -290,7 +312,10 @@
         savedDesc = "";
       }
     }
-    claimDesc.value = savedDesc;
+    const { original, extra } = splitDesc(savedDesc);
+    showOriginal(original);
+    claimExtra.value = extra;
+    claimExtra.maxLength = Math.max(0, Math.min(200, LostApi.DESCRIPTION_MAX - original.length - EXTRA_MARK.length));
   }
   const closeClaimModal = () => claimModal.classList.remove("is-open");
   document.getElementById("cancelClaimBtn").addEventListener("click", closeClaimModal);
@@ -299,12 +324,9 @@
   });
   confirmClaimBtn.addEventListener("click", async () => {
     if (!claimTarget || confirmClaimBtn.disabled) return;
-    const text = claimDesc.value.trim();
-    if (text.length < LostApi.DESCRIPTION_MIN) {
-      claimDescNote.textContent = `설명을 ${LostApi.DESCRIPTION_MIN}자 이상 적어 주세요.`;
-      claimDescNote.hidden = false;
-      return;
-    }
+    const { original } = splitDesc(savedDesc ?? "");
+    const extra = claimExtra.value.trim();
+    const text = extra ? `${original}${EXTRA_MARK}${extra}` : original;
     if (text !== savedDesc) {
       confirmClaimBtn.disabled = true;
       confirmClaimBtn.textContent = "설명 저장 중…";
@@ -337,8 +359,7 @@
       // 같은 설명으로 이미 확인한 물건이면 서버가 이전 결과를 그대로 준다(기회는 안 씀). 실패 화면 대신 설명을 보완하게 한다
       if (r.result === "FAIL" && r.reused && r.attemptsLeft > 0) {
         await openClaimModal(c, btn);
-        claimDescNote.textContent =
-          "이 설명으로는 이미 확인했는데 맞지 않았어요. 물건만의 특징(스티커, 흠집, 장식 등)을 더 적어 주세요. 기회는 줄지 않았어요.";
+        claimDescNote.textContent = "이 설명으로는 맞지 않았어요. 추가 설명에 특징을 더 적어 주세요. 기회는 그대로예요.";
         claimDescNote.hidden = false;
         return;
       }

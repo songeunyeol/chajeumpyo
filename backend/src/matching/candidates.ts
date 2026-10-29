@@ -98,6 +98,17 @@ type EligibleItem = {
 type Ranked = { item: EligibleItem & { category: Category }; score: ScoreBreakdown };
 
 /**
+ * 종류 조건. 기타(ETC)는 종류를 모르는 물건이라 모든 신고에 함께 찾지만,
+ * 세부 종류가 정해진 기타(인형·키링, 화장품, 약)는 이미 무엇인지 아는 물건이라 기타 신고에서만 찾는다.
+ * 휴대폰을 찾는데 인형·키링이 비슷한 물건으로 뜨던 문제 (QA 10/29)
+ */
+function categoryFilter(reported: Category, categories: Category[]): Prisma.FoundItemWhereInput[] {
+  if (reported === "ETC") return [{ category: { in: categories } }, { categoryAlt: { in: categories } }];
+  const specific = categories.filter((c) => c !== "ETC");
+  return [{ category: { in: specific } }, { categoryAlt: { in: specific } }, { category: "ETC", subCategory: null }];
+}
+
+/**
  * 후보 범위 안의 물건을 모두 점수 순으로 줄 세운다.
  * 범위: 분실 시작 이후 등록, 등록됨·열람됨, 보관 기한 안, 1·2순위 종류가 연관 종류 묶음 안,
  * 체험 계정은 시드만·일반 계정은 시드 제외
@@ -111,7 +122,7 @@ async function rankEligible(report: ReportForMatching, viewerRole: Role): Promis
     where: {
       status: { in: ["REGISTERED", "REVEALED"] },
       foundAt: { gte: report.lostFrom },
-      OR: [{ category: { in: categories } }, { categoryAlt: { in: categories } }],
+      OR: categoryFilter(report.category, categories),
       AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }],
       isSeed: viewerRole === "DEMO",
     },

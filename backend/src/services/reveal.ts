@@ -15,7 +15,7 @@ import { adminsInChargeOf, notifyUsers } from "./notifications";
 
 /** 고가품은 앱 확인을 통과해도 보관처에서 대면으로 돌려준다 (QA W3, 위협 모델 T11) */
 export const VALUABLE_PICKUP_NOTICE =
-  "귀중품은 보관처에서 직원이 한 번 더 확인한 뒤 돌려드려요. 학생증을 가져가 주세요(저장하지 않아요).";
+  "귀중품(지갑·카드·휴대폰·노트북 등)은 보관처 직원이 한 번 더 확인한 뒤 돌려드려요. 학생증을 가져가 주세요.";
 
 /**
  * 그 자리에 둔(IN_PLACE) 귀중품. 직원이 맡고 있지 않아 대면 확인을 약속할 수 없다.
