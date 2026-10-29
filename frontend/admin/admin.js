@@ -1,7 +1,7 @@
 // 관리자 화면 ↔ 백엔드 연결. 화면마다 이 파일 하나만 불러온다.
 // API 주소는 found/api.js와 같은 규칙: ?api=... 로 한 번 주면 기억하고, 없으면 이 페이지를 연 호스트의 4000 포트(백엔드 기본 PORT).
 // 로그인 토큰은 sessionStorage에만 둔다(탭을 닫으면 사라진다).
-(() => {
+(function () {
   const params = new URLSearchParams(location.search);
   try {
     if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
@@ -42,7 +42,7 @@
     ETC: "기타",
   };
 
-  /** packages/shared/src/enums.ts의 SUB_CATEGORY_LABELS */
+  /** packages/shared/src/enums.ts의 SUB_CATEGORY_LABELS (관리자 API가 세부 종류를 주면 이 이름으로 보인다) */
   const SUB_CATEGORY_LABELS = {
     CABLE_CHARGER: "충전기·케이블",
     POWER_BANK: "보조배터리",
@@ -80,20 +80,6 @@
     DOLL_KEYRING: "인형·키링",
     COSMETICS: "화장품",
     MEDICINE: "약·의약품",
-  };
-
-  /** packages/shared/src/enums.ts의 SUB_CATEGORIES: 큰 종류별 세부 종류. 없는 큰 종류는 세부 종류를 쓰지 않는다 */
-  const SUB_CATEGORIES = {
-    CHARGER: ["CABLE_CHARGER", "POWER_BANK", "MOUSE", "KEYBOARD", "USB_MEMORY", "CAMERA", "GAME_CONSOLE"],
-    EARPHONE: ["WIRELESS_EARBUDS", "WIRED_EARPHONE", "HEADPHONE"],
-    BAG: ["BACKPACK", "SHOULDER_BAG", "ECO_BAG", "POUCH", "SHOPPING_BAG"],
-    CLOTHING: ["OUTER", "TOP", "BOTTOM", "SCARF_GLOVES", "SHOES"],
-    WALLET: ["LONG_WALLET", "BIFOLD_WALLET", "CARD_WALLET"],
-    ACCESSORY: ["WRISTWATCH", "JEWELRY", "HAIR_ACCESSORY"],
-    BOOK: ["TEXTBOOK", "NOTEBOOK"],
-    STATIONERY: ["PENCIL_CASE", "CALCULATOR", "PEN"],
-    KEY: ["DOOR_KEY", "CAR_KEY"],
-    ETC: ["DOLL_KEYRING", "COSMETICS", "MEDICINE"],
   };
 
   /** packages/shared/src/enums.ts의 COLOR_LABELS (기본 12색) */
@@ -174,7 +160,7 @@
     get() {
       try {
         const v = JSON.parse(sessionStorage.getItem(AUTH_KEY) || "null");
-        if (v?.expiresAt && Date.parse(v.expiresAt) <= Date.now()) {
+        if (v && v.expiresAt && Date.parse(v.expiresAt) <= Date.now()) {
           sessionStorage.removeItem(AUTH_KEY);
           return null;
         }
@@ -209,7 +195,386 @@
     return a;
   }
 
+  const DEMO_STATE_KEY = "adminDemoState";
+
+  function photoSvg(label, fill) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="${fill}"/><text x="320" y="188" text-anchor="middle" font-size="28" font-family="sans-serif" fill="#1e5b3d">${label}</text></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }
+
+  function hoursAgo(hours) {
+    return new Date(Date.now() - hours * 3600 * 1000).toISOString();
+  }
+
+  function demoItems() {
+    return [
+      {
+        id: "fi-review",
+        status: "REVIEW",
+        category: null,
+        title: null,
+        building: { id: 9, name: "혜인관" },
+        floor: 1,
+        storageType: "HANDED_OVER",
+        storagePlace: { id: 1, name: "교무처" },
+        foundAt: hoursAgo(3),
+        isSeed: true,
+        claimLockedAt: null,
+        color: null,
+        brand: null,
+        features: [],
+        description: null,
+        hiddenTrait: "분석이 끝나지 않아 숨은 특징이 아직 없어요.",
+        isSensitive: false,
+        originalImageUrl: photoSvg("원본 · 하얀 이어폰", "#efe8dc"),
+        publicImageUrl: photoSvg("공개본 · 가림", "#e7e1d4"),
+        thumbnailUrl: photoSvg("블러본", "#d5cbbd"),
+        expiresAt: null,
+        attempts: [],
+        reveals: [],
+        pickups: [],
+      },
+      {
+        id: "fi-locked",
+        status: "REGISTERED",
+        category: "UMBRELLA",
+        title: "검정 접이식 우산",
+        building: { id: 2, name: "유담관" },
+        floor: 2,
+        storageType: "HANDED_OVER",
+        storagePlace: { id: 1, name: "교무처" },
+        foundAt: hoursAgo(30),
+        isSeed: true,
+        claimLockedAt: hoursAgo(1),
+        color: "BLACK",
+        brand: null,
+        features: [{ key: "pattern", value: "손잡이에 체크 리본" }],
+        description: "접이식이고 손잡이 리본이 있어요.",
+        hiddenTrait: "우산 끝 캡이 한쪽만 빠져 있어요.",
+        isSensitive: false,
+        originalImageUrl: photoSvg("원본 · 검정 우산", "#efe8dc"),
+        publicImageUrl: photoSvg("공개본 · 우산", "#e7e1d4"),
+        thumbnailUrl: photoSvg("블러본", "#d5cbbd"),
+        expiresAt: null,
+        attempts: [
+          { emailMasked: "st****@skuniv.ac.kr", result: "FAIL", answerCorrect: false, createdAt: hoursAgo(5) },
+          { emailMasked: "ab***@skuniv.ac.kr", result: "FAIL", answerCorrect: false, createdAt: hoursAgo(2) },
+        ],
+        reveals: [],
+        pickups: [],
+      },
+      {
+        id: "fi-revealed",
+        status: "REVEALED",
+        category: "WALLET",
+        subCategory: "BIFOLD_WALLET",
+        title: "갈색 반지갑",
+        building: { id: 1, name: "본관" },
+        floor: 1,
+        storageType: "IN_PLACE",
+        storagePlace: null,
+        foundAt: hoursAgo(8),
+        isSeed: true,
+        claimLockedAt: null,
+        color: "BROWN",
+        brand: null,
+        features: [{ key: "sticker", value: "안쪽에 초록 스티커" }],
+        description: "반지갑이고 모서리가 닳았어요.",
+        hiddenTrait: "지폐칸에 도서관 대출 영수증이 접혀 있어요.",
+        isSensitive: false,
+        originalImageUrl: photoSvg("원본 · 갈색 지갑", "#efe8dc"),
+        publicImageUrl: photoSvg("공개본 · 지갑", "#e7e1d4"),
+        thumbnailUrl: photoSvg("블러본", "#d5cbbd"),
+        expiresAt: null,
+        attempts: [
+          { emailMasked: "st****@skuniv.ac.kr", result: "PASS", answerCorrect: true, createdAt: hoursAgo(1) },
+        ],
+        reveals: [{ emailMasked: "st****@skuniv.ac.kr", revealedAt: hoursAgo(1) }],
+        pickups: [
+          {
+            id: "pk_demo",
+            emailMasked: "st****@skuniv.ac.kr",
+            method: "CENTER_QR",
+            status: "ISSUED",
+            completedAt: null,
+            createdAt: hoursAgo(1),
+            processedByEmailMasked: null,
+            verificationNote: null,
+          },
+        ],
+      },
+      {
+        id: "fi-claimed",
+        status: "CLAIMED",
+        category: "BAG",
+        title: "남색 백팩",
+        building: { id: 8, name: "청운관" },
+        floor: 3,
+        storageType: "HANDED_OVER",
+        storagePlace: { id: 1, name: "교무처" },
+        foundAt: hoursAgo(80),
+        isSeed: true,
+        claimLockedAt: null,
+        color: "BLUE_TEAL",
+        brand: null,
+        features: [],
+        description: "수령이 끝나 사진과 비공개 정보를 지웠어요.",
+        hiddenTrait: null,
+        isSensitive: false,
+        originalImageUrl: null,
+        publicImageUrl: null,
+        thumbnailUrl: null,
+        expiresAt: null,
+        attempts: [],
+        reveals: [{ emailMasked: "cd***@skuniv.ac.kr", revealedAt: hoursAgo(70) }],
+        pickups: [
+          {
+            id: "pk_done",
+            emailMasked: "cd***@skuniv.ac.kr",
+            method: "CENTER_QR",
+            status: "COMPLETED",
+            completedAt: hoursAgo(70),
+            createdAt: hoursAgo(71),
+            processedByEmailMasked: "ce***@skuniv.ac.kr",
+            verificationNote: null,
+          },
+        ],
+      },
+    ];
+  }
+
+  function demoNotifications() {
+    return [
+      {
+        id: "nt-lock",
+        type: "CLAIM_LOCKED",
+        message: "검정 접이식 우산은 확인 실패가 10번이라 대면 확인만 받아요.",
+        foundItemId: "fi-locked",
+        lostReportId: null,
+        readAt: null,
+        createdAt: hoursAgo(1),
+      },
+      {
+        id: "nt-reveal",
+        type: "MULTI_REVEAL",
+        message: "갈색 반지갑을 서로 다른 계정이 열람했어요. 수령 때 본인을 한 번 더 봐 주세요.",
+        foundItemId: "fi-revealed",
+        lostReportId: null,
+        readAt: null,
+        createdAt: hoursAgo(2),
+      },
+    ];
+  }
+
+  function loadDemoState() {
+    try {
+      const parsed = JSON.parse(sessionStorage.getItem(DEMO_STATE_KEY) || "null");
+      if (parsed && Array.isArray(parsed.items)) return parsed;
+    } catch (_) {}
+    const fresh = { items: demoItems(), notifications: demoNotifications() };
+    sessionStorage.setItem(DEMO_STATE_KEY, JSON.stringify(fresh));
+    return fresh;
+  }
+
+  function saveDemoState(state) {
+    sessionStorage.setItem(DEMO_STATE_KEY, JSON.stringify(state));
+  }
+
+  function startDemo() {
+    if (!sessionStorage.getItem(DEMO_STATE_KEY)) {
+      sessionStorage.setItem(DEMO_STATE_KEY, JSON.stringify({ items: demoItems(), notifications: demoNotifications() }));
+    }
+    if (!auth.get()?.demo) {
+      auth.set({
+        accessToken: "demo",
+        expiresAt: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
+        user: { id: "admin-demo", email: "center@skuniv.ac.kr", role: "ADMIN" },
+        storagePlace: { id: 1, name: "교무처" },
+        demo: true,
+      });
+    }
+    return auth.get();
+  }
+
+  function countsOf(items) {
+    const counts = {};
+    for (const item of items) counts[item.status] = (counts[item.status] || 0) + 1;
+    return counts;
+  }
+
+  function demoCall(path, method, body) {
+    const state = loadDemoState();
+    const url = new URL(path, "http://admin.local");
+    const itemId = url.pathname.match(/^\/admin\/found-items\/([^/]+)/)?.[1];
+
+    if (url.pathname === "/admin/found-items" && method === "GET") {
+      const status = url.searchParams.get("status");
+      const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+      const filtered = state.items.filter((item) => !status || item.status === status);
+      const start = (page - 1) * 20;
+      return {
+        items: filtered.slice(start, start + 20).map((item) => ({ ...item })),
+        page,
+        pageSize: 20,
+        total: filtered.length,
+        counts: countsOf(state.items),
+      };
+    }
+
+    if (itemId && url.pathname.endsWith("/in-person-pickup") && method === "POST") {
+      const note = String(body?.verificationNote || "").trim();
+      if (note.length < 1 || note.length > VERIFICATION_NOTE_MAX) {
+        throw new ApiError(400, { error: { code: "VALIDATION_ERROR", message: "확인 메모는 1자에서 200자까지예요." } });
+      }
+      const item = state.items.find((row) => row.id === itemId);
+      if (!item) throw new ApiError(404, { error: { code: "NOT_FOUND", message: "물건을 찾을 수 없어요." } });
+      if (!item.claimLockedAt || !["REGISTERED", "REVEALED"].includes(item.status)) {
+        throw new ApiError(409, { error: { code: "NOT_IN_PERSON_ITEM", message: "대면 확인으로 수령할 물건이 아니에요." } });
+      }
+      if (item.status === "CLAIMED") {
+        throw new ApiError(409, { error: { code: "ALREADY_CLAIMED", message: "이미 돌려준 물건이에요." } });
+      }
+      const completedAt = new Date().toISOString();
+      const nextItems = state.items.map((row) => (
+        row.id === itemId
+          ? {
+              ...row,
+              status: "CLAIMED",
+              originalImageUrl: null,
+              publicImageUrl: null,
+              thumbnailUrl: null,
+              hiddenTrait: null,
+              pickups: [
+                ...row.pickups,
+                {
+                  id: `pk_person_${Date.now()}`,
+                  emailMasked: null,
+                  method: "IN_PERSON",
+                  status: "COMPLETED",
+                  completedAt,
+                  createdAt: completedAt,
+                  processedByEmailMasked: "ce***@skuniv.ac.kr",
+                  verificationNote: note,
+                },
+              ],
+            }
+          : row
+      ));
+      saveDemoState({ ...state, items: nextItems });
+      return { pickupId: `pk_person_${Date.now()}`, method: "IN_PERSON", status: "COMPLETED", completedAt };
+    }
+
+    if (itemId && method === "GET") {
+      const item = state.items.find((row) => row.id === decodeURIComponent(itemId));
+      if (!item) throw new ApiError(404, { error: { code: "NOT_FOUND", message: "물건을 찾을 수 없어요." } });
+      return { ...item };
+    }
+
+    if (itemId && method === "PATCH") {
+      const item = state.items.find((row) => row.id === decodeURIComponent(itemId));
+      if (!item) throw new ApiError(404, { error: { code: "NOT_FOUND", message: "물건을 찾을 수 없어요." } });
+      const patch = { ...body };
+      if (patch.status === "REGISTERED" && item.status !== "REVIEW") delete patch.status;
+      const nextItems = state.items.map((row) => (row.id === item.id ? { ...row, ...patch } : row));
+      saveDemoState({ ...state, items: nextItems });
+      return nextItems.find((row) => row.id === item.id);
+    }
+
+    if (url.pathname === "/admin/pickups/scan" && method === "POST") {
+      const token = String(body?.qrToken || "");
+      if (token === "pk_expired") throw new ApiError(410, { error: { code: "QR_EXPIRED", message: "만료된 QR이에요." } });
+      if (token === "pk_claimed") throw new ApiError(409, { error: { code: "ALREADY_CLAIMED", message: "이미 돌려준 물건이에요." } });
+      if (token === "pk_other") throw new ApiError(403, { error: { code: "FORBIDDEN", message: "다른 보관처 물건이에요." } });
+      if (token !== "pk_demo") throw new ApiError(404, { error: { code: "NOT_FOUND", message: "없는 QR이에요." } });
+      const item = state.items.find((row) => row.id === "fi-revealed");
+      if (!item || item.status === "CLAIMED") {
+        throw new ApiError(409, { error: { code: "ALREADY_CLAIMED", message: "이미 돌려준 물건이에요." } });
+      }
+      return {
+        pickupId: "pk_demo",
+        foundItem: {
+          id: item.id,
+          category: item.category,
+          subCategory: item.subCategory,
+          building: item.building?.name || null,
+          imageUrl: item.originalImageUrl,
+        },
+        claimant: { emailMasked: "st****@skuniv.ac.kr" },
+        expiresAt: new Date(Date.now() + 20 * 3600 * 1000).toISOString(),
+      };
+    }
+
+    if (url.pathname === "/admin/pickups/pk_demo/complete" && method === "POST") {
+      const item = state.items.find((row) => row.id === "fi-revealed");
+      if (!item || item.status === "CLAIMED") {
+        throw new ApiError(409, { error: { code: "ALREADY_CLAIMED", message: "이미 돌려준 물건이에요." } });
+      }
+      const completedAt = new Date().toISOString();
+      const nextItems = state.items.map((row) => (
+        row.id === "fi-revealed"
+          ? { ...row, status: "CLAIMED", originalImageUrl: null, publicImageUrl: null, thumbnailUrl: null, hiddenTrait: null }
+          : row
+      ));
+      saveDemoState({ ...state, items: nextItems });
+      return { pickupId: "pk_demo", status: "COMPLETED", completedAt };
+    }
+
+    if (url.pathname === "/admin/stats/hotspots" && method === "GET") {
+      return {
+        isSeedData: true,
+        from: url.searchParams.get("from"),
+        to: url.searchParams.get("to"),
+        total: 28,
+        byBuilding: [
+          { building: "유담관", count: 12 },
+          { building: "혜인관", count: 9 },
+          { building: "본관", count: 7 },
+        ],
+        byHour: [
+          { hour: 13, count: 8 },
+          { hour: 14, count: 7 },
+          { hour: 18, count: 4 },
+        ],
+        byCategory: [
+          { category: "CHARGER", count: 9 },
+          { category: "UMBRELLA", count: 7 },
+          { category: "WALLET", count: 5 },
+        ],
+        topInsight: "유담관에서 오후 1~3시에 기타 전자기기 분실이 가장 많아요.",
+      };
+    }
+
+    if (url.pathname === "/notifications" && method === "GET") {
+      const unreadCount = state.notifications.filter((item) => !item.readAt).length;
+      return { notifications: state.notifications.map((item) => ({ ...item })), unreadCount };
+    }
+
+    if (url.pathname === "/notifications/read-all" && method === "PATCH") {
+      const now = new Date().toISOString();
+      saveDemoState({
+        ...state,
+        notifications: state.notifications.map((item) => ({ ...item, readAt: item.readAt || now })),
+      });
+      return null;
+    }
+
+    const noteId = url.pathname.match(/^\/notifications\/([^/]+)\/read$/)?.[1];
+    if (noteId && method === "PATCH") {
+      const now = new Date().toISOString();
+      saveDemoState({
+        ...state,
+        notifications: state.notifications.map((item) => (
+          item.id === decodeURIComponent(noteId) ? { ...item, readAt: item.readAt || now } : item
+        )),
+      });
+      return null;
+    }
+
+    throw new ApiError(404, { error: { code: "NOT_FOUND", message: "시연에서 아직 없는 요청이에요." } });
+  }
+
   async function call(path, { method = "GET", body, token = true } = {}) {
+    if (auth.get()?.demo && token) return demoCall(path, method, body);
     const headers = {};
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (token) {
@@ -228,9 +593,7 @@
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch (_) {
-      throw new ApiError(0, {
-        error: { code: "NETWORK", message: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." },
-      });
+      throw new ApiError(0, { error: { code: "NETWORK", message: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." } });
     }
     if (res.status === 204) return null;
     const data = await res.json().catch(() => null);
@@ -317,9 +680,7 @@
   /** 주운 곳 글자: "혜인관 3층" / 모르면 "주운 곳 모름" */
   function placeText(item) {
     if (!item.building) return "주운 곳 모름";
-    return item.floor !== null && item.floor !== undefined
-      ? `${item.building.name} ${item.floor}층`
-      : item.building.name;
+    return item.floor !== null && item.floor !== undefined ? `${item.building.name} ${item.floor}층` : item.building.name;
   }
 
   /** 목록·상세 제목: AI 제목 → 종류 이름 → 확인 전 */
@@ -331,7 +692,6 @@
     API_BASE,
     CATEGORY_LABELS,
     SUB_CATEGORY_LABELS,
-    SUB_CATEGORIES,
     COLOR_LABELS,
     FEATURE_KEY_LABELS,
     MAX_FEATURES,
@@ -366,7 +726,12 @@
     },
     logout() {
       auth.clear();
+      try { sessionStorage.removeItem(DEMO_STATE_KEY); } catch (_) {}
       location.href = "login.html";
+    },
+    startDemo() {
+      const session = startDemo();
+      return session;
     },
 
     /** GET /admin/found-items?status=&page= */
@@ -385,7 +750,8 @@
       }),
 
     scanPickup: (qrToken) => call("/admin/pickups/scan", { method: "POST", body: { qrToken } }),
-    completePickup: (pickupId) => call(`/admin/pickups/${encodeURIComponent(pickupId)}/complete`, { method: "POST" }),
+    completePickup: (pickupId) =>
+      call(`/admin/pickups/${encodeURIComponent(pickupId)}/complete`, { method: "POST" }),
 
     /** GET /admin/stats/hotspots?from=&to= (한국 날짜) */
     hotspots: ({ from, to } = {}) => {
@@ -400,4 +766,8 @@
     markRead: (id) => call(`/notifications/${encodeURIComponent(id)}/read`, { method: "PATCH" }),
     markAllRead: () => call("/notifications/read-all", { method: "PATCH" }),
   };
+
+  try {
+    if (new URLSearchParams(location.search).get("demo") === "1") startDemo();
+  } catch (_) {}
 })();

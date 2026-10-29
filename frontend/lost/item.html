@@ -125,7 +125,12 @@
     }
     // 지도 핀은 건물 좌표에만 (물건 좌표는 서버가 주지 않는다). 건물을 모르면 지도를 그리지 않는다
     const mapBox = document.getElementById("itemMapBox");
-    if (d.building && window.NaverCampusMap) window.NaverCampusMap.mount(mapBox, { buildingName: d.building.name });
+    if (d.building && window.NaverCampusMap) {
+      window.NaverCampusMap.mount(mapBox, {
+        buildingName: d.building.name,
+        caption: `서경대 ${d.building.name} · 그 자리 보관`,
+      });
+    }
     else mapBox.hidden = true;
 
     expiresAt = Date.parse(d.imageUrlExpiresAt);
