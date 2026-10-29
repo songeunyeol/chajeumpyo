@@ -128,10 +128,13 @@ describe("기준 2. 종류만 적거나 특징을 나열하면 통과하지 못�
 });
 
 describe("기준 3. 색·브랜드는 일치로 세지 않고, 모순일 때만 반영한다", () => {
-  it("종류·색·브랜드·장소만 맞으면 FAIL", async () => {
+  it("종류·색·브랜드·장소만 맞으면(설명에 특징 없음) 400, 확인 기회는 쓰지 않는다", async () => {
     const it1 = await item();
     const r = await newReport({ color: "WHITE", brand: "애플 Apple", features: [] });
-    expect((await claim(r, it1.id)).body.result).toBe("FAIL");
+    const res = await claim(r, it1.id);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatchObject({ code: "VALIDATION_ERROR", details: [{ path: "description" }] });
+    expect(await prisma.matchAttempt.count()).toBe(0);
   });
 
   it("특징은 맞는데 색이 모순이면 BORDERLINE", async () => {

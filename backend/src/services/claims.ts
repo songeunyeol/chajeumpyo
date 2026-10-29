@@ -116,6 +116,11 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   // 1차 확인: 재사용·잠금이면 AI를 부르지 않는다
   const early = await reuseOrLock(prisma, viewer.userId, foundItemId, report);
   if (early) return early;
+  // 설명에 특징이 하나도 없으면 대조해도 늘 실패라 기회를 쓰지 않고 돌려보낸다
+  if (reportedFeatures.length === 0) {
+    const message = "설명에 물건만의 특징(스티커, 흠집, 장식, 키링 등)을 적어 주세요. 확인 기회는 줄지 않았어요.";
+    throw new AppError("VALIDATION_ERROR", message, [{ path: "description", message }]);
+  }
 
   // AI 대조는 오래 걸릴 수 있어 트랜잭션 밖에서 한다
   let comparison: Awaited<ReturnType<typeof ai.compareFeatures>>;
