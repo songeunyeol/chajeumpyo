@@ -20,7 +20,7 @@ import { quizOf } from "../src/matching/quiz";
 import { premaskSafely } from "../src/privacy/premask";
 import { answer, claim } from "../src/services/claims";
 import { seedDemoItems } from "../src/services/demo-seed";
-import { analyzeFoundItem, confirmFoundItem, registerFoundItem } from "../src/services/found-items";
+import { analyzeFoundItem, confirmFoundItem, isLogoSafe, registerFoundItem } from "../src/services/found-items";
 import { createLostReport } from "../src/services/lost-reports";
 
 if (env.NODE_ENV === "production") {
@@ -74,8 +74,10 @@ async function retry<T>(f: () => Promise<T>): Promise<T> {
 // 1. 종류·색 인식과 가리기 (서비스와 같은 순서: 정리 → 가리기 → AI)
 if (!opts["skip-recognition"]) {
   console.log("## 1. 종류·색 인식, 가리기\n");
-  console.log("| 사진 | AI 결과 | 큰 종류 | 세부 종류 | 색 | 가린 얼굴·글자 | 민감 표시 |");
-  console.log("| --- | --- | --- | --- | --- | --- | --- |");
+  console.log("| 사진 | AI 결과 | 큰 종류 | 세부 종류 | 색 | 가린 얼굴·글자 | 민감 표시 | 상표 (로고 2단계) |");
+  console.log("| --- | --- | --- | --- | --- | --- | --- | --- |");
+  let logoRuns = 0;
+  let brands = 0;
   let catOk = 0;
   let subOk = 0;
   let subN = 0;
@@ -93,7 +95,20 @@ if (!opts["skip-recognition"]) {
       continue;
     }
     await writeFile(join(opts.out, "masked", `${num}.jpg`), masked.image);
-    const ex = await retry(() => ai.extractFoundItem(masked.image, "image/jpeg"));
+    const ex1 = await retry(() => ai.extractFoundItem(masked.image, "image/jpeg"));
+    // 서비스와 같은 2단계(10/31 A안): 위험이 낮은 종류이고 얼굴이 없으면 큰 글자만 살린 사본으로 다시 본다
+    let ex = ex1;
+    let logoNote = "-";
+    if (masked.logoImage && masked.faces === 0 && ex1.hasObject && isLogoSafe(ex1.category, ex1.subCategory)) {
+      logoRuns++;
+      const ex2 = await retry(() => ai.extractFoundItem(masked.logoImage as Buffer, "image/jpeg"));
+      if (ex2.hasObject && !ex2.isSensitive && isLogoSafe(ex2.category, ex2.subCategory)) {
+        ex = ex2;
+        await writeFile(join(opts.out, "masked", `${num}-logo.jpg`), masked.logoImage);
+      }
+      logoNote = `${ex1.brand ?? "없음"} → ${ex.brand ?? "없음"}`;
+    }
+    if (ex.brand) brands++;
     const c = ex.hasObject && label.cat.includes(ex.category);
     const wantsSub = label.sub.some((s) => s !== null);
     const s = c && label.sub.includes(ex.subCategory ?? null);
@@ -106,11 +121,12 @@ if (!opts["skip-recognition"]) {
     colorOk += col ? 1 : 0;
     const got = ex.hasObject ? `${itemLabel(ex.category, ex.subCategory)} · ${ex.color} · ${ex.title}` : "물건 없음";
     console.log(
-      `| ${num} | ${got} | ${c ? "✓" : "✗"} | ${wantsSub ? (s ? "✓" : "✗") : "-"} | ${col ? "✓" : "✗"} | ${masked.faces}·${masked.texts} | ${ex.isSensitive ? `예(${ex.sensitiveRegions.length}곳)` : "아니오"} |`,
+      `| ${num} | ${got} | ${c ? "✓" : "✗"} | ${wantsSub ? (s ? "✓" : "✗") : "-"} | ${col ? "✓" : "✗"} | ${masked.faces}·${masked.texts} | ${ex.isSensitive ? `예(${ex.sensitiveRegions.length}곳)` : "아니오"} | ${logoNote} |`,
     );
   }
   const n = Object.keys(labels.photos).length;
-  console.log(`\n- 큰 종류 ${catOk}/${n}, 세부 종류 ${subOk}/${subN}, 색 ${colorOk}/${n}\n`);
+  console.log(`\n- 큰 종류 ${catOk}/${n}, 세부 종류 ${subOk}/${subN}, 색 ${colorOk}/${n}`);
+  console.log(`- 로고 2단계를 한 사진 ${logoRuns}장, 상표를 읽은 사진 ${brands}/${n}\n`);
 }
 
 // 2. 후보 순위와 주인 확인: 체험 시드 14개에 실제 사진 물건을 습득물로 섞고, 설명 두 가지로 신고한다

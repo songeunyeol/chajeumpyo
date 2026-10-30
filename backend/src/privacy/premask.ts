@@ -10,11 +10,24 @@ import { logger } from "../lib/logger";
 // - 글자: PaddleOCR PP-OCRv4 글자 영역 감지(det) 모델 (Apache-2.0). 글자를 읽지는 않고 자리만 찾는다
 // 모델 출처와 라이선스는 backend/models/README.md.
 
-export type PremaskResult = { image: Buffer; faces: number; texts: number };
+export type PremaskResult = {
+  image: Buffer;
+  faces: number;
+  texts: number;
+  /**
+   * 큰 글자 영역(로고로 보는 것)만 가리지 않은 사본. 얼굴이 하나도 없고 큰 글자 영역이 있을 때만 만든다.
+   * 이 사본을 AI로 다시 보낼지는 물건 종류를 보고 호출한 쪽이 정한다(개인정보 위험이 낮은 종류만, found-items.ts).
+   */
+  logoImage?: Buffer;
+  /** 로고로 보고 logoImage에서 가리지 않은 글자 영역 수 */
+  logos?: number;
+};
 /** 저장용 JPEG를 받아 가린 JPEG를 돌려준다. 실패하면 throw하고, 호출한 쪽은 원본을 AI로 보내지 않는다. */
 export type Premasker = (jpeg: Buffer) => Promise<PremaskResult>;
 
 type Box = [x1: number, y1: number, x2: number, y2: number];
+/** 글자 영역 하나. 넓히기 전 덩어리의 높이·넓이 비율로 로고(큰 글자)인지 가린다 */
+type TextBox = { box: Box; heightRatio: number; areaRatio: number };
 
 const FACE_INPUT = { width: 320, height: 240 };
 const FACE_THRESHOLD = 0.75;
@@ -67,6 +80,19 @@ const TEXT_THICK_FILL = 0.6;
 const TEXT_UNCLIP = 2.4;
 const TEXT_UNCLIP_Y = 1.2;
 export const MASK_COLOR = "#6b6b6b";
+/**
+ * 로고로 보는 큰 글자 영역 (넓히기 전 덩어리 기준). 둘 다 넘어야 한다.
+ * 10/31 팀 실제 사진 35장: 모자 로고 "emis" 높이 5.6%·넓이 1.6%, 화장품·보조배터리 상표 6~12%, 학생증 뒷면·카드 번호·주소 줄은
+ * 높이 0.9~1.9%, 태그·작은 글씨는 대부분 2% 아래였다. 그래서 높이 5% 이상이면서 넓이 0.15% 이상인 덩어리만 로고로 본다.
+ * 학생증 앞면 학교 이름(6~10%)·필통 이니셜 자수(8%)처럼 큰 글자도 로고로 잡히므로, 로고 사본은 개인정보 위험이 낮은
+ * 종류에서만 AI로 다시 보낸다(found-items.ts LOGO_SAFE). 체육복 이름표처럼 옷에 크게 쓴 이름은 남을 수 있다(보고서 한계).
+ */
+export const LOGO_MIN_HEIGHT = 0.05;
+export const LOGO_MIN_AREA = 0.0015;
+
+export function isLogoText(t: { heightRatio: number; areaRatio: number }): boolean {
+  return t.heightRatio >= LOGO_MIN_HEIGHT && t.areaRatio >= LOGO_MIN_AREA;
+}
 
 function modelsDir(): string {
   // src/privacy/에서 실행(tsx)하든 dist/에서 실행하든 backend/models를 찾는다
@@ -132,7 +158,7 @@ function padFace([x1, y1, x2, y2]: Box): Box {
   return [x1 - dx, y1 - dy, x2 + dx, y2 + dy];
 }
 
-async function detectText(session: ort.InferenceSession, image: Buffer, W: number, H: number): Promise<Box[]> {
+async function detectText(session: ort.InferenceSession, image: Buffer, W: number, H: number): Promise<TextBox[]> {
   const scale = Math.min(1, TEXT_MAX_SIDE / Math.max(W, H));
   const w = Math.max(32, Math.round((W * scale) / 32) * 32);
   const h = Math.max(32, Math.round((H * scale) / 32) * 32);
@@ -144,7 +170,7 @@ async function detectText(session: ort.InferenceSession, image: Buffer, W: numbe
 
   // 확률 지도에서 이어진 글자 픽셀 덩어리마다 상자 하나
   const seen = new Uint8Array(w * h);
-  const boxes: Box[] = [];
+  const boxes: TextBox[] = [];
   const stack: number[] = [];
   for (let start = 0; start < w * h; start++) {
     if (seen[start] || (prob[start] ?? 0) < TEXT_PIXEL_THRESHOLD) continue;
@@ -187,7 +213,11 @@ async function detectText(session: ort.InferenceSession, image: Buffer, W: numbe
     const offset = (TEXT_UNCLIP * bw * bh) / (2 * (bw + bh));
     const px = Math.max(3, offset);
     const py = Math.max(3, offset * TEXT_UNCLIP_Y);
-    boxes.push([((x1 - px) / w) * W, ((y1 - py) / h) * H, ((x2 + px) / w) * W, ((y2 + py) / h) * H]);
+    boxes.push({
+      box: [((x1 - px) / w) * W, ((y1 - py) / h) * H, ((x2 + px) / w) * W, ((y2 + py) / h) * H],
+      heightRatio: bh / h,
+      areaRatio: area,
+    });
   }
   return boxes;
 }
@@ -242,14 +272,10 @@ async function dropNonSkinFaces(image: Buffer, faces: Box[], W: number, H: numbe
   return kept;
 }
 
-export const onnxPremasker: Premasker = async (jpeg) => {
-  const { face, text } = await loadSessions();
-  const { width: W = 0, height: H = 0 } = await sharp(jpeg).metadata();
-  if (!W || !H) throw new Error("사진 크기를 읽지 못했어요.");
-  const [detected, texts] = await Promise.all([detectFaces(face, jpeg, W, H), detectText(text, jpeg, W, H)]);
-  const faces = (await dropNonSkinFaces(jpeg, detected, W, H)).map(padFace);
+/** 상자들을 회색으로 덮은 JPEG */
+async function cover(jpeg: Buffer, boxes: Box[], W: number, H: number): Promise<Buffer> {
   const overlays: OverlayOptions[] = [];
-  for (const [x1, y1, x2, y2] of [...faces, ...texts]) {
+  for (const [x1, y1, x2, y2] of boxes) {
     const left = Math.max(0, Math.floor(x1));
     const top = Math.max(0, Math.floor(y1));
     const width = Math.min(W, Math.ceil(x2)) - left;
@@ -260,8 +286,35 @@ export const onnxPremasker: Premasker = async (jpeg) => {
       .toBuffer();
     overlays.push({ input, left, top });
   }
-  const image = overlays.length ? await sharp(jpeg).composite(overlays).jpeg({ quality: 85 }).toBuffer() : jpeg;
-  return { image, faces: faces.length, texts: texts.length };
+  return overlays.length ? await sharp(jpeg).composite(overlays).jpeg({ quality: 85 }).toBuffer() : jpeg;
+}
+
+/** 얼굴·글자 감지 결과(가리기 전). 측정 스크립트도 쓴다 */
+export async function detectAll(jpeg: Buffer) {
+  const { face, text } = await loadSessions();
+  const { width: W = 0, height: H = 0 } = await sharp(jpeg).metadata();
+  if (!W || !H) throw new Error("사진 크기를 읽지 못했어요.");
+  const [detected, texts] = await Promise.all([detectFaces(face, jpeg, W, H), detectText(text, jpeg, W, H)]);
+  const faces = (await dropNonSkinFaces(jpeg, detected, W, H)).map(padFace);
+  return { W, H, faces, texts };
+}
+
+export const onnxPremasker: Premasker = async (jpeg) => {
+  const { W, H, faces, texts } = await detectAll(jpeg);
+  const image = await cover(jpeg, [...faces, ...texts.map((t) => t.box)], W, H);
+  const result: PremaskResult = { image, faces: faces.length, texts: texts.length };
+  // 얼굴이 하나라도 있으면 로고 사본을 만들지 않는다. 작은 글자(이름표·번호)는 로고 사본에서도 가린다
+  const small = texts.filter((t) => !isLogoText(t));
+  if (faces.length === 0 && small.length < texts.length) {
+    result.logoImage = await cover(
+      jpeg,
+      small.map((t) => t.box),
+      W,
+      H,
+    );
+    result.logos = texts.length - small.length;
+  }
+  return result;
 };
 
 let current: Premasker = onnxPremasker;
