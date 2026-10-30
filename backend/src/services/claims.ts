@@ -173,7 +173,7 @@ async function previousQuestions(foundItemId: string): Promise<Map<string, QuizQ
 
 /**
  * 경계 판정의 객관식 질문 (F-09, 10/29 은열 의견: 서술형은 맞히기 어렵다).
- * 신고에 적지 않은 숨은 특징부터 묻고, 하나뿐이면 신고에 색을 적지 않았을 때 색을 함께 묻는다. 모두 맞혀야 통과.
+ * 신고에 적지 않은 숨은 특징부터 묻고, 하나뿐이면 신고에 색을 적지 않았을 때 색을 함께 묻고, 그래도 모자라면 적었던 특징을 묻는다. 모두 맞혀야 통과.
  */
 async function buildQuiz(
   foundItemId: string,
@@ -202,6 +202,12 @@ async function buildQuiz(
     const label = COLOR_LABELS[storedColor.data];
     const text = colorQuestionFor(itemName);
     quiz.push(reuse("color", text) ?? makeQuestion(text, "color", label, colorDistractors(storedColor.data)));
+  }
+  // 그래도 모자라면 신고에 적었던 특징도 묻는다. 모순·부정으로 적은 특징을 보기에서 다시 고르게 (10/30: 모순이면 바로 실패 대신 객관식)
+  for (const f of stored.filter((s) => s !== first && isAskable(s) && mentioned.has(s.key))) {
+    if (quiz.length >= maxQuestions) break;
+    const q = reuse(f.key, questionFor(f, itemName)) ?? (await featureQuestion(f, itemName));
+    if (q) quiz.push(q);
   }
   return quiz;
 }
@@ -258,7 +264,7 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   // 질문으로 낼 수 있는 특징: 습득자 설명에서 나온 것은 뺀다
   const fromFinder = finderFeatureIds(item.detail?.features);
   const askableFeatures = storedFeatures.filter((f) => !fromFinder.has(`${f.key}|${f.value.trim()}`));
-  let j = judge(comparison, askableFeatures, mentionedKeys);
+  let j = judge(comparison, askableFeatures, mentionedKeys, storedFeatures);
   const itemName = item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null;
   // 보기 만들기(AI)도 트랜잭션 밖에서 한다
   let quiz = j.questionFeature
