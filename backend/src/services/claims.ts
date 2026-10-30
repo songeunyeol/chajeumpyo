@@ -26,12 +26,17 @@ import { MAX_FAILED_ATTEMPTS, MAX_ITEM_FAILED_ATTEMPTS } from "../matching/polic
 import { colorQuestionFor, isAskable, PRESET_DISTRACTORS, questionFor } from "../matching/questions";
 import {
   colorDistractors,
+  guessProbability,
+  MAX_GUESS_PROBABILITY,
   makeQuestion,
-  pickDistractors,
+  QUIZ_OPTIONS,
   QUIZ_QUESTIONS,
+  QUIZ_QUESTIONS_NO_EVIDENCE,
   type QuizQuestion,
   quizOf,
+  reshuffle,
   shuffle,
+  uniformDistractors,
 } from "../matching/quiz";
 import { dropMaskTraces, looselyContains, words } from "../matching/text";
 import { adminsInChargeOf, notifyUsers } from "./notifications";
@@ -106,8 +111,11 @@ async function toResponse(a: Attempt, reused: boolean, db: Prisma.TransactionCli
   return { attemptId: a.id, reused, result: "FAIL", ...(await failFields(a.userId, a.foundItemId, db)) };
 }
 
-/** 특징 질문 하나. AI가 다듬은 정답이 저장 값과 낱말이 하나도 안 겹치면 저장 값을 그대로 쓴다 */
-async function featureQuestion(feature: AiFeature, itemName: string | null): Promise<QuizQuestion> {
+/**
+ * 특징 질문 하나. AI가 다듬은 정답이 저장 값과 낱말이 하나도 안 겹치면 저장 값을 그대로 쓴다.
+ * 오답은 정답과 같은 형식·구체성으로만 고르고(정답이 티 나지 않게), 못 채우면 null (이 질문은 내지 않는다).
+ */
+async function featureQuestion(feature: AiFeature, itemName: string | null): Promise<QuizQuestion | null> {
   const text = questionFor(feature, itemName);
   let correct = feature.value;
   let fromAi: string[] = [];
@@ -123,8 +131,25 @@ async function featureQuestion(feature: AiFeature, itemName: string | null): Pro
   } catch (err) {
     logger.warn({ err }, "확인 질문 보기 만들기 실패 → 준비된 보기");
   }
-  const pool = [...fromAi, ...shuffle(PRESET_DISTRACTORS[feature.key] ?? [])];
-  return makeQuestion(text, feature.key, correct, pickDistractors([correct, feature.value], pool, text));
+  const distractors = uniformDistractors(correct, fromAi, shuffle(PRESET_DISTRACTORS[feature.key] ?? []), text).filter(
+    (d) => !looselyContains(d, feature.value) && !looselyContains(feature.value, d),
+  );
+  if (distractors.length < QUIZ_OPTIONS - 1) return null;
+  return makeQuestion(text, feature.key, correct, distractors);
+}
+
+/** 이 물건에 이미 낸 질문(계정 무관, 최근 것). 같은 질문이면 같은 보기 세트를 다시 쓴다 */
+async function previousQuestions(foundItemId: string): Promise<Map<string, QuizQuestion>> {
+  const attempts = await prisma.matchAttempt.findMany({
+    where: { foundItemId, result: "BORDERLINE" },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+    select: { matchedFields: true },
+  });
+  const byKey = new Map<string, QuizQuestion>();
+  for (const a of attempts)
+    for (const q of quizOf(a.matchedFields)) if (!byKey.has(q.featureKey)) byKey.set(q.featureKey, q);
+  return byKey;
 }
 
 /**
@@ -132,22 +157,32 @@ async function featureQuestion(feature: AiFeature, itemName: string | null): Pro
  * 신고에 적지 않은 숨은 특징부터 묻고, 하나뿐이면 신고에 색을 적지 않았을 때 색을 함께 묻는다. 모두 맞혀야 통과.
  */
 async function buildQuiz(
+  foundItemId: string,
   first: AiFeature,
   stored: AiFeature[],
   reportedKeys: string[],
   color: { stored: string | null; reported: string | null },
   itemName: string | null,
+  maxQuestions = QUIZ_QUESTIONS,
 ): Promise<QuizQuestion[]> {
   const mentioned = new Set(reportedKeys);
-  const features = [first, ...stored.filter((f) => f !== first && isAskable(f) && !mentioned.has(f.key))].slice(
-    0,
-    QUIZ_QUESTIONS,
-  );
-  const quiz = await Promise.all(features.map((f) => featureQuestion(f, itemName)));
+  const candidates = [first, ...stored.filter((f) => f !== first && isAskable(f) && !mentioned.has(f.key))];
+  const before = await previousQuestions(foundItemId);
+  const reuse = (key: string, text: string) => {
+    const q = before.get(key);
+    return q && q.text === text && q.options.length === QUIZ_OPTIONS ? reshuffle(q) : null;
+  };
+  const quiz: QuizQuestion[] = [];
+  for (const f of candidates) {
+    if (quiz.length >= maxQuestions) break;
+    const q = reuse(f.key, questionFor(f, itemName)) ?? (await featureQuestion(f, itemName));
+    if (q) quiz.push(q);
+  }
   const storedColor = Color.safeParse(color.stored);
-  if (quiz.length < QUIZ_QUESTIONS && !color.reported && storedColor.success && storedColor.data !== "OTHER") {
+  if (quiz.length < maxQuestions && !color.reported && storedColor.success && storedColor.data !== "OTHER") {
     const label = COLOR_LABELS[storedColor.data];
-    quiz.push(makeQuestion(colorQuestionFor(itemName), "color", label, colorDistractors(storedColor.data)));
+    const text = colorQuestionFor(itemName);
+    quiz.push(reuse("color", text) ?? makeQuestion(text, "color", label, colorDistractors(storedColor.data)));
   }
   return quiz;
 }
@@ -201,18 +236,26 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   const mentionedKeys = comparison.features
     .filter((f) => !(f.verdict === "UNKNOWN" && f.storedKey))
     .map((f) => f.reportedKey);
-  const j = judge(comparison, storedFeatures, mentionedKeys);
+  let j = judge(comparison, storedFeatures, mentionedKeys);
   const itemName = item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null;
   // 보기 만들기(AI)도 트랜잭션 밖에서 한다
-  const quiz = j.questionFeature
+  let quiz = j.questionFeature
     ? await buildQuiz(
+        foundItemId,
         j.questionFeature,
         storedFeatures,
         mentionedKeys,
         { stored: item.detail?.color ?? null, reported: extracted.color ?? null },
         itemName,
+        // 맞힌 특징이 없으면 찍기만으로 통과하기 어렵게 질문을 늘린다
+        j.matches === 0 ? QUIZ_QUESTIONS_NO_EVIDENCE : QUIZ_QUESTIONS,
       )
     : [];
+  // 맞힌 특징 없이 찍어서 통과할 확률이 높은 질문(1개뿐, 보기 부족)이면 온라인으로는 통과시키지 않는다 (10/30 코드 평가)
+  if (j.result === "BORDERLINE" && j.matches === 0 && guessProbability(quiz) > MAX_GUESS_PROBABILITY) {
+    j = { ...j, result: "FAIL", questionFeature: null };
+    quiz = [];
+  }
   const publicFields = [
     ...comparison.features.filter((f) => f.verdict === "MATCH").map((f) => `feature:${f.storedKey ?? f.reportedKey}`),
     ...(comparison.color === "MATCH" ? ["color"] : []),
@@ -279,7 +322,7 @@ async function reuseOrLock(
 
 /**
  * POST /claims/:attemptId/answer (F-09). 질문 하나당 한 번만 답할 수 있다.
- * choices: 객관식 보기 번호(질문 순서대로), 모두 맞아야 통과. answer: 자유 입력, 첫 질문의 특징과 대조.
+ * choices: 객관식 보기 번호(질문 순서대로), 모두 맞아야 통과. answer: 자유 입력, 객관식이 없는 예전 시도에서만 첫 질문의 특징과 대조.
  */
 export async function answer(viewer: Viewer, attemptId: string, body: AnswerRequest): Promise<AnswerResponse> {
   const attempt = await prisma.matchAttempt.findFirst({
@@ -297,6 +340,8 @@ export async function answer(viewer: Viewer, attemptId: string, body: AnswerRequ
   const stored = Features.parse(attempt.foundItem.detail?.features).find((f) => f.key === attempt.questionFeatureKey);
   const quiz = quizOf(attempt.matchedFields);
   const { choices, answer: rawAnswer } = body;
+  // 객관식이 나온 시도는 보기 번호로만 답한다. 자유 입력으로 보기를 그대로 적어 첫 질문만 맞히는 우회를 막는다 (10/30 코드 평가)
+  if (quiz.length > 0 && !choices) throw new AppError("VALIDATION_ERROR", "보기 중에서 골라 주세요.");
   let verdict: "MATCH" | "NO_MATCH" = "NO_MATCH";
   if (choices) {
     if (choices.length !== quiz.length) throw new AppError("VALIDATION_ERROR", "모든 질문에 답을 골라 주세요.");

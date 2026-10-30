@@ -100,6 +100,14 @@ describe("기준 2. 입력 검증과 권한", () => {
       .send({ email: "admin@skuniv.ac.kr", password: "adminpass1" });
     expect((await post(report(), admin.body.accessToken)).status).toBe(403);
   });
+
+  it("한 계정이 10분에 신고를 10번 넘게 만들면 429 (AI 비용 남용·후보 훑기 막기, 10/30)", async () => {
+    for (let i = 0; i < 10; i++) expect((await post(report())).status).toBe(201);
+    const res = await post(report());
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe("RATE_LIMITED");
+    expect(await prisma.lostReport.count()).toBe(10);
+  });
 });
 
 describe("기준 3. AI 분석이 실패하면 502, 저장하지 않는다", () => {

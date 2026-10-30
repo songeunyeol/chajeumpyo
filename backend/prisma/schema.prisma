@@ -245,7 +245,7 @@ model FoundItemDetail {
   title            String?
   /// 습득자가 적은 자세한 위치 (예: 3층 엘리베이터 앞 벤치 위). 판정 통과 후에만 보인다
   locationDetail   String?                      @map("location_detail")
-  /// 차원(1536)은 임베딩 모델 확정 후 맞춘다. 읽기·쓰기는 src/repositories/embedding.ts의 raw SQL로만.
+  /// 차원 1536 = gemini-embedding-001 출력 차원(src/ai/types.ts EMBEDDING_DIM). 읽기·쓰기는 src/repositories/embedding.ts의 raw SQL로만.
   embedding        Unsupported("vector(1536)")?
   rawAiResponse    Json?                        @map("raw_ai_response")
 

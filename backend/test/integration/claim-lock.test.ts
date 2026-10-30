@@ -71,11 +71,18 @@ const claim = (token: string, reportId: string, foundItemId: string) =>
     .post(`/api/v1/lost-reports/${reportId}/claims`)
     .set("Authorization", `Bearer ${token}`)
     .send({ foundItemId });
-const answer = (token: string, attemptId: string, text: string) =>
-  request(app)
-    .post(`/api/v1/claims/${attemptId}/answer`)
-    .set("Authorization", `Bearer ${token}`)
-    .send({ answer: text });
+/** 틀린 답(text가 "토끼")이면 객관식 오답을, 아니면 정답을 고른다. 객관식이 없는 예전 시도면 자유 입력 */
+async function answer(token: string, attemptId: string, text: string) {
+  const a = await prisma.matchAttempt.findUnique({ where: { id: attemptId } });
+  const quiz = ((a?.matchedFields as { quiz?: { answer: number; options: string[] }[] } | null)?.quiz ?? []) as {
+    answer: number;
+    options: string[];
+  }[];
+  const body = quiz.length
+    ? { choices: quiz.map((q) => (text === "토끼" ? (q.answer + 1) % q.options.length : q.answer)) }
+    : { answer: text };
+  return request(app).post(`/api/v1/claims/${attemptId}/answer`).set("Authorization", `Bearer ${token}`).send(body);
+}
 
 /** 다른 계정들의 실패를 n개 깔아 둔다 (계정마다 1번씩) */
 async function failuresFromOthers(foundItemId: string, n: number) {
