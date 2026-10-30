@@ -591,6 +591,100 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect((await claim(r3, it1.id)).body.result).toBe("PASS");
   });
 
+  it("설명만 바꿔 찍기 시도를 여러 개 열 수 없다: 안 답한 찍기 시도가 있으면 그것을 돌려준다 (10/30 코드 평가)", async () => {
+    const it1 = await item();
+    const r1 = await newReport({ features: [] }, token, "흰색 에어팟을 잃어버렸어요");
+    const a1 = await claim(r1, it1.id);
+    expect(a1.body.result).toBe("BORDERLINE");
+    const r2 = await newReport({ features: [] }, token, "하얀 무선 이어폰이에요 찾고 있어요");
+    const a2 = await claim(r2, it1.id);
+    expect(a2.body.attemptId).toBe(a1.body.attemptId);
+    expect(await prisma.matchAttempt.count({ where: { foundItemId: it1.id } })).toBe(1);
+    // 그 하나를 틀리면 끝: 다음 찍기는 질문 없이 실패
+    const right = await correctChoices(a1.body.attemptId);
+    expect(
+      (
+        await choose(
+          a1.body.attemptId,
+          right.map((x) => (x + 1) % 4),
+        )
+      ).body.result,
+    ).toBe("FAIL");
+    const r3 = await newReport({ features: [] }, token, "흰 이어폰 케이스예요");
+    expect((await claim(r3, it1.id)).body.result).toBe("FAIL");
+  });
+
+  it("더 새 시도가 있으면 옛 질문에는 답할 수 없다 (옛 시도를 모아 하나씩 답하는 우회 막기)", async () => {
+    const it1 = await item();
+    // 특징은 맞고 색이 모순 → 경계(맞힌 특징 있음)
+    const r1 = await newReport(
+      { features: [feature("sticker", "곰돌이 스티커")], color: "BLACK" },
+      token,
+      "검은 에어팟, 곰돌이 스티커",
+    );
+    const a1 = await claim(r1, it1.id);
+    expect(a1.body.result).toBe("BORDERLINE");
+    const r2 = await newReport(
+      { features: [feature("keyring", "고양이 키링")], color: "BLACK" },
+      token,
+      "검은 에어팟, 고양이 키링",
+    );
+    const a2 = await claim(r2, it1.id);
+    expect(a2.body.attemptId).not.toBe(a1.body.attemptId);
+    const old = await choose(a1.body.attemptId, await correctChoices(a1.body.attemptId));
+    expect(old.status).toBe(400);
+    expect(old.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("계정 실패가 이미 한도면 남아 있던 질문에도 답할 수 없다 (409 MATCH_LOCKED)", async () => {
+    const it1 = await item();
+    const r1 = await newReport(
+      { features: [feature("sticker", "곰돌이 스티커")], color: "BLACK" },
+      token,
+      "검은 에어팟, 곰돌이 스티커",
+    );
+    const a1 = await claim(r1, it1.id);
+    expect(a1.body.result).toBe("BORDERLINE");
+    const open = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: a1.body.attemptId } });
+    const past = new Date(open.createdAt.getTime() - 60_000);
+    for (let i = 0; i < 3; i++)
+      await prisma.matchAttempt.create({
+        data: {
+          userId: open.userId,
+          lostReportId: open.lostReportId,
+          foundItemId: it1.id,
+          descriptionHash: `fail-${i}`,
+          score: 0,
+          scoreBreakdown: {},
+          matchedFields: {},
+          result: "FAIL",
+          createdAt: past,
+        },
+      });
+    const res = await choose(a1.body.attemptId, await correctChoices(a1.body.attemptId));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("MATCH_LOCKED");
+  });
+
+  it("습득자 설명에서 나온 특징(source: finder)은 대조에는 쓰지만 객관식 질문으로 내지 않는다", async () => {
+    const it1 = await item({
+      features: [
+        { key: "sticker", value: "곰돌이 스티커" },
+        { key: "keyring", value: "고양이 키링", source: "finder" } as AiFeature,
+      ],
+    });
+    const r = await newReport({ features: [] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
+    const keys = ((a.matchedFields as { quiz: { featureKey: string }[] }).quiz ?? []).map((q) => q.featureKey);
+    expect(keys).not.toContain("keyring");
+    expect(JSON.stringify(res.body)).not.toContain("고양이");
+    // 대조에는 쓴다: 설명에 그 특징을 적으면 통과
+    const r2 = await newReport({ features: [feature("keyring", "고양이 키링")] }, token, "고양이 키링 달린 에어팟");
+    expect((await claim(r2, it1.id)).body.result).toBe("PASS");
+  });
+
   it("다시 시도해도(다른 설명·다른 계정) 같은 물건·같은 질문이면 같은 보기 세트, 순서만 섞는다 (교집합 공격 막기, 10/30)", async () => {
     const it1 = await item();
     const r1 = await newReport({ features: [] }, token, "흰색 에어팟을 잃어버렸어요");
