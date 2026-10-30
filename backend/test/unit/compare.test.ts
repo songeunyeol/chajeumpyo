@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { judgeAnswer } from "../../src/matching/answer";
 import { compareBrand, compareByRules, compareColor } from "../../src/matching/compare";
+import { dropMaskTraces, isMaskTrace } from "../../src/matching/text";
 
 const stored = { color: "WHITE", brand: "Apple", features: [{ key: "sticker" as const, value: "곰돌이 스티커" }] };
 
@@ -82,6 +83,57 @@ describe("규칙 기반 대조", () => {
     expect(compareColor("OTHER", "WHITE")).toBe("UNKNOWN");
     expect(compareColor("흰색", "WHITE")).toBe("UNKNOWN");
     expect(compareColor(null, "WHITE")).toBe("UNKNOWN");
+  });
+});
+
+describe("실제 사진 평가 (10/30)", () => {
+  const verdicts = (
+    reported: { key: "other" | "pattern" | "sticker"; value: string }[],
+    storedFeatures: typeof reported,
+  ) =>
+    compareByRules(
+      { color: null, brand: null, features: reported },
+      { color: null, brand: null, features: storedFeatures },
+    ).features.map((f) => f.verdict);
+
+  it("기타·무늬는 다른 측면을 말하면 모순이 아니라 확인 불가 (핸드크림 뚜껑 ↔ 용기, 볼캡 챙 ↔ 원단)", () => {
+    expect(verdicts([{ key: "other", value: "흰 뚜껑" }], [{ key: "other", value: "튜브형 용기" }])).toEqual([
+      "UNKNOWN",
+    ]);
+    expect(verdicts([{ key: "pattern", value: "흰색 챙" }], [{ key: "pattern", value: "데님 원단" }])).toEqual([
+      "UNKNOWN",
+    ]);
+    expect(
+      verdicts(
+        [{ key: "pattern", value: "앞면 해·나무·사람 자수" }],
+        [{ key: "pattern", value: "사선 빗살 무늬 천 재질" }],
+      ),
+    ).toEqual(["UNKNOWN"]);
+  });
+
+  it("같은 측면을 다르게 말하면 여전히 모순 (사칭 막기)", () => {
+    expect(verdicts([{ key: "other", value: "꽃 자수" }], [{ key: "other", value: "별 자수" }])).toEqual([
+      "CONTRADICT",
+    ]);
+    expect(verdicts([{ key: "pattern", value: "줄무늬" }], [{ key: "pattern", value: "체크무늬" }])).toEqual([
+      "CONTRADICT",
+    ]);
+    // 스티커처럼 종류 자체가 대상이면 측면을 따지지 않는다
+    expect(verdicts([{ key: "sticker", value: "토끼 스티커" }], [{ key: "sticker", value: "곰돌이 스티커" }])).toEqual([
+      "CONTRADICT",
+    ]);
+  });
+
+  it("가린 자리를 적은 특징은 뺀다", () => {
+    expect(isMaskTrace("클립 부분에 회색 가림 처리됨")).toBe(true);
+    expect(isMaskTrace("중앙 영역 가림 처리")).toBe(true);
+    expect(isMaskTrace("펜 끝부분에 약간의 검은 얼룩")).toBe(false);
+    expect(
+      dropMaskTraces([
+        { key: "other", value: "중앙 영역 가림 처리" },
+        { key: "scratch", value: "표면 미세 흠집" },
+      ]),
+    ).toEqual([{ key: "scratch", value: "표면 미세 흠집" }]);
   });
 });
 

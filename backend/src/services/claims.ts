@@ -33,7 +33,7 @@ import {
   quizOf,
   shuffle,
 } from "../matching/quiz";
-import { looselyContains, words } from "../matching/text";
+import { dropMaskTraces, looselyContains, words } from "../matching/text";
 import { adminsInChargeOf, notifyUsers } from "./notifications";
 
 type Viewer = { userId: string; role: Role };
@@ -171,7 +171,8 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   if (!candidate) throw new AppError("FORBIDDEN", "이 신고의 후보가 아닌 물건이에요.");
 
   const item = await prisma.foundItem.findUniqueOrThrow({ where: { id: foundItemId }, include: { detail: true } });
-  const storedFeatures = Features.parse(item.detail?.features);
+  // 예전에 저장된 가린 자리 특징도 빼고 견준다
+  const storedFeatures = dropMaskTraces(Features.parse(item.detail?.features));
   const extracted = LostReportExtraction.partial().catch({}).parse(report.extractedAttributes);
   const reportedFeatures = extracted.features ?? [];
 

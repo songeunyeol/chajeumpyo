@@ -74,3 +74,19 @@ export function sameWord(a: string, b: string): string | null {
   for (const f of wordForms(a)) if (fb.has(f)) return f;
   return null;
 }
+
+/**
+ * 서버가 가린 자리를 AI가 특징으로 적은 것("클립 부분에 회색 가림 처리됨", "중앙 영역 가림 처리").
+ * 주인은 알 수 없는 내용이라 대조·질문에 쓰면 진짜 주인이 떨어진다 (10/30 실제 사진 평가).
+ */
+const MASK_TRACE =
+  /가림|가려|가린|모자이크|블러|흐림\s*처리|개인\s*정보|회색\s*(상자|박스|사각형|네모)|마스킹|masked|blurred|redact/i;
+
+export function isMaskTrace(value: string): boolean {
+  return MASK_TRACE.test(value);
+}
+
+/** 가린 자리를 적은 특징을 뺀다 */
+export function dropMaskTraces<T extends { value: string }>(features: T[]): T[] {
+  return features.filter((f) => !isMaskTrace(f.value));
+}
