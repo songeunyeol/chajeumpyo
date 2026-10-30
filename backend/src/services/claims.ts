@@ -116,6 +116,11 @@ async function toResponse(a: Attempt, reused: boolean, db: Prisma.TransactionCli
  * 오답은 정답과 같은 형식·구체성으로만 고르고(정답이 티 나지 않게), 못 채우면 null (이 질문은 내지 않는다).
  */
 async function featureQuestion(feature: AiFeature, itemName: string | null): Promise<QuizQuestion | null> {
+  // AI 오답이 같은 형식으로 3개 안 모이면 한 번 더 만든다 (온도가 있어 매번 다르게 나온다)
+  return (await featureQuestionOnce(feature, itemName)) ?? featureQuestionOnce(feature, itemName);
+}
+
+async function featureQuestionOnce(feature: AiFeature, itemName: string | null): Promise<QuizQuestion | null> {
   const text = questionFor(feature, itemName);
   let correct = feature.value;
   let fromAi: string[] = [];
@@ -251,10 +256,21 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
         j.matches === 0 ? QUIZ_QUESTIONS_NO_EVIDENCE : QUIZ_QUESTIONS,
       )
     : [];
-  // 맞힌 특징 없이 찍어서 통과할 확률이 높은 질문(1개뿐, 보기 부족)이면 온라인으로는 통과시키지 않는다 (10/30 코드 평가)
-  if (j.result === "BORDERLINE" && j.matches === 0 && guessProbability(quiz) > MAX_GUESS_PROBABILITY) {
-    j = { ...j, result: "FAIL", questionFeature: null };
-    quiz = [];
+  // 맞힌 특징 없이 찍어서 통과할 확률이 높은 질문(1개뿐, 보기 부족)이면 온라인으로는 통과시키지 않는다 (10/30 코드 평가).
+  // 맞힌 특징 없는 찍기는 계정·물건마다 한 번만: 이미 틀렸으면 특징을 더 적어야 다시 물어본다
+  if (j.result === "BORDERLINE" && j.matches === 0) {
+    const guessedBefore = await prisma.matchAttempt.count({
+      where: {
+        userId: viewer.userId,
+        foundItemId,
+        answerCorrect: false,
+        matchedFields: { path: ["matches"], equals: 0 },
+      },
+    });
+    if (guessedBefore > 0 || guessProbability(quiz) > MAX_GUESS_PROBABILITY) {
+      j = { ...j, result: "FAIL", questionFeature: null };
+      quiz = [];
+    }
   }
   const publicFields = [
     ...comparison.features.filter((f) => f.verdict === "MATCH").map((f) => `feature:${f.storedKey ?? f.reportedKey}`),

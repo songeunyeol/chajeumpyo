@@ -576,6 +576,21 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect((await choose(res.body.attemptId, right)).body.result).toBe("PASS");
   });
 
+  it("맞힌 특징 없이 찍기는 계정·물건마다 한 번: 틀린 뒤 또 특징 없이 신고하면 질문 없이 실패 (10/30)", async () => {
+    const it1 = await item();
+    const r1 = await newReport({ features: [] }, token, "흰색 에어팟을 잃어버렸어요");
+    const a1 = await claim(r1, it1.id);
+    const right = await correctChoices(a1.body.attemptId);
+    const wrong = right.map((x) => (x + 1) % 4);
+    expect((await choose(a1.body.attemptId, wrong)).body.result).toBe("FAIL");
+    const r2 = await newReport({ features: [] }, token, "하얀 무선 이어폰이에요 찾고 있어요");
+    const a2 = await claim(r2, it1.id);
+    expect(a2.body.result).toBe("FAIL");
+    // 특징을 적으면 다시 확인할 수 있다
+    const r3 = await newReport({ features: [feature("sticker", "곰돌이 스티커")] }, token, "곰돌이 스티커 붙은 에어팟");
+    expect((await claim(r3, it1.id)).body.result).toBe("PASS");
+  });
+
   it("맞힌 특징 없이 질문이 1개뿐이면(찍기 1/4) 온라인으로 통과시키지 않는다", async () => {
     const it1 = await item({ features: [{ key: "sticker", value: "곰돌이 스티커" }] });
     const r = await newReport({ color: "WHITE", features: [] });
