@@ -175,6 +175,7 @@ npm run dev                    # http://localhost:4000 (화면과 API를 함께 
 | `npm run eval:photos -w backend -- <사진 폴더> --labels <정답.json> --out <결과 폴더>` | 실제 사진 평가 (사진은 레포 밖에 둠) |
 | `npm run eval:categories -w backend` | 종류 인식 평가 |
 | `npm run admin:create -w backend -- --email <이메일> --password <비밀번호> [--place <보관처>]` | 관리자 계정 만들기 |
+| `ACCOUNTS_JSON='[…]' npm run user:create -w backend` | 계정 직접 발급(심사용 등, 비밀번호는 환경 변수로만) |
 | `npm run openapi -w backend` | `docs/api/openapi.json` 다시 만들기 |
 
 ## 테스트와 CI
