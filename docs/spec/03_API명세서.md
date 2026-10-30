@@ -1,7 +1,7 @@
 # API 명세서
 
 > 상태: 초안 (2026-10-11, 검토 반영 2026-10-11). 기준 스택: TypeScript + Express.
-> 연관 문서: [기능 명세서](./01_기능명세서.md) · [ERD](./02_ERD.md) · [검토 이력](./docs/open-issues.md)
+> 연관 문서: [기능 명세서](./01_기능명세서.md) · [ERD](./02_ERD.md) · [검토 이력](../open-issues.md)
 > 요청·응답 스키마의 코드 기준은 `packages/shared`(zod)이고, 서버 실행 중 `/api/docs`에서 OpenAPI 문서를 볼 수 있다.
 
 ## 1. 공통

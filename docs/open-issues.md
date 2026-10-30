@@ -31,7 +31,7 @@
 | 12 | 수령되지 않고 만료된 물건의 기록, 분실 신고, 회원 탈퇴 시 데이터 삭제 정책 없음 | F-12, F-18 | 일부 반영(10/12, #22): 만료 물건은 30일 뒤 사진·비공개 정보 삭제, 기록은 그 30일 뒤. 분실 신고·회원 탈퇴는 열림 |
 | 13 | 관리자는 `GET /notifications`(회원 전용)를 못 써서 `MULTI_REVEAL` 알림을 받을 경로가 없음 | F-10, F-13 | 추천안 반영(10/11): 알림 API를 관리자도 쓰게 함(자기 알림만). 확인 필요 |
 | 14 | JWT 만료 시간, 로그아웃 미정 | F-04 | 초안 적용(10/11): 7일(`ACCESS_TOKEN_TTL_HOURS`), 체험 24시간, 로그아웃은 프론트에서 토큰 삭제. 확정 필요 |
-| 15 | 옛 문서 `docs/erd-v1.md`, `docs/matching-weights.md`, `docs/ai-stack.md`(평가 방법)가 새 명세와 충돌 | - | 열림 |
+| 15 | 옛 문서 `docs/erd-v1.md`, `docs/matching-weights.md`, `docs/ai-stack.md`(평가 방법)가 새 명세와 충돌 | 10/30 `docs/erd-v1.md`는 지움(기준은 `docs/spec/02_ERD.md`). 나머지 둘은 남음 | 일부 해결 |
 | 16 | Prisma 7부터 스키마의 `datasource.url` 미지원 → `prisma.config.ts`로 이동. ERD 6장 스키마 초안 갱신 필요 | ERD | 반영됨(백엔드 세팅): `backend/prisma.config.ts`, ERD 6장은 실제 스키마 파일로 대체 |
 
 ## 결정 과정에서 새로 나온 것 (2026-10-11)

@@ -1,15 +1,19 @@
 // 관리자 화면 ↔ 백엔드 연결. 화면마다 이 파일 하나만 불러온다.
-// API 주소는 found/api.js와 같은 규칙: ?api=... 로 한 번 주면 기억하고, 없으면
+// API 주소는 found/api.js와 같은 규칙: 개발 주소에서만 ?api=... 로 한 번 주면 기억하고, 없으면
 // 개발(정적 서버 5500 포트)은 이 호스트의 4000 포트, 배포는 같은 주소의 /api/v1.
 // 로그인 토큰은 sessionStorage에만 둔다(탭을 닫으면 사라진다).
 (function () {
+  // ?api= 주소 바꾸기는 개발(포트가 붙은 주소, localhost, 사설 IP)에서만 받는다. 배포 주소에서는 무시한다
+  const devHost =
+    location.port !== "" || /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
   const params = new URLSearchParams(location.search);
-  try {
-    if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
-  } catch (_) {}
   let saved = null;
   try {
-    saved = sessionStorage.getItem("apiBase");
+    if (!devHost) sessionStorage.removeItem("apiBase");
+    else {
+      if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
+      saved = sessionStorage.getItem("apiBase");
+    }
   } catch (_) {}
   const devStatic = location.port === "5500";
   const API_BASE =
@@ -537,47 +541,8 @@
     }
 
     if (url.pathname === "/admin/stats/hotspots" && method === "GET") {
-      return {
-        isSeedData: true,
-        from: url.searchParams.get("from"),
-        to: url.searchParams.get("to"),
-        total: 28,
-        byBuilding: [
-          { building: "유담관", count: 12 },
-          { building: "혜인관", count: 9 },
-          { building: "본관", count: 7 },
-        ],
-        byHour: [
-          { hour: 13, count: 8 },
-          { hour: 14, count: 7 },
-          { hour: 18, count: 4 },
-        ],
-        byCategory: [
-          { category: "CHARGER", count: 9 },
-          { category: "UMBRELLA", count: 7 },
-          { category: "WALLET", count: 5 },
-        ],
-        topInsight: "유담관에서 오후 1~3시에 기타 전자기기 분실이 가장 많아요.",
-        priorities: [
-          {
-            building: "유담관", startHour: 13, category: "CHARGER", count: 6, recent: 4, earlier: 2, trend: "UP", unclaimed: 3, level: "HIGH", expectedNextWeek: 1.9,
-            summary: "유담관 오후 1시~3시 기타 전자기기 분실 6건 (최근 늘고 있어요, 보관 중 3건)",
-            action: "유담관 콘센트 자리에 \"충전기 챙기기\" 안내를 붙이고, 오후 1시~3시 직후 순찰 때 콘센트를 확인해요.",
-          },
-          {
-            building: "혜인관", startHour: 18, category: "UMBRELLA", count: 3, recent: 1, earlier: 2, trend: "DOWN", unclaimed: 1, level: "MEDIUM", expectedNextWeek: 0.5,
-            summary: "혜인관 저녁 6시~8시 우산 분실 3건 (최근 줄고 있어요, 보관 중 1건)",
-            action: "혜인관 출입구에 우산꽂이 위치를 안내하고, 비 온 날 저녁 6시~8시 뒤 우산꽂이를 정리해요.",
-          },
-        ],
-        reportHotspots: [
-          {
-            building: "혜인관", category: "EARPHONE", reports: 4, open: 3, found: 1,
-            summary: "혜인관 무선 이어폰 분실 신고 4건 (못 찾음 3건, 같은 곳 습득 등록 1건)",
-            action: "찾는 신고보다 들어온 물건이 적어요. 혜인관 출입구·강의실에 \"주운 물건은 사진 한 장으로 등록\" QR 안내를 붙여요.",
-          },
-        ],
-      };
+      // 시연 데이터도 서버가 실제 통계와 같은 집계 코드로 계산한다 (학생 데이터 없음)
+      return call(`/demo/admin/stats/hotspots${url.search}`, { token: false });
     }
 
     if (url.pathname === "/notifications" && method === "GET") {

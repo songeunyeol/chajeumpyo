@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// ERD(02_ERD.md)의 enum과 이름·값을 맞춘다. 바꾸면 backend/prisma/schema.prisma도 같이 바꾼다.
+// ERD(docs/spec/02_ERD.md)의 enum과 이름·값을 맞춘다. 바꾸면 backend/prisma/schema.prisma도 같이 바꾼다.
 
 export const Category = z.enum([
   "WALLET",
