@@ -105,3 +105,28 @@ describe("QA 화면", () => {
     expect(read("frontend/lost/item-handover.html")).not.toContain("✓ 확인 통과</span>");
   });
 });
+
+describe("QA 10/30 습득 흐름", () => {
+  it("동의 화면은 끝난 등록을 지우고 새로 시작한다", () => {
+    const consent = read("frontend/found/consent.html");
+    expect(consent).toContain("<h1>두 가지를 확인해요</h1>");
+    expect(consent).toContain('sessionStorage.getItem("foundConfirmedId")');
+    expect(consent).toContain('"foundDraft", "foundConfirmedId"');
+  });
+
+  it("완료 화면은 올린 본인에게 층을 보여 준다", () => {
+    expect(read("frontend/found/register.html")).toContain('sessionStorage.setItem("foundFloor"');
+    expect(read("frontend/found/done-inplace.html")).toContain('id="doneFloorRow" hidden');
+    expect(read("frontend/found/done-handover.html")).toContain('sessionStorage.getItem("foundFloor")');
+  });
+
+  it("사용자에게 보이는 동의 제목은 해요체다", () => {
+    for (const page of [
+      "frontend/found/consent.html",
+      "frontend/lost/consent-mail.html",
+      "frontend/lost/consent-social.html",
+    ]) {
+      expect(read(page)).not.toContain("확인합니다");
+    }
+  });
+});
