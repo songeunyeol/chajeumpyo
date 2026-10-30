@@ -133,6 +133,13 @@ h1 {
 .field textarea { min-height: 96px; resize: vertical; }
 .field textarea.compact { min-height: 76px; padding: 14px 16px; line-height: 1.45; }
 .field input::placeholder, .field textarea::placeholder { color: var(--mute); }
+/* 학교 메일: 아이디 칸 + 고정 "@skuniv.ac.kr" (한 칸처럼 보이게) */
+.email-fixed { display: flex; align-items: center; border-radius: 14px; background: var(--white); }
+.email-fixed:focus-within { outline: 2px solid var(--green, #1e5b3d); outline-offset: 0; }
+.field .email-fixed input { flex: 1 1 auto; min-width: 0; padding-right: 4px; outline: none; background: transparent; }
+.email-fixed .email-suffix { flex: 0 0 auto; padding: 16px 16px 16px 0; font-size: 16px; color: var(--mute); user-select: none; }
+.field .email-fixed input.is-invalid { box-shadow: none; }
+.email-fixed:has(input.is-invalid) { outline: 2px solid var(--danger, #c0392b); }
 
 .manual-loc-panel {
   overflow: hidden;
