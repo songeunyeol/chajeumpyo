@@ -11,8 +11,6 @@ export const QUIZ_QUESTIONS = 2;
  * 진짜 주인은 사진을 떠올려 답할 수 있지만, 찍는 사람은 질문이 늘수록 급격히 어려워진다.
  */
 export const QUIZ_QUESTIONS_NO_EVIDENCE = 3;
-/** 찍어서 통과할 확률이 이보다 크면(질문 1개, 보기 4개 미만 등) 온라인으로 통과시키지 않는다 */
-export const MAX_GUESS_PROBABILITY = 1 / 16;
 
 /** 모든 질문을 찍어서 맞힐 확률. 질문이 없으면 1 */
 export function guessProbability(quiz: QuizQuestion[]): number {

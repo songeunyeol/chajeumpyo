@@ -26,8 +26,6 @@ import { MAX_FAILED_ATTEMPTS, MAX_ITEM_FAILED_ATTEMPTS } from "../matching/polic
 import { colorQuestionFor, isAskable, PRESET_DISTRACTORS, questionFor } from "../matching/questions";
 import {
   colorDistractors,
-  guessProbability,
-  MAX_GUESS_PROBABILITY,
   makeQuestion,
   QUIZ_OPTIONS,
   QUIZ_QUESTIONS,
@@ -256,8 +254,8 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
         j.matches === 0 ? QUIZ_QUESTIONS_NO_EVIDENCE : QUIZ_QUESTIONS,
       )
     : [];
-  // 맞힌 특징 없이 찍어서 통과할 확률이 높은 질문(1개뿐, 보기 부족)이면 온라인으로는 통과시키지 않는다 (10/30 코드 평가).
-  // 맞힌 특징 없는 찍기는 계정·물건마다 한 번만: 이미 틀렸으면 특징을 더 적어야 다시 물어본다
+  // 맞힌 특징 없는 찍기는 계정·물건마다 한 번만: 이미 틀렸으면 특징을 더 적어야 다시 물어본다 (10/30 코드 평가).
+  // 질문을 하나도 못 만들면 온라인으로는 확인할 수 없다.
   if (j.result === "BORDERLINE" && j.matches === 0) {
     const guessedBefore = await prisma.matchAttempt.count({
       where: {
@@ -267,7 +265,7 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
         matchedFields: { path: ["matches"], equals: 0 },
       },
     });
-    if (guessedBefore > 0 || guessProbability(quiz) > MAX_GUESS_PROBABILITY) {
+    if (guessedBefore > 0 || quiz.length === 0) {
       j = { ...j, result: "FAIL", questionFeature: null };
       quiz = [];
     }

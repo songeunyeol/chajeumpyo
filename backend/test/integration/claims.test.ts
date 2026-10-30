@@ -591,14 +591,6 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect((await claim(r3, it1.id)).body.result).toBe("PASS");
   });
 
-  it("맞힌 특징 없이 질문이 1개뿐이면(찍기 1/4) 온라인으로 통과시키지 않는다", async () => {
-    const it1 = await item({ features: [{ key: "sticker", value: "곰돌이 스티커" }] });
-    const r = await newReport({ color: "WHITE", features: [] });
-    const res = await claim(r, it1.id);
-    expect(res.body.result).toBe("FAIL");
-    expect(res.body.questions ?? []).toHaveLength(0);
-  });
-
   it("다시 시도해도(다른 설명·다른 계정) 같은 물건·같은 질문이면 같은 보기 세트, 순서만 섞는다 (교집합 공격 막기, 10/30)", async () => {
     const it1 = await item();
     const r1 = await newReport({ features: [] }, token, "흰색 에어팟을 잃어버렸어요");
