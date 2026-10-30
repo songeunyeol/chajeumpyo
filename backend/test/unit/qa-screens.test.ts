@@ -176,6 +176,7 @@ describe("스토리텔링 화면 (QA 10/30 최종)", () => {
     expect(html).toContain('id="why"');
     expect(html).toContain("<b>146건</b>");
     expect(html).toContain("<b>7건</b>");
+    expect(html).toContain("<b>9곳 이상</b>");
     expect(html.indexOf('id="why"')).toBeLessThan(html.indexOf("1. 잃어버린 사람으로 체험하기"));
     expect(html).not.toContain("오늘 00:00부터");
   });
