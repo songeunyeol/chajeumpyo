@@ -172,7 +172,7 @@
       // 올리는 중 화면은 history에 남기지 않는다. 등록 화면에서 뒤로 가면 다시 분석하지 않고 사진 화면으로 간다
       window.location.replace("register.html");
     } else {
-      // 한눈에.html의 3번 슬롯 프리뷰에서는 빈 화면으로 멈추지 않도록 잠시 후 다시 재생
+      // 다른 화면 안 미리보기(iframe)에서는 빈 화면으로 멈추지 않도록 잠시 후 다시 재생
       await wait(1200);
       window.location.reload();
     }

@@ -11,7 +11,7 @@
 
 컨테이너가 뜰 때마다 `prisma migrate deploy`를 먼저 돌리고 서버를 켠다. 마이그레이션은 추가만 하는 방식이라 배포에서 `migrate reset`·`migrate dev`는 쓰지 않는다.
 
-> 처음에는 Railway로 준비했지만(PR #44, `railway.json`) 신규 가입이 막혀 Render로 옮겼다. `railway.json`은 다른 곳에 다시 올릴 때 참고용으로 남겨 둔다.
+> 처음에는 Railway로 준비했지만(PR #44) 신규 가입이 막혀 Render로 옮겼다.
 
 ## 키 다루기
 
@@ -118,7 +118,7 @@ curl https://chajeumpyo.onrender.com/health                # {"ok":true}
 curl https://chajeumpyo.onrender.com/api/v1/buildings      # 시드한 건물 목록
 ```
 
-브라우저로 `/`, `/found/consent.html`, `/lost/home.html`, `/admin/login.html`이 열리면 된다. `_tester.html`, `.md` 메모, 디자인 확인 화면(`팔레트.html`, `한눈에.html`)은 배포에서 내려주지 않는다(404).
+브라우저로 `/`, `/found/consent.html`, `/lost/home.html`, `/admin/login.html`이 열리면 된다. `_`로 시작하는 개발용 파일과 `.md` 메모는 배포에서 내려주지 않는다(404).
 
 ## 참고
 
