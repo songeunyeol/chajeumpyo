@@ -180,7 +180,7 @@
     <div class="mark-wrap">
       <div class="bob">
         <div class="tilt">
-          <button class="card" id="card" type="button" aria-label="찾음표. 드래그하면 표가 돌아갑니다.">
+          <button class="card" id="card" type="button" aria-label="찾음표. 드래그하면 표가 돌아가요.">
             <svg class="ticket" viewBox="0 0 320 168" aria-hidden="true">
               <path fill="#1e5b3d" d="M40 12H280a16 16 0 0 1 16 16v30a28 28 0 0 0 0 52v30a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16v-30a28 28 0 0 0 0-52V28a16 16 0 0 1 16-16z"/>
               <g fill="#f3efe6">
@@ -281,8 +281,8 @@
     if (window.NaverCampusMap) {
       window.NaverCampusMap.mount(document.getElementById("homeMap"), {
         buildingName: "혜인관",
-        caption: "서경대학교",
-        showAll: true,
+        caption: "분실물 보관 · 혜인관 1층 교무처",
+        highlights: [{ name: "혜인관", label: "교무처", kind: "office" }],
       });
     }
 

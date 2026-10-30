@@ -34,6 +34,7 @@
 
   <table class="kv">
     <tr><th>보관</th><td>그 자리에 둠</td></tr>
+    <tr id="doneFloorRow" hidden><th>층</th><td id="doneFloor"></td></tr>
     <tr id="doneDetailRow" hidden><th>위치 세부 설명</th><td id="doneDetail"></td></tr>
     <tr><th>시각</th><td id="doneTime"></td></tr>
   </table>
@@ -70,6 +71,13 @@
     const savedTime = sessionStorage.getItem("registeredAt");
     if (savedTime) {
       doneTimeEl.textContent = savedTime;
+    }
+    // 층은 공개 화면·후보 카드에는 숨기지만, 올린 본인 완료 화면에는 보여 준다 (QA 10/30)
+    const savedFloor = sessionStorage.getItem("foundFloor");
+    if (savedFloor) {
+      const f = Number(savedFloor);
+      document.getElementById("doneFloor").textContent = f < 0 ? `지하 ${-f}층` : `${f}층`;
+      document.getElementById("doneFloorRow").hidden = false;
     }
     const savedDetail = sessionStorage.getItem("locationDetail");
     if (savedDetail) {

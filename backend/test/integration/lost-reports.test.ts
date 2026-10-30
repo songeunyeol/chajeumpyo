@@ -503,3 +503,28 @@ describe("기준 10. 설명 고치기와 신고 닫기", () => {
     expect((await request(app).patch(`/api/v1/lost-reports/${body.id}`).set(auth()).send({})).status).toBe(400);
   });
 });
+
+describe("세부 종류로 신고: 마우스 (QA bot 10/30)", () => {
+  it("마우스로 신고해도, 세부 종류 없이 기타 전자기기로 신고해도 마우스 습득물이 후보에 나온다", async () => {
+    resetAiClient(); // mock 추출기: 설명의 "마우스"를 세부 종류로 읽는다
+    const mouse = await createFoundItem({
+      buildingId: A,
+      category: "CHARGER",
+      subCategory: "MOUSE",
+      description: "검정 무선 마우스",
+      foundAt: hoursAgo(1),
+    });
+    const ids = (res: request.Response) => res.body.candidates.map((c: { foundItemId: string }) => c.foundItemId);
+
+    const bySub = await post(report({ category: "CHARGER", description: "마우스. 검정 무선 마우스" }));
+    expect(bySub.status).toBe(201);
+    expect(ids(bySub)).toContain(mouse.id);
+    expect(bySub.body.candidates.find((c: { foundItemId: string }) => c.foundItemId === mouse.id).subCategory).toBe(
+      "MOUSE",
+    );
+
+    const byCategory = await post(report({ category: "CHARGER", description: "기타 전자기기. 검정색이에요" }));
+    expect(byCategory.status).toBe(201);
+    expect(ids(byCategory)).toContain(mouse.id);
+  });
+});
