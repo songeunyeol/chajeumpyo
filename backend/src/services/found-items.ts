@@ -362,7 +362,7 @@ const NOTE_DROPPED_KEYS = new Set<AiFeature["key"]>(["text"]);
 
 /**
  * 사진 특징 뒤에 설명 특징을 붙인다. 같은 값은 한 번만.
- * 설명 특징(source: "finder")은 주인 확인 대조에만 쓰고 객관식 질문으로는 내지 않는다(claims.ts finderFeatureIds).
+ * 설명 특징(source: "finder")은 주인 확인 대조에 쓰고, 객관식 질문에는 안전한 종류만 낸다(claims.ts finderFeatureIds).
  */
 function mergeFeatures(stored: AiFeature[], fromNote: AiFeature[]): AiFeature[] {
   const seen = new Set(stored.map((f) => f.value.replace(/\s/g, "")));

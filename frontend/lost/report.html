@@ -43,14 +43,20 @@
   <label class="field">
     <span>어디 (건물) <b class="req" aria-hidden="true">*</b></span>
     <select id="lostBuildingSelect" aria-label="잃어버린 건물 선택">
-      <option value="혜인관">혜인관</option>
-      <option value="유담관">유담관</option>
-      <option value="청운관">청운관</option>
-      <option value="북악관">북악관</option>
+      <!-- 서버 목록이 오기 전 기본값. prisma/seed-data/buildings.json과 같은 13곳 (QA 10/31) -->
       <option value="본관">본관</option>
+      <option value="유담관">유담관</option>
       <option value="한림관">한림관</option>
-      <option value="중앙도서관">중앙도서관</option>
-      <option value="학생회관">학생회관</option>
+      <option value="북악관">북악관</option>
+      <option value="문예관">문예관</option>
+      <option value="대일관">대일관</option>
+      <option value="상승관">상승관</option>
+      <option value="청운관">청운관</option>
+      <option value="혜인관">혜인관</option>
+      <option value="은주관">은주관</option>
+      <option value="수인관">수인관</option>
+      <option value="생활관">생활관</option>
+      <option value="공연실습소">공연실습소</option>
       <option value="" selected>잘 모르겠음 (캠퍼스 전체)</option>
     </select>
   </label>
