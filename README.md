@@ -9,6 +9,10 @@
   - 같은 건물·시간대에 반복되는 분실을 찾아 **사전 알림**을 보냅니다.
   - 주인 확인과 교무처 QR 수령으로 **해결**까지 잇습니다.
 
+| 습득자: 사진 한 장 등록 | 분실자: 후보 (흐린 사진) | 분실자: 객관식 확인 질문 | 관리자: 먼저 손볼 곳 |
+| --- | --- | --- | --- |
+| <img src="docs/screens/02-finder-register.jpg" width="180" alt="습득물 등록 화면"> | <img src="docs/screens/04-lost-candidates.jpg" width="180" alt="후보 화면"> | <img src="docs/screens/06-lost-quiz.jpg" width="180" alt="확인 질문 화면"> | <img src="docs/screens/09-admin-priorities.jpg" width="180" alt="관리자 우선순위 화면"> |
+
 ## 팀 스쿠나
 
 | 이름 | 역할 |
@@ -124,11 +128,8 @@ flowchart LR
 ├── packages/shared/      # 화면·서버가 함께 쓰는 zod 스키마와 타입 (API 계약)
 ├── frontend/             # 화면 (습득자 found/, 분실자 lost/, 관리자 admin/, 체험 안내 guide.html)
 ├── docs/                 # 결과보고서, 설계·보안·평가 문서, docs/api/openapi.json
-├── qa/                   # QA 통과 기준과 점검 기록
-├── tester/               # 팀 내부 시험용 화면
-├── 01_기능명세서.md
-├── 02_ERD.md
-└── 03_API명세서.md
+│   └── spec/             # 기능명세서, ERD, API명세서
+└── qa/                   # QA 통과 기준
 ```
 
 ## 로컬에서 실행하기
@@ -194,16 +195,16 @@ npm run dev                    # http://localhost:4000 (화면과 API를 함께 
 | 문서 | 내용 |
 | --- | --- |
 | [docs/결과보고서.md](docs/결과보고서.md) | 결과보고서 원본: 문제 정의, AI 활용, 측정, 구현, 비용, 한계 |
-| [01_기능명세서.md](01_기능명세서.md) | 기능과 정책 |
-| [02_ERD.md](02_ERD.md) | 데이터 구조와 DB 규칙 |
-| [03_API명세서.md](03_API명세서.md) | API (`docs/api/openapi.json`) |
+| [기능명세서](docs/spec/01_기능명세서.md) | 기능과 정책 |
+| [ERD](docs/spec/02_ERD.md) | 데이터 구조와 DB 규칙 |
+| [API명세서](docs/spec/03_API명세서.md) | API (`docs/api/openapi.json`) |
 | [docs/demo-scenario.md](docs/demo-scenario.md) | 시연 시나리오 |
 | [docs/deploy.md](docs/deploy.md) | 배포 방법 |
 | [docs/security/THREAT-MODEL.md](docs/security/THREAT-MODEL.md) | 보호할 자산과 위협별 대응 |
 | [qa/CANONICAL-AC-PACK.md](qa/CANONICAL-AC-PACK.md) | QA 통과 기준 |
 | [docs/open-issues.md](docs/open-issues.md) | 명세 검토 이슈와 결정 이력 |
 
-## AI 코딩 도구 사용
+## AI 도구 사용
 
 코드 작성과 리뷰에 AI 코딩 도구(Claude Code)를 썼습니다.
 
