@@ -80,7 +80,7 @@ const SWAP_GROUPS: string[][] = [
   ["앞", "뒤"],
   ["곰돌이", "토끼", "고양이", "강아지", "펭귄", "오리", "공룡", "병아리"],
   ["곰", "토끼", "고양이", "강아지", "펭귄", "오리", "공룡", "여우"],
-  ["하트", "별", "꽃", "달", "구름", "나비", "체리", "리본"],
+  ["하트", "별", "꽃", "달", "구름", "나비", "체리", "리본", "무지개", "번개"],
   ["흰색", "검정", "회색", "빨간", "주황", "노란", "초록", "파란", "보라", "분홍", "갈색", "남색"],
   ["줄무늬", "체크무늬", "꽃무늬", "물방울무늬", "격자무늬", "호피무늬"],
   ["금속", "가죽", "실리콘", "아크릴", "고무", "천"],
@@ -88,8 +88,12 @@ const SWAP_GROUPS: string[][] = [
   ["티켓", "영수증", "쿠폰", "명함", "사진", "메모지"],
   ["한", "두", "세", "네"],
   ["하나", "두 개", "세 개"],
+  ["짧은", "긴"],
+  ["C타입", "8핀", "마이크로5핀", "USB-A"],
 ];
 const INITIALS = "ABCDEFGHJKLMNPRSTWY";
+/** 머리글자가 아니라 물건 용어인 영문은 바꾸지 않는다 (USB-C → BKR-C 같은 이상한 보기 막기) */
+const TECH_WORDS = new Set(["USB", "LED", "LTE", "HDMI", "SD", "PD", "OK", "NFC"]);
 
 function randomLike(token: string): string {
   // 영문 머리글자(J.H, JH, KGB)와 숫자는 같은 모양의 다른 값으로
@@ -104,10 +108,12 @@ function randomLike(token: string): string {
 /** 정답과 같은 형식으로 핵심 낱말만 바꾼 오답 후보들 */
 export function mutateDistractors(correct: string, n = QUIZ_OPTIONS - 1): string[] {
   const out = new Set<string>();
-  const latinOrDigit = /[A-Z](?:\.?[A-Z])+\.?|\d+/g;
+  // 머리글자(J.H, KGB)와 숫자. 낱말에 붙은 영문(C타입)은 아래 낱말 묶음에서 바꾼다
+  const latinOrDigit = /\b[A-Z](?:\.?[A-Z])+\.?|\d+/g;
   for (let tries = 0; tries < 40 && out.size < n; tries++) {
     let next = correct;
-    if (latinOrDigit.test(correct)) next = correct.replace(latinOrDigit, (m) => randomLike(m));
+    if (latinOrDigit.test(correct))
+      next = correct.replace(latinOrDigit, (m) => (TECH_WORDS.has(m) ? m : randomLike(m)));
     latinOrDigit.lastIndex = 0;
     if (next === correct) {
       // 낱말 단위로 바꾼다 (낱말 앞부분이 묶음 낱말과 같으면 그 부분만: "안쪽에" → "뒷면에")

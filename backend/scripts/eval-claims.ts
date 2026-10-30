@@ -86,11 +86,14 @@ for (const kind of [...KINDS, "찍기 사칭" as const]) {
     `- ${kind} (${k.length}건): 후보 3개 안 ${top3}, 1단계 통과 ${passFirst}, 확인 질문 ${border}, 1단계 실패 ${fail}, 최종 통과 ${passFinal}`,
   );
 }
-// 찍기 사칭: 한 번 시도의 평균 통과 확률(정확 계산)과 계정 3회 시도 기준
+// 찍기 사칭: 한 번 시도의 평균 통과 확률(정확 계산). 맞힌 특징 없는 찍기는 계정·물건마다 한 번뿐이고,
+// 물건마다 모든 계정의 실패가 10번 쌓이면 온라인 확인이 잠긴다(계정을 10개 만든 경우의 최댓값).
 const guessRows = rows.filter((r) => r.kind === "찍기 사칭");
-const p1 = guessRows.reduce((a, r) => a + (r.guess ?? 0), 0) / Math.max(1, guessRows.length);
-const p3 = guessRows.reduce((a, r) => a + (1 - (1 - (r.guess ?? 0)) ** 3), 0) / Math.max(1, guessRows.length);
+const avg = (f: (p: number) => number) =>
+  guessRows.reduce((a, r) => a + f(r.guess ?? 0), 0) / Math.max(1, guessRows.length);
+const p1 = avg((p) => p);
+const p10 = avg((p) => 1 - (1 - p) ** 10);
 console.log(
-  `- 찍기 사칭 통과 확률(보기 수로 계산, 시드 평균): 1회 ${(p1 * 100).toFixed(1)}%, 계정당 3회 ${(p3 * 100).toFixed(1)}%`,
+  `- 찍기 사칭 통과 확률(보기 수로 계산, 시드 평균): 계정 하나 ${(p1 * 100).toFixed(1)}%, 학교 계정 10개로 물건 잠길 때까지 ${(p10 * 100).toFixed(1)}%`,
 );
 await prisma.$disconnect();
