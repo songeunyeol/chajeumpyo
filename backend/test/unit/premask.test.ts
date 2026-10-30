@@ -185,6 +185,8 @@ describe("로고 사본 (10/31 A안)", () => {
     const r = await onnxPremasker(await jpeg(CARD));
     // 1단계 사본은 늘 번호 줄을 가린다. 로고 사본이 생기더라도 카드·지갑 종류에서는 AI로 보내지도 저장하지도 않는다
     expect(r.texts).toBeGreaterThanOrEqual(1);
-    expect(await regionDiff(await jpeg(CARD), r.image, { left: 420, top: 440, width: 360, height: 60 })).toBeGreaterThan(20);
+    expect(
+      await regionDiff(await jpeg(CARD), r.image, { left: 420, top: 440, width: 360, height: 60 }),
+    ).toBeGreaterThan(20);
   }, 30_000);
 });
