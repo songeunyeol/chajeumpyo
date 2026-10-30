@@ -144,7 +144,7 @@
   // 분석 결과 (uploading.html이 저장). 없으면 사진부터
   const draft = FoundApi.store.get("foundDraft");
   if (!draft) {
-    let back = "photo.html";
+    let back = "photo.html?need=photo"; // 사진 화면이 "사진을 먼저 올려 주세요"를 띄운다
     try {
       if (sessionStorage.getItem("foundConsent") !== "granted") back = "consent.html";
     } catch (_) {}
@@ -526,7 +526,12 @@
         handoverSelect.hidden = false;
       }
     })
-    .catch((err) => alert(err.message));
+    .catch((err) => {
+      // 사진 없이 바로 들어와 다른 화면으로 넘어가는 중이면 끊긴 요청이라 안내하지 않는다 (10/30 평가: alert가 떴다)
+      if (!draft) return;
+      placeText.textContent = `보관처 목록을 불러오지 못했어요. ${err.message}`;
+      placeText.hidden = false;
+    });
 
   submitBtn.addEventListener("click", async () => {
     if (submitting || !draft) return;

@@ -63,12 +63,22 @@
   let captchaReady = Promise.resolve();
   const mountCaptcha = () =>
     LostApi.useCaptcha(document.getElementById("captchaBox"), "demo-login", {
-      onError: () => {
-        consentErr.textContent = "사람인지 확인하지 못했어요. 잠시 후 다시 눌러 주세요.";
-        consentErr.hidden = false;
-      },
+      onError: () => showCaptchaHelp({ captchaKind: "failed" }),
     }).then((c) => (captcha = c));
   if (isDemo) captchaReady = mountCaptcha();
+  /** 보안 확인(캡차) 문제면 위젯 아래에 이유와 "다시 확인"을 띄우고 true. 다시 확인은 위젯을 새로 받는다 */
+  function showCaptchaHelp(err) {
+    const message = window.FoundCaptcha?.helpMessage(err);
+    if (!message) return false;
+    FoundCaptcha.showHelp(document.getElementById("captchaBox"), {
+      message,
+      onRetry: () => {
+        if (captcha) captcha.reset();
+        else captchaReady = mountCaptcha();
+      },
+    });
+    return true;
+  }
   let busy = false;
   agreeBtn.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -91,10 +101,14 @@
         captchaReady = mountCaptcha();
         await captchaReady;
       }
-      if (!captcha) throw new LostApi.ApiError(400, { error: { code: "CAPTCHA_FAILED", message: "사람인지 확인하지 못했어요. 잠시 후 다시 눌러 주세요." } });
+      if (!captcha) throw LostApi.captchaUnavailableError();
       await LostApi.demoLogin({ location: !locConsent.classList.contains("is-off") });
       location.replace("home.html");
     } catch (err) {
+      if (showCaptchaHelp(err)) {
+        consentErr.hidden = true;
+        return;
+      }
       consentErr.textContent = LostApi.friendlyMessage(err);
       consentErr.hidden = false;
     } finally {

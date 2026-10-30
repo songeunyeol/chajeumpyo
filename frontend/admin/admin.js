@@ -236,7 +236,7 @@
     return a;
   }
 
-  const DEMO_STATE_KEY = "adminDemoState";
+  const DEMO_STATE_KEY = "adminDemoState.v2"; // 시연 데이터 모양이 바뀌면 숫자를 올려 옛 탭 상태를 버린다
 
   function photoSvg(label, fill) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="${fill}"/><text x="320" y="188" text-anchor="middle" font-size="28" font-family="sans-serif" fill="#1e5b3d">${label}</text></svg>`;
@@ -312,8 +312,9 @@
         title: "갈색 반지갑",
         building: { id: 1, name: "본관" },
         floor: 1,
-        storageType: "IN_PLACE",
-        storagePlace: null,
+        // 수령 QR은 보관처에 맡긴 물건에만 발급된다 → 알림과 맞게 교무처 보관 (10/30 평가)
+        storageType: "HANDED_OVER",
+        storagePlace: { id: 1, name: "교무처" },
         foundAt: hoursAgo(8),
         isSeed: true,
         claimLockedAt: null,
@@ -327,10 +328,15 @@
         publicImageUrl: photoSvg("공개본 · 지갑", "#e7e1d4"),
         thumbnailUrl: photoSvg("블러본", "#d5cbbd"),
         expiresAt: null,
+        // "서로 다른 계정이 열람" 알림과 맞게 두 계정이 통과·열람했다
         attempts: [
+          { emailMasked: "ab***@example.invalid", result: "PASS", answerCorrect: true, createdAt: hoursAgo(3) },
           { emailMasked: "st****@example.invalid", result: "PASS", answerCorrect: true, createdAt: hoursAgo(1) },
         ],
-        reveals: [{ emailMasked: "st****@example.invalid", revealedAt: hoursAgo(1) }],
+        reveals: [
+          { emailMasked: "ab***@example.invalid", revealedAt: hoursAgo(3) },
+          { emailMasked: "st****@example.invalid", revealedAt: hoursAgo(1) },
+        ],
         pickups: [
           {
             id: "pk_demo",
@@ -411,7 +417,7 @@
         foundItemId: "fi-revealed",
         lostReportId: null,
         readAt: null,
-        createdAt: hoursAgo(2),
+        createdAt: hoursAgo(1),
       },
     ];
   }

@@ -41,7 +41,7 @@ describe("시연 분실 다발", () => {
     expect(res.reportHotspots[0]).toMatchObject({
       building: "혜인관",
       category: "EARPHONE",
-      reports: 4,
+      reports: 3, // 기본 30일: 45일 전 신고는 빠진다
       open: 3,
       found: 1,
     });
@@ -100,5 +100,38 @@ describe("시연 분실 다발", () => {
       trend: "UP",
     });
     expect(res.priorities[0]?.forecastBasis).toContain("참고용");
+  });
+});
+
+describe("기간 검증과 시연 데이터 날짜 (실서비스 평가 10/30)", () => {
+  it("미래 기간에는 시연 데이터가 생기지 않는다: 끝이 미래면 오늘까지로 자른다", () => {
+    const res = demoHotspots({ from: "2026-10-25", to: "2026-11-20" }, NOW);
+    expect(res.to).toBe("2026-10-30");
+    expect(res.clampedToToday).toBe(true);
+    expect(HotspotResponse.parse(res)).toEqual(res);
+  });
+
+  it("시작이 미래면 400(VALIDATION_ERROR)", () => {
+    expect(() => demoHotspots({ from: "2026-11-05", to: "2026-11-20" }, NOW)).toThrow(/아직 오지 않은 기간/);
+    expect(() => hotspotRange({ from: "2026-11-05" }, NOW)).toThrow();
+  });
+
+  it("오늘까지인 기간은 자르지 않는다", () => {
+    expect(demoHotspots({ from: "2026-10-01", to: "2026-10-30" }, NOW).clampedToToday).toBeUndefined();
+  });
+
+  it("신고 반복도 기간에 따라 달라진다", () => {
+    const total = (from: string) =>
+      demoHotspots({ from, to: "2026-10-30" }, NOW).reportHotspots.reduce((n, h) => n + h.reports, 0);
+    const d7 = total("2026-10-24");
+    const d30 = total("2026-10-01");
+    const d90 = total("2026-08-02");
+    expect(d7).toBeLessThan(d30);
+    expect(d30).toBeLessThan(d90);
+  });
+
+  it("기타 전자기기 예방 조치는 분류 이름에 맞는 문구", () => {
+    const top = demoHotspots({}, NOW).priorities.find((p) => p.category === "CHARGER");
+    expect(top?.action).toContain("전자기기");
   });
 });
