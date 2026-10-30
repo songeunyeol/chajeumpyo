@@ -1,15 +1,19 @@
 // 관리자 화면 ↔ 백엔드 연결. 화면마다 이 파일 하나만 불러온다.
-// API 주소는 found/api.js와 같은 규칙: ?api=... 로 한 번 주면 기억하고, 없으면
+// API 주소는 found/api.js와 같은 규칙: 개발 주소에서만 ?api=... 로 한 번 주면 기억하고, 없으면
 // 개발(정적 서버 5500 포트)은 이 호스트의 4000 포트, 배포는 같은 주소의 /api/v1.
 // 로그인 토큰은 sessionStorage에만 둔다(탭을 닫으면 사라진다).
 (function () {
+  // ?api= 주소 바꾸기는 개발(포트가 붙은 주소, localhost, 사설 IP)에서만 받는다. 배포 주소에서는 무시한다
+  const devHost =
+    location.port !== "" || /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
   const params = new URLSearchParams(location.search);
-  try {
-    if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
-  } catch (_) {}
   let saved = null;
   try {
-    saved = sessionStorage.getItem("apiBase");
+    if (!devHost) sessionStorage.removeItem("apiBase");
+    else {
+      if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
+      saved = sessionStorage.getItem("apiBase");
+    }
   } catch (_) {}
   const devStatic = location.port === "5500";
   const API_BASE =
@@ -159,7 +163,25 @@
     MULTI_REVEAL: "여러 명이 열람했어요",
     NEW_CANDIDATE: "새 후보",
     SYSTEM: "알림",
+    ITEM_INCOMING: "맡길 물건 등록",
+    PICKUP_SCHEDULED: "수령 예정",
   };
+  /** shared NOTIFICATION_KIND와 같게. ACTION: 사람이 판단할 일, INFO: 알아 두면 되는 일 */
+  const NOTIFICATION_KIND = {
+    NEW_CANDIDATE: "INFO",
+    MULTI_REVEAL: "ACTION",
+    CLAIM_LOCKED: "ACTION",
+    SYSTEM: "ACTION",
+    ITEM_INCOMING: "INFO",
+    PICKUP_SCHEDULED: "INFO",
+  };
+  /** shared CLOSED_REASON_LABELS와 같게 */
+  const CLOSED_REASON_LABELS = {
+    DISPOSED: "폐기·이관",
+    MISREGISTERED: "잘못 등록",
+  };
+  /** 층 글자: shared floorLabel과 같게. -1 → "지하 1층" (QA 10/30 3차: 관리자만 "-1층"으로 보였음) */
+  const floorLabel = (f) => (f === null || f === undefined ? "" : f < 0 ? `지하 ${-f}층` : `${f}층`);
 
   /** 화면 이름: 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름 (shared itemLabel). 종류가 없으면 빈 글자 */
   const itemLabel = (category, sub) => (sub && SUB_CATEGORY_LABELS[sub]) || CATEGORY_LABELS[category] || "";
@@ -372,6 +394,15 @@
         createdAt: hoursAgo(1),
       },
       {
+        id: "nt-pickup",
+        type: "PICKUP_SCHEDULED",
+        message: "갈색 반지갑 수령 예정: 확인을 통과한 학생이 수령 QR을 받았어요(24시간 유효).",
+        foundItemId: "fi-revealed",
+        lostReportId: null,
+        readAt: null,
+        createdAt: hoursAgo(1),
+      },
+      {
         id: "nt-reveal",
         type: "MULTI_REVEAL",
         message: "갈색 반지갑을 서로 다른 계정이 열람했어요. 수령 때 본인을 한 번 더 봐 주세요.",
@@ -436,6 +467,30 @@
         total: filtered.length,
         counts: countsOf(state.items),
       };
+    }
+
+    if (itemId && url.pathname.endsWith("/close") && method === "POST") {
+      const item = state.items.find((row) => row.id === itemId);
+      if (!item) throw new ApiError(404, { error: { code: "NOT_FOUND", message: "물건을 찾을 수 없어요." } });
+      if (item.status === "CLAIMED") {
+        throw new ApiError(409, { error: { code: "ALREADY_CLAIMED", message: "이미 수령된 물건이에요." } });
+      }
+      if (!["REGISTERED", "REVEALED", "REVIEW"].includes(item.status)) {
+        throw new ApiError(409, { error: { code: "NOT_CLOSABLE", message: "보관 중인 물건만 끝낼 수 있어요." } });
+      }
+      const closedAt = new Date().toISOString();
+      const purge = body?.reason === "MISREGISTERED";
+      const next = {
+        ...item,
+        status: "EXPIRED",
+        closedAt,
+        closedReason: body?.reason === "MISREGISTERED" ? "MISREGISTERED" : "DISPOSED",
+        closedByEmailMasked: "ce***@skuniv.ac.kr",
+        ...(purge ? { originalImageUrl: null, publicImageUrl: null, thumbnailUrl: null, hiddenTrait: null } : {}),
+        pickups: item.pickups.map((p) => (p.status === "ISSUED" ? { ...p, status: "EXPIRED" } : p)),
+      };
+      saveDemoState({ ...state, items: state.items.map((row) => (row.id === itemId ? next : row)) });
+      return { ...next };
     }
 
     if (itemId && url.pathname.endsWith("/in-person-pickup") && method === "POST") {
@@ -537,47 +592,8 @@
     }
 
     if (url.pathname === "/admin/stats/hotspots" && method === "GET") {
-      return {
-        isSeedData: true,
-        from: url.searchParams.get("from"),
-        to: url.searchParams.get("to"),
-        total: 28,
-        byBuilding: [
-          { building: "유담관", count: 12 },
-          { building: "혜인관", count: 9 },
-          { building: "본관", count: 7 },
-        ],
-        byHour: [
-          { hour: 13, count: 8 },
-          { hour: 14, count: 7 },
-          { hour: 18, count: 4 },
-        ],
-        byCategory: [
-          { category: "CHARGER", count: 9 },
-          { category: "UMBRELLA", count: 7 },
-          { category: "WALLET", count: 5 },
-        ],
-        topInsight: "유담관에서 오후 1~3시에 기타 전자기기 분실이 가장 많아요.",
-        priorities: [
-          {
-            building: "유담관", startHour: 13, category: "CHARGER", count: 6, recent: 4, earlier: 2, trend: "UP", unclaimed: 3, level: "HIGH", expectedNextWeek: 1.9,
-            summary: "유담관 오후 1시~3시 기타 전자기기 분실 6건 (최근 늘고 있어요, 보관 중 3건)",
-            action: "유담관 콘센트 자리에 \"충전기 챙기기\" 안내를 붙이고, 오후 1시~3시 직후 순찰 때 콘센트를 확인해요.",
-          },
-          {
-            building: "혜인관", startHour: 18, category: "UMBRELLA", count: 3, recent: 1, earlier: 2, trend: "DOWN", unclaimed: 1, level: "MEDIUM", expectedNextWeek: 0.5,
-            summary: "혜인관 저녁 6시~8시 우산 분실 3건 (최근 줄고 있어요, 보관 중 1건)",
-            action: "혜인관 출입구에 우산꽂이 위치를 안내하고, 비 온 날 저녁 6시~8시 뒤 우산꽂이를 정리해요.",
-          },
-        ],
-        reportHotspots: [
-          {
-            building: "혜인관", category: "EARPHONE", reports: 4, open: 3, found: 1,
-            summary: "혜인관 무선 이어폰 분실 신고 4건 (못 찾음 3건, 같은 곳 습득 등록 1건)",
-            action: "찾는 신고보다 들어온 물건이 적어요. 혜인관 출입구·강의실에 \"주운 물건은 사진 한 장으로 등록\" QR 안내를 붙여요.",
-          },
-        ],
-      };
+      // 시연 데이터도 서버가 실제 통계와 같은 집계 코드로 계산한다 (학생 데이터 없음)
+      return call(`/demo/admin/stats/hotspots${url.search}`, { token: false });
     }
 
     if (url.pathname === "/notifications" && method === "GET") {
@@ -716,7 +732,7 @@
   /** 주운 곳 글자: "혜인관 3층" / 모르면 "주운 곳 모름" */
   function placeText(item) {
     if (!item.building) return "주운 곳 모름";
-    return item.floor !== null && item.floor !== undefined ? `${item.building.name} ${item.floor}층` : item.building.name;
+    return [item.building.name, floorLabel(item.floor)].filter(Boolean).join(" ");
   }
 
   /** 목록·상세 제목: AI 제목 → 종류 이름 → 확인 전 */
@@ -740,6 +756,9 @@
     PICKUP_METHOD_LABELS,
     PICKUP_STATUS_LABELS,
     NOTIFICATION_LABELS,
+    NOTIFICATION_KIND,
+    CLOSED_REASON_LABELS,
+    floorLabel,
     ApiError,
     auth,
     requireLogin,
@@ -780,6 +799,9 @@
     getItem: (id) => call(`/admin/found-items/${encodeURIComponent(id)}`),
     /** PATCH /admin/found-items/:id. 바꾼 칸만 보낸다 */
     updateItem: (id, body) => call(`/admin/found-items/${encodeURIComponent(id)}`, { method: "PATCH", body }),
+    /** POST /admin/found-items/:id/close: 보관 종료. reason = DISPOSED | MISREGISTERED */
+    closeItem: (id, reason) =>
+      call(`/admin/found-items/${encodeURIComponent(id)}/close`, { method: "POST", body: { reason } }),
     inPersonPickup: (id, verificationNote) =>
       call(`/admin/found-items/${encodeURIComponent(id)}/in-person-pickup`, {
         method: "POST",

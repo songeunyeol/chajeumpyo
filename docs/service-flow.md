@@ -1,6 +1,6 @@
 # 서비스 흐름도
 
-> 2026-10-12 기준. [기능 명세서](../01_기능명세서.md)와 P0 백엔드 구현(PR #2~#20)을 바탕으로 정리했다. 명세가 바뀌면 이 문서도 같이 고친다.
+> 2026-10-12 기준. [기능 명세서](./spec/01_기능명세서.md)와 P0 백엔드 구현(PR #2~#20)을 바탕으로 정리했다. 명세가 바뀌면 이 문서도 같이 고친다.
 > 아직 정하지 않은 정책은 [open-issues](./open-issues.md) 번호로 표시했다.
 
 ## 0. 한 줄 요약
@@ -169,7 +169,6 @@
 
 ## 7. 화면과의 연결
 
-- 분실자 화면 번호는 [Claude 디자인 프롬프트](./design/claude-design-prompt.md) 4-1장 번호와 같다.
 - Figma: [찾음표 UI](https://www.figma.com/design/Pelc48hC1r9swz19IiNI8x) — 01 토큰·컴포넌트, 02 분실자 흐름, 03 PC. 습득자·관리자 화면은 2회차에서 추가한다.
 - QA 기준표와 다른 지점: [qa-conflicts](./qa-conflicts.md)
 - API 전체 목록: `/api/docs` (Swagger), [`docs/api/openapi.json`](./api/openapi.json)

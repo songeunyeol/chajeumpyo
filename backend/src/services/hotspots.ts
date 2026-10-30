@@ -25,7 +25,7 @@ const kstDate = (d: Date) => new Date(d.getTime() + KST_OFFSET_MS).toISOString()
 /** "2026-10-01"(한국 날짜) 0시의 실제 시각 */
 const kstStart = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - KST_OFFSET_MS);
 
-type Row = {
+export type Row = {
   building: string;
   hour: number;
   category: Category | null;
@@ -195,7 +195,7 @@ export function buildPriorities(rows: Row[], start: Date, end: Date): HotspotPri
     .map((x) => x.priority);
 }
 
-type ReportRow = { building: string | null; category: Category; open: boolean };
+export type ReportRow = { building: string | null; category: Category; open: boolean };
 type FoundKey = { building: string | null; category: Category | null };
 
 /**
@@ -237,12 +237,44 @@ export function buildReportHotspots(reports: ReportRow[], found: FoundKey[]): Re
     .slice(0, MAX_PRIORITIES);
 }
 
-/** GET /admin/stats/hotspots (F-15). 실제 데이터만 집계하고, 없으면 시드 데이터로 집계해 표시한다. */
-export async function hotspots(query: HotspotQuery, now = new Date()): Promise<HotspotResponse> {
+/** 기간(한국 날짜)을 실제 시각 범위로. 생략하면 오늘까지 30일 */
+export function hotspotRange(query: HotspotQuery, now = new Date()) {
   const to = query.to ?? kstDate(now);
   const from = query.from ?? kstDate(new Date(kstStart(to).getTime() - (DEFAULT_DAYS - 1) * 86_400_000));
   const start = kstStart(from);
   const end = new Date(kstStart(to).getTime() + 86_400_000);
+  return { from, to, start, end };
+}
+
+/**
+ * 집계 본체. 실제 통계(hotspots)와 관리자 시연(demo-hotspots)이 같은 함수로 계산한다.
+ * found: 같은 곳 습득 수를 셀 때 쓰는 습득물(신고 반복 비교용)
+ */
+export function computeHotspots(
+  range: ReturnType<typeof hotspotRange>,
+  rows: Row[],
+  reports: ReportRow[],
+  found: FoundKey[],
+  isSeedData: boolean,
+): HotspotResponse {
+  return {
+    from: range.from,
+    to: range.to,
+    isSeedData,
+    total: rows.length,
+    byBuilding: ranked(countBy(rows, (r) => r.building)).map(([building, count]) => ({ building, count })),
+    byHour: ranked(countBy(rows, (r) => r.hour)).map(([hour, count]) => ({ hour, count })),
+    byCategory: ranked(countBy(rows, (r) => r.category)).map(([category, count]) => ({ category, count })),
+    topInsight: buildInsight(rows),
+    priorities: buildPriorities(rows, range.start, range.end),
+    reportHotspots: buildReportHotspots(reports, found),
+  };
+}
+
+/** GET /admin/stats/hotspots (F-15). 실제 데이터만 집계하고, 없으면 시드 데이터로 집계해 표시한다. */
+export async function hotspots(query: HotspotQuery, now = new Date()): Promise<HotspotResponse> {
+  const range = hotspotRange(query, now);
+  const { start, end } = range;
 
   const all = await prisma.$queryRaw<Row[]>`
     SELECT b.name AS building,
@@ -261,20 +293,7 @@ export async function hotspots(query: HotspotQuery, now = new Date()): Promise<H
 
   const real = all.filter((r) => !r.isSeed);
   const isSeedData = real.length === 0 && all.length > 0;
-  const rows = isSeedData ? all : real;
-
-  return {
-    from,
-    to,
-    isSeedData,
-    total: rows.length,
-    byBuilding: ranked(countBy(rows, (r) => r.building)).map(([building, count]) => ({ building, count })),
-    byHour: ranked(countBy(rows, (r) => r.hour)).map(([hour, count]) => ({ hour, count })),
-    byCategory: ranked(countBy(rows, (r) => r.category)).map(([category, count]) => ({ category, count })),
-    topInsight: buildInsight(rows),
-    priorities: buildPriorities(rows, start, end),
-    reportHotspots: buildReportHotspots(reports, real),
-  };
+  return computeHotspots(range, isSeedData ? all : real, reports, real, isSeedData);
 }
 
 /** 같은 구간 알림을 다시 보내지 않는 기간 */

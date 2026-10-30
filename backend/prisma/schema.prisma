@@ -1,4 +1,4 @@
-// 기준: 02_ERD.md. 테이블·컬럼 이름은 DB에서 snake_case로 쓴다(raw SQL 작성 편의).
+// 기준: docs/spec/02_ERD.md. 테이블·컬럼 이름은 DB에서 snake_case로 쓴다(raw SQL 작성 편의).
 // 바뀐 점과 미결 사항은 docs/open-issues.md 참고.
 
 generator client {
@@ -95,6 +95,18 @@ enum NotificationType {
   MULTI_REVEAL
   CLAIM_LOCKED
   SYSTEM
+  /// 관리자: 습득자가 보관처에 맡긴다고 등록한 물건. 실물이 오기를 기다린다 (QA 10/30 3차)
+  ITEM_INCOMING
+  /// 관리자: 확인을 통과한 사람이 수령 QR을 받았다. 24시간 안에 찾으러 온다
+  PICKUP_SCHEDULED
+}
+
+/// 관리자가 보관을 끝낸 이유 (QA 10/30 3차: 관리자 화면에 지우는 기능이 없음)
+enum ClosedReason {
+  /// 보관 기간 전에 폐기·이관 (예: 학과로 돌려보냄, 상한 음식)
+  DISPOSED
+  /// 잘못 등록함 (물건 없음, 같은 물건 중복 등록, 시험 등록)
+  MISREGISTERED
 }
 
 model User {
@@ -115,6 +127,7 @@ model User {
   reveals         RevealLog[]
   pickups         Pickup[]       @relation("PickupUser")
   processed       Pickup[]       @relation("PickupAdmin")
+  closedItems     FoundItem[]    @relation("ClosedFoundItems")
   notifications   Notification[]
 
   @@map("user")
@@ -195,6 +208,11 @@ model FoundItem {
   claimLockedAt       DateTime?        @map("claim_locked_at")
   /// 두 단계 등록(analyze → confirm)에서 확정 권한 토큰의 HMAC. 확정하면 지운다
   confirmTokenHash    String?          @map("confirm_token_hash")
+  /// 관리자가 보관을 끝낸 기록. 행은 지우지 않고 기한 만료(EXPIRED)로 바꾼 뒤 이유·처리자·시각을 남긴다
+  closedAt            DateTime?        @map("closed_at")
+  closedReason        ClosedReason?    @map("closed_reason")
+  closedBy            User?            @relation("ClosedFoundItems", fields: [closedById], references: [id])
+  closedById          String?          @map("closed_by_id") @db.Uuid
   detail              FoundItemDetail?
   attempts            MatchAttempt[]
   reveals             RevealLog[]

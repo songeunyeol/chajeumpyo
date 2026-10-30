@@ -1,4 +1,5 @@
 import {
+  AdminCloseFoundItemRequest,
   AdminFoundItemDetailResponse,
   AdminFoundItemListQuery,
   AdminFoundItemListResponse,
@@ -11,9 +12,11 @@ import {
 } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { getAuth, requireAdmin } from "../middlewares/auth";
+import { ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import * as service from "../services/admin-found-items";
+import { demoHotspots } from "../services/demo-hotspots";
 import { hotspots } from "../services/hotspots";
 import { completeInPersonPickup } from "../services/pickups";
 
@@ -80,6 +83,23 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: "post",
+  path: "/admin/found-items/{id}/close",
+  tags,
+  security,
+  summary: "보관 종료 (폐기·이관 / 잘못 등록)",
+  description: `행은 지우지 않고 기한 만료로 바꿔 후보·공개 목록에서 뺀다. 이유·처리 관리자·시각을 남기고, 받아 간 수령 QR은 만료시킨다. 잘못 등록이면 사진과 비공개 정보를 바로 지운다. 수령된 물건·체험용 물건은 끝낼 수 없다. ${scopeNote}`,
+  request: { params: FoundItemIdParams, body: json(AdminCloseFoundItemRequest) },
+  responses: {
+    200: { description: "끝낸 뒤 상세", ...json(AdminFoundItemDetailResponse) },
+    400: errorResponse("VALIDATION_ERROR"),
+    403: errorResponse("FORBIDDEN: 관리 범위 밖"),
+    404: errorResponse("NOT_FOUND"),
+    409: errorResponse("ALREADY_CLAIMED · NOT_CLOSABLE: 이미 끝났거나 확정 전·체험용 물건"),
+  },
+});
+
+registry.registerPath({
   method: "get",
   path: "/admin/stats/hotspots",
   tags,
@@ -89,6 +109,21 @@ registry.registerPath({
     "습득물 등록 건수를 건물·시간대(한국 시간)·종류별로 집계. 기간은 한국 날짜, 생략하면 최근 30일. 실제 데이터만 집계하고, 없으면 시드로 집계해 isSeedData=true. 모든 관리자가 캠퍼스 전체를 본다.",
   request: { query: HotspotQuery },
   responses: { 200: { description: "집계", ...json(HotspotResponse) }, 400: errorResponse("VALIDATION_ERROR") },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/demo/admin/stats/hotspots",
+  tags,
+  summary: "관리자 시연용 분실 다발 카드",
+  description:
+    "로그인 없이 관리자 시연 모드에서 쓴다. DB를 읽지 않고 서버 메모리의 시연 데이터(날짜는 오늘 기준 상대값)를 실제 통계와 같은 집계 함수로 계산한다. 학생 데이터·개인정보 없음. 항상 isSeedData=true.",
+  request: { query: HotspotQuery },
+  responses: {
+    200: { description: "집계", ...json(HotspotResponse) },
+    400: errorResponse("VALIDATION_ERROR"),
+    429: errorResponse("RATE_LIMITED"),
+  },
 });
 
 export function createAdminRouter() {
@@ -138,8 +173,33 @@ export function createAdminRouter() {
     },
   );
 
+  router.post(
+    "/admin/found-items/:id/close",
+    requireAdmin(),
+    validate("params", FoundItemIdParams),
+    validate("body", AdminCloseFoundItemRequest),
+    async (_req, res) => {
+      const result: AdminFoundItemDetailResponse = await service.closeFoundItem(
+        admin(res),
+        res.locals.params.id,
+        res.locals.body,
+      );
+      res.json(result);
+    },
+  );
+
   router.get("/admin/stats/hotspots", requireAdmin(), validate("query", HotspotQuery), async (_req, res) => {
     const result: HotspotResponse = await hotspots(res.locals.query);
+    res.json(result);
+  });
+
+  const demoLimit = ipRateLimit({
+    windowMinutes: 1,
+    limit: 60,
+    message: "요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
+  });
+  router.get("/demo/admin/stats/hotspots", demoLimit, validate("query", HotspotQuery), (_req, res) => {
+    const result: HotspotResponse = demoHotspots(res.locals.query);
     res.json(result);
   });
 

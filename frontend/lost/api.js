@@ -3,22 +3,25 @@
 //   <script src="api.js"></script>
 //   const res = await LostApi.createReport({ category, lostFrom, lostTo, buildingId, description });
 //   try { ... } catch (e) { alert(LostApi.friendlyMessage(e)); }
-// 화면별로 어떤 함수를 부르는지는 WIRING.md에 있다.
 //
 // API 주소 (배포에서도 안전하게):
-//   1) ?api=https://.../api/v1 로 한 번 주면 이 탭(sessionStorage)에서 기억한다 (found/api.js와 같은 키 "apiBase")
+//   1) 개발 주소에서만 ?api=https://.../api/v1 로 한 번 주면 이 탭(sessionStorage)에서 기억한다 (found/api.js와 같은 키 "apiBase")
 //   2) 포트가 붙은 주소(개발용 정적 서버: 5500, 8000 등)로 열었으면 같은 호스트의 4000 포트
 //      (백엔드 기본 PORT, found/api.js와 같음. 휴대폰에서 PC IP로 열어도 맞게)
 //   3) 포트 없는 주소(배포, https)는 같은 출처의 /api/v1
 (() => {
   // ── API 주소 ──────────────────────────────────────────────
+  // ?api= 주소 바꾸기는 개발(포트가 붙은 주소, localhost, 사설 IP)에서만 받는다. 배포 주소에서는 무시한다
+  const devHost =
+    location.port !== "" || /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
   const params = new URLSearchParams(location.search);
-  try {
-    if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
-  } catch (_) {}
   let saved = null;
   try {
-    saved = sessionStorage.getItem("apiBase");
+    if (!devHost) sessionStorage.removeItem("apiBase");
+    else {
+      if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
+      saved = sessionStorage.getItem("apiBase");
+    }
   } catch (_) {}
   const DEV_API_PORT = "4000";
   const defaultBase =
@@ -454,7 +457,7 @@
     }
   }
   const listeners = [];
-  /** 요청마다 { method, path, status, ms, body(가린 응답), request(가린 요청) }를 받는다 (_flow.html이 쓴다) */
+  /** 요청마다 { method, path, status, ms, body(가린 응답), request(가린 요청) }를 받는다 */
   const onLog = (fn) => listeners.push(fn);
 
   // ── 요청 ─────────────────────────────────────────────────

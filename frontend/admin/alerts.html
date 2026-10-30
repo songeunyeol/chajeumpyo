@@ -14,6 +14,11 @@
   <header class="bar"><a class="back" href="home.html">←</a><h2>알림</h2></header>
   <h1>챙겨야 할 일</h1>
   <p class="lead" id="lead">불러오는 중…</p>
+  <div class="chips" id="filter" role="group" aria-label="알림 거르기" style="margin:0 0 12px">
+    <button type="button" class="chip" data-kind="" aria-pressed="true">전체</button>
+    <button type="button" class="chip" data-kind="ACTION" aria-pressed="false" style="background:var(--white);color:var(--ink)">확인 필요</button>
+    <button type="button" class="chip" data-kind="INFO" aria-pressed="false" style="background:var(--white);color:var(--ink)">정보</button>
+  </div>
   <button type="button" class="btn white" id="readAll" style="width:100%;cursor:pointer;display:none">모두 읽음</button>
   <div id="list" style="margin-top:12px"></div>
   <p class="note danger" id="error" role="alert" hidden></p>
@@ -26,21 +31,39 @@
   const lead = document.getElementById("lead");
   const readAll = document.getElementById("readAll");
 
+  // 확인 필요: 사람이 판단할 일(잠금, 여러 계정 열람, 반복 분실). 정보: 맡긴 물건 등록, 수령 예정 (QA 10/30 3차)
+  let kind = "";
+  let last = null;
+  document.querySelectorAll("#filter [data-kind]").forEach((b) => b.addEventListener("click", () => {
+    kind = b.dataset.kind;
+    document.querySelectorAll("#filter [data-kind]").forEach((x) => {
+      const on = x === b;
+      x.setAttribute("aria-pressed", String(on));
+      x.style.background = on ? "" : "var(--white)";
+      x.style.color = on ? "" : "var(--ink)";
+    });
+    if (last) render(last);
+  }));
+
   function render(data) {
+    last = data;
     lead.textContent = data.unreadCount ? `읽지 않은 알림 ${data.unreadCount}개` : "읽지 않은 알림이 없어요.";
     AdminApi.show(readAll, data.unreadCount > 0);
-    if (!data.notifications.length) {
-      list.replaceChildren(el("div", { class: "card", text: "아직 알림이 없어요." }));
+    const shown = data.notifications.filter((n) => !kind || (AdminApi.NOTIFICATION_KIND[n.type] || "ACTION") === kind);
+    if (!shown.length) {
+      list.replaceChildren(el("div", { class: "card", text: data.notifications.length ? "이 구분의 알림이 없어요." : "아직 알림이 없어요." }));
       return;
     }
-    list.replaceChildren(...data.notifications.map((item) => {
+    list.replaceChildren(...shown.map((item) => {
+      const info = AdminApi.NOTIFICATION_KIND[item.type] === "INFO";
       const card = el("a", {
         class: "card",
         href: item.foundItemId ? `item.html?id=${encodeURIComponent(item.foundItemId)}` : "home.html",
         style: "display:block",
       },
       el("div", { class: "chips", style: "margin-top:0" },
-        el("span", { class: item.readAt ? "chip" : "chip warn", text: AdminApi.NOTIFICATION_LABELS[item.type] || "알림" })),
+        el("span", { class: item.readAt || info ? "chip" : "chip warn", text: AdminApi.NOTIFICATION_LABELS[item.type] || "알림" }),
+        el("span", { class: "chip", style: "background:var(--white);color:var(--mute)", text: info ? "정보" : "확인 필요" })),
       el("h3", { text: item.message }),
       el("p", { class: "meta", text: AdminApi.formatTime(item.createdAt) }));
       card.addEventListener("click", () => {

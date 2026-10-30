@@ -8,7 +8,7 @@ export function buildOpenApiDocument() {
     info: {
       title: "찾음표 API",
       version: "0.1.0",
-      description: "기준 문서: 03_API명세서.md. 스키마 원본은 packages/shared.",
+      description: "기준 문서: docs/spec/03_API명세서.md. 스키마 원본은 packages/shared.",
     },
     servers: [{ url: "/api/v1" }],
   });

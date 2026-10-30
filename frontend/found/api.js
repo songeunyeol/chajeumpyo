@@ -1,15 +1,19 @@
 // 찾은 사람 화면 ↔ 백엔드 연결 (테스트 연동용).
-// API 주소: ?api=... 로 한 번 주면 기억한다. 없으면
+// API 주소: 개발 주소에서만 ?api=... 로 한 번 주면 기억한다. 없으면
 // - 개발(정적 서버 5500 포트): 이 페이지를 연 호스트의 4000 포트(휴대폰에서 PC IP로 열어도 맞게)
 // - 배포: 백엔드가 화면도 같이 내려주므로 같은 주소의 /api/v1
 (function () {
+  // ?api= 주소 바꾸기는 개발(포트가 붙은 주소, localhost, 사설 IP)에서만 받는다. 배포 주소에서는 무시한다
+  const devHost =
+    location.port !== "" || /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
   const params = new URLSearchParams(location.search);
-  try {
-    if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
-  } catch (_) {}
   let saved = null;
   try {
-    saved = sessionStorage.getItem("apiBase");
+    if (!devHost) sessionStorage.removeItem("apiBase");
+    else {
+      if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
+      saved = sessionStorage.getItem("apiBase");
+    }
   } catch (_) {}
   const devStatic = location.port === "5500";
   const API_BASE =
