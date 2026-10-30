@@ -192,17 +192,23 @@ describe("기준 3. 색·브랜드는 일치로 세지 않고, 모순일 때만 
     expect(wrong.body).toEqual({ result: "FAIL", attemptsLeft: 2, inPersonOnly: false });
   });
 
-  it("특징이 모순이면 바로 실패가 아니라 객관식으로 묻고, 틀리면 실패로 센다 (10/30)", async () => {
+  it("맞힌 특징 없이 모순만 있으면 객관식 없이 바로 실패로 센다 (10/31 B안)", async () => {
     const it1 = await item();
     const r = await newReport({ features: [feature("sticker", "토끼 스티커")] });
-    const res = await claim(r, it1.id);
-    expect(res.body.result).toBe("BORDERLINE");
-    const wrong = (await correctChoices(res.body.attemptId)).map((x) => (x + 1) % 4);
-    expect((await choose(res.body.attemptId, wrong)).body).toEqual({
+    expect((await claim(r, it1.id)).body).toEqual({
+      attemptId: expect.any(String),
+      reused: false,
       result: "FAIL",
       attemptsLeft: 2,
       inPersonOnly: false,
     });
+  });
+
+  it("맞힌 특징이 있으면 모순이 있어도 객관식으로 다시 묻는다 (10/31 B안)", async () => {
+    const it1 = await item();
+    const r = await newReport({ features: [feature("sticker", "곰돌이 스티커"), feature("keyring", "강아지 키링")] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
   });
 
   it("특징은 맞는데 색이 모순이면 BORDERLINE", async () => {
@@ -238,12 +244,11 @@ describe("기준 4. 경계 판정은 신고에 적지 않은 특징으로 질문
     expect(res.body.questions[0].options).toContain("오른쪽 아래 긁힘");
   });
 
-  it("적지 않은 특징이 없고 일치도 없으면 모순된 특징을 객관식으로 묻는다 (찍기는 계정·물건마다 한 번, 10/30)", async () => {
+  it("적지 않은 특징이 없고 일치도 없이 모순만 있으면 바로 실패 (10/31 B안)", async () => {
     const it1 = await item({ features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "오른쪽 아래 긁힘")] });
     const r = await newReport({ features: [feature("sticker", "토끼 스티커"), feature("scratch", "왼쪽 위 긁힘")] });
     const res = await claim(r, it1.id);
-    expect(res.body.result).toBe("BORDERLINE");
-    expect(res.body.questions[0].options).toContain("곰돌이 스티커");
+    expect(res.body.result).toBe("FAIL");
   });
 
   it("특징이 없는 습득물은 아무도 통과할 수 없다 (open-issues #17 현재 기준)", async () => {
@@ -257,19 +262,12 @@ describe("기준 5. 실패 응답에는 힌트가 없고, 3번 실패하면 잠�
   it("FAIL은 남은 횟수만, 3번째 실패 뒤 409 MATCH_LOCKED와 후보 잠금", async () => {
     const it1 = await item();
     const r = await newReport({ features: [feature("sticker", "토끼")] });
-    const quiz = await claim(r, it1.id);
-    expect(quiz.body.result).toBe("BORDERLINE");
-    const wrong = (await correctChoices(quiz.body.attemptId)).map((x) => (x + 1) % 4);
-    expect((await choose(quiz.body.attemptId, wrong)).body).toEqual({
-      result: "FAIL",
-      attemptsLeft: 2,
-      inPersonOnly: false,
-    });
+    // 맞힌 특징 없이 모순만 있으면 바로 실패(10/31 B안)
+    expect((await claim(r, it1.id)).body).toMatchObject({ result: "FAIL", attemptsLeft: 2, inPersonOnly: false });
 
     const patch = (description: string) =>
       request(app).patch(`/api/v1/lost-reports/${r}`).set("Authorization", `Bearer ${token}`).send({ description });
     await patch("검정 에어팟, 토끼 그림").expect(200);
-    // 맞힌 특징 없는 찍기는 이미 썼으므로 질문 없이 실패
     expect((await claim(r, it1.id)).body).toEqual({
       attemptId: expect.any(String),
       reused: false,
@@ -293,7 +291,7 @@ describe("기준 5. 실패 응답에는 힌트가 없고, 3번 실패하면 잠�
 describe("기준 6. 설명이 그대로면 이전 결과, 횟수를 쓰지 않는다", () => {
   it("같은 설명으로 다시 누르면 reused, 시도 수 그대로", async () => {
     const it1 = await item();
-    const r = await newReport({ features: [feature("sticker", "토끼")] });
+    const r = await newReport({ color: "WHITE", brand: "애플 Apple", features: [] });
     const a = await claim(r, it1.id);
     const b = await claim(r, it1.id);
     expect(b.body).toMatchObject({ result: "BORDERLINE", reused: true, attemptId: a.body.attemptId });
