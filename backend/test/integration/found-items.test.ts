@@ -43,7 +43,7 @@ async function register(fields: Record<string, string | number>, image?: Buffer,
   return req;
 }
 
-const inPlace = () => ({ buildingId, storageType: "IN_PLACE" });
+const inPlace = () => ({ buildingId, storageType: "IN_PLACE", locationDetail: "강의실 뒤 책상 위" });
 /** 가짜 AI는 늘 이어폰(귀중품)이라 그 자리에 둠은 거절된다 (QA B11). 보관 방식이 주제가 아닌 테스트는 맡김으로 등록한다 */
 const handedOver = () => ({ buildingId, storageType: "HANDED_OVER", storagePlaceId: placeId });
 const UMBRELLA: FoundItemExtraction = {
