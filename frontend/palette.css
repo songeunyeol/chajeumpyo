@@ -215,25 +215,6 @@ h1 {
   overflow: hidden;
   background: #1a2420;
 }
-.sat-layer {
-  position: absolute;
-}
-.sat-pin {
-  position: absolute;
-  z-index: 2;
-  pointer-events: none;
-}
-.sat-attr {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  z-index: 3;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
-}
 .map-badge-bar {
   position: absolute;
   left: 10px;

@@ -81,15 +81,29 @@ describe("캠퍼스 지도 (QA 10/30 B17)", () => {
     expect(map.resolveHighlights({ buildingName: "중앙도서관" }, {})[0]?.name).toBe("유담관");
   });
 
-  it("홈·완료·확인 통과 화면이 여러 핀 지도를 쓴다", () => {
-    expect(read("frontend/index.html")).toContain('highlights: [{ name: "혜인관", label: "교무처", kind: "office" }]');
+  it("분실 홈·완료·확인 통과 화면이 여러 핀 지도를 쓴다", () => {
     expect(read("frontend/lost/home.html")).toContain("office: true");
     expect(read("frontend/found/done-handover.html")).toContain("office: true");
     const handover = read("frontend/lost/item-handover.html");
     expect(handover).toContain('<script src="../naver-map.js"></script>');
     expect(handover).toContain('id="itemMapBox"');
     expect(handover).toContain("office: true");
-    // 기본은 캠퍼스맵 그림. 위성 사진은 눌렀을 때만 불러온다
-    expect(read("frontend/naver-map.js")).toContain('toggle.textContent = "위성 사진"');
+  });
+
+  it("첫 화면에는 지도가 없다", () => {
+    const index = read("frontend/index.html");
+    expect(index).not.toContain('id="homeMap"');
+    expect(index).not.toContain("naver-map.js");
+  });
+
+  it("네이버 지도를 바로 불러오고, 캠퍼스맵 그림은 네이버가 안 될 때만 남는다", () => {
+    const js = read("frontend/naver-map.js");
+    // 누를 때만 위성 사진을 부르던 버튼과 Esri 타일이 없다
+    expect(js).not.toContain("map-view-toggle");
+    expect(js).not.toContain("arcgisonline");
+    const mount = js.slice(js.indexOf("async function mount("));
+    expect(mount).toContain("renderCampusPhoto(canvasEl, loc, highlights)");
+    expect(mount).toContain("await loadNaverSdk(apiKey)");
+    expect(mount).toContain("holder.remove()");
   });
 });
