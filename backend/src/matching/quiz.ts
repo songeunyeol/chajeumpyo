@@ -74,8 +74,10 @@ export function similarShape(a: string, b: string): boolean {
 /** 같은 자리에 들어갈 수 있는 낱말 묶음. 정답의 낱말 하나를 같은 묶음의 다른 낱말로 바꿔 같은 형식의 오답을 만든다 */
 const SWAP_GROUPS: string[][] = [
   ["안쪽", "바깥쪽", "앞면", "뒷면", "옆면", "윗면", "밑면", "가운데", "모서리"],
-  ["왼쪽", "오른쪽", "위쪽", "아래쪽"],
+  ["왼쪽", "오른쪽"],
+  ["위쪽", "아래쪽"],
   ["위", "아래"],
+  ["앞", "뒤"],
   ["곰돌이", "토끼", "고양이", "강아지", "펭귄", "오리", "공룡", "병아리"],
   ["곰", "토끼", "고양이", "강아지", "펭귄", "오리", "공룡", "여우"],
   ["하트", "별", "꽃", "달", "구름", "나비", "체리", "리본"],
@@ -120,13 +122,14 @@ export function mutateDistractors(correct: string, n = QUIZ_OPTIONS - 1): string
         }
         if (best) spots.push(best);
       });
-      const spot = spots[randomInt(Math.max(1, spots.length))];
-      if (spot) {
+      // 바꿀 자리를 1~2곳 고른다 ("오른쪽 아래" → "왼쪽 아래", "오른쪽 위", "왼쪽 위")
+      const picked = shuffle(spots).slice(0, spots.length > 1 ? 1 + randomInt(2) : 1);
+      for (const spot of picked) {
         const others = spot.group.filter((w) => w !== spot.hit);
         const t = tokens[spot.i] as string;
         tokens[spot.i] = (others[randomInt(others.length)] as string) + t.slice(spot.hit.length);
-        next = tokens.join(" ");
       }
+      if (picked.length) next = tokens.join(" ");
     }
     if (next !== correct && !looselyContains(next, correct) && !looselyContains(correct, next)) out.add(next);
   }
