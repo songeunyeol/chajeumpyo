@@ -307,17 +307,13 @@ describe("기준 7. 캡차 끄기는 개발에서만", () => {
   });
 });
 
-describe("기준 8. 고가품을 그 자리에 두면 등록하지 않고 보관처에 맡겨 달라고 한다 (QA B11)", () => {
-  it("400 VALUABLE_HAND_OVER_REQUIRED, 아무것도 저장하지 않는다", async () => {
+describe("기준 8. 고가품도 그 자리에 둘 수 있다. 막지 않고 화면이 보관처를 추천한다 (10/30 정책 변경, QA B11)", () => {
+  it("201, 그 자리에 둠으로 저장한다", async () => {
     extractAs("WALLET");
     const res = await register(base());
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatchObject({
-      code: "VALUABLE_HAND_OVER_REQUIRED",
-      message: "귀중품은 보관처(교무처)에 맡겨 주세요.",
-    });
-    expect(await prisma.foundItem.count()).toBe(0);
-    expect(JSON.stringify(res.body)).not.toMatch(/WHITE|Apple|곰돌이/);
+    expect(res.status).toBe(201);
+    expect(res.body.storageType).toBe("IN_PLACE");
+    expect(await prisma.foundItem.count()).toBe(1);
   });
 });
 

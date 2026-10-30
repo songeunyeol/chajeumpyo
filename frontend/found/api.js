@@ -107,7 +107,7 @@
     KEY: ["DOOR_KEY", "CAR_KEY"],
     ETC: ["DOLL_KEYRING", "COSMETICS", "MEDICINE"],
   };
-  /** packages/shared/src/enums.ts의 VALUABLE_CATEGORIES. 보관처에만 맡길 수 있다 (QA B11) */
+  /** packages/shared/src/enums.ts의 VALUABLE_CATEGORIES. 등록 화면이 보관처를 추천한다 (10/30 정책 변경, QA B11) */
   const VALUABLE_CATEGORIES = [
     "WALLET", "ID_CARD", "DRIVER_LICENSE", "PAYMENT_CARD", "PHONE", "EARPHONE",
     "SMARTWATCH", "TABLET", "LAPTOP", "ACCESSORY", "CASH",
@@ -302,6 +302,7 @@
     store,
     nearestBuilding,
     nearestTo,
+    distanceM,
     exifGps,
     buildings: () => call("/buildings").then((r) => r.buildings),
     storagePlaces: (buildingId) =>

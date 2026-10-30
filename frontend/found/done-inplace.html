@@ -32,6 +32,7 @@
   <!-- 등록한 물건 위치가 표시되는 네이버 지도 -->
   <div class="map-box" id="doneMapBox" aria-label="등록한 물건 위치 지도"></div>
 
+  <p class="note" id="valuableInPlaceNote" hidden style="margin:10px 0 0">귀중품이에요. 가능하면 보관처(혜인관 1층 교무처, 평일 9~18시)에 맡겨 주세요.</p>
   <table class="kv">
     <tr><th>보관</th><td>그 자리에 둠</td></tr>
     <tr id="doneFloorRow" hidden><th>층</th><td id="doneFloor"></td></tr>
@@ -83,6 +84,9 @@
     if (savedDetail) {
       document.getElementById("doneDetail").textContent = savedDetail;
       document.getElementById("doneDetailRow").hidden = false;
+    }
+    if (sessionStorage.getItem("foundValuableInPlace") === "1") {
+      document.getElementById("valuableInPlaceNote").hidden = false;
     }
     const savedBuilding = sessionStorage.getItem("foundBuilding");
     if (savedBuilding) {

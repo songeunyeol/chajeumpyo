@@ -275,3 +275,31 @@ describe("AI가 한 일 (교수 평가 10/30: 분실자 화면에 AI가 보이�
     expect(read("frontend/lost/api.js")).toContain('RELATED_CATEGORY: "연관 종류"');
   });
 });
+
+describe("귀중품은 막지 않고 보관처를 추천한다 (10/30 정책 변경, QA B11)", () => {
+  const register = read("frontend/found/register.html");
+
+  it("그 자리에 둠을 숨기지 않고, 누르면 앱 안 추천 창을 띄운다", () => {
+    expect(register).not.toContain("lockToHandover");
+    expect(register).not.toContain("VALUABLE_HAND_OVER_REQUIRED");
+    expect(register).toContain('id="valuableModal"');
+    expect(register).toContain("귀중품이라 보관처에 맡기는 걸 추천드려요!");
+    expect(register).toContain("그대로 둘게요");
+    expect(register).toContain("보관처에 맡길게요");
+  });
+
+  it("가장 가까운 보관처를 거리로 고르고, 완료 화면도 한 번 더 권한다", () => {
+    expect(register).toContain("function nearestPlace");
+    expect(register).toContain("FoundApi.distanceM");
+    expect(read("frontend/found/api.js")).toMatch(/nearestTo,\s+distanceM,/);
+    expect(read("frontend/found/done-inplace.html")).toContain("가능하면 보관처");
+  });
+
+  it("받침에 맞춰 이/가를 붙인다", () => {
+    const start = register.indexOf("const subjectJosa");
+    const body = register.slice(start, register.indexOf("};", start) + 2);
+    const josa = new Function(`${body}; return subjectJosa;`)() as (w: string) => string;
+    expect(josa("교무처")).toBe("가");
+    expect(josa("학술정보관")).toBe("이");
+  });
+});

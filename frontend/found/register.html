@@ -58,7 +58,7 @@
   </div>
 
   <p class="section">보관<span style="color:var(--danger);margin-left:2px">*</span></p>
-  <p class="note" id="valuableNote" style="margin-top:0;margin-bottom:8px" hidden>이 물건은 귀중품이라 보관처에 맡겨 주세요. 잃어버린 사람이 직원 확인을 거쳐 찾아가요.</p>
+  <p class="note" id="valuableNote" style="margin-top:0;margin-bottom:8px" hidden>이 물건은 귀중품이라 보관처에 맡기는 걸 추천드려요. 잃어버린 사람이 직원 확인을 거쳐 찾아가요.</p>
   <p class="note" id="valuableInfo" style="margin-top:0;margin-bottom:8px"></p>
   <button type="button" class="choice on" id="choiceInplace" style="width:100%;border:0;cursor:pointer;text-align:left">
     <span>그 자리에 둠</span>
@@ -73,6 +73,20 @@
       <!-- 보관처가 한 곳이면 글자로 보여 주고, 여러 곳이 되면 고르게 한다 -->
       <div class="place-text" id="placeText" hidden></div>
       <select id="handoverSelect" aria-label="보관처 선택" hidden></select>
+    </div>
+  </div>
+
+  <!-- 귀중품을 그 자리에 두려 할 때: 막지 않고 가까운 보관처를 추천한다 (10/30 정책 변경, QA B11) -->
+  <div class="modal-backdrop" id="valuableModal" role="dialog" aria-modal="true" aria-labelledby="valuableModalTitle" aria-describedby="valuableModalPlace">
+    <div class="modal-card">
+      <span class="chip warn">귀중품</span>
+      <h3 id="valuableModalTitle">귀중품이라 보관처에 맡기는 걸 추천드려요!</h3>
+      <p id="valuableModalPlace" style="margin-bottom:6px"></p>
+      <p id="valuableModalGuide" style="font-size:13px"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn gray" id="keepInplaceBtn">그대로 둘게요</button>
+        <button type="button" class="btn" id="goHandoverBtn">보관처에 맡길게요</button>
+      </div>
     </div>
   </div>
 
@@ -319,6 +333,11 @@
   });
 
   choiceInplace.addEventListener("click", () => {
+    // 귀중품이면 바로 바꾸지 않고 가까운 보관처를 추천한다. "그대로 둘게요"를 고른 뒤에는 다시 묻지 않는다
+    if (valuableNow && !keepInplaceChosen && mode !== "inplace") {
+      openValuableModal();
+      return;
+    }
     mode = "inplace";
     choiceInplace.classList.add("on");
     choiceHandover.classList.remove("on");
@@ -334,7 +353,7 @@
 
   // 귀중품이 무엇인지 미리 알려 준다 (QA 10/29)
   document.getElementById("valuableInfo").textContent =
-    `귀중품(${FoundApi.VALUABLE_CATEGORIES.map((c) => (c === "EARPHONE" ? "이어폰" : FoundApi.CATEGORY_LABELS[c])).join(", ")})은 보관처에 맡겨 주세요.`;
+    `귀중품(${FoundApi.VALUABLE_CATEGORIES.map((c) => (c === "EARPHONE" ? "이어폰" : FoundApi.CATEGORY_LABELS[c])).join(", ")})은 보관처에 맡기는 걸 추천드려요.`;
 
   // 층: 지하 2층 ~ 15층. 모르면 비운다
   for (let f = -2; f <= 15; f++) {
@@ -342,25 +361,101 @@
     floorSelect.add(new Option(f < 0 ? `지하 ${-f}층` : `${f}층`, String(f)));
   }
 
-  // 귀중품은 보관처(교무처)에만 맡길 수 있다. 서버도 그 자리에 둠을 400으로 거절한다 (QA B11)
-  function lockToHandover() {
-    choiceInplace.style.display = "none"; // .choice가 display:flex라 hidden 속성으로는 안 숨는다
-    choiceInplace.disabled = true;
+  // 귀중품은 보관처를 기본으로 두되 막지 않는다. 막으면 "3초 등록"이 어려워 아예 안 올리게 된다 (10/30 정책 변경, QA B11)
+  let valuableNow = false;
+  let keepInplaceChosen = false;
+  function preferHandover() {
+    valuableNow = true;
     document.getElementById("valuableNote").hidden = false;
-    choiceHandover.click();
+    if (!keepInplaceChosen) choiceHandover.click();
   }
-  function unlockInplace() {
-    choiceInplace.style.display = "";
-    choiceInplace.disabled = false;
+  function clearValuable() {
+    valuableNow = false;
+    keepInplaceChosen = false;
     document.getElementById("valuableNote").hidden = true;
   }
   const isValuable = (category) => FoundApi.VALUABLE_CATEGORIES.includes(category);
-  if (draft && draft.isValuable) lockToHandover();
+  if (draft && draft.isValuable) preferHandover();
   itemSelect.addEventListener("change", () => {
     const { category } = pickedItem();
     if (!category) return;
-    if (isValuable(category)) lockToHandover();
-    else unlockInplace();
+    if (isValuable(category)) preferHandover();
+    else clearValuable();
+  });
+
+  // 지금 위치(고른 건물 → 위치·사진으로 찾은 건물)에서 가장 가까운 보관처. 보관처가 여러 곳이 되면 자동으로 가까운 곳을 고른다
+  function nearestPlace() {
+    const places = handoverSelect._places || [];
+    if (!places.length) return null;
+    const here =
+      buildings.find((b) => String(b.id) === foundBuildingSelect.value) ||
+      (autoBuilding && buildings.find((b) => b.id === autoBuilding.id)) ||
+      null;
+    let best = { place: places[0], m: null };
+    if (here) {
+      for (const p of places) {
+        const b = buildings.find((x) => x.id === p.building.id);
+        if (!b) continue;
+        const m = FoundApi.distanceM(here, b);
+        if (best.m === null || m < best.m) best = { place: p, m };
+      }
+    }
+    return best;
+  }
+  const subjectJosa = (word) => {
+    const code = word.charCodeAt(word.length - 1) - 0xac00;
+    return code >= 0 && code <= 11171 && code % 28 !== 0 ? "이" : "가";
+  };
+
+  const valuableModal = document.getElementById("valuableModal");
+  const keepInplaceBtn = document.getElementById("keepInplaceBtn");
+  const goHandoverBtn = document.getElementById("goHandoverBtn");
+  let modalReturnFocus = null;
+  function openValuableModal() {
+    const near = nearestPlace();
+    const placeEl = document.getElementById("valuableModalPlace");
+    const guideEl = document.getElementById("valuableModalGuide");
+    if (near) {
+      const name = near.place.name;
+      placeEl.textContent = `지금은 ${name}${subjectJosa(name)} 가까워요!`;
+      // 거리는 10m 단위로. 위치를 모르면 거리 없이 안내만
+      const dist = near.m === null ? "" : ` · 약 ${Math.max(10, Math.round(near.m / 10) * 10)}m`;
+      guideEl.textContent = `${near.place.guideText}${dist}`;
+    } else {
+      placeEl.textContent = "보관처: 교무처(혜인관 1층)";
+      guideEl.textContent = "평일 9~18시";
+    }
+    // 보관처가 여러 곳이면 가까운 곳을 미리 골라 둔다
+    if (near && handoverSelect.options.length > 1) handoverSelect.value = String(near.place.id);
+    modalReturnFocus = document.activeElement;
+    valuableModal.classList.add("is-open");
+    goHandoverBtn.focus();
+  }
+  function closeValuableModal() {
+    valuableModal.classList.remove("is-open");
+    if (modalReturnFocus && modalReturnFocus.focus) modalReturnFocus.focus();
+  }
+  goHandoverBtn.addEventListener("click", () => {
+    closeValuableModal();
+    choiceHandover.click();
+  });
+  keepInplaceBtn.addEventListener("click", () => {
+    keepInplaceChosen = true;
+    closeValuableModal();
+    choiceInplace.click();
+  });
+  valuableModal.addEventListener("click", (e) => {
+    if (e.target === valuableModal) closeValuableModal();
+  });
+  // ESC는 닫기만 한다(선택은 그대로). Tab은 창 안의 두 버튼 사이에서만 돈다
+  valuableModal.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeValuableModal();
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      (document.activeElement === goHandoverBtn ? keepInplaceBtn : goHandoverBtn).focus();
+    }
   });
 
   // 건물·보관처 목록을 서버에서 받는다
@@ -435,11 +530,6 @@
       submitBtn.textContent = "등록 완료";
       if (err.code === "ALREADY_CONFIRMED") {
         result = FoundApi.store.get("foundResult");
-      } else if (err.code === "VALUABLE_HAND_OVER_REQUIRED") {
-        // 초안은 서버에 남아 있으니 보관처를 골라 다시 누르면 된다
-        lockToHandover();
-        alert(err.message);
-        return;
       } else if (err.status === 404) {
         alert(err.message);
         window.location.href = "photo.html";
@@ -457,6 +547,9 @@
       sessionStorage.setItem("foundDonePage", donePage);
       sessionStorage.setItem("registeredAt", formatKoreanTime(new Date()));
       sessionStorage.setItem("foundBuilding", result?.building?.name || "");
+      // 그 자리에 둔 귀중품이면 완료 화면에서 보관처를 한 번 더 권한다
+      if (mode === "inplace" && result?.category && isValuable(result.category)) sessionStorage.setItem("foundValuableInPlace", "1");
+      else sessionStorage.removeItem("foundValuableInPlace");
       if (body.locationDetail) sessionStorage.setItem("locationDetail", body.locationDetail);
       else sessionStorage.removeItem("locationDetail");
       if (body.floor !== undefined) sessionStorage.setItem("foundFloor", String(body.floor));

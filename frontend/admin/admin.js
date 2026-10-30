@@ -165,6 +165,7 @@
     SYSTEM: "알림",
     ITEM_INCOMING: "맡길 물건 등록",
     PICKUP_SCHEDULED: "수령 예정",
+    VALUABLE_IN_PLACE: "그 자리에 둔 귀중품",
   };
   /** shared NOTIFICATION_KIND와 같게. ACTION: 사람이 판단할 일, INFO: 알아 두면 되는 일 */
   const NOTIFICATION_KIND = {
@@ -174,6 +175,7 @@
     SYSTEM: "ACTION",
     ITEM_INCOMING: "INFO",
     PICKUP_SCHEDULED: "INFO",
+    VALUABLE_IN_PLACE: "ACTION",
   };
   /** shared CLOSED_REASON_LABELS와 같게 */
   const CLOSED_REASON_LABELS = {
