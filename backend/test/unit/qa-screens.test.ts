@@ -474,3 +474,22 @@ describe("QA 10/31: 화면 문구·기본값", () => {
     expect(index).not.toContain("door-map");
   });
 });
+
+describe("QA 10/31: 그 자리에 둠은 자세한 위치 필수, 첫 화면 제목 가운데", () => {
+  const register = read("frontend/found/register.html");
+
+  it("그 자리에 둠이면 위치 세부 설명이 필수(*)이고 안내·오류 칸이 있다, alert는 쓰지 않는다", () => {
+    expect(register).toContain('id="locDetailReq"');
+    expect(register).toContain(
+      "주인이 바로 찾을 수 있게 어디에 뒀는지 정확히 적어 주세요 (예: 3층 302호 뒤쪽 창가 책상 위)",
+    );
+    expect(register).toContain('id="locDetailErr" role="alert"');
+    expect(register).toMatch(/mode === "inplace" && locationDetail\.value\.trim\(\)\.length < LOC_DETAIL_MIN/);
+    expect(register).toContain("locationDetail.focus()");
+    expect(register).toContain("const LOC_DETAIL_MIN = 4;");
+  });
+
+  it("첫 화면 제목과 부제목은 가운데 정렬", () => {
+    expect(read("frontend/index.html")).toMatch(/\.title \{[^}]*align-items: center; text-align: center;/);
+  });
+});

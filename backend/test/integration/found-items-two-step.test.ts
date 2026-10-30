@@ -102,6 +102,7 @@ describe("① analyze: 사진만 먼저 받아 종류를 알려 준다", () => {
       confirmToken: res.body.confirmToken,
       buildingId,
       storageType: "IN_PLACE",
+      locationDetail: "강의실 뒤 책상 위",
     });
     expect(done.status).toBe(201);
     expect(done.body).toMatchObject({ status: "REVIEW", category: null, message: REVIEW_MESSAGE });
@@ -173,7 +174,12 @@ describe("① confirm: 위치를 받아 등록을 끝낸다", () => {
   it("두 번 확정하면 409 ALREADY_CONFIRMED, 처음 값은 그대로", async () => {
     const d = await draft();
     await confirm(d.id, { confirmToken: d.confirmToken, ...kept() }).expect(201);
-    const again = await confirm(d.id, { confirmToken: d.confirmToken, buildingId, storageType: "IN_PLACE" });
+    const again = await confirm(d.id, {
+      confirmToken: d.confirmToken,
+      buildingId,
+      storageType: "IN_PLACE",
+      locationDetail: "강의실 뒤 책상 위",
+    });
     expect(again.status).toBe(409);
     expect(again.body.error.code).toBe("ALREADY_CONFIRMED");
     expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: d.id } })).storageType).toBe("HANDED_OVER");
@@ -280,9 +286,46 @@ describe("③ 보관처에 맡기면 주운 건물은 선택 사항", () => {
 
   it("그 자리에 두면 건물이 필수 (400)", async () => {
     const d = await draft();
-    const res = await confirm(d.id, { confirmToken: d.confirmToken, storageType: "IN_PLACE" });
+    const res = await confirm(d.id, {
+      confirmToken: d.confirmToken,
+      storageType: "IN_PLACE",
+      locationDetail: "강의실 뒤 책상 위",
+    });
     expect(res.status).toBe(400);
     expect(res.body.error.details).toEqual([expect.objectContaining({ path: "buildingId" })]);
+  });
+
+  it("그 자리에 두면 자세한 위치가 필수: 비었거나 4자 미만이면 400, 적으면 201 (QA 10/31)", async () => {
+    for (const locationDetail of [undefined, "", "   ", "책상"]) {
+      const d = await draft();
+      const res = await confirm(d.id, {
+        confirmToken: d.confirmToken,
+        buildingId,
+        storageType: "IN_PLACE",
+        ...(locationDetail === undefined ? {} : { locationDetail }),
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error.details).toEqual([expect.objectContaining({ path: "locationDetail" })]);
+    }
+    const d = await draft();
+    const ok = await confirm(d.id, {
+      confirmToken: d.confirmToken,
+      buildingId,
+      storageType: "IN_PLACE",
+      locationDetail: "3층 302호 뒤쪽 창가 책상 위",
+    });
+    expect(ok.status).toBe(201);
+  });
+
+  it("보관처에 맡기면 자세한 위치는 선택", async () => {
+    const d = await draft();
+    const res = await confirm(d.id, {
+      confirmToken: d.confirmToken,
+      storageType: "HANDED_OVER",
+      storagePlaceId: placeId,
+    });
+    expect(res.status).toBe(201);
   });
 
   it("DB도 그 자리에 둔 물건의 건물 없음을 막는다", async () => {
@@ -347,7 +390,12 @@ describe("④ 귀중품도 그 자리에 둘 수 있다. 화면이 보관처를 
   it("귀중품을 그 자리에 두면 201, 담당 관리자에게 '그 자리에 둔 귀중품' 알림을 한 번 보낸다", async () => {
     const admin = await centerAdmin();
     const d = await draft(); // 가짜 AI: 이어폰 (isValuable: true)
-    const res = await confirm(d.id, { confirmToken: d.confirmToken, buildingId, storageType: "IN_PLACE" });
+    const res = await confirm(d.id, {
+      confirmToken: d.confirmToken,
+      buildingId,
+      storageType: "IN_PLACE",
+      locationDetail: "강의실 뒤 책상 위",
+    });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ status: "REGISTERED", storageType: "IN_PLACE", storagePlace: null });
     const alerts = await prisma.notification.findMany({ where: { userId: admin.id, type: "VALUABLE_IN_PLACE" } });
@@ -366,6 +414,7 @@ describe("④ 귀중품도 그 자리에 둘 수 있다. 화면이 보관처를 
       confirmToken: wallet.confirmToken,
       buildingId,
       storageType: "IN_PLACE",
+      locationDetail: "강의실 뒤 책상 위",
     });
     expect(walletRes.status).toBe(201);
 
@@ -376,6 +425,7 @@ describe("④ 귀중품도 그 자리에 둘 수 있다. 화면이 보관처를 
       confirmToken: res.body.confirmToken,
       buildingId,
       storageType: "IN_PLACE",
+      locationDetail: "강의실 뒤 책상 위",
     });
     expect(done.status).toBe(201);
     expect(done.body).toMatchObject({ status: "REGISTERED", storageType: "IN_PLACE", storagePlace: null });
@@ -391,7 +441,12 @@ describe("④ 귀중품도 그 자리에 둘 수 있다. 화면이 보관처를 
       },
     });
     const d = await draft();
-    const res = await confirm(d.id, { confirmToken: d.confirmToken, buildingId, storageType: "IN_PLACE" });
+    const res = await confirm(d.id, {
+      confirmToken: d.confirmToken,
+      buildingId,
+      storageType: "IN_PLACE",
+      locationDetail: "강의실 뒤 책상 위",
+    });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ status: "REVIEW", storageType: "IN_PLACE" });
   });
@@ -404,6 +459,7 @@ describe("⑤ 습득자가 종류를 고친다 (AI 오인, 10/29 안경 → 학�
       confirmToken: d.confirmToken,
       buildingId,
       storageType: "IN_PLACE",
+      locationDetail: "강의실 뒤 책상 위",
       category: "GLASSES",
       subCategory: null,
     });
@@ -429,6 +485,7 @@ describe("⑤ 습득자가 종류를 고친다 (AI 오인, 10/29 안경 → 학�
       confirmToken: d.confirmToken,
       buildingId,
       storageType: "IN_PLACE",
+      locationDetail: "강의실 뒤 책상 위",
       category: "WALLET",
     });
     expect(wallet.status).toBe(201);
@@ -462,6 +519,7 @@ describe("⑤ 습득자가 종류를 고친다 (AI 오인, 10/29 안경 → 학�
       confirmToken: failed.body.confirmToken,
       buildingId,
       storageType: "IN_PLACE",
+      locationDetail: "강의실 뒤 책상 위",
       category: "GLASSES",
     });
     expect(res.body).toMatchObject({ status: "REVIEW", category: null });

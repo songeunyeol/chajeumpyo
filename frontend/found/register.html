@@ -62,9 +62,11 @@
     </div>
 
     <label class="field" style="margin-bottom:8px">
-      <span>위치 세부 설명<span class="hint">(선택)</span></span>
-      <textarea id="locationDetail" class="compact" rows="2" placeholder="예: 3층 엘리베이터 앞 벤치 위, 204호 강의실 뒤쪽 책상"></textarea>
+      <span>위치 세부 설명<span class="req" id="locDetailReq" hidden>*</span><span class="hint" id="locDetailOpt">(선택)</span></span>
+      <textarea id="locationDetail" class="compact" rows="2" placeholder="예: 3층 엘리베이터 앞 벤치 위, 204호 강의실 뒤쪽 책상" aria-describedby="locDetailHint locDetailErr"></textarea>
     </label>
+    <p class="note" id="locDetailHint" style="margin-top:0;margin-bottom:4px" hidden>주인이 바로 찾을 수 있게 어디에 뒀는지 정확히 적어 주세요 (예: 3층 302호 뒤쪽 창가 책상 위)</p>
+    <p class="note danger" id="locDetailErr" role="alert" style="margin-top:0;margin-bottom:4px" hidden></p>
     <p class="note" id="locNote" style="margin-top:0;margin-bottom:4px">보관처에 맡겨도 교무처 직원이 볼 수 있게 같이 전달돼요.</p>
     <p class="note danger" id="locStatus" hidden></p>
   </div>
@@ -113,6 +115,26 @@
   const manualLocPanel = document.getElementById("manualLocPanel");
   const foundBuildingSelect = document.getElementById("foundBuildingSelect");
   const locationDetail = document.getElementById("locationDetail");
+  // 그 자리에 둠의 위치 세부 설명 검증 (서버 LOCATION_DETAIL_MIN과 같은 값)
+  const LOC_DETAIL_MIN = 4;
+  const locDetailErr = document.getElementById("locDetailErr");
+  function showLocDetailErr(text) {
+    locDetailErr.textContent = text;
+    locDetailErr.hidden = false;
+    locationDetail.setAttribute("aria-invalid", "true");
+    locationDetail.style.boxShadow = "inset 0 0 0 2px var(--danger)";
+    locationDetail.focus();
+  }
+  function clearLocDetailErr() {
+    locDetailErr.hidden = true;
+    locDetailErr.textContent = "";
+    locationDetail.removeAttribute("aria-invalid");
+    locationDetail.style.boxShadow = "";
+  }
+  locationDetail.addEventListener("input", () => {
+    if (!locDetailErr.hidden && locationDetail.value.trim().length >= LOC_DETAIL_MIN) clearLocDetailErr();
+  });
+
   const locPermToggle = document.getElementById("locPermToggle");
   const choiceInplace = document.getElementById("choiceInplace");
   const choiceHandover = document.getElementById("choiceHandover");
@@ -263,6 +285,11 @@
     manualChip.style.display = auto ? "none" : "";
     if (auto && !foundBuildingSelect.value) foundBuildingSelect.value = String(autoBuilding.id);
     document.getElementById("buildingReq").hidden = mode !== "inplace";
+    // 그 자리에 두면 주인이 찾을 수 있게 자세한 위치가 필요하다 (QA 10/31). 맡기면 지금처럼 선택
+    document.getElementById("locDetailReq").hidden = mode !== "inplace";
+    document.getElementById("locDetailOpt").hidden = mode === "inplace";
+    document.getElementById("locDetailHint").hidden = mode !== "inplace";
+    if (mode !== "inplace") clearLocDetailErr();
 
     if (locating) {
       locPermToggle.textContent = "위치 확인 중";
@@ -534,6 +561,14 @@
     if (mode === "inplace" && !foundBuildingSelect.value) {
       foundBuildingSelect.style.boxShadow = "inset 0 0 0 2px var(--danger)";
       foundBuildingSelect.focus();
+      return;
+    }
+    if (mode === "inplace" && locationDetail.value.trim().length < LOC_DETAIL_MIN) {
+      showLocDetailErr(
+        locationDetail.value.trim()
+          ? `조금 더 자세히 적어 주세요 (${LOC_DETAIL_MIN}자 이상).`
+          : "그 자리에 두면 어디에 뒀는지 적어 주세요. 주인이 이 설명을 보고 찾아가요.",
+      );
       return;
     }
     const buildingId = foundBuildingSelect.value ? Number(foundBuildingSelect.value) : undefined;
