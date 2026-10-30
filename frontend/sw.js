@@ -9,7 +9,7 @@
  *
  * 배포 때 SHELL 파일이 바뀌면 VERSION을 올린다. 그러면 새 캐시를 받고 옛 캐시는 지운다.
  */
-const VERSION = "v38";
+const VERSION = "v39";
 const CACHE = `chajeumpyo-shell-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
 

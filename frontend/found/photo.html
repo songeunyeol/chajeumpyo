@@ -239,8 +239,20 @@
       updateNext();
     }
   };
-  const MOUNT_FAILED = "사람 확인을 불러오지 못했어요. 인터넷 연결을 확인하고 '이 사진으로'를 다시 눌러 주세요.";
-  const VERIFY_FAILED = "사람인지 확인하지 못했어요. '이 사진으로'를 다시 눌러 주세요.";
+  const MOUNT_FAILED = FoundCaptcha.HELP.blocked;
+  const VERIFY_FAILED = FoundCaptcha.HELP.failed;
+  /** 캡차 위젯 아래 안내 + "다시 확인"(위젯을 새로 받는다). 아래 버튼 옆 안내(captchaNote)도 같은 문구 */
+  function showCaptchaRetry(message) {
+    FoundCaptcha.showHelp(captchaBox, {
+      message,
+      onRetry: async () => {
+        showCaptchaNote("");
+        const c = await captchaReady;
+        if (c) c.reset();
+        else captchaReady = mountCaptcha();
+      },
+    });
+  }
 
   // 사진과 사람 확인이 둘 다 끝나야 버튼이 켜진다. 꺼진 버튼을 누르면 무엇이 남았는지 알려 준다
   const captchaArea = document.getElementById("captchaArea");
@@ -259,7 +271,10 @@
   function mountCaptcha() {
     return FoundCaptcha.mount(captchaBox, {
       appearance: "always",
-      onError: () => showCaptchaNote(VERIFY_FAILED),
+      onError: () => {
+        showCaptchaNote(VERIFY_FAILED);
+        showCaptchaRetry(VERIFY_FAILED);
+      },
       onToken: (t) => {
         hasToken = !!t;
         if (t && captchaNote.textContent === VERIFY_FAILED) showCaptchaNote("");
@@ -270,12 +285,19 @@
       captchaArea.hidden = c.mode !== "turnstile";
       updateNext();
       return c;
-    }).catch(() => {
-      showCaptchaNote(MOUNT_FAILED);
+    }).catch((err) => {
+      const msg = FoundCaptcha.helpMessage(err) || MOUNT_FAILED;
+      showCaptchaNote(msg);
+      captchaArea.hidden = false; // 막힌 이유와 "다시 확인"이 보이게
+      showCaptchaRetry(msg);
       return null;
     });
   }
   let captchaReady = mountCaptcha();
+  // 등록 화면에 사진 없이 바로 들어왔다가 돌아온 경우
+  try {
+    if (new URLSearchParams(location.search).get("need") === "photo") showCaptchaNote("사진을 먼저 올려 주세요.");
+  } catch (_) {}
 
   nextBtn.addEventListener("click", async (e) => {
     e.preventDefault();

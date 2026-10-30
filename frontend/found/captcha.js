@@ -8,6 +8,59 @@
   const SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
   const OFF = { mode: "off", ready: () => Promise.resolve(), token: () => null, reset() {}, remove() {} };
 
+  // 보안 확인(캡차)이 막혔을 때 화면에 보여 줄 안내 (실서비스 평가 10/30: "알 수 없는 문제"만 떠서 막혔다)
+  // blocked: Cloudflare 스크립트를 못 받음(광고 차단·사내망 등), failed: 위젯 오류·시간 초과·서버 거절
+  const HELP = {
+    blocked: "보안 확인 화면을 불러오지 못했어요. 광고 차단·VPN을 끄거나 다른 브라우저로 다시 시도해 주세요.",
+    failed: "보안 확인을 마치지 못했어요. 새로고침하거나 광고 차단·VPN을 끄고 다시 시도해 주세요.",
+  };
+  function captchaError(kind, message) {
+    const err = new Error(message);
+    err.name = "CaptchaError";
+    err.captchaKind = kind;
+    return err;
+  }
+  /** err가 캡차 문제면 안내 문구, 아니면 null. 서버의 CAPTCHA_FAILED도 같은 문구로 본다 */
+  function helpMessage(err) {
+    if (!err) return null;
+    if (err.captchaKind) return HELP[err.captchaKind] || HELP.failed;
+    if (err.code === "CAPTCHA_FAILED") return HELP.failed;
+    return null;
+  }
+  /**
+   * container(위젯 자리) 바로 아래에 안내와 "다시 확인" 버튼을 띄운다. 버튼을 누르면 안내를 지우고 onRetry를 부른다.
+   * message가 비면 안내를 지운다.
+   */
+  function showHelp(container, { message, onRetry } = {}) {
+    let box = container.nextElementSibling;
+    if (!box || !box.classList.contains("captcha-help")) {
+      box = document.createElement("div");
+      box.className = "captcha-help";
+      box.setAttribute("role", "alert");
+      const p = document.createElement("p");
+      p.className = "note danger";
+      p.style.margin = "8px 0 6px";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn ghost";
+      btn.textContent = "다시 확인";
+      box.append(p, btn);
+      container.after(box);
+    }
+    const [p, btn] = box.children;
+    if (!message) {
+      box.hidden = true;
+      return;
+    }
+    p.textContent = message;
+    box.hidden = false;
+    btn.hidden = typeof onRetry !== "function";
+    btn.onclick = () => {
+      box.hidden = true;
+      onRetry?.();
+    };
+  }
+
   function save(token) {
     if (!window.FoundApi) return;
     try {
@@ -23,10 +76,11 @@
         const s = document.createElement("script");
         s.src = SCRIPT_URL;
         s.async = true;
-        s.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error("no turnstile")));
+        s.onload = () =>
+          window.turnstile ? resolve(window.turnstile) : reject(captchaError("blocked", "no turnstile"));
         s.onerror = () => {
           scriptPromise = null;
-          reject(new Error("캡차 스크립트를 불러오지 못했어요."));
+          reject(captchaError("blocked", "캡차 스크립트를 불러오지 못했어요."));
         };
         document.head.appendChild(s);
       });
@@ -88,7 +142,7 @@
       "expired-callback": () => settle(null),
       "error-callback": (code) => {
         settle(null);
-        lastError = new Error(`캡차 오류 ${code ?? ""}`.trim());
+        lastError = captchaError("failed", `캡차 오류 ${code ?? ""}`.trim());
         flush(lastError);
         onError?.(code);
         return true; // 처리했다고 알린다. 위젯은 스스로 다시 시도한다
@@ -115,7 +169,7 @@
           };
           const timer = setTimeout(() => {
             waiters = waiters.filter((x) => x !== w);
-            reject(new Error("캡차 시간 초과"));
+            reject(captchaError("failed", "캡차 시간 초과"));
           }, timeoutMs);
           waiters.push(w);
         });
@@ -137,5 +191,5 @@
     };
   }
 
-  window.FoundCaptcha = { mount };
+  window.FoundCaptcha = { mount, helpMessage, showHelp, HELP };
 })();
