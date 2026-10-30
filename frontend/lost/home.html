@@ -71,6 +71,20 @@
   <div class="dock">
     <a class="btn" href="report.html">분실 신고하기</a>
   </div>
+
+  <!-- 신고 지우기 확인 카드 -->
+  <div class="modal-backdrop" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+    <div class="modal-card">
+      <span class="chip warn" id="deleteModalChip"></span>
+      <h3 id="deleteModalTitle">이 분실 신고를 지울까요?</h3>
+      <p>지우면 목록과 후보, 알림에서 사라지고 되돌릴 수 없어요. 확인 기회는 지워도 돌아오지 않아요.</p>
+      <p class="note danger" id="deleteErr" style="margin:-8px 0 12px" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn gray" id="cancelDeleteBtn">취소</button>
+        <button type="button" class="btn danger" id="confirmDeleteBtn">지우기</button>
+      </div>
+    </div>
+  </div>
 </main>
 <script src="../naver-map.js"></script>
 <script src="api.js"></script>
@@ -164,6 +178,77 @@
     return el;
   }
 
+  const TRASH_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+
+  /** 카드 오른쪽 위에 휴지통을 단다. 카드가 링크(<a>)일 수 있어 버튼은 링크 밖 형제로 둔다 */
+  function withTrash(card, rep) {
+    const wrap = document.createElement("div");
+    wrap.className = "card-wrap";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "card-trash";
+    btn.setAttribute("aria-label", "신고 지우기");
+    btn.innerHTML = TRASH_SVG;
+    btn.addEventListener("click", () => openDelete(rep));
+    wrap.append(card, btn);
+    return wrap;
+  }
+
+  // 신고 지우기 확인 카드: DELETE /lost-reports/:id
+  const deleteModal = document.getElementById("deleteModal");
+  const deleteModalChip = document.getElementById("deleteModalChip");
+  const deleteErr = document.getElementById("deleteErr");
+  const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+  let reports = [];
+  let deleting = null;
+
+  function openDelete(rep) {
+    deleting = rep;
+    deleteModalChip.textContent = [LostApi.itemLabel(rep.category), LostApi.formatRange(rep.lostFrom, rep.lostTo)]
+      .filter(Boolean)
+      .join(" · ");
+    deleteErr.hidden = true;
+    confirmDeleteBtn.disabled = false;
+    deleteModal.classList.add("is-open");
+    document.getElementById("cancelDeleteBtn").focus();
+  }
+  const closeDelete = () => {
+    deleteModal.classList.remove("is-open");
+    deleting = null;
+  };
+  document.getElementById("cancelDeleteBtn").addEventListener("click", closeDelete);
+  deleteModal.addEventListener("click", (e) => {
+    if (e.target === deleteModal) closeDelete();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && deleting) closeDelete();
+  });
+  confirmDeleteBtn.addEventListener("click", async () => {
+    if (!deleting) return;
+    const id = deleting.id;
+    confirmDeleteBtn.disabled = true;
+    try {
+      await LostApi.deleteReport(id);
+      if (LostApi.store.get(LostApi.KEYS.reportId) === id) LostApi.store.set(LostApi.KEYS.reportId, null);
+      reports = reports.filter((r) => r.id !== id);
+      closeDelete();
+      renderHomeLists(reports);
+    } catch (err) {
+      if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+      // 이미 지워진 신고면 목록에서만 뺀다
+      if (err.code === "NOT_FOUND") {
+        reports = reports.filter((r) => r.id !== id);
+        closeDelete();
+        renderHomeLists(reports);
+        return;
+      }
+      deleteErr.textContent = LostApi.friendlyMessage(err);
+      deleteErr.hidden = false;
+      confirmDeleteBtn.disabled = false;
+    }
+  });
+
   function paintHomeMap(reports) {
     const box = document.getElementById("homeMap");
     if (!window.NaverCampusMap) return;
@@ -196,7 +281,7 @@
       ]);
       a.href = "candidates.html";
       a.addEventListener("click", () => LostApi.store.set(LostApi.KEYS.reportId, rep.id));
-      activeListEl.appendChild(a);
+      activeListEl.appendChild(withTrash(a, rep));
     }
 
     // 닫힌 신고는 서버가 후보를 주지 않고, 찾은 물건 상세는 수령 뒤 닫힌다(409 ALREADY_CLAIMED). 그래서 누를 곳이 없다
@@ -204,7 +289,7 @@
     if (closedItems.length === 0) closedListEl.appendChild(emptyCard("아직 끝난 신고가 없어요."));
     for (const rep of closedItems) {
       closedListEl.appendChild(
-        reportCard(rep, "div", "glow-red", [[rep.status === "RESOLVED" ? "찾음" : "종료", "glow-red"]]),
+        withTrash(reportCard(rep, "div", "glow-red", [[rep.status === "RESOLVED" ? "찾음" : "종료", "glow-red"]]), rep),
       );
     }
   }
@@ -212,6 +297,7 @@
   paintHomeMap([]);
   if (authed) LostApi.reports()
     .then((all) => {
+      reports = all;
       paintHomeMap(all);
       renderHomeLists(all);
     })

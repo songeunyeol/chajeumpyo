@@ -69,6 +69,22 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: "delete",
+  path: "/lost-reports/{id}",
+  tags,
+  security,
+  summary: "신고 지우기",
+  description:
+    "목록·후보·알림에서 빼고 설명·분석 결과·임베딩을 지운다. 확인 시도 기록은 3회·10회 잠금에 쓰이므로 남긴다.",
+  request: { params: LostReportIdParams },
+  responses: {
+    204: { description: "지움" },
+    401: errorResponse("UNAUTHORIZED"),
+    404: errorResponse("NOT_FOUND: 없거나 남의 신고, 이미 지운 신고"),
+  },
+});
+
 export function createLostReportsRouter() {
   const router = Router();
   const viewer = (res: Parameters<typeof getAuth>[0]) => {
@@ -131,6 +147,11 @@ export function createLostReportsRouter() {
       res.json(result);
     },
   );
+
+  router.delete("/lost-reports/:id", requireMember(), validate("params", LostReportIdParams), async (_req, res) => {
+    await service.deleteLostReport(viewer(res), res.locals.params.id);
+    res.status(204).end();
+  });
 
   return router;
 }

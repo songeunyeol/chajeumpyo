@@ -522,6 +522,82 @@ describe("기준 10. 설명 고치기와 신고 닫기", () => {
   });
 });
 
+describe("신고 지우기 (DELETE /lost-reports/:id)", () => {
+  const del = (id: string, t = token) =>
+    request(app).delete(`/api/v1/lost-reports/${id}`).set("Authorization", `Bearer ${t}`);
+
+  it("204, 목록·후보·수정·확인 요청에서 사라지고 설명·분석 결과·임베딩을 지운다", async () => {
+    const item = await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(1) });
+    const kept = (await post(report())).body.id;
+    const { body } = await post(report());
+    await del(body.id).expect(204);
+
+    const list = await request(app).get("/api/v1/lost-reports").set(auth());
+    expect(list.body.reports.map((r: { id: string }) => r.id)).toEqual([kept]);
+    expect((await request(app).get(`/api/v1/lost-reports/${body.id}/candidates`).set(auth())).status).toBe(404);
+    expect(
+      (await request(app).patch(`/api/v1/lost-reports/${body.id}`).set(auth()).send({ status: "CLOSED" })).status,
+    ).toBe(404);
+    expect(
+      (await request(app).post(`/api/v1/lost-reports/${body.id}/claims`).set(auth()).send({ foundItemId: item.id }))
+        .status,
+    ).toBe(404);
+    expect((await del(body.id)).status).toBe(404);
+
+    const row = await prisma.lostReport.findUniqueOrThrow({ where: { id: body.id } });
+    expect(row.deletedAt).not.toBeNull();
+    expect(row.status).toBe("CLOSED");
+    expect(row.description).toBe("");
+    expect(row.extractedAttributes).toBeNull();
+    const rows = await prisma.$queryRaw<{ has: boolean }[]>`
+      SELECT embedding IS NOT NULL AS has FROM lost_report WHERE id = ${body.id}::uuid`;
+    expect(rows[0]?.has).toBe(false);
+  });
+
+  it("남의 신고는 404, 비로그인 401", async () => {
+    const other = await signupUser(app, "other@skuniv.ac.kr");
+    const theirs = (await post(report(), other.accessToken)).body.id;
+    expect((await del(theirs)).status).toBe(404);
+    expect((await request(app).delete(`/api/v1/lost-reports/${theirs}`)).status).toBe(401);
+    expect(await prisma.lostReport.findUniqueOrThrow({ where: { id: theirs } })).toMatchObject({ deletedAt: null });
+  });
+
+  it("지워도 확인 시도 기록은 남아, 새로 신고해도 남은 횟수가 돌아오지 않는다", async () => {
+    const item = await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(1) });
+    const { body } = await post(report());
+    const me = await prisma.user.findFirstOrThrow({ where: { email: "student@skuniv.ac.kr" } });
+    await prisma.matchAttempt.create({
+      data: {
+        userId: me.id,
+        lostReportId: body.id,
+        foundItemId: item.id,
+        descriptionHash: "h",
+        score: 0,
+        scoreBreakdown: {},
+        matchedFields: {},
+        result: "FAIL",
+      },
+    });
+    await del(body.id).expect(204);
+    expect(await prisma.matchAttempt.count({ where: { lostReportId: body.id } })).toBe(1);
+
+    const again = (await post(report())).body.id;
+    const c = (await request(app).get(`/api/v1/lost-reports/${again}/candidates`).set(auth())).body.candidates[0];
+    expect(c).toMatchObject({ attemptsLeft: 2 });
+  });
+
+  it("그 신고로 온 알림도 지운다", async () => {
+    const item = await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(1) });
+    const { body } = await post(report());
+    const me = await prisma.user.findFirstOrThrow({ where: { email: "student@skuniv.ac.kr" } });
+    await prisma.notification.create({
+      data: { userId: me.id, type: "NEW_CANDIDATE", foundItemId: item.id, lostReportId: body.id, message: "새 후보" },
+    });
+    await del(body.id).expect(204);
+    expect(await prisma.notification.count({ where: { lostReportId: body.id } })).toBe(0);
+  });
+});
+
 describe("세부 종류로 신고: 마우스 (QA bot 10/30)", () => {
   it("마우스로 신고해도, 세부 종류 없이 기타 전자기기로 신고해도 마우스 습득물이 후보에 나온다", async () => {
     resetAiClient(); // mock 추출기: 설명의 "마우스"를 세부 종류로 읽는다

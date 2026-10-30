@@ -310,7 +310,7 @@ export async function hotspots(query: HotspotQuery, now = new Date()): Promise<H
   const reports = await prisma.$queryRaw<ReportRow[]>`
     SELECT b.name AS building, r.category::text AS category, (r.status = 'OPEN') AS open
     FROM lost_report r JOIN "user" u ON u.id = r.user_id LEFT JOIN building b ON b.id = r.building_id
-    WHERE u.role <> 'DEMO' AND r.created_at >= ${start} AND r.created_at < ${end}`;
+    WHERE u.role <> 'DEMO' AND r.deleted_at IS NULL AND r.created_at >= ${start} AND r.created_at < ${end}`;
 
   const real = all.filter((r) => !r.isSeed);
   const isSeedData = real.length === 0 && all.length > 0;

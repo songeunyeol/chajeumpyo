@@ -901,6 +901,8 @@
       }),
     /** PATCH /lost-reports/:id { status: "CLOSED" } */
     closeReport: (reportId) => call(`/lost-reports/${reportId}`, { method: "PATCH", body: { status: "CLOSED" } }),
+    /** DELETE /lost-reports/:id (204). 목록·후보·알림에서 빠진다 */
+    deleteReport: (reportId) => call(`/lost-reports/${reportId}`, { method: "DELETE" }),
     /** PATCH /lost-reports/:id { description } → 다시 분석하고 후보를 다시 고른다 (502면 안 바뀜) */
     editReport: (reportId, description) =>
       call(`/lost-reports/${reportId}`, { method: "PATCH", body: { description } }).then((r) => {
