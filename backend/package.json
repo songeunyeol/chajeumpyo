@@ -19,7 +19,8 @@
     "admin:create": "tsx --env-file-if-exists=../.env scripts/create-admin.ts",
     "eval:categories": "tsx --env-file-if-exists=../.env scripts/eval-categories.ts",
     "eval:claims": "tsx --env-file-if-exists=../.env scripts/eval-claims.ts",
-    "eval:ranking": "tsx --env-file-if-exists=../.env scripts/eval-ranking.ts"
+    "eval:ranking": "tsx --env-file-if-exists=../.env scripts/eval-ranking.ts",
+    "eval:photos": "tsx --env-file-if-exists=../.env scripts/eval-photos.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",
