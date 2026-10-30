@@ -13,12 +13,17 @@
 <main class="screen">
   <header class="bar"><a class="back" href="login.html">←</a></header>
   <h1>학교 이메일로 가입</h1>
-  <p class="lead">서경대 이메일만 받아요.</p>
+  <p class="lead">서경대 학생·교직원만 쓸 수 있어요. 학교 메일 아이디만 적어 주세요.</p>
 
   <!-- 오류는 칸마다 바로 밑에 보여 준다 (QA 10/29). 칸을 벗어나면 바로 검사한다 -->
   <label class="field">
-    <span>학교 이메일 <b class="req" aria-hidden="true">*</b></span>
-    <input id="signupEmail" type="email" placeholder="아이디@skuniv.ac.kr" autocomplete="email" required aria-describedby="emailErr" aria-invalid="false">
+    <span id="emailLabel">서경대 메일 아이디 <b class="req" aria-hidden="true">*</b></span>
+    <span class="email-fixed">
+      <input id="signupEmailId" type="text" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="아이디" autocomplete="username" required aria-labelledby="emailLabel emailSuffix" aria-describedby="emailErr" aria-invalid="false">
+      <span class="email-suffix" id="emailSuffix">@skuniv.ac.kr</span>
+    </span>
+    <!-- 서버로 보내는 전체 주소. 아이디 칸에서 만든다 -->
+    <input id="signupEmail" type="hidden">
     <p class="note danger field-err" id="emailErr" hidden></p>
   </label>
   <label class="field">
@@ -39,9 +44,13 @@
   </div>
 </main>
 <script src="api.js"></script>
+<script src="school-email.js"></script>
 <script src="../found/captcha.js"></script>
 <script>
-  const emailInput = document.getElementById("signupEmail");
+  const emailInput = document.getElementById("signupEmailId");
+  const schoolEmail = SchoolEmail.bindSchoolEmail(emailInput, document.getElementById("signupEmail"), () => {
+    if (emailInput.value) checkField(RULES[0]);
+  });
   const pwInput = document.getElementById("signupPw");
   const pwConfirmInput = document.getElementById("signupPwConfirm");
   const signupErr = document.getElementById("signupErr");
@@ -70,7 +79,7 @@
   /** 칸별 검사. 통과하면 빈 문자열 */
   const RULES = [
     [emailInput, document.getElementById("emailErr"), () =>
-      /^[^\s@]+@skuniv\.ac\.kr$/i.test(emailInput.value.trim()) ? "" : "서경대 이메일(@skuniv.ac.kr)을 정확히 입력해 주세요."],
+      schoolEmail.error() || (schoolEmail.valid() ? "" : "서경대 메일 아이디를 입력해 주세요.")],
     [pwInput, document.getElementById("pwErr"), () => (pwInput.value.length >= 8 ? "" : "비밀번호는 8자 이상이어야 해요.")],
     [pwConfirmInput, document.getElementById("pwConfirmErr"), () =>
       pwConfirmInput.value === pwInput.value ? "" : "비밀번호가 서로 달라요."],
@@ -114,7 +123,7 @@
       RULES[firstBad][0].focus();
       return;
     }
-    const email = emailInput.value.trim();
+    const email = schoolEmail.email();
     const pw = pwInput.value;
 
     // POST /auth/email/code. 캡차: 지금은 LostApi 기본 dev-pass.

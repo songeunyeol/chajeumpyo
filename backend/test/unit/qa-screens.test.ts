@@ -209,6 +209,51 @@ describe("스토리텔링 화면 (QA 10/30 최종)", () => {
   });
 });
 
+describe("학교 메일 칸 (@skuniv.ac.kr 고정)", () => {
+  type SchoolEmailApi = {
+    SCHOOL_DOMAIN: string;
+    schoolEmailId: (raw: string) => { id: string; error: string };
+    isValidSchoolId: (id: string) => boolean;
+  };
+  const load = (): SchoolEmailApi => {
+    const win: { SchoolEmail?: SchoolEmailApi } = {};
+    new Function("window", read("frontend/lost/school-email.js"))(win);
+    return win.SchoolEmail as SchoolEmailApi;
+  };
+  const se = load();
+
+  it("아이디만 적으면 그대로 쓴다", () => {
+    expect(se.schoolEmailId(" song12 ")).toEqual({ id: "song12", error: "" });
+  });
+
+  it("학교 주소를 통째로 붙여 넣으면 아이디만 남긴다", () => {
+    expect(se.schoolEmailId("song12@skuniv.ac.kr")).toEqual({ id: "song12", error: "" });
+    expect(se.schoolEmailId("Song12@SKUNIV.AC.KR")).toEqual({ id: "Song12", error: "" });
+    expect(se.schoolEmailId("song12@sku")).toEqual({ id: "song12", error: "" });
+  });
+
+  it("다른 도메인은 안내한다", () => {
+    expect(se.schoolEmailId("song12@gmail.com").error).toBe("서경대 메일만 쓸 수 있어요.");
+  });
+
+  it("공백·@가 있는 아이디는 받지 않는다", () => {
+    expect(se.isValidSchoolId("song12")).toBe(true);
+    expect(se.isValidSchoolId("")).toBe(false);
+    expect(se.isValidSchoolId("so ng")).toBe(false);
+  });
+
+  it("가입·로그인 화면은 아이디 칸과 고정 접미사를 쓴다", () => {
+    for (const page of ["frontend/lost/signup.html", "frontend/lost/login.html"]) {
+      const html = read(page);
+      expect(html).toContain('class="email-suffix"');
+      expect(html).toContain("@skuniv.ac.kr</span>");
+      expect(html).toContain('src="school-email.js"');
+      expect(html).not.toContain('placeholder="아이디@skuniv.ac.kr"');
+    }
+    expect(read("frontend/lost/signup.html")).toContain("서경대 학생·교직원만 쓸 수 있어요");
+  });
+});
+
 function lostApiFns(): {
   aiReadSummary: (aiRead: unknown) => string;
   passExplanation: (claim: unknown, aiRead: unknown, itemId?: string) => string;
