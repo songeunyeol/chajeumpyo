@@ -163,7 +163,25 @@
     MULTI_REVEAL: "여러 명이 열람했어요",
     NEW_CANDIDATE: "새 후보",
     SYSTEM: "알림",
+    ITEM_INCOMING: "맡길 물건 등록",
+    PICKUP_SCHEDULED: "수령 예정",
   };
+  /** shared NOTIFICATION_KIND와 같게. ACTION: 사람이 판단할 일, INFO: 알아 두면 되는 일 */
+  const NOTIFICATION_KIND = {
+    NEW_CANDIDATE: "INFO",
+    MULTI_REVEAL: "ACTION",
+    CLAIM_LOCKED: "ACTION",
+    SYSTEM: "ACTION",
+    ITEM_INCOMING: "INFO",
+    PICKUP_SCHEDULED: "INFO",
+  };
+  /** shared CLOSED_REASON_LABELS와 같게 */
+  const CLOSED_REASON_LABELS = {
+    DISPOSED: "폐기·이관",
+    MISREGISTERED: "잘못 등록",
+  };
+  /** 층 글자: shared floorLabel과 같게. -1 → "지하 1층" (QA 10/30 3차: 관리자만 "-1층"으로 보였음) */
+  const floorLabel = (f) => (f === null || f === undefined ? "" : f < 0 ? `지하 ${-f}층` : `${f}층`);
 
   /** 화면 이름: 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름 (shared itemLabel). 종류가 없으면 빈 글자 */
   const itemLabel = (category, sub) => (sub && SUB_CATEGORY_LABELS[sub]) || CATEGORY_LABELS[category] || "";
@@ -376,6 +394,15 @@
         createdAt: hoursAgo(1),
       },
       {
+        id: "nt-pickup",
+        type: "PICKUP_SCHEDULED",
+        message: "갈색 반지갑 수령 예정: 확인을 통과한 학생이 수령 QR을 받았어요(24시간 유효).",
+        foundItemId: "fi-revealed",
+        lostReportId: null,
+        readAt: null,
+        createdAt: hoursAgo(1),
+      },
+      {
         id: "nt-reveal",
         type: "MULTI_REVEAL",
         message: "갈색 반지갑을 서로 다른 계정이 열람했어요. 수령 때 본인을 한 번 더 봐 주세요.",
@@ -440,6 +467,30 @@
         total: filtered.length,
         counts: countsOf(state.items),
       };
+    }
+
+    if (itemId && url.pathname.endsWith("/close") && method === "POST") {
+      const item = state.items.find((row) => row.id === itemId);
+      if (!item) throw new ApiError(404, { error: { code: "NOT_FOUND", message: "물건을 찾을 수 없어요." } });
+      if (item.status === "CLAIMED") {
+        throw new ApiError(409, { error: { code: "ALREADY_CLAIMED", message: "이미 수령된 물건이에요." } });
+      }
+      if (!["REGISTERED", "REVEALED", "REVIEW"].includes(item.status)) {
+        throw new ApiError(409, { error: { code: "NOT_CLOSABLE", message: "보관 중인 물건만 끝낼 수 있어요." } });
+      }
+      const closedAt = new Date().toISOString();
+      const purge = body?.reason === "MISREGISTERED";
+      const next = {
+        ...item,
+        status: "EXPIRED",
+        closedAt,
+        closedReason: body?.reason === "MISREGISTERED" ? "MISREGISTERED" : "DISPOSED",
+        closedByEmailMasked: "ce***@skuniv.ac.kr",
+        ...(purge ? { originalImageUrl: null, publicImageUrl: null, thumbnailUrl: null, hiddenTrait: null } : {}),
+        pickups: item.pickups.map((p) => (p.status === "ISSUED" ? { ...p, status: "EXPIRED" } : p)),
+      };
+      saveDemoState({ ...state, items: state.items.map((row) => (row.id === itemId ? next : row)) });
+      return { ...next };
     }
 
     if (itemId && url.pathname.endsWith("/in-person-pickup") && method === "POST") {
@@ -681,7 +732,7 @@
   /** 주운 곳 글자: "혜인관 3층" / 모르면 "주운 곳 모름" */
   function placeText(item) {
     if (!item.building) return "주운 곳 모름";
-    return item.floor !== null && item.floor !== undefined ? `${item.building.name} ${item.floor}층` : item.building.name;
+    return [item.building.name, floorLabel(item.floor)].filter(Boolean).join(" ");
   }
 
   /** 목록·상세 제목: AI 제목 → 종류 이름 → 확인 전 */
@@ -705,6 +756,9 @@
     PICKUP_METHOD_LABELS,
     PICKUP_STATUS_LABELS,
     NOTIFICATION_LABELS,
+    NOTIFICATION_KIND,
+    CLOSED_REASON_LABELS,
+    floorLabel,
     ApiError,
     auth,
     requireLogin,
@@ -745,6 +799,9 @@
     getItem: (id) => call(`/admin/found-items/${encodeURIComponent(id)}`),
     /** PATCH /admin/found-items/:id. 바꾼 칸만 보낸다 */
     updateItem: (id, body) => call(`/admin/found-items/${encodeURIComponent(id)}`, { method: "PATCH", body }),
+    /** POST /admin/found-items/:id/close: 보관 종료. reason = DISPOSED | MISREGISTERED */
+    closeItem: (id, reason) =>
+      call(`/admin/found-items/${encodeURIComponent(id)}/close`, { method: "POST", body: { reason } }),
     inPersonPickup: (id, verificationNote) =>
       call(`/admin/found-items/${encodeURIComponent(id)}/in-person-pickup`, {
         method: "POST",

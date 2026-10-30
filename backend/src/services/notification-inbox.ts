@@ -10,12 +10,16 @@ type Row = { id: string; type: string; foundItemId: string | null; readAt: Date 
  * 지금은 사람마다 한 번만 만들지만, 이미 쌓인 알림은 지우지 않고 보여 줄 때 묶는다.
  * rows는 최신순이어야 한다.
  */
+/** 물건 하나에 하나만 보이면 되는 알림. 관리자 정보 알림(맡긴 물건, 수령 예정)도 같은 물건이면 묶는다 */
+const PER_ITEM = new Set(["NEW_CANDIDATE", "ITEM_INCOMING", "PICKUP_SCHEDULED"]);
+
 function dedupe<T extends Row>(rows: T[]): T[] {
   const seen = new Set<string>();
   return rows.filter((n) => {
-    if (n.type !== "NEW_CANDIDATE" || !n.foundItemId) return true;
-    if (seen.has(n.foundItemId)) return false;
-    seen.add(n.foundItemId);
+    if (!PER_ITEM.has(n.type) || !n.foundItemId) return true;
+    const key = `${n.type}:${n.foundItemId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 }
@@ -58,7 +62,7 @@ export async function markRead(userId: string, id: string): Promise<void> {
     select: { readAt: true, type: true, foundItemId: true },
   });
   if (!n) throw new AppError("NOT_FOUND", "알림을 찾을 수 없어요.");
-  const sameItem = n.type === "NEW_CANDIDATE" && n.foundItemId ? { type: n.type, foundItemId: n.foundItemId } : { id };
+  const sameItem = PER_ITEM.has(n.type) && n.foundItemId ? { type: n.type, foundItemId: n.foundItemId } : { id };
   await prisma.notification.updateMany({ where: { userId, readAt: null, ...sameItem }, data: { readAt: new Date() } });
 }
 

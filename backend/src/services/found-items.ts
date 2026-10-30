@@ -24,6 +24,7 @@ import { prisma } from "../lib/prisma";
 import { premaskSafely } from "../privacy/premask";
 import { setFoundItemEmbedding } from "../repositories/embedding";
 import { storage } from "../storage";
+import { adminAlertSafely, alertItemIncoming } from "./admin-alerts";
 import { alertNewCandidateSafely } from "./candidate-alerts";
 import { alertHotspotSafely } from "./hotspots";
 
@@ -268,6 +269,7 @@ export async function registerFoundItem(input: {
     await alertNewCandidateSafely(photo.id);
     await alertHotspotSafely(photo.id);
   }
+  await adminAlertSafely(() => alertItemIncoming(photo.id), photo.id, "ITEM_INCOMING");
 
   const category = photo.analysis?.extraction.category ?? null;
   return {
@@ -409,6 +411,7 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
     await alertNewCandidateSafely(id);
     await alertHotspotSafely(id);
   }
+  await adminAlertSafely(() => alertItemIncoming(id), id, "ITEM_INCOMING");
 
   return {
     id,

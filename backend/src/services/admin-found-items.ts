@@ -1,5 +1,6 @@
 import {
   ADMIN_PAGE_SIZE,
+  type AdminCloseFoundItemRequest,
   type AdminFoundItemDetailResponse,
   type AdminFoundItemListQuery,
   type AdminFoundItemListResponse,
@@ -19,6 +20,7 @@ import { prisma } from "../lib/prisma";
 import { setFoundItemEmbedding } from "../repositories/embedding";
 import { storage } from "../storage";
 import { alertNewCandidateSafely } from "./candidate-alerts";
+import { purgeFoundItemData } from "./data-purge";
 import { maskEmail } from "./pickups";
 
 const ADMIN_IMAGE_TTL_SECONDS = 10 * 60;
@@ -47,6 +49,8 @@ const summarySelect = {
   isSeed: true,
   floor: true,
   claimLockedAt: true,
+  closedAt: true,
+  closedReason: true,
   building: { select: { id: true, name: true } },
   storagePlace: { select: { id: true, name: true, guideText: true } },
   detail: { select: { title: true } },
@@ -59,6 +63,7 @@ const toSummary = ({ detail, ...i }: Summary) => ({
   title: detail?.title ?? null,
   foundAt: i.foundAt.toISOString(),
   claimLockedAt: i.claimLockedAt?.toISOString() ?? null,
+  closedAt: i.closedAt?.toISOString() ?? null,
 });
 
 /** GET /admin/found-items (F-14) */
@@ -113,6 +118,7 @@ export async function getFoundItem(admin: Admin, id: string): Promise<AdminFound
         orderBy: { createdAt: "desc" },
         include: { user: { select: { email: true } }, processedBy: { select: { email: true } } },
       },
+      closedBy: { select: { email: true } },
     },
   });
   const d = item.detail;
@@ -150,6 +156,7 @@ export async function getFoundItem(admin: Admin, id: string): Promise<AdminFound
       processedByEmailMasked: p.processedBy ? maskEmail(p.processedBy.email) : null,
       verificationNote: p.verificationNote,
     })),
+    closedByEmailMasked: item.closedBy ? maskEmail(item.closedBy.email) : null,
   };
 }
 
@@ -226,5 +233,51 @@ export async function updateFoundItem(
   });
 
   if (registering) await alertNewCandidateSafely(id);
+  return getFoundItem(admin, id);
+}
+
+/** 보관을 끝낼 수 있는 상태: 등록됨·열람됨·검토 대기. 확정 전 초안은 정기 작업이 지우고, 수령·만료는 이미 끝났다 */
+const CLOSABLE = ["REGISTERED", "REVEALED", "REVIEW"] as const;
+
+/**
+ * POST /admin/found-items/:id/close (QA 10/30 3차: 관리자 화면에 지우는 기능이 없음)
+ * 행을 지우지 않고 기한 만료(EXPIRED)로 바꿔 후보·공개 목록에서 뺀다. 이유·처리 관리자·시각을 남긴다.
+ * - 잘못 등록: 사진과 비공개 정보를 바로 지운다
+ * - 폐기·이관: 기한 만료 물건과 같은 정기 작업이 지운다
+ * 기록(시도·열람·수령)은 기한 만료 물건처럼 30일 뒤 지운다. 받아 간 수령 QR은 만료시킨다.
+ */
+export async function closeFoundItem(
+  admin: Admin,
+  id: string,
+  input: AdminCloseFoundItemRequest,
+): Promise<AdminFoundItemDetailResponse> {
+  await getScopedItem(admin, id);
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    const item = await tx.foundItem.findUniqueOrThrow({ where: { id }, select: { status: true, isSeed: true } });
+    if (item.status === "CLAIMED") throw new AppError("ALREADY_CLAIMED", "이미 수령된 물건이에요.");
+    if (item.isSeed) throw new AppError("NOT_CLOSABLE", "체험용 물건은 보관을 끝낼 수 없어요.");
+    // 같은 순간 수령 처리와 겹치지 않게 상태를 조건으로 바꾼다
+    const changed = await tx.foundItem.updateMany({
+      where: { id, status: { in: [...CLOSABLE] } },
+      data: {
+        status: "EXPIRED",
+        expiresAt: now,
+        closedAt: now,
+        closedReason: input.reason,
+        closedById: admin.userId,
+      },
+    });
+    if (changed.count === 0) throw new AppError("NOT_CLOSABLE", "보관 중인 물건만 끝낼 수 있어요.");
+    await tx.pickup.updateMany({ where: { foundItemId: id, status: "ISSUED" }, data: { status: "EXPIRED" } });
+  });
+  logger.info({ foundItemId: id, reason: input.reason }, "관리자 보관 종료");
+  if (input.reason === "MISREGISTERED") {
+    try {
+      await purgeFoundItemData(id, now);
+    } catch (err) {
+      logger.error({ err, foundItemId: id }, "잘못 등록 물건 정리 실패 → 정기 작업이 다시 시도");
+    }
+  }
   return getFoundItem(admin, id);
 }
