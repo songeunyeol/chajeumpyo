@@ -81,7 +81,10 @@
       const table = document.querySelector("table.kv");
       const row = table.insertRow(0);
       row.innerHTML = "<th>주운 곳</th><td></td>";
-      row.cells[1].textContent = result.building ? result.building.name : "모름";
+      // 층은 공개 화면·후보 카드에는 숨기지만, 올린 본인 완료 화면에는 보여 준다 (QA 10/30)
+      const savedFloor = sessionStorage.getItem("foundFloor");
+      const floor = savedFloor ? (Number(savedFloor) < 0 ? `지하 ${-Number(savedFloor)}층` : `${Number(savedFloor)}층`) : "";
+      row.cells[1].textContent = [result.building ? result.building.name : "모름", floor].filter(Boolean).join(" ");
       const notes = [result.message, result.handOverAdvice && result.handOverAdvice.message].filter(Boolean);
       for (const text of notes) {
         const p = document.createElement("p");

@@ -13,7 +13,7 @@
 <body>
 <main class="screen">
   <header class="bar"><a class="back" href="../index.html">←</a></header>
-  <h1>두 가지를 확인합니다</h1>
+  <h1>두 가지를 확인해요</h1>
   <p class="lead">눌러서 동의해 주세요.</p>
   <div class="check is-toggle is-off" id="aiConsent" role="checkbox" aria-checked="false" tabindex="0">
     <span class="mark">✓</span>
@@ -35,6 +35,19 @@
   </div>
 </main>
 <script>
+  // 시작 화면이다. 이 탭에 끝난 등록이 남아 있으면 지우고 새로 시작한다 (QA 10/30).
+  // 끝나지 않은 초안(foundDraft만 있고 foundConfirmedId가 다름)은 사진·등록 화면에서 이어 쓸 수 있게 둔다.
+  try {
+    const draft = JSON.parse(sessionStorage.getItem("foundDraft") || "null");
+    const confirmedId = sessionStorage.getItem("foundConfirmedId");
+    if (confirmedId && (!draft || draft.id === confirmedId)) {
+      for (const k of [
+        "foundDraft", "foundConfirmedId", "foundDonePage", "foundResult", "foundPhoto", "photoBuilding",
+        "registeredAt", "foundBuilding", "foundFloor", "locationDetail", "handoverBuilding",
+      ]) sessionStorage.removeItem(k);
+    }
+  } catch (_) {}
+
   // 동의는 사용자가 직접 누른다(처음엔 모두 꺼 둠, QA 10/29). 사진 분석(필수)을 켜야 다음으로 간다
   const aiConsent = document.getElementById("aiConsent");
   const locConsent = document.getElementById("locConsent");
