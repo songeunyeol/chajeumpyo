@@ -715,11 +715,12 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect(res.body.error.code).toBe("MATCH_LOCKED");
   });
 
-  it("습득자 설명에서 나온 특징(source: finder)은 대조에는 쓰지만 객관식 질문으로 내지 않는다", async () => {
+  it("습득자 설명 특징(source: finder)은 대조에 쓰고, 이름이 섞일 수 있는 종류·영문·숫자 값은 객관식으로 내지 않는다", async () => {
     const it1 = await item({
       features: [
         { key: "sticker", value: "곰돌이 스티커" },
-        { key: "keyring", value: "고양이 키링", source: "finder" } as AiFeature,
+        { key: "contents", value: "학생증 김서경", source: "finder" } as AiFeature,
+        { key: "pattern", value: "JH 무늬", source: "finder" } as AiFeature,
       ],
     });
     const r = await newReport({ features: [] });
@@ -727,16 +728,29 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect(res.body.result).toBe("BORDERLINE");
     const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
     const keys = ((a.matchedFields as { quiz: { featureKey: string }[] }).quiz ?? []).map((q) => q.featureKey);
-    expect(keys).not.toContain("keyring");
-    // 스티커 질문의 오답 보기에 "고양이 스티커"가 나올 수 있어, 습득자 특징 낱말("키링")로 본다
-    expect(JSON.stringify(res.body)).not.toContain("키링");
+    expect(keys).not.toContain("contents");
+    expect(keys).not.toContain("pattern");
+    expect(JSON.stringify(res.body)).not.toContain("김서경");
+    expect(JSON.stringify(res.body)).not.toContain("JH");
     // 대조에는 쓴다: 설명에 그 특징을 적으면 통과
     const r2 = await newReport(
-      { features: [feature("sticker", "곰돌이 스티커"), feature("keyring", "고양이 키링")] },
+      { features: [feature("sticker", "곰돌이 스티커"), feature("contents", "학생증 김서경")] },
       token,
-      "곰돌이 스티커, 고양이 키링 달린 에어팟",
+      "곰돌이 스티커, 안에 학생증",
     );
-    expect((await claim(r2, it1.id)).body.result).toBe("PASS");
+    expect((await claim(r2, it1.id)).body.result).not.toBe("FAIL");
+  });
+
+  it("습득자 설명 특징 중 키링·스티커처럼 이름이 들어가기 어려운 종류는 객관식 질문으로 쓸 수 있다 (10/31 QA)", async () => {
+    const it1 = await item({
+      features: [{ key: "keyring", value: "고양이 키링", source: "finder" } as AiFeature],
+    });
+    const r = await newReport({ features: [] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
+    const keys = ((a.matchedFields as { quiz: { featureKey: string }[] }).quiz ?? []).map((q) => q.featureKey);
+    expect(keys).toContain("keyring");
   });
 
   it("다시 시도해도(다른 설명·다른 계정) 같은 물건·같은 질문이면 같은 보기 세트, 순서만 섞는다 (교집합 공격 막기, 10/30)", async () => {

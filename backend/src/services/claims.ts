@@ -45,8 +45,19 @@ type Attempt = Prisma.MatchAttemptGetPayload<object>;
 const Features = z.array(AiFeature).catch([]);
 
 /**
- * 습득자 설명에서 나온 특징(source: "finder")의 "종류|값". 이 특징은 대조에만 쓰고 객관식 질문으로는 내지 않는다.
- * 습득자가 쓴 글이 보기에 그대로 나가 남에게 보이지 않게 (10/30 코드 평가).
+ * 습득자 설명에서 나온 특징 중 객관식 질문으로 내도 되는 종류. 색·모양처럼 이름이 들어가기 어려운 것만 (10/31 QA).
+ * 글자·각인(text), 안에 든 것(contents), 기타(other)는 이름·학번이 섞일 수 있어 계속 대조에만 쓴다.
+ */
+const QUIZ_SAFE_FINDER_KEYS = new Set(["sticker", "scratch", "case", "keyring", "pattern"]);
+
+/** 영문·숫자가 섞인 값(이니셜 "J.H", 학번 등)은 안전한 종류라도 보기로 내지 않는다 */
+function quizSafeFinderValue(value: string): boolean {
+  return !/[A-Za-z0-9]/.test(value);
+}
+
+/**
+ * 습득자 설명에서 나온 특징(source: "finder") 중 객관식으로 내면 안 되는 것의 "종류|값". 이 특징은 대조에만 쓴다.
+ * 습득자가 쓴 이름·이니셜이 보기에 그대로 나가 남에게 보이지 않게 (10/30 코드 평가). 안전한 종류는 질문에 쓴다 (10/31 QA).
  */
 export function finderFeatureIds(raw: unknown): Set<string> {
   const ids = new Set<string>();
@@ -54,7 +65,9 @@ export function finderFeatureIds(raw: unknown): Set<string> {
   for (const f of raw) {
     if (f && typeof f === "object" && (f as { source?: unknown }).source === "finder") {
       const { key, value } = f as { key?: unknown; value?: unknown };
-      if (typeof key === "string" && typeof value === "string") ids.add(`${key}|${value.trim()}`);
+      if (typeof key !== "string" || typeof value !== "string") continue;
+      if (QUIZ_SAFE_FINDER_KEYS.has(key) && quizSafeFinderValue(value)) continue;
+      ids.add(`${key}|${value.trim()}`);
     }
   }
   return ids;
@@ -261,7 +274,7 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   const mentionedKeys = comparison.features
     .filter((f) => !(f.verdict === "UNKNOWN" && f.storedKey))
     .map((f) => f.reportedKey);
-  // 질문으로 낼 수 있는 특징: 습득자 설명에서 나온 것은 뺀다
+  // 질문으로 낼 수 있는 특징: 습득자 설명에서 나온 것 중 이름이 섞일 수 있는 것은 뺀다
   const fromFinder = finderFeatureIds(item.detail?.features);
   const askableFeatures = storedFeatures.filter((f) => !fromFinder.has(`${f.key}|${f.value.trim()}`));
   let j = judge(comparison, askableFeatures, mentionedKeys, storedFeatures);
