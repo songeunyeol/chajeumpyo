@@ -60,6 +60,23 @@ async function markClaimed(tx: Tx, foundItemId: string, lostReportId: string, ex
   });
 }
 
+/** 같은 사람이 다시 받으면 이전 QR은 만료하고 새 토큰을 만든다 */
+async function issueToken(tx: Tx, userId: string, foundItemId: string, method: "CENTER_QR" | "DEMO") {
+  await tx.pickup.updateMany({
+    where: { foundItemId, userId, method, status: "ISSUED" },
+    data: { status: "EXPIRED" },
+  });
+  return {
+    qrToken: `pk_${randomBytes(24).toString("base64url")}`,
+    expiresAt: new Date(Date.now() + QR_TTL_HOURS * 3600_000),
+  };
+}
+
+/** 체험 수령이 끝나면 체험 계정의 신고만 끝낸다. 시드 물건은 다른 체험 계정이 다시 쓰므로 그대로 둔다 */
+async function resolveDemoReport(tx: Tx, userId: string, lostReportId: string) {
+  await tx.lostReport.updateMany({ where: { id: lostReportId, userId, status: "OPEN" }, data: { status: "RESOLVED" } });
+}
+
 const purgeAfter = (from: Date) => new Date(from.getTime() + RECORD_RETENTION_DAYS * 86_400_000);
 
 /** POST /found-items/:id/pickup-qr (F-11) */
@@ -75,30 +92,24 @@ export async function issuePickupQr(viewer: Viewer, foundItemId: string): Promis
       );
     }
 
-    // 체험 계정: 관리자 스캔 없이 바로 완료, 시드 상태는 그대로 (F-05)
+    // 체험 계정: 실제와 같은 QR을 준다. 관리자 스캔(CENTER_QR만 찾음)에는 안 쓰이고, 시드 상태는 그대로 (F-05)
     if (viewer.role === "DEMO") {
-      const now = new Date();
+      const { qrToken, expiresAt } = await issueToken(tx, viewer.userId, foundItemId, "DEMO");
       const p = await tx.pickup.create({
         data: {
           foundItemId,
           userId: viewer.userId,
           method: "DEMO",
-          status: "COMPLETED",
-          completedAt: now,
-          purgeAfter: purgeAfter(now),
+          status: "ISSUED",
+          qrTokenHash: hmac(qrToken),
+          qrExpiresAt: expiresAt,
         },
       });
-      return { method: "DEMO", pickupId: p.id, status: "COMPLETED", completedAt: now.toISOString() };
+      return { method: "DEMO", pickupId: p.id, qrToken, status: "ISSUED", expiresAt: expiresAt.toISOString() };
     }
 
     if (item.status === "CLAIMED") throw claimedError();
-    // 같은 사람이 다시 받으면 이전 QR은 만료
-    await tx.pickup.updateMany({
-      where: { foundItemId, userId: viewer.userId, status: "ISSUED" },
-      data: { status: "EXPIRED" },
-    });
-    const qrToken = `pk_${randomBytes(24).toString("base64url")}`;
-    const expiresAt = new Date(Date.now() + QR_TTL_HOURS * 3600_000);
+    const { qrToken, expiresAt } = await issueToken(tx, viewer.userId, foundItemId, "CENTER_QR");
     const p = await tx.pickup.create({
       data: {
         foundItemId,
@@ -136,12 +147,38 @@ export async function selfPickup(viewer: Viewer, foundItemId: string): Promise<S
         purgeAfter: purgeAfter(now),
       },
     });
-    if (!isDemo) await markClaimed(tx, foundItemId, attempt.lostReportId, p.id);
+    if (isDemo) await resolveDemoReport(tx, viewer.userId, attempt.lostReportId);
+    else await markClaimed(tx, foundItemId, attempt.lostReportId, p.id);
     return { pickupId: p.id, method: p.method, status: p.status, completedAt: now.toISOString() };
   });
   // 수령이 끝났으니 사진과 비공개 정보를 지운다 (#33). 체험 수령은 시드를 지우지 않는다.
   if (result.method !== "DEMO") await purgeAfterClaimSafely(foundItemId);
   return result;
+}
+
+/**
+ * POST /found-items/:id/demo-pickup: 체험 계정의 "교무처 스캔 대신하기".
+ * 받아 둔 체험 QR을 완료하고 신고를 끝낸다. 실제 수령처럼 물건을 CLAIMED로 바꾸거나 사진을 지우지 않는다(시드).
+ */
+export async function completeDemoPickup(viewer: Viewer, foundItemId: string): Promise<PickupCompleteResponse> {
+  if (viewer.role !== "DEMO")
+    throw new AppError("FORBIDDEN", "체험 계정에서만 쓸 수 있어요. 교무처에서 QR을 보여 주세요.");
+  return prisma.$transaction(async (tx) => {
+    await lockItem(tx, foundItemId);
+    const attempt = await passedAttempt(tx, viewer.userId, foundItemId);
+    const p = await tx.pickup.findFirst({
+      where: { foundItemId, userId: viewer.userId, method: "DEMO", status: "ISSUED", qrExpiresAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!p) throw new AppError("NOT_FOUND", "먼저 수령 QR을 받아 주세요.");
+    const now = new Date();
+    await tx.pickup.update({
+      where: { id: p.id },
+      data: { status: "COMPLETED", completedAt: now, purgeAfter: purgeAfter(now) },
+    });
+    await resolveDemoReport(tx, viewer.userId, attempt.lostReportId);
+    return { pickupId: p.id, status: "COMPLETED" as const, completedAt: now.toISOString() };
+  });
 }
 
 /** 이메일 가리기: st****@skuniv.ac.kr */

@@ -225,7 +225,12 @@ describe("시드와 실제 물건은 서로 섞이지 않는다 (id를 직접 �
       expect(detail.status).toBe(200);
       const qr = await request(app).post(`/api/v1/found-items/${EARPHONE.id}/pickup-qr`).set(bearer(demo.accessToken));
       expect(qr.status).toBe(200);
-      expect(qr.body).toMatchObject({ method: "DEMO", status: "COMPLETED" });
+      expect(qr.body).toMatchObject({ method: "DEMO", status: "ISSUED" });
+      const done = await request(app)
+        .post(`/api/v1/found-items/${EARPHONE.id}/demo-pickup`)
+        .set(bearer(demo.accessToken));
+      expect(done.body).toMatchObject({ status: "COMPLETED" });
+      expect((await prisma.lostReport.findUniqueOrThrow({ where: { id: r1.body.id } })).status).toBe("RESOLVED");
 
       // 그 자리에 둔 우산: 확인 → 상세 → "찾았어요"
       const r2 = await request(app)

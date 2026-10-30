@@ -428,15 +428,13 @@
   on("btnQr", "pickup", async () => {
     const r = await A.pickupQr();
     show("pickup", r);
-    $("qrWrap").hidden = r.method !== "CENTER_QR";
+    $("qrWrap").hidden = false;
     $("qrBox").replaceChildren();
-    if (r.method === "CENTER_QR") {
+    {
       if (window.QRCode) new QRCode($("qrBox"), { text: r.qrToken, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
       else $("qrBox").textContent = "QR 라이브러리를 못 불러왔어요.";
       $("qrInfo").textContent = `${A.remaining(r.expiresAt)} · 다시 받으면 지금 QR은 바로 쓸 수 없어요.`;
-      say("pickup", "센터 직원에게 QR을 보여 주세요.", "ok");
-    } else {
-      say("pickup", `체험 계정이라 바로 수령 완료됐어요 (${A.formatKst(r.completedAt)}).`, "ok");
+      say("pickup", r.method === "DEMO" ? "체험 QR이에요. 아래 '교무처 스캔 대신하기'로 끝내요." : "센터 직원에게 QR을 보여 주세요.", "ok");
     }
   });
   on("btnSelf", "pickup", async () => {

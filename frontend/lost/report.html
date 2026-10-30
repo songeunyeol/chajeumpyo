@@ -35,6 +35,8 @@
         <span class="time-range-sep">~</span>
         <select id="lostEndHour" aria-label="종료 시간 선택"></select>
       </div>
+      <!-- 아직 오지 않은 시간을 고르면 어제로 맞춘다는 걸 알려 준다 (QA 10/30: 말없이 어제로 바뀌던 문제) -->
+      <p class="note" id="timeNote" hidden aria-live="polite" style="margin:0"></p>
     </div>
   </div>
 
@@ -148,14 +150,19 @@
   }
 
   // 2. 몇 시부터 ~ 몇 시까지 시간 셀렉트 생성. 시간을 모르면 그날 하루 전체
+  // 기본값은 "지금까지 2시간": 10:30이면 08:00~11:00 (끝은 서버로 보낼 때 지금으로 줄인다).
+  // 자정 직후면 22:00~01:00처럼 어제 밤부터로 본다 (lostRange가 전날로 넘긴다)
+  const nowHour = Number(LostApi.kstParts().time.slice(0, 2));
+  const defaultStart = (nowHour + 22) % 24;
+  const defaultEnd = nowHour + 1;
   startSelect.add(new Option("시간 모름 (하루 전체)", "any"));
   for (let h = 0; h <= 23; h++) {
     const hh = String(h).padStart(2, "0") + ":00";
-    startSelect.add(new Option(`${hh} 부터`, String(h), h === 13, h === 13));
+    startSelect.add(new Option(`${hh} 부터`, String(h), h === defaultStart, h === defaultStart));
   }
   for (let h = 1; h <= 24; h++) {
     const hh = String(h).padStart(2, "0") + ":00";
-    endSelect.add(new Option(`${hh} 까지`, String(h), h === 15, h === 15));
+    endSelect.add(new Option(`${hh} 까지`, String(h), h === defaultEnd, h === defaultEnd));
   }
 
   const timeGrid = document.getElementById("timeRangeGrid");
@@ -169,6 +176,29 @@
   }
   dateSelect.addEventListener("change", syncWhen);
   startSelect.addEventListener("change", syncWhen);
+
+  const timeNote = document.getElementById("timeNote");
+  const hourText = (v) => (v === "24" ? "23:59" : String(v).padStart(2, "0") + ":00");
+  /** 고른 구간이 통째로 아직 오지 않았으면 어제 같은 시각으로 보낸다는 걸 알려 준다 */
+  function syncTimeNote() {
+    const dayPicked = /^\d{4}-\d{2}-\d{2}$/.test(dateSelect.value);
+    if (!dayPicked || startSelect.value === "any") {
+      timeNote.hidden = true;
+      return;
+    }
+    let from = Date.parse(LostApi.kstIso(dateSelect.value, hourText(startSelect.value)));
+    const to = Date.parse(LostApi.kstIso(dateSelect.value, hourText(endSelect.value)));
+    if (to < from) from -= DAY_MS;
+    if (from <= Date.now()) {
+      timeNote.hidden = true;
+      return;
+    }
+    const r = LostApi.lostRange(dateSelect.value, hourText(startSelect.value), hourText(endSelect.value));
+    timeNote.textContent = `아직 오지 않은 시간이에요. ${LostApi.formatRange(r.lostFrom, r.lostTo)}로 맞춰서 찾을게요.`;
+    timeNote.hidden = false;
+  }
+  // 시작·끝 자동 맞춤(아래) 뒤에 확인하도록 한 박자 늦춘다
+  for (const el of [dateSelect, startSelect, endSelect]) el.addEventListener("change", () => setTimeout(syncTimeNote));
 
   startSelect.addEventListener("change", () => {
     if (startSelect.value === "any") return;
@@ -186,6 +216,8 @@
       startSelect.value = String(Math.max(0, eh - 1));
     }
   });
+
+  syncTimeNote();
 
   // 3. 기억나는 점 글자수 비례 자동 크기 조절 (하한 72px ~ 상한 200px)
   const MIN_H = 72;

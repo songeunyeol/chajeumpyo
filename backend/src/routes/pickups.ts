@@ -23,10 +23,10 @@ registry.registerPath({
   security,
   summary: "수령 QR 발급 (F-11)",
   description:
-    "통과한 계정 + 보관처에 맡긴 물건만. 24시간 유효, 다시 받으면 이전 QR은 만료. 체험 계정은 QR 없이 바로 완료(method=DEMO).",
+    "통과한 계정 + 보관처에 맡긴 물건만. 24시간 유효, 다시 받으면 이전 QR은 만료. 체험 계정도 QR을 받지만(method=DEMO) 관리자 스캔에는 쓰이지 않고 demo-pickup으로 끝낸다.",
   request: { params: FoundItemIdParams },
   responses: {
-    200: { description: "QR 또는 체험 완료", ...json(PickupQrResponse) },
+    200: { description: "QR (체험이면 method=DEMO)", ...json(PickupQrResponse) },
     403: errorResponse("FORBIDDEN: 통과하지 않음"),
     404: errorResponse("NOT_FOUND"),
     409: errorResponse("INVALID_STORAGE_TYPE, ALREADY_CLAIMED"),
@@ -43,6 +43,20 @@ registry.registerPath({
     200: { description: "수령 완료", ...json(SelfPickupResponse) },
     403: errorResponse("FORBIDDEN: 통과하지 않음"),
     409: errorResponse("INVALID_STORAGE_TYPE, ALREADY_CLAIMED"),
+  },
+});
+registry.registerPath({
+  method: "post",
+  path: "/found-items/{id}/demo-pickup",
+  tags: ["수령"],
+  security,
+  summary: "체험: 교무처 스캔 대신하기",
+  description: "체험 계정만. 받아 둔 체험 QR을 완료하고 체험 신고를 끝낸다. 시드 물건 상태는 그대로.",
+  request: { params: FoundItemIdParams },
+  responses: {
+    200: { description: "완료", ...json(PickupCompleteResponse) },
+    403: errorResponse("FORBIDDEN: 체험 계정 아님, 통과하지 않음"),
+    404: errorResponse("NOT_FOUND: 받아 둔 QR 없음"),
   },
 });
 registry.registerPath({
@@ -105,6 +119,16 @@ export function createPickupsRouter() {
     validate("params", FoundItemIdParams),
     async (_req, res) => {
       const result: SelfPickupResponse = await service.selfPickup(viewer(res), res.locals.params.id);
+      res.json(result);
+    },
+  );
+
+  router.post(
+    "/found-items/:id/demo-pickup",
+    requireMember(),
+    validate("params", FoundItemIdParams),
+    async (_req, res) => {
+      const result: PickupCompleteResponse = await service.completeDemoPickup(viewer(res), res.locals.params.id);
       res.json(result);
     },
   );

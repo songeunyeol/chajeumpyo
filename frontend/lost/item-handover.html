@@ -59,6 +59,11 @@
       <div id="qrWrap" hidden>
         <div class="qr" id="qrBox" role="img" aria-label="수령 QR"></div>
         <p class="note" id="qrNote" style="text-align:center;margin-top:0"></p>
+        <!-- 체험 계정: 교무처가 없으니 스캔을 대신 눌러 수령까지 끝까지 본다 (QA 10/30) -->
+        <div class="card" id="demoPickupBox" hidden style="text-align:center">
+          <p class="note" style="margin-top:0">체험: 교무처가 이 QR을 스캔하면 수령이 끝나요</p>
+          <button class="btn line" id="demoPickupBtn" type="button">교무처 스캔 대신하기</button>
+        </div>
       </div>
       <div class="dock">
         <a class="btn" id="qrBtn" href="home.html">수령 QR 받기</a>
@@ -72,6 +77,9 @@
 <script>
   // 내 물건 (보관처에 맡김): GET /found-items/:id/detail → "수령 QR 받기" POST /found-items/:id/pickup-qr
   const authed = LostApi.requireLogin();
+  // 주소에 물건 id가 있으면 그 물건을 연다 (권한은 서버가 확인). 없으면 마지막으로 확인한 물건
+  const queryId = new URLSearchParams(location.search).get("id");
+  if (queryId && /^[0-9a-f-]{36}$/i.test(queryId)) LostApi.store.set(LostApi.KEYS.foundItemId, queryId);
   const viewport = document.getElementById("passToItemViewport");
   const barTitle = document.getElementById("barTitle");
   const itemPhotoImg = document.getElementById("itemPhotoImg");
@@ -164,6 +172,25 @@
     showPassed();
   }
 
+  const demoPickupBox = document.getElementById("demoPickupBox");
+  const demoPickupBtn = document.getElementById("demoPickupBtn");
+  demoPickupBtn.addEventListener("click", async () => {
+    demoPickupBtn.disabled = true;
+    try {
+      const done = await LostApi.demoPickup();
+      clearInterval(qrTimer);
+      qrWrap.hidden = true;
+      expireNote.hidden = false;
+      expireNote.classList.remove("danger");
+      expireNote.textContent = `수령이 끝났어요 (${LostApi.formatKst(done.completedAt)}). 신고도 끝난 신고로 옮겼어요.`;
+      mode = "home";
+      qrBtn.textContent = "홈으로";
+    } catch (err) {
+      demoPickupBtn.disabled = false;
+      fail(err);
+    }
+  });
+
   function showQr(r) {
     qrBox.replaceChildren();
     if (window.QRCode) {
@@ -172,6 +199,8 @@
       qrBox.textContent = "QR을 그리지 못했어요. 인터넷 연결을 확인해 주세요.";
     }
     qrWrap.hidden = false;
+    demoPickupBox.hidden = r.method !== "DEMO";
+    demoPickupBtn.disabled = false;
     const tick = () => {
       qrNote.textContent = `${placeName} 직원에게 보여 주세요 · ${LostApi.remaining(r.expiresAt)}. 다시 받으면 지금 QR은 바로 쓸 수 없어요.`;
     };
@@ -187,16 +216,8 @@
     if (mode === "home") return location.assign("home.html");
     qrBtn.style.opacity = "0.6";
     try {
-      const r = await LostApi.pickupQr();
-      if (r.method === "DEMO") {
-        // 체험 계정은 QR 없이 바로 수령 완료
-        expireNote.hidden = false;
-        expireNote.textContent = `체험 계정이라 바로 수령 완료됐어요 (${LostApi.formatKst(r.completedAt)}).`;
-        mode = "home";
-        qrBtn.textContent = "홈으로";
-      } else {
-        showQr(r);
-      }
+      // 체험 계정도 실제와 같은 QR을 보여 주고, 아래 "교무처 스캔 대신하기"로 끝낸다
+      showQr(await LostApi.pickupQr());
     } catch (err) {
       fail(err);
     } finally {

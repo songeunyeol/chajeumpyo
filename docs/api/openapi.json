@@ -8782,7 +8782,7 @@
           }
         ],
         "summary": "수령 QR 발급 (F-11)",
-        "description": "통과한 계정 + 보관처에 맡긴 물건만. 24시간 유효, 다시 받으면 이전 QR은 만료. 체험 계정은 QR 없이 바로 완료(method=DEMO).",
+        "description": "통과한 계정 + 보관처에 맡긴 물건만. 24시간 유효, 다시 받으면 이전 QR은 만료. 체험 계정도 QR을 받지만(method=DEMO) 관리자 스캔에는 쓰이지 않고 demo-pickup으로 끝낸다.",
         "parameters": [
           {
             "schema": {
@@ -8796,7 +8796,7 @@
         ],
         "responses": {
           "200": {
-            "description": "QR 또는 체험 완료",
+            "description": "QR (체험이면 method=DEMO)",
             "content": {
               "application/json": {
                 "schema": {
@@ -8847,13 +8847,16 @@
                         "pickupId": {
                           "type": "string"
                         },
+                        "qrToken": {
+                          "type": "string"
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
-                            "COMPLETED"
+                            "ISSUED"
                           ]
                         },
-                        "completedAt": {
+                        "expiresAt": {
                           "type": "string",
                           "format": "date-time"
                         }
@@ -8861,8 +8864,9 @@
                       "required": [
                         "method",
                         "pickupId",
+                        "qrToken",
                         "status",
-                        "completedAt"
+                        "expiresAt"
                       ]
                     }
                   ]
@@ -9224,6 +9228,205 @@
           },
           "409": {
             "description": "INVALID_STORAGE_TYPE, ALREADY_CLAIMED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/found-items/{id}/demo-pickup": {
+      "post": {
+        "tags": [
+          "수령"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "체험: 교무처 스캔 대신하기",
+        "description": "체험 계정만. 받아 둔 체험 QR을 완료하고 체험 신고를 끝낸다. 시드 물건 상태는 그대로.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pickupId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "COMPLETED"
+                      ]
+                    },
+                    "completedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "pickupId",
+                    "status",
+                    "completedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: 체험 계정 아님, 통과하지 않음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "VALUABLE_HAND_OVER_REQUIRED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND: 받아 둔 QR 없음",
             "content": {
               "application/json": {
                 "schema": {

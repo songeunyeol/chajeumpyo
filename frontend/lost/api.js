@@ -880,11 +880,17 @@
     detail: (foundItemId = store.get(KEYS.foundItemId)) => call(`/found-items/${foundItemId}/detail`),
     /**
      * POST /found-items/:id/pickup-qr (보관처에 맡긴 물건)
-     * → CENTER_QR { pickupId, qrToken, status: "ISSUED", expiresAt } | DEMO { pickupId, status: "COMPLETED", completedAt }
+     * → CENTER_QR | DEMO { pickupId, qrToken, status: "ISSUED", expiresAt } (체험 QR은 demoPickup으로 끝낸다)
      * 다시 부르면 이전 QR은 못 쓴다. 오류: 409 INVALID_STORAGE_TYPE, 409 ALREADY_CLAIMED
      */
     async pickupQr(foundItemId = store.get(KEYS.foundItemId)) {
       const r = await call(`/found-items/${foundItemId}/pickup-qr`, { method: "POST" });
+      store.set(KEYS.pickup, r);
+      return r;
+    },
+    /** POST /found-items/:id/demo-pickup (체험 계정의 "교무처 스캔 대신하기") → { pickupId, status: "COMPLETED", completedAt } */
+    async demoPickup(foundItemId = store.get(KEYS.foundItemId)) {
+      const r = await call(`/found-items/${foundItemId}/demo-pickup`, { method: "POST" });
       store.set(KEYS.pickup, r);
       return r;
     },
