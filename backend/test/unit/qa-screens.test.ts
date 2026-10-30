@@ -209,7 +209,6 @@ describe("스토리텔링 화면 (QA 10/30 최종)", () => {
   });
 });
 
-<<<<<<< HEAD
 describe("학교 메일 칸 (@skuniv.ac.kr 고정)", () => {
   type SchoolEmailApi = {
     SCHOOL_DOMAIN: string;
@@ -252,7 +251,9 @@ describe("학교 메일 칸 (@skuniv.ac.kr 고정)", () => {
       expect(html).not.toContain('placeholder="아이디@skuniv.ac.kr"');
     }
     expect(read("frontend/lost/signup.html")).toContain("서경대 학생·교직원만 쓸 수 있어요");
-=======
+  });
+});
+
 function lostApiFns(): {
   aiReadSummary: (aiRead: unknown) => string;
   passExplanation: (claim: unknown, aiRead: unknown, itemId?: string) => string;
@@ -317,6 +318,5 @@ describe("AI가 한 일 (교수 평가 10/30: 분실자 화면에 AI가 보이�
     expect(guide).toContain("사진 한 장으로 AI가 하는 일");
     expect(read("frontend/lost/candidates.html")).not.toContain("곰돌이 스티커");
     expect(read("frontend/lost/api.js")).toContain('RELATED_CATEGORY: "연관 종류"');
->>>>>>> origin/main
   });
 });
