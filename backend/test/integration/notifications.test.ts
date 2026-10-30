@@ -77,9 +77,12 @@ describe("기준 1. 새 습득물이 내 신고의 후보가 되면 알림", () 
 
 describe("기준 2. 연관 종류·2순위 종류도 알리고, 관련 없는 종류는 알리지 않는다", () => {
   it("충전기 신고(연관)·노트북 신고(2순위의 연관)는 알림, 우산 신고는 없음", async () => {
+    // 같은 사람에게는 물건 하나에 알림 하나라 신고마다 다른 계정을 쓴다
+    const other = await signupUser(app, "other@skuniv.ac.kr");
+    const third = await signupUser(app, "third@skuniv.ac.kr");
     const charger = await report("CHARGER");
-    const laptop = await report("LAPTOP");
-    await report("UMBRELLA");
+    const laptop = await report("LAPTOP", other.accessToken);
+    await report("UMBRELLA", third.accessToken);
     await registerItem();
     const ids = (await prisma.notification.findMany()).map((n) => n.lostReportId).sort();
     expect(ids).toEqual([charger, laptop].sort());
@@ -132,14 +135,49 @@ describe("기준 4. 시드·체험 분리, 검토 대기 등록은 알리지 않
   });
 });
 
-describe("기준 5. 신고마다 한 번씩, 중복 없이", () => {
-  it("신고 두 개면 두 개, 같은 물건으로 다시 돌려도 추가 없음", async () => {
-    await report("EARPHONE");
-    await report("EARPHONE", user.accessToken, { description: "두 번째 이어폰 신고" });
+describe("기준 5. 사람마다 물건 하나에 한 번, 중복 없이", () => {
+  it("한 사람이 신고 두 개면 알림 하나(최근 신고에 연결), 노출 기록은 두 신고 모두, 다시 돌려도 추가 없음", async () => {
+    const first = await report("EARPHONE");
+    const second = await report("EARPHONE", user.accessToken, { description: "두 번째 이어폰 신고" });
     const itemId = await registerItem();
-    expect(await prisma.notification.count()).toBe(2);
+    const rows = await prisma.notification.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.lostReportId).toBe(second);
+    const exposed = await prisma.candidateExposure.findMany({ where: { foundItemId: itemId } });
+    expect(exposed.map((e) => e.lostReportId).sort()).toEqual([first, second].sort());
     expect(await alerts.alertNewCandidate(itemId)).toBe(0);
-    expect(await prisma.notification.count()).toBe(2);
+    expect(await prisma.notification.count()).toBe(1);
+  });
+
+  it("다른 사람 신고에는 따로 알린다", async () => {
+    const other = await signupUser(app, "other@skuniv.ac.kr");
+    await report("EARPHONE");
+    await report("EARPHONE", other.accessToken);
+    await registerItem();
+    expect(await prisma.notification.count({ where: { userId: user.user.id } })).toBe(1);
+    expect(await prisma.notification.count({ where: { userId: other.user.id } })).toBe(1);
+  });
+
+  it("이미 쌓인 같은 물건 알림은 목록에서 최근 하나로 묶고, 읽으면 함께 읽음 (QA 10/30)", async () => {
+    const reportId = await report("EARPHONE");
+    const itemId = await registerItem();
+    await prisma.notification.deleteMany();
+    const old = { userId: user.user.id, type: "NEW_CANDIDATE" as const, foundItemId: itemId, lostReportId: reportId };
+    await prisma.notification.createMany({
+      data: [
+        { ...old, message: "혜인관에서 무선 이어폰이 새로 등록됐어요.", createdAt: hoursAgo(0.3) },
+        { ...old, message: "혜인관에서 무선 이어폰이 새로 등록됐어요.", createdAt: hoursAgo(0.2) },
+        { ...old, message: "혜인관에서 무선 이어폰이 새로 등록됐어요.", createdAt: hoursAgo(0.1) },
+        { userId: user.user.id, type: "SYSTEM", message: "다른 알림", createdAt: hoursAgo(0.05) },
+      ],
+    });
+    const res = await inbox();
+    expect(res.body.notifications).toHaveLength(2);
+    expect(res.body.unreadCount).toBe(2);
+    const shown = res.body.notifications.find((n: { type: string }) => n.type === "NEW_CANDIDATE");
+    await request(app).patch(`/api/v1/notifications/${shown.id}/read`).set(as(user.accessToken)).expect(204);
+    expect(await prisma.notification.count({ where: { type: "NEW_CANDIDATE", readAt: null } })).toBe(0);
+    expect((await inbox()).body.unreadCount).toBe(1);
   });
 });
 
