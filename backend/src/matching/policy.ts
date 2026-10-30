@@ -9,6 +9,9 @@ export const MAX_FAILED_ATTEMPTS = 3;
 /** 습득물 하나당 모든 계정 실패 합계 한도. 닿으면 온라인 확인을 막고 대면 확인으로 (#29, open-issues #31) */
 export const MAX_ITEM_FAILED_ATTEMPTS = 10;
 
+/** 설명만으로 바로 통과하려면 습득물 특징 중 이 비율 이상이 맞아야 한다(모순 0). 못 미치면 객관식으로 확인한다 (10/30 은열 확정) */
+export const PASS_MATCH_RATIO = 0.75;
+
 /** 후보 고르기 점수 가중치. 합 = 1 (docs/matching-weights.md 시작값) */
 export const WEIGHTS = { attr: 0.4, place: 0.3, time: 0.2, emb: 0.1 } as const;
 

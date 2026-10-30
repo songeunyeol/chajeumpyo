@@ -14,7 +14,7 @@ import {
 } from "@chajeumpyo/shared";
 import type { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { logger } from "../lib/logger";
-import { compareByRules } from "../matching/compare";
+import { compareByRules, isNegated } from "../matching/compare";
 import { isMaskTrace } from "../matching/text";
 import { type AiClient, EMBEDDING_DIM } from "./types";
 
@@ -304,7 +304,10 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
           const r = reported.features[i];
           // 모순, 또는 같은 종류의 다른 측면으로 본 것(저장 종류가 있는 모름)만 다시 본다
           if (!r || f.verdict === "MATCH" || (f.verdict === "UNKNOWN" && !f.storedKey)) return f;
-          for (const s of stored.features.filter((x) => x.key === f.storedKey)) {
+          // 한쪽만 없음·부정 표현이면 AI에 다시 묻지 않는다("흠집 없음" ↔ "긁힘"을 같은 특징으로 볼 수 있다)
+          const same = (x: { key: string; value: string }) =>
+            x.key === f.storedKey && isNegated(x.value) === isNegated(r.value);
+          for (const s of stored.features.filter(same)) {
             try {
               const verdict = await judgeAnswer({
                 question: "분실물의 같은 특징을 가리키는지",
