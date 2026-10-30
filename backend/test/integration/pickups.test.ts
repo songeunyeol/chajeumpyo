@@ -188,8 +188,10 @@ describe("기준 8. 그 자리에 둔 물건은 본인이 완료", () => {
   });
 });
 
-describe("기준 9. 체험 계정은 관리자 없이 바로 완료, 시드는 그대로", () => {
-  it("맡긴 시드: QR 대신 DEMO 완료, 여러 체험 계정이 반복 가능", async () => {
+describe("기준 9. 체험 계정도 실제와 같은 QR을 받고, '교무처 스캔 대신하기'로 끝낸다. 시드는 그대로", () => {
+  const demoPickup = (id: string, t: string) => request(app).post(`/api/v1/found-items/${id}/demo-pickup`).set(as(t));
+
+  it("맡긴 시드: DEMO QR 발급 → 대신하기 → 체험 신고 RESOLVED, 여러 체험 계정이 반복 가능", async () => {
     const seed = await createFoundItem({
       buildingId: A,
       category: "EARPHONE",
@@ -200,21 +202,48 @@ describe("기준 9. 체험 계정은 관리자 없이 바로 완료, 시드는 �
     });
     for (let i = 0; i < 3; i++) {
       const demo = await demoLogin(app);
-      await createAttempt(demo.user.id, seed.id, { result: "PASS" });
+      const attempt = await createAttempt(demo.user.id, seed.id, { result: "PASS" });
       const res = await qr(seed.id, demo.accessToken);
-      expect(res.body).toMatchObject({ method: "DEMO", status: "COMPLETED" });
-      expect(res.body.qrToken).toBeUndefined();
+      expect(res.body).toMatchObject({ method: "DEMO", status: "ISSUED", qrToken: expect.stringMatching(/^pk_/) });
+      // 체험 QR은 실제 관리자 스캔에 쓰이지 않는다
+      expect((await scan(res.body.qrToken)).status).toBe(404);
+      const done = await demoPickup(seed.id, demo.accessToken);
+      expect(done.status).toBe(200);
+      expect(done.body).toMatchObject({ pickupId: res.body.pickupId, status: "COMPLETED" });
+      const report = await prisma.lostReport.findUniqueOrThrow({ where: { id: attempt.lostReportId } });
+      expect(report.status).toBe("RESOLVED");
     }
     expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: seed.id } })).status).toBe("REGISTERED");
     expect(await prisma.pickup.count({ where: { foundItemId: seed.id, method: "DEMO", status: "COMPLETED" } })).toBe(3);
   });
 
-  it("그 자리에 둔 시드도 DEMO로 완료", async () => {
+  it("대신하기: 체험 계정만, QR을 먼저 받아야 한다", async () => {
+    const seed = await createFoundItem({
+      buildingId: A,
+      category: "EARPHONE",
+      storageType: "HANDED_OVER",
+      storagePlaceId: placeId,
+      isSeed: true,
+      foundAt: hoursAgo(1),
+    });
+    const demo = await demoLogin(app);
+    await createAttempt(demo.user.id, seed.id, { result: "PASS" });
+    expect((await demoPickup(seed.id, demo.accessToken)).status).toBe(404);
+    const { item } = await passedItem("HANDED_OVER");
+    await qr(item.id).expect(200);
+    expect((await demoPickup(item.id, user.accessToken)).status).toBe(403);
+    expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: item.id } })).status).not.toBe("CLAIMED");
+  });
+
+  it("그 자리에 둔 시드도 DEMO로 완료, 체험 신고는 끝난다", async () => {
     const seed = await createFoundItem({ buildingId: A, category: "EARPHONE", isSeed: true, foundAt: hoursAgo(1) });
     for (let i = 0; i < 2; i++) {
       const demo = await demoLogin(app);
-      await createAttempt(demo.user.id, seed.id, { result: "PASS" });
+      const attempt = await createAttempt(demo.user.id, seed.id, { result: "PASS" });
       expect((await self(seed.id, demo.accessToken)).body).toMatchObject({ method: "DEMO", status: "COMPLETED" });
+      expect((await prisma.lostReport.findUniqueOrThrow({ where: { id: attempt.lostReportId } })).status).toBe(
+        "RESOLVED",
+      );
     }
     expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: seed.id } })).status).toBe("REGISTERED");
   });

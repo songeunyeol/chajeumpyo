@@ -130,3 +130,42 @@ describe("QA 10/30 습득 흐름", () => {
     }
   });
 });
+
+describe("우리 QA 10/30 체험 흐름", () => {
+  it("분실 시간 기본값은 지금까지 2시간이고, 미래를 고르면 안내한다", () => {
+    const html = read("frontend/lost/report.html");
+    expect(html).toContain("const defaultStart = (nowHour + 22) % 24;");
+    expect(html).toContain("const defaultEnd = nowHour + 1;");
+    expect(html).not.toMatch(/h === 13, h === 13/);
+    expect(html).toContain('id="timeNote"');
+    expect(html).toContain("아직 오지 않은 시간이에요");
+  });
+
+  it("기본값(자정 직후 22:00~01:00)은 어제 밤부터 지금까지로 보낸다", () => {
+    const adjust = adjustLostWindow();
+    const at = (iso: string) => Date.parse(iso);
+    const now = at("2026-10-31T00:30:00+09:00");
+    const got = adjust(at("2026-10-31T22:00:00+09:00"), at("2026-10-31T01:00:00+09:00"), now);
+    expect(got.from).toBe(at("2026-10-30T22:00:00+09:00"));
+    expect(got.to).toBe(now);
+  });
+
+  it("체험 수령도 QR을 보여 주고 '교무처 스캔 대신하기'로 끝낸다", () => {
+    const html = read("frontend/lost/item-handover.html");
+    expect(html).toContain('id="demoPickupBtn"');
+    expect(html).toContain("LostApi.demoPickup()");
+    expect(html).not.toContain("체험 계정이라 바로 수령 완료");
+  });
+
+  it("주소의 물건 id가 있으면 그 물건을 연다", () => {
+    for (const page of ["frontend/lost/item.html", "frontend/lost/item-handover.html"]) {
+      expect(read(page)).toContain('new URLSearchParams(location.search).get("id")');
+    }
+  });
+
+  it("체험 동의의 AI 항목은 처음엔 꺼져 있는 필수 토글이다", () => {
+    const html = read("frontend/lost/consent-social.html");
+    expect(html).toMatch(/class="check is-toggle is-off" id="aiConsent"/);
+    expect(html).not.toContain("<b>사진 외부 AI</b>");
+  });
+});

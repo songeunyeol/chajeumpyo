@@ -66,6 +66,9 @@
 <script>
   // 내 물건 (그 자리에 둠): GET /found-items/:id/detail. 통과한 계정만 볼 수 있고 열람 기록이 남는다
   const authed = LostApi.requireLogin();
+  // 주소에 물건 id가 있으면 그 물건을 연다 (권한은 서버가 확인). 없으면 마지막으로 확인한 물건
+  const queryId = new URLSearchParams(location.search).get("id");
+  if (queryId && /^[0-9a-f-]{36}$/i.test(queryId)) LostApi.store.set(LostApi.KEYS.foundItemId, queryId);
   const viewport = document.getElementById("passToItemViewport");
   const barTitle = document.getElementById("barTitle");
   const backLink = document.querySelector(".bar .back");

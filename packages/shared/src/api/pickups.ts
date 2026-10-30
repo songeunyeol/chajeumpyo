@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Category, PickupMethod, PickupStatus, SubCategory } from "../enums";
 
-/** POST /found-items/:id/pickup-qr: 보관처에 맡긴 물건의 수령 QR (체험 계정은 바로 완료) */
+/** POST /found-items/:id/pickup-qr: 보관처에 맡긴 물건의 수령 QR */
 export const PickupQrResponse = z.discriminatedUnion("method", [
   z.object({
     method: z.literal("CENTER_QR"),
@@ -11,11 +11,13 @@ export const PickupQrResponse = z.discriminatedUnion("method", [
     status: z.literal("ISSUED"),
     expiresAt: z.iso.datetime(),
   }),
+  /** 체험 계정: 실제와 같은 QR을 보여 주고, "교무처 스캔 대신하기"(POST /found-items/:id/demo-pickup)로 끝낸다. 관리자 스캔에는 쓰이지 않는다 */
   z.object({
     method: z.literal("DEMO"),
     pickupId: z.string(),
-    status: z.literal("COMPLETED"),
-    completedAt: z.iso.datetime(),
+    qrToken: z.string(),
+    status: z.literal("ISSUED"),
+    expiresAt: z.iso.datetime(),
   }),
 ]);
 export type PickupQrResponse = z.infer<typeof PickupQrResponse>;
