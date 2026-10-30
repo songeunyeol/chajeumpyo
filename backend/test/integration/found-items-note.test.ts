@@ -153,3 +153,48 @@ describe("사진 분석이 실패하면 설명으로 종류를 정한다 (텍스
     expect(row.finderNote).toBe("검정 지갑");
   });
 });
+
+describe("확정 토큰을 AI보다 먼저 확인한다 (10/30 코드 평가)", () => {
+  it("틀린 토큰이면 설명 분석·임베딩을 부르지 않고 404", async () => {
+    const d = (await analyze()).body;
+    let aiCalls = 0;
+    setAiClient({
+      ...mockAiClient,
+      extractLostReport: async (t) => {
+        aiCalls++;
+        return mockAiClient.extractLostReport(t);
+      },
+      embed: async (t) => {
+        aiCalls++;
+        return mockAiClient.embed(t);
+      },
+    });
+    const res = await confirm(d.id, { confirmToken: "x".repeat(40), ...kept(), note: "케이스에 토끼 스티커" });
+    expect(res.status).toBe(404);
+    expect(aiCalls).toBe(0);
+  });
+
+  it("설명에서 나온 글자·각인(text) 특징은 받지 않는다 (이름·이니셜일 수 있다)", async () => {
+    setAiClient({
+      ...mockAiClient,
+      extractLostReport: async (description) => ({
+        category: "ETC",
+        color: null,
+        brand: null,
+        features: [
+          { key: "text", value: "이름 김서경" },
+          { key: "sticker", value: "토끼 스티커" },
+        ],
+        description,
+      }),
+    });
+    const d = (await analyze()).body;
+    await confirm(d.id, { confirmToken: d.confirmToken, ...kept(), note: "토끼 스티커, 이름 김서경" }).expect(201);
+    const row = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: d.id } });
+    const finder = (row.features as { key: string; value: string; source?: string }[]).filter(
+      (f) => f.source === "finder",
+    );
+    expect(finder.map((f) => f.key)).not.toContain("text");
+    expect(finder.map((f) => f.value)).toContain("토끼 스티커");
+  });
+});
