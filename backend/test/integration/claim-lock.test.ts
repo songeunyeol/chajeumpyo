@@ -103,8 +103,8 @@ async function failuresFromOthers(foundItemId: string, n: number) {
 }
 
 /**
- * 틀린 설명으로 실패 한 번. 모순이면 바로 실패가 아니라 객관식이 나오므로(10/30) 오답을 고른다.
- * 같은 계정의 두 번째부터는 맞힌 특징 없는 찍기가 이미 쓰였으므로 질문 없이 바로 실패한다.
+ * 틀린 설명으로 실패 한 번. 맞힌 특징 없이 모순만 있으면 바로 실패한다(10/31 B안).
+ * 객관식이 나오는 경우(맞힌 특징이 있을 때)에는 오답을 고른다.
  */
 async function failWith(token: string, foundItemId: string) {
   const res = await claim(token, await newReport(token, WRONG), foundItemId);
@@ -275,14 +275,10 @@ describe("기준 8. 동시에 실패해도 10회를 넘지 않고 알림은 한 
     const item = await newItem();
     await failuresFromOthers(item.id, 9);
     const users = await Promise.all([1, 2, 3, 4].map(() => newUser()));
-    // 모순이면 객관식이 나오므로(10/30) 네 계정이 질문을 받아 둔 뒤 동시에 오답을 낸다
-    const attempts: string[] = [];
-    for (const u of users) {
-      const q = await claim(u.token, await newReport(u.token, WRONG), item.id);
-      expect(q.body.result).toBe("BORDERLINE");
-      attempts.push(q.body.attemptId);
-    }
-    const results = await Promise.all(users.map((u, i) => answer(u.token, attempts[i] ?? "", "토끼")));
+    // 맞힌 특징 없이 모순만 있으면 바로 실패한다(10/31 B안). 네 계정이 동시에 확인을 누른다
+    const reports: string[] = [];
+    for (const u of users) reports.push(await newReport(u.token, WRONG));
+    const results = await Promise.all(users.map((u, i) => claim(u.token, reports[i] ?? "", item.id)));
     const statuses = results.map((r) => r.status).sort();
     expect(statuses).toEqual([200, 409, 409, 409]);
     expect(results.find((r) => r.status === 200)?.body.inPersonOnly).toBe(true);
