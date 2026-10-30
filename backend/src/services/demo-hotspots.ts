@@ -1,5 +1,5 @@
 import type { Category, FoundStatus, HotspotQuery, HotspotResponse } from "@chajeumpyo/shared";
-import { computeHotspots, hotspotRange, type ReportRow, type Row } from "./hotspots";
+import { computeHotspots, hotspotRange, kstDate, type ReportRow, type Row } from "./hotspots";
 
 /**
  * 관리자 시연용 데이터. DB에 넣지 않고 메모리에만 있다.
@@ -77,35 +77,52 @@ export const DEMO_FOUND: DemoFound[] = [
   F(76, 17, "본관", "UMBRELLA", "EXPIRED"),
 ];
 
-type DemoReport = { building: string | null; category: Category; open: boolean };
+type DemoReport = { daysAgo: number; building: string | null; category: Category; open: boolean };
 
+const R = (daysAgo: number, building: string | null, category: Category, open = true) => ({
+  daysAgo,
+  building,
+  category,
+  open,
+});
+
+// 신고도 날짜가 있어 기간(7·30·90일)마다 결과가 다르다 (실서비스 평가 10/30: 기간을 바꿔도 같았다)
 export const DEMO_REPORTS: DemoReport[] = [
-  // 혜인관 이어폰 신고는 4건인데 들어온 물건은 1건 → 등록 안내 제안
-  { building: "혜인관", category: "EARPHONE", open: true },
-  { building: "혜인관", category: "EARPHONE", open: true },
-  { building: "혜인관", category: "EARPHONE", open: true },
-  { building: "혜인관", category: "EARPHONE", open: false },
-  // 유담관 충전기 신고 2건, 들어온 물건은 충분함
-  { building: "유담관", category: "CHARGER", open: true },
-  { building: "유담관", category: "CHARGER", open: false },
-  { building: null, category: "WALLET", open: true },
+  // 혜인관 이어폰 신고가 계속 들어오는데 들어온 물건은 적음 → 등록 안내 제안
+  R(2, "혜인관", "EARPHONE"),
+  R(9, "혜인관", "EARPHONE"),
+  R(20, "혜인관", "EARPHONE"),
+  R(45, "혜인관", "EARPHONE", false),
+  // 유담관 기타 전자기기 신고 2건, 들어온 물건은 충분함
+  R(4, "유담관", "CHARGER"),
+  R(26, "유담관", "CHARGER", false),
+  R(12, null, "WALLET"),
 ];
 
-/** 한국 날짜 to에서 daysAgo일 전 hour시 20분 (한국 시간)의 실제 시각 */
-const kstAt = (to: string, daysAgo: number, hour: number) =>
-  new Date(Date.parse(`${to}T${String(hour).padStart(2, "0")}:20:00+09:00`) - daysAgo * 86_400_000);
+/** 오늘(한국 날짜)에서 daysAgo일 전 hour시 20분 (한국 시간)의 실제 시각. 미래 시각은 만들지 않는다 */
+const kstAt = (today: string, daysAgo: number, hour: number, now: Date) => {
+  const t = new Date(Date.parse(`${today}T${String(hour).padStart(2, "0")}:20:00+09:00`) - daysAgo * 86_400_000);
+  return t > now ? new Date(now.getTime() - 60_000) : t;
+};
 
-/** GET /demo/admin/stats/hotspots. 기간은 실제 통계와 같은 규칙이고, 기간 밖 시연 데이터는 빠진다. */
+/**
+ * GET /demo/admin/stats/hotspots. 기간은 실제 통계와 같은 규칙이고, 기간 밖 시연 데이터는 빠진다.
+ * 시연 데이터는 늘 "오늘로부터 며칠 전"에 있어, 미래 기간을 골라도 데이터가 생기지 않는다 (10/30 평가).
+ */
 export function demoHotspots(query: HotspotQuery, now = new Date()): HotspotResponse {
   const range = hotspotRange(query, now);
+  const today = kstDate(now);
+  const inRange = (t: Date) => t >= range.start && t < range.end;
   const rows: Row[] = DEMO_FOUND.map((f) => ({
     building: f.building,
     hour: f.hour,
     category: f.category,
     isSeed: true,
-    foundAt: kstAt(range.to, f.daysAgo, f.hour),
+    foundAt: kstAt(today, f.daysAgo, f.hour, now),
     status: f.status,
-  })).filter((r) => r.foundAt >= range.start && r.foundAt < range.end);
-  const reports: ReportRow[] = DEMO_REPORTS.map((r) => ({ ...r }));
+  })).filter((r) => inRange(r.foundAt));
+  const reports: ReportRow[] = DEMO_REPORTS.filter((r) => inRange(kstAt(today, r.daysAgo, 12, now))).map(
+    ({ building, category, open }) => ({ building, category, open }),
+  );
   return computeHotspots(range, rows, reports, rows, true);
 }

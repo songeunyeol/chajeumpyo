@@ -156,7 +156,9 @@
       return;
     }
     if (mine !== requestNo) return; // 더 나중에 누른 기간의 결과만 보여 준다
-    document.getElementById("insight").textContent = data.topInsight;
+    document.getElementById("insight").textContent = data.clampedToToday
+      ? `${data.topInsight} (오늘 ${data.to}까지만 집계했어요)`
+      : data.topInsight;
     AdminApi.show(document.getElementById("seed"), Boolean(data.isSeedData));
     document.getElementById("priorities").replaceChildren(priorityList(data.priorities || []));
     document.getElementById("reportHotspots").replaceChildren(reportList(data.reportHotspots || []));
@@ -171,13 +173,21 @@
     const from = document.getElementById("from").value;
     const to = document.getElementById("to").value;
     if (!from || !to || from > to) {
-      AdminApi.showError(document.getElementById("error"), "시작과 끝을 확인해 주세요.");
+      // 옛 결과가 남아 있으면 잘못 고른 기간의 결과로 오해한다 (10/30 평가)
+      clearResults("기간을 다시 골라 주세요.");
+      AdminApi.showError(document.getElementById("error"), from > to ? "끝 날짜가 시작 날짜보다 빨라요." : "시작과 끝을 확인해 주세요.");
+      return;
+    }
+    if (from > AdminApi.seoulDate(0)) {
+      clearResults("기간을 다시 골라 주세요.");
+      AdminApi.showError(document.getElementById("error"), "아직 오지 않은 기간이에요. 오늘 이전 날짜를 골라 주세요.");
       return;
     }
     load(from, to);
   });
 
   paintRanges();
+  for (const id of ["from", "to"]) document.getElementById(id).max = AdminApi.seoulDate(0); // 미래 날짜는 고를 수 없게
   load(AdminApi.seoulDate(-29), AdminApi.seoulDate(0));
 </script>
 </body>

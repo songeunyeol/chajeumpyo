@@ -7,6 +7,7 @@ import {
   type HotspotResponse,
   type ReportHotspot,
 } from "@chajeumpyo/shared";
+import { AppError } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
 import { adminsInChargeOf, notifyUsers } from "./notifications";
@@ -21,7 +22,7 @@ const SLOT_HOURS = 2;
 /** 우선순위 목록 최대 개수 */
 const MAX_PRIORITIES = 5;
 
-const kstDate = (d: Date) => new Date(d.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
+export const kstDate = (d: Date) => new Date(d.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
 /** "2026-10-01"(한국 날짜) 0시의 실제 시각 */
 const kstStart = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - KST_OFFSET_MS);
 
@@ -107,7 +108,7 @@ const VALUABLES = new Set<Category>([
 /** 종류별 예방 조치 (규칙 기반 문구). 관리자가 안내문·순찰로 바로 할 수 있는 것만 */
 export function preventiveAction(category: Category, building: string, slot: string): string {
   if (category === "CHARGER")
-    return `${building} 콘센트 자리에 "충전기 챙기기" 안내를 붙이고, ${slot} 직후 순찰 때 콘센트를 확인해요.`;
+    return `${building} 콘센트 자리에 "충전기·전자기기 챙기기" 안내를 붙이고, ${slot} 직후 순찰 때 콘센트 주변을 확인해요.`;
   if (PERSONAL_DEVICES.has(category))
     return `${building} 책상·콘센트 근처에 "자리 뜨기 전 전자기기 챙기기" 안내를 붙이고, ${slot} 직후 순찰을 넣어요.`;
   if (VALUABLES.has(category))
@@ -247,12 +248,22 @@ export function buildReportHotspots(reports: ReportRow[], found: FoundKey[]): Re
 }
 
 /** 기간(한국 날짜)을 실제 시각 범위로. 생략하면 오늘까지 30일 */
+/**
+ * 기간(한국 날짜)을 실제 시각 범위로. 생략하면 오늘까지 30일.
+ * 아직 오지 않은 날은 집계할 수 없다: 시작이 오늘보다 뒤면 400, 끝만 뒤면 오늘까지로 잘라 clampedToToday를 켠다.
+ */
 export function hotspotRange(query: HotspotQuery, now = new Date()) {
-  const to = query.to ?? kstDate(now);
+  const today = kstDate(now);
+  if (query.from && query.from > today)
+    throw new AppError("VALIDATION_ERROR", "아직 오지 않은 기간이에요. 오늘 이전 날짜를 골라 주세요.", [
+      { path: "from", message: "아직 오지 않은 기간이에요. 오늘 이전 날짜를 골라 주세요." },
+    ]);
+  const clampedToToday = Boolean(query.to && query.to > today);
+  const to = clampedToToday ? today : (query.to ?? today);
   const from = query.from ?? kstDate(new Date(kstStart(to).getTime() - (DEFAULT_DAYS - 1) * 86_400_000));
   const start = kstStart(from);
   const end = new Date(kstStart(to).getTime() + 86_400_000);
-  return { from, to, start, end };
+  return { from, to, start, end, clampedToToday };
 }
 
 /**
@@ -270,6 +281,7 @@ export function computeHotspots(
     from: range.from,
     to: range.to,
     isSeedData,
+    ...(range.clampedToToday ? { clampedToToday: true } : {}),
     total: rows.length,
     byBuilding: ranked(countBy(rows, (r) => r.building)).map(([building, count]) => ({ building, count })),
     byHour: ranked(countBy(rows, (r) => r.hour)).map(([hour, count]) => ({ hour, count })),

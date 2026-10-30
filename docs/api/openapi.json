@@ -3257,6 +3257,9 @@
                     "isSeedData": {
                       "type": "boolean"
                     },
+                    "clampedToToday": {
+                      "type": "boolean"
+                    },
                     "total": {
                       "type": "integer"
                     },
@@ -3647,6 +3650,9 @@
                       "format": "date"
                     },
                     "isSeedData": {
+                      "type": "boolean"
+                    },
+                    "clampedToToday": {
                       "type": "boolean"
                     },
                     "total": {
