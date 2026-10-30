@@ -157,3 +157,34 @@ describe("글자 없는 물건은 넓힌 상자로도 가리지 않는다", () =
     expect(await regionDiff(plain, r.image, { left: 480, top: 560, width: 240, height: 110 })).toBeLessThan(2);
   }, 30_000);
 });
+
+/** 큰 상표 글자와 작은 이름표가 함께 있는 모자. 로고 사본에서 큰 글자는 남고 작은 이름표는 가려져야 한다 */
+const CAP = `<svg width="1200" height="900" xmlns="http://www.w3.org/2000/svg"><rect width="1200" height="900" fill="#8fa6c4"/>
+<ellipse cx="600" cy="420" rx="380" ry="260" fill="#3b5a8a"/>
+<text x="400" y="440" font-size="110" fill="#f0a030" font-family="sans-serif" font-weight="bold">emis</text>
+<rect x="720" y="600" width="230" height="60" fill="#ffffff"/>
+<text x="732" y="640" font-size="26" fill="#222" font-family="sans-serif">KIM 2023</text></svg>`;
+
+describe("로고 사본 (10/31 A안)", () => {
+  it("얼굴이 없으면 큰 상표 글자는 살리고 작은 이름표는 가린 사본을 만든다", async () => {
+    const cap = await jpeg(CAP);
+    const r = await onnxPremasker(cap);
+    expect(r.faces).toBe(0);
+    expect(r.logoImage).toBeDefined();
+    expect(r.logos).toBeGreaterThanOrEqual(1);
+    const logo = r.logoImage as Buffer;
+    // 큰 글자: 1단계 사본에서는 가려지고 로고 사본에서는 원본과 거의 같다
+    const big = { left: 420, top: 360, width: 200, height: 70 };
+    expect(await regionDiff(cap, r.image, big)).toBeGreaterThan(20);
+    expect(await regionDiff(cap, logo, big)).toBeLessThan(10);
+    // 작은 이름표: 로고 사본에서도 가려진다
+    expect(await regionDiff(cap, logo, { left: 735, top: 615, width: 150, height: 30 })).toBeGreaterThan(20);
+  }, 30_000);
+
+  it("가까이 찍은 카드 번호는 로고 크기로 잡힐 수 있다 — 그래서 로고 사본은 종류로 막는다(found-items 기준 11-2)", async () => {
+    const r = await onnxPremasker(await jpeg(CARD));
+    // 1단계 사본은 늘 번호 줄을 가린다. 로고 사본이 생기더라도 카드·지갑 종류에서는 AI로 보내지도 저장하지도 않는다
+    expect(r.texts).toBeGreaterThanOrEqual(1);
+    expect(await regionDiff(await jpeg(CARD), r.image, { left: 420, top: 440, width: 360, height: 60 })).toBeGreaterThan(20);
+  }, 30_000);
+});
