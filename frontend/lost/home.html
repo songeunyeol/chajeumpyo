@@ -170,10 +170,12 @@
     const named = (reports || [])
       .map((rep) => rep.building && rep.building.name)
       .find((name) => name && window.NaverCampusMap.CAMPUS_BUILDINGS[name]);
+    // 신고한 건물과 수령 장소(교무처)를 같이 보여 준다
     window.NaverCampusMap.mount(box, {
       buildingName: named || "혜인관",
-      caption: named ? `서경대 ${named}` : "서경대학교",
-      showAll: !named,
+      caption: named ? `서경대 ${named} · 잃어버린 곳` : "분실물 보관 · 혜인관 1층 교무처",
+      highlights: named ? [{ name: named, label: `${named} · 잃어버린 곳`, kind: "here" }] : [],
+      office: true,
     });
   }
 
