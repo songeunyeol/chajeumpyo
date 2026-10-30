@@ -459,6 +459,8 @@
       sessionStorage.setItem("foundBuilding", result?.building?.name || "");
       if (body.locationDetail) sessionStorage.setItem("locationDetail", body.locationDetail);
       else sessionStorage.removeItem("locationDetail");
+      if (body.floor !== undefined) sessionStorage.setItem("foundFloor", String(body.floor));
+      else sessionStorage.removeItem("foundFloor");
       if (result?.storagePlace) {
         sessionStorage.setItem("handoverBuilding", `${result.storagePlace.name} · ${result.storagePlace.guideText}`);
       }
