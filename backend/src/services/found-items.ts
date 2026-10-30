@@ -357,11 +357,18 @@ async function embedOrNull(text: string): Promise<number[] | null> {
   }
 }
 
-/** 사진 특징 뒤에 설명 특징을 붙인다. 같은 값은 한 번만 */
+/** 습득자 설명에서는 받지 않는 특징 종류. 글자·각인은 이름·이니셜일 수 있다 (10/30 코드 평가) */
+const NOTE_DROPPED_KEYS = new Set<AiFeature["key"]>(["text"]);
+
+/**
+ * 사진 특징 뒤에 설명 특징을 붙인다. 같은 값은 한 번만.
+ * 설명 특징(source: "finder")은 주인 확인 대조에만 쓰고 객관식 질문으로는 내지 않는다(claims.ts finderFeatureIds).
+ */
 function mergeFeatures(stored: AiFeature[], fromNote: AiFeature[]): AiFeature[] {
   const seen = new Set(stored.map((f) => f.value.replace(/\s/g, "")));
   const added: NoteFeature[] = [];
   for (const f of fromNote) {
+    if (NOTE_DROPPED_KEYS.has(f.key)) continue;
     const k = f.value.replace(/\s/g, "");
     if (seen.has(k)) continue;
     seen.add(k);
@@ -419,6 +426,28 @@ async function planNote(id: string, note: string | null, fixLabel: string | null
   };
 }
 
+/**
+ * 확정할 수 있는 초안인지 AI를 부르기 전에 본다. 트랜잭션 안에서 같은 조건으로 한 번 더 확인한다.
+ * 이미 확정한 물건이면 ALREADY_CONFIRMED, 없거나 토큰이 틀리거나 시간이 지났으면 NOT_FOUND.
+ */
+async function assertConfirmable(id: string, confirmToken: string) {
+  const draft = await prisma.foundItem.count({
+    where: {
+      id,
+      status: "ANALYZING",
+      confirmTokenHash: hmac(`found-confirm:${confirmToken}`),
+      expiresAt: { gt: new Date() },
+      dataPurgedAt: null,
+    },
+  });
+  if (draft > 0) return;
+  const done = await prisma.foundItem.count({
+    where: { id, status: { in: ["REGISTERED", "REVIEW", "REVEALED", "CLAIMED"] } },
+  });
+  if (done > 0) throw new AppError("ALREADY_CONFIRMED", "이미 등록을 마친 물건이에요.");
+  throw new AppError("NOT_FOUND", "등록 시간이 지났거나 없는 물건이에요. 사진부터 다시 올려 주세요.");
+}
+
 /** 습득자가 고친 종류의 이름과 임베딩. 임베딩을 못 만들면 고치지 않고 확정을 막는다 */
 async function correctedCategory(category: Category, sub: unknown) {
   const subCategory = subCategoryWithin(category, sub);
@@ -438,6 +467,8 @@ async function correctedCategory(category: Category, sub: unknown) {
  * 분석에 성공했으면 REGISTERED(새 후보 알림), 실패했으면 REVIEW. 습득 시각과 보관 기한은 확정한 때부터 센다.
  */
 export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): Promise<RegisterFoundItemResponse> {
+  // 확정 토큰부터 확인한다. 틀린 토큰으로 AI(설명 분석·임베딩)를 부르게 하지 않는다 (10/30 코드 평가)
+  await assertConfirmable(id, body.confirmToken);
   const { building, place } = await resolvePlace(body);
   const corrected = body.category ? await correctedCategory(body.category, body.subCategory) : null;
   const note = scrubFinderNote(body.note);
