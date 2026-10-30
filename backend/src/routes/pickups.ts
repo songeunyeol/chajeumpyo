@@ -11,6 +11,7 @@ import { Router } from "express";
 import { getAuth, requireAdmin, requireMember } from "../middlewares/auth";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
+import { adminAlertSafely, alertPickupScheduled } from "../services/admin-alerts";
 import * as service from "../services/pickups";
 
 const json = <T>(schema: T) => ({ content: { "application/json": { schema } } });
@@ -94,7 +95,11 @@ export function createPickupsRouter() {
     requireMember(),
     validate("params", FoundItemIdParams),
     async (_req, res) => {
-      const result: PickupQrResponse = await service.issuePickupQr(viewer(res), res.locals.params.id);
+      const id = res.locals.params.id;
+      const result: PickupQrResponse = await service.issuePickupQr(viewer(res), id);
+      if (result.method === "CENTER_QR") {
+        await adminAlertSafely(() => alertPickupScheduled(id, service.QR_TTL_HOURS), id, "PICKUP_SCHEDULED");
+      }
       res.json(result);
     },
   );

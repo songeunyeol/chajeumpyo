@@ -455,5 +455,38 @@ export type PickupMethod = z.infer<typeof PickupMethod>;
 export const PickupStatus = z.enum(["ISSUED", "COMPLETED", "EXPIRED"]);
 export type PickupStatus = z.infer<typeof PickupStatus>;
 
-export const NotificationType = z.enum(["NEW_CANDIDATE", "MULTI_REVEAL", "CLAIM_LOCKED", "SYSTEM"]);
+export const NotificationType = z.enum([
+  "NEW_CANDIDATE",
+  "MULTI_REVEAL",
+  "CLAIM_LOCKED",
+  "SYSTEM",
+  "ITEM_INCOMING",
+  "PICKUP_SCHEDULED",
+]);
 export type NotificationType = z.infer<typeof NotificationType>;
+
+/**
+ * 관리자 알림 구분 (QA 10/30 3차). 확인 필요: 사람이 판단해야 하는 일(잠금, 여러 계정 열람, 반복 분실 높음).
+ * 정보: 할 일 없이 알아 두면 되는 일(맡긴 물건 등록, 수령 예정). 확인 통과 자체는 분실자 개인 활동이라 알리지 않는다.
+ */
+export const NOTIFICATION_KIND: Record<NotificationType, "ACTION" | "INFO"> = {
+  NEW_CANDIDATE: "INFO",
+  MULTI_REVEAL: "ACTION",
+  CLAIM_LOCKED: "ACTION",
+  SYSTEM: "ACTION",
+  ITEM_INCOMING: "INFO",
+  PICKUP_SCHEDULED: "INFO",
+};
+
+export const ClosedReason = z.enum(["DISPOSED", "MISREGISTERED"]);
+export type ClosedReason = z.infer<typeof ClosedReason>;
+export const CLOSED_REASON_LABELS: Record<ClosedReason, string> = {
+  DISPOSED: "폐기·이관",
+  MISREGISTERED: "잘못 등록",
+};
+
+/** 층 글자: -1 → "지하 1층", 2 → "2층", 모르면 "". 화면마다 다르게 쓰던 것을 맞춘다 (QA 10/30 3차) */
+export function floorLabel(floor: number | null | undefined): string {
+  if (floor === null || floor === undefined) return "";
+  return floor < 0 ? `지하 ${-floor}층` : `${floor}층`;
+}

@@ -1,4 +1,5 @@
 import {
+  AdminCloseFoundItemRequest,
   AdminFoundItemDetailResponse,
   AdminFoundItemListQuery,
   AdminFoundItemListResponse,
@@ -80,6 +81,23 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: "post",
+  path: "/admin/found-items/{id}/close",
+  tags,
+  security,
+  summary: "보관 종료 (폐기·이관 / 잘못 등록)",
+  description: `행은 지우지 않고 기한 만료로 바꿔 후보·공개 목록에서 뺀다. 이유·처리 관리자·시각을 남기고, 받아 간 수령 QR은 만료시킨다. 잘못 등록이면 사진과 비공개 정보를 바로 지운다. 수령된 물건·체험용 물건은 끝낼 수 없다. ${scopeNote}`,
+  request: { params: FoundItemIdParams, body: json(AdminCloseFoundItemRequest) },
+  responses: {
+    200: { description: "끝낸 뒤 상세", ...json(AdminFoundItemDetailResponse) },
+    400: errorResponse("VALIDATION_ERROR"),
+    403: errorResponse("FORBIDDEN: 관리 범위 밖"),
+    404: errorResponse("NOT_FOUND"),
+    409: errorResponse("ALREADY_CLAIMED · NOT_CLOSABLE: 이미 끝났거나 확정 전·체험용 물건"),
+  },
+});
+
+registry.registerPath({
   method: "get",
   path: "/admin/stats/hotspots",
   tags,
@@ -133,6 +151,21 @@ export function createAdminRouter() {
         admin(res),
         res.locals.params.id,
         res.locals.body.verificationNote,
+      );
+      res.json(result);
+    },
+  );
+
+  router.post(
+    "/admin/found-items/:id/close",
+    requireAdmin(),
+    validate("params", FoundItemIdParams),
+    validate("body", AdminCloseFoundItemRequest),
+    async (_req, res) => {
+      const result: AdminFoundItemDetailResponse = await service.closeFoundItem(
+        admin(res),
+        res.locals.params.id,
+        res.locals.body,
       );
       res.json(result);
     },

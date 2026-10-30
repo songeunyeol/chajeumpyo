@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AiFeature } from "../ai";
 import {
   Category,
+  ClosedReason,
   Color,
   FoundStatus,
   MAX_FEATURES,
@@ -41,6 +42,9 @@ export const AdminFoundItemSummary = z.object({
   isSeed: z.boolean(),
   /** 확인 실패가 쌓여 온라인 확인을 막은 시각. 찾으러 오면 직접 본인 확인 (#29) */
   claimLockedAt: z.iso.datetime().nullable(),
+  /** 관리자가 보관을 끝낸 시각과 이유. 끝내지 않았으면 null */
+  closedAt: z.iso.datetime().nullable(),
+  closedReason: ClosedReason.nullable(),
 });
 export type AdminFoundItemSummary = z.infer<typeof AdminFoundItemSummary>;
 
@@ -95,6 +99,8 @@ export const AdminFoundItemDetailResponse = AdminFoundItemSummary.extend({
       verificationNote: z.string().nullable(),
     }),
   ),
+  /** 보관을 끝낸 관리자 (가린 이메일). 끝내지 않았으면 null */
+  closedByEmailMasked: z.string().nullable(),
 });
 export type AdminFoundItemDetailResponse = z.infer<typeof AdminFoundItemDetailResponse>;
 
@@ -115,3 +121,9 @@ export const AdminUpdateFoundItemRequest = z
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), { message: "바꿀 내용이 없어요." });
 export type AdminUpdateFoundItemRequest = z.infer<typeof AdminUpdateFoundItemRequest>;
+
+/** POST /admin/found-items/:id/close: 보관 종료 (QA 10/30 3차). 행은 남기고 후보·목록에서 뺀다 */
+export const AdminCloseFoundItemRequest = z.object({
+  reason: ClosedReason,
+});
+export type AdminCloseFoundItemRequest = z.infer<typeof AdminCloseFoundItemRequest>;
