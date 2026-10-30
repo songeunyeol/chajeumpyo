@@ -215,7 +215,7 @@
     $("title").textContent = A.itemTitle(item);
     const chips = [A.statusChip(item.status)];
     if (item.claimLockedAt) chips.push(el("span", { class: "chip danger", text: "대면 확인만" }));
-    if (item.isSeed) chips.push(el("span", { class: "chip warn", text: "시드" }));
+    if (item.isSeed) chips.push(el("span", { class: "chip warn", text: "시연용" }));
     const label = A.itemLabel(item.category, item.subCategory);
     if (label && label !== item.title) chips.push(el("span", { class: "chip", style: "background:var(--white);color:var(--ink)", text: label }));
     $("chips").replaceChildren(...chips);

@@ -169,3 +169,41 @@ describe("우리 QA 10/30 체험 흐름", () => {
     expect(html).not.toContain("<b>사진 외부 AI</b>");
   });
 });
+
+describe("스토리텔링 화면 (QA 10/30 최종)", () => {
+  it("체험 안내 맨 위에 '왜 만들었나'가 있고, 00:00부터 안내는 없다", () => {
+    const html = read("frontend/guide.html");
+    expect(html).toContain('id="why"');
+    expect(html).toContain("<b>146건</b>");
+    expect(html).toContain("<b>7건</b>");
+    expect(html.indexOf('id="why"')).toBeLessThan(html.indexOf("1. 잃어버린 사람으로 체험하기"));
+    expect(html).not.toContain("오늘 00:00부터");
+  });
+
+  it("첫 화면: 문제 한 줄, 눈에 띄는 체험 안내, 가로로 밀고 들어오는 효과 없음", () => {
+    const html = read("frontend/index.html");
+    expect(html).toContain("146건");
+    expect(html).toContain("심사위원 체험 2분");
+    expect(html).not.toMatch(/translateX\(-?115%\)/);
+    expect(html).toContain("overflow-x: clip");
+  });
+
+  it("관리자 로그인 시연 문구는 서버 집계(#112)와 맞는다", () => {
+    const html = read("frontend/admin/login.html");
+    expect(html).not.toContain("서버 없이 예시 데이터로");
+    expect(html).toContain("서버가 실제 통계 코드로 계산");
+  });
+
+  it("체험 수령이 끝나면 수령 전 안내를 숨기고 마무리와 다음 행동을 보여 준다", () => {
+    const html = read("frontend/lost/item-handover.html");
+    expect(html).toContain('id="pickedUpBox"');
+    expect(html).toContain('getElementById("beforePickupNote").hidden = true');
+    expect(html).toContain('href="../admin/login.html"');
+  });
+
+  it("관리자 화면에 '시드'라는 말이 보이지 않는다", () => {
+    for (const page of ["frontend/admin/items.html", "frontend/admin/item.html"]) {
+      expect(read(page)).not.toContain('text: "시드"');
+    }
+  });
+});

@@ -53,7 +53,7 @@
       </table>
       <!-- 오류만 보여 준다. "사진 링크가 10분 뒤 닫혀요"는 뜻이 헷갈려 뺐다 (QA 10/29). 화면을 다시 열면 새 링크를 받는다 -->
       <p class="note" id="expireNote" hidden></p>
-      <p class="note">교무처에서 QR을 보여 주면 수령이 완료되고 신고가 끝나요</p>
+      <p class="note" id="beforePickupNote">교무처에서 QR을 보여 주면 수령이 완료되고 신고가 끝나요</p>
       <p class="note" id="pickupNotice" hidden></p>
       <!-- [연결 추가] 수령 QR (qr.html이 없어져 이 화면에서 보여 준다). 기존 .qr 클래스 -->
       <div id="qrWrap" hidden>
@@ -65,7 +65,14 @@
           <button class="btn line" id="demoPickupBtn" type="button">교무처 스캔 대신하기</button>
         </div>
       </div>
-      <div class="dock">
+      <!-- 수령이 끝나면 수령 전 안내를 숨기고 마무리와 다음 행동을 보여 준다 (QA 10/30 스토리텔링) -->
+      <div class="card" id="pickedUpBox" hidden style="text-align:center">
+        <p style="margin:0 0 4px;font-weight:700;font-size:18px">찾았어요 🎉</p>
+        <p class="note" id="pickedUpNote" style="margin-top:0"></p>
+        <a class="btn" href="home.html" style="display:block;margin-top:8px">홈으로</a>
+        <a class="btn line" href="../admin/login.html" style="display:block;margin-top:8px">교무처 관리자 화면 시연 보기</a>
+      </div>
+      <div class="dock" id="qrDock">
         <a class="btn" id="qrBtn" href="home.html">수령 QR 받기</a>
       </div>
     </section>
@@ -180,11 +187,14 @@
       const done = await LostApi.demoPickup();
       clearInterval(qrTimer);
       qrWrap.hidden = true;
-      expireNote.hidden = false;
-      expireNote.classList.remove("danger");
-      expireNote.textContent = `수령이 끝났어요 (${LostApi.formatKst(done.completedAt)}). 신고도 끝난 신고로 옮겼어요.`;
+      expireNote.hidden = true;
+      document.getElementById("beforePickupNote").hidden = true;
+      document.getElementById("pickupNotice").hidden = true;
+      document.getElementById("qrDock").hidden = true;
+      document.getElementById("pickedUpNote").textContent =
+        `수령이 끝났어요 (${LostApi.formatKst(done.completedAt)}). 신고도 끝난 신고로 옮겼어요.`;
+      document.getElementById("pickedUpBox").hidden = false;
       mode = "home";
-      qrBtn.textContent = "홈으로";
     } catch (err) {
       demoPickupBtn.disabled = false;
       fail(err);

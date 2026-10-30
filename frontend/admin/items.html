@@ -69,7 +69,7 @@
     if (item.claimLockedAt) chips.push(el("span", { class: "chip danger", text: "대면 확인만" }));
     if (item.storageType === "HANDED_OVER") chips.push(el("span", { class: "chip", style: "background:var(--white);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)", text: item.storagePlace ? item.storagePlace.name : "보관처에 맡김" }));
     else if (item.storageType === "IN_PLACE") chips.push(el("span", { class: "chip", style: "background:var(--white);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)", text: "그 자리에 둠" }));
-    if (item.isSeed) chips.push(el("span", { class: "chip warn", text: "시드" }));
+    if (item.isSeed) chips.push(el("span", { class: "chip warn", text: "시연용" }));
     const label = AdminApi.itemLabel(item.category, item.subCategory);
     return el(
       "a",

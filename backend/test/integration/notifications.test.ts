@@ -287,3 +287,22 @@ describe("기준 10. 알림 응답에는 공개 정보만", () => {
     expect(JSON.stringify(n)).not.toMatch(/흰색|Apple|곰돌이|userId/);
   });
 });
+
+describe("체험 계정 예시 알림 (QA 10/30: 체험 알림 화면이 비어 있었다)", () => {
+  it("체험 신고에 시드 후보가 있으면 '체험 예시' 알림을 한 번만 만든다", async () => {
+    const seed = await createFoundItem({ buildingId: A, category: "EARPHONE", isSeed: true, foundAt: hoursAgo(2.5) });
+    const demo = await demoLogin(app);
+    const first = await report("EARPHONE", demo.accessToken);
+    await report("EARPHONE", demo.accessToken);
+    const list = await prisma.notification.findMany({ where: { userId: demo.user.id } });
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ foundItemId: seed.id, lostReportId: first, type: "NEW_CANDIDATE" });
+    expect(list[0]?.message.startsWith("체험 예시 · ")).toBe(true);
+  });
+
+  it("일반 계정에는 예시 알림을 만들지 않는다", async () => {
+    await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: hoursAgo(2.5) });
+    await report("EARPHONE");
+    expect(await prisma.notification.count()).toBe(0);
+  });
+});

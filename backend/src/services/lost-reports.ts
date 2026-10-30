@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  CATEGORY_LABELS,
   type CreateLostReportRequest,
   LostReportExtraction,
   type LostReportListResponse,
@@ -16,6 +17,7 @@ import { prisma } from "../lib/prisma";
 import { findCandidates, publicCandidates, recordExposure } from "../matching/candidates";
 import { setLostReportEmbedding } from "../repositories/embedding";
 import { isValidEmbedding } from "./found-items";
+import { newCandidateMessage } from "./notifications";
 
 type Viewer = { userId: string; role: Role };
 
@@ -86,7 +88,43 @@ export async function createLostReport(
     await setLostReportEmbedding(created.id, embedding, tx);
     return created;
   });
-  return withCandidates(report, viewer.role);
+  const result = await withCandidates(report, viewer.role);
+  if (viewer.role === "DEMO") await addDemoExampleAlert(report, result.candidates[0]?.foundItemId);
+  return result;
+}
+
+export const DEMO_ALERT_PREFIX = "체험 예시 · ";
+
+/**
+ * 체험 계정은 시드 물건이 이미 등록돼 있어 "새 후보" 알림이 생길 일이 없다. 그러면 알림 화면이 비어
+ * 심사위원이 알림 기능을 볼 수 없다(QA 10/30). 첫 후보 하나로 예시 알림을 한 번만 만든다.
+ * 실제 알림 로직(alertNewCandidate)과 구분되게 앞에 "체험 예시"를 붙인다. 일반 계정에는 만들지 않는다.
+ */
+async function addDemoExampleAlert(report: { id: string; userId: string }, foundItemId: string | undefined) {
+  if (!foundItemId) return;
+  try {
+    const exists = await prisma.notification.findFirst({
+      where: { userId: report.userId, type: "NEW_CANDIDATE" },
+      select: { id: true },
+    });
+    if (exists) return;
+    const item = await prisma.foundItem.findUnique({
+      where: { id: foundItemId },
+      select: { category: true, isSeed: true, building: { select: { name: true } } },
+    });
+    if (!item?.isSeed || !item.category) return;
+    await prisma.notification.create({
+      data: {
+        userId: report.userId,
+        type: "NEW_CANDIDATE",
+        foundItemId,
+        lostReportId: report.id,
+        message: DEMO_ALERT_PREFIX + newCandidateMessage(item.building?.name ?? null, CATEGORY_LABELS[item.category]),
+      },
+    });
+  } catch (err) {
+    logger.warn({ err }, "체험 예시 알림 만들기 실패");
+  }
 }
 
 /** GET /lost-reports: 내 신고 목록 */
