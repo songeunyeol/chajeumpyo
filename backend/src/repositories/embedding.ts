@@ -25,6 +25,10 @@ export async function setLostReportEmbedding(lostReportId: string, embedding: nu
     WHERE id = ${lostReportId}::uuid`;
 }
 
+export async function clearLostReportEmbedding(lostReportId: string, db: Db = prisma) {
+  await db.$executeRaw`UPDATE lost_report SET embedding = NULL WHERE id = ${lostReportId}::uuid`;
+}
+
 /**
  * 신고 임베딩과 습득물 임베딩의 코사인 유사도(0~1).
  * 후보 범위는 호출한 쪽에서 이미 좁혀서 foundItemIds로 넘긴다.

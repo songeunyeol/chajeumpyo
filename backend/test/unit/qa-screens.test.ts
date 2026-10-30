@@ -357,6 +357,22 @@ describe("습득 등록: 물건 설명(선택)", () => {
   });
 });
 
+describe("내 분실 신고 지우기", () => {
+  it("카드 오른쪽 위 휴지통을 누르면 확인 카드를 띄우고, 지우면 DELETE를 부른다", () => {
+    const home = read("frontend/lost/home.html");
+    expect(home).toContain('btn.className = "card-trash"');
+    expect(home).toContain('btn.setAttribute("aria-label", "신고 지우기")');
+    expect(home).toContain('id="deleteModal"');
+    expect(home).toContain("이 분실 신고를 지울까요?");
+    expect(home).toContain("LostApi.deleteReport(");
+    const api = read("frontend/lost/api.js");
+    expect(api).toContain("deleteReport: (reportId) => call(`/lost-reports/");
+    expect(api).toContain('{ method: "DELETE" }');
+    // 휴지통은 카드 링크(<a>) 안에 넣지 않는다 (링크 안 버튼은 눌러도 링크로 넘어간다)
+    expect(read("frontend/palette.css")).toContain(".card-trash");
+  });
+});
+
 describe("실서비스 평가 10/30 오후 (체험 진입·문구·시연 데이터)", () => {
   it("캡차가 막히면 '알 수 없는 문제' 대신 이유와 '다시 확인'을 보여 준다", () => {
     const cap = read("frontend/found/captcha.js");

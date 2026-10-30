@@ -837,6 +837,29 @@ h1 {
 .card h3 { margin: 0 0 4px; font-size: 17px; letter-spacing: -0.04em; }
 .meta { margin: 0; color: var(--mute); font-size: 13px; line-height: 1.4; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+/* 내 분실 신고 카드의 휴지통. 카드가 링크일 수 있어 카드 밖 형제로 두고 위에 띄운다 */
+.card-wrap { position: relative; }
+.card-wrap > .card { display: block; }
+.card-wrap > .card h3 { padding-right: 36px; }
+.card-trash {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mute);
+  cursor: pointer;
+}
+.card-trash svg { width: 20px; height: 20px; }
+.card-trash:hover,
+.card-trash:active { background: rgba(140, 58, 50, 0.08); color: var(--danger); }
+.card-trash:focus-visible { outline: 3px solid var(--danger); outline-offset: 1px; color: var(--danger); }
 .chip {
   display: inline-flex;
   align-items: center;

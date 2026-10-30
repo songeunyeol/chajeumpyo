@@ -216,7 +216,7 @@ async function lockItem(tx: Prisma.TransactionClient, foundItemId: string) {
 
 /** POST /lost-reports/:id/claims (F-08) */
 export async function claim(viewer: Viewer, reportId: string, foundItemId: string): Promise<ClaimResponse> {
-  const report = await prisma.lostReport.findFirst({ where: { id: reportId, userId: viewer.userId } });
+  const report = await prisma.lostReport.findFirst({ where: { id: reportId, userId: viewer.userId, deletedAt: null } });
   if (!report) throw new AppError("NOT_FOUND", "신고를 찾을 수 없어요.");
   if (report.status !== "OPEN") throw new AppError("VALIDATION_ERROR", "닫힌 신고예요.");
 

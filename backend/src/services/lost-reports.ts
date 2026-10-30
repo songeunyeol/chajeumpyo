@@ -11,12 +11,13 @@ import {
 } from "@chajeumpyo/shared";
 import { ai } from "../ai";
 import { env } from "../config/env";
+import { Prisma } from "../generated/prisma/client";
 import { retryOnce, withTimeout } from "../lib/async";
 import { AppError } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
 import { findCandidates, publicCandidates, recordExposure } from "../matching/candidates";
-import { setLostReportEmbedding } from "../repositories/embedding";
+import { clearLostReportEmbedding, setLostReportEmbedding } from "../repositories/embedding";
 import { isValidEmbedding } from "./found-items";
 import { newCandidateMessage } from "./notifications";
 
@@ -43,9 +44,9 @@ async function analyzeDescription(
   }
 }
 
-/** 본인 신고만. 남의 신고는 있는지조차 알려주지 않는다(404). */
+/** 본인 신고만. 남의 신고는 있는지조차 알려주지 않는다(404). 지운 신고도 404 */
 async function getOwnReport(id: string, userId: string) {
-  const report = await prisma.lostReport.findFirst({ where: { id, userId } });
+  const report = await prisma.lostReport.findFirst({ where: { id, userId, deletedAt: null } });
   if (!report) throw new AppError("NOT_FOUND", "신고를 찾을 수 없어요.");
   return report;
 }
@@ -150,7 +151,7 @@ async function addDemoExampleAlert(report: { id: string; userId: string }, found
 /** GET /lost-reports: 내 신고 목록 */
 export async function listLostReports(viewer: Viewer): Promise<LostReportListResponse> {
   const reports = await prisma.lostReport.findMany({
-    where: { userId: viewer.userId },
+    where: { userId: viewer.userId, deletedAt: null },
     include: { building: { select: { id: true, name: true } } },
     orderBy: { createdAt: "desc" },
   });
@@ -206,4 +207,27 @@ export async function updateLostReport(
     updated = await prisma.lostReport.update({ where: { id: report.id }, data: { status: "CLOSED" } });
   }
   return withCandidates(updated, viewer.role);
+}
+
+/**
+ * DELETE /lost-reports/:id: 신고자가 신고를 지운다.
+ * 확인 시도 기록은 계정·물건별 실패 횟수(3회·10회 잠금)에 쓰이므로 남긴다. 지우고 다시 신고해 횟수를 되돌리지 못하게.
+ * 대신 설명·분석 결과·임베딩을 비우고, 목록·후보·알림에서 빼고, 새 후보 알림도 받지 않게 닫는다.
+ */
+export async function deleteLostReport(viewer: Viewer, reportId: string): Promise<void> {
+  const report = await getOwnReport(reportId, viewer.userId);
+  await prisma.$transaction(async (tx) => {
+    await tx.lostReport.update({
+      where: { id: report.id },
+      data: {
+        deletedAt: new Date(),
+        status: report.status === "OPEN" ? "CLOSED" : report.status,
+        description: "",
+        extractedAttributes: Prisma.DbNull,
+      },
+    });
+    await clearLostReportEmbedding(report.id, tx);
+    await tx.notification.deleteMany({ where: { lostReportId: report.id } });
+    await tx.candidateExposure.deleteMany({ where: { lostReportId: report.id } });
+  });
 }
