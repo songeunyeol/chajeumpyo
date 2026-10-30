@@ -247,6 +247,8 @@ model FoundItemDetail {
   title            String?
   /// 습득자가 적은 자세한 위치 (예: 3층 엘리베이터 앞 벤치 위). 판정 통과 후에만 보인다
   locationDetail   String?                      @map("location_detail")
+  /// 습득자가 적은 물건 설명(선택). 개인정보 숫자는 지운 뒤 저장. 주인 확인용 특징 후보라 공개하지 않는다
+  finderNote       String?                      @map("finder_note")
   /// 차원 1536 = gemini-embedding-001 출력 차원(src/ai/types.ts EMBEDDING_DIM). 읽기·쓰기는 src/repositories/embedding.ts의 raw SQL로만.
   embedding        Unsupported("vector(1536)")?
   rawAiResponse    Json?                        @map("raw_ai_response")

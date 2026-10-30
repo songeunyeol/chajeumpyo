@@ -2,6 +2,8 @@
 // 실행 (평가용 DB에서만. 운영 DB에서 돌리지 않는다. 사진과 정답 파일은 레포 밖에 둔다):
 //   npm run db:deploy -w backend && npm run db:seed -w backend
 //   AI_MODE=gemini npm run eval:photos -w backend -- <사진 폴더> --labels <정답.json> --out <결과 폴더> > 결과.md
+// 습득자 설명(물건 설명 칸) 비교: --note 면 두 단계 등록(analyze → confirm)에 정답 파일의 items[].note를 넣는다.
+// --fail-photo 면 사진 분석을 실패로 만들어(장애 주입) 설명만으로 종류를 정하는지 본다. --skip-recognition 은 1번 표를 건너뛴다.
 // 정답 파일: photos는 사진 번호(파일 이름 끝 숫자 3자리)별 허용 정답, items는 물건마다 대표 사진·건물·종류와
 // 분실 신고 설명 두 가지(그대로 / 바꿔 말함). 가린 사진은 <결과 폴더>/masked에 저장해 눈으로 확인한다.
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
@@ -9,7 +11,7 @@ import { extname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { parseArgs } from "node:util";
 import { type Category, CONSENT_VERSION, itemLabel } from "@chajeumpyo/shared";
-import { ai } from "../src/ai";
+import { ai, createAiClient, resetAiClient, setAiClient } from "../src/ai";
 import { env } from "../src/config/env";
 import { normalizeImage } from "../src/lib/image";
 import { prisma } from "../src/lib/prisma";
@@ -18,7 +20,7 @@ import { quizOf } from "../src/matching/quiz";
 import { premaskSafely } from "../src/privacy/premask";
 import { answer, claim } from "../src/services/claims";
 import { seedDemoItems } from "../src/services/demo-seed";
-import { registerFoundItem } from "../src/services/found-items";
+import { analyzeFoundItem, confirmFoundItem, registerFoundItem } from "../src/services/found-items";
 import { createLostReport } from "../src/services/lost-reports";
 
 if (env.NODE_ENV === "production") {
@@ -27,12 +29,21 @@ if (env.NODE_ENV === "production") {
 }
 
 type PhotoLabel = { cat: string[]; sub: (string | null)[]; color: string[] };
-type ItemLabel = { key: string; photo: string; building: string; category: Category } & Record<Kind, string>;
+type ItemLabel = { key: string; photo: string; building: string; category: Category; note?: string } & Record<
+  Kind,
+  string
+>;
 type Kind = "그대로" | "바꿔 말함";
 const KINDS: Kind[] = ["그대로", "바꿔 말함"];
 
 const { values: opts, positionals } = parseArgs({
-  options: { labels: { type: "string" }, out: { type: "string" } },
+  options: {
+    labels: { type: "string" },
+    out: { type: "string" },
+    note: { type: "boolean", default: false },
+    "fail-photo": { type: "boolean", default: false },
+    "skip-recognition": { type: "boolean", default: false },
+  },
   allowPositionals: true,
 });
 const dir = positionals[0];
@@ -61,75 +72,109 @@ async function retry<T>(f: () => Promise<T>): Promise<T> {
 }
 
 // 1. 종류·색 인식과 가리기 (서비스와 같은 순서: 정리 → 가리기 → AI)
-console.log("## 1. 종류·색 인식, 가리기\n");
-console.log("| 사진 | AI 결과 | 큰 종류 | 세부 종류 | 색 | 가린 얼굴·글자 | 민감 표시 |");
-console.log("| --- | --- | --- | --- | --- | --- | --- |");
-let catOk = 0;
-let subOk = 0;
-let subN = 0;
-let colorOk = 0;
-for (const [num, label] of Object.entries(labels.photos)) {
-  const file = fileOf.get(num);
-  if (!file) {
-    console.log(`| ${num} | 사진 없음 | - | - | - | - | - |`);
-    continue;
+if (!opts["skip-recognition"]) {
+  console.log("## 1. 종류·색 인식, 가리기\n");
+  console.log("| 사진 | AI 결과 | 큰 종류 | 세부 종류 | 색 | 가린 얼굴·글자 | 민감 표시 |");
+  console.log("| --- | --- | --- | --- | --- | --- | --- |");
+  let catOk = 0;
+  let subOk = 0;
+  let subN = 0;
+  let colorOk = 0;
+  for (const [num, label] of Object.entries(labels.photos)) {
+    const file = fileOf.get(num);
+    if (!file) {
+      console.log(`| ${num} | 사진 없음 | - | - | - | - | - |`);
+      continue;
+    }
+    const original = await normalizeImage(await readFile(join(dir, file)));
+    const masked = await premaskSafely(original);
+    if (!masked) {
+      console.log(`| ${num} | 가리기 실패 | ✗ | - | - | - | - |`);
+      continue;
+    }
+    await writeFile(join(opts.out, "masked", `${num}.jpg`), masked.image);
+    const ex = await retry(() => ai.extractFoundItem(masked.image, "image/jpeg"));
+    const c = ex.hasObject && label.cat.includes(ex.category);
+    const wantsSub = label.sub.some((s) => s !== null);
+    const s = c && label.sub.includes(ex.subCategory ?? null);
+    const col = ex.hasObject && label.color.includes(ex.color ?? "");
+    catOk += c ? 1 : 0;
+    if (wantsSub) {
+      subN++;
+      subOk += s ? 1 : 0;
+    }
+    colorOk += col ? 1 : 0;
+    const got = ex.hasObject ? `${itemLabel(ex.category, ex.subCategory)} · ${ex.color} · ${ex.title}` : "물건 없음";
+    console.log(
+      `| ${num} | ${got} | ${c ? "✓" : "✗"} | ${wantsSub ? (s ? "✓" : "✗") : "-"} | ${col ? "✓" : "✗"} | ${masked.faces}·${masked.texts} | ${ex.isSensitive ? `예(${ex.sensitiveRegions.length}곳)` : "아니오"} |`,
+    );
   }
-  const original = await normalizeImage(await readFile(join(dir, file)));
-  const masked = await premaskSafely(original);
-  if (!masked) {
-    console.log(`| ${num} | 가리기 실패 | ✗ | - | - | - | - |`);
-    continue;
-  }
-  await writeFile(join(opts.out, "masked", `${num}.jpg`), masked.image);
-  const ex = await retry(() => ai.extractFoundItem(masked.image, "image/jpeg"));
-  const c = ex.hasObject && label.cat.includes(ex.category);
-  const wantsSub = label.sub.some((s) => s !== null);
-  const s = c && label.sub.includes(ex.subCategory ?? null);
-  const col = ex.hasObject && label.color.includes(ex.color ?? "");
-  catOk += c ? 1 : 0;
-  if (wantsSub) {
-    subN++;
-    subOk += s ? 1 : 0;
-  }
-  colorOk += col ? 1 : 0;
-  const got = ex.hasObject ? `${itemLabel(ex.category, ex.subCategory)} · ${ex.color} · ${ex.title}` : "물건 없음";
-  console.log(
-    `| ${num} | ${got} | ${c ? "✓" : "✗"} | ${wantsSub ? (s ? "✓" : "✗") : "-"} | ${col ? "✓" : "✗"} | ${masked.faces}·${masked.texts} | ${ex.isSensitive ? `예(${ex.sensitiveRegions.length}곳)` : "아니오"} |`,
-  );
+  const n = Object.keys(labels.photos).length;
+  console.log(`\n- 큰 종류 ${catOk}/${n}, 세부 종류 ${subOk}/${subN}, 색 ${colorOk}/${n}\n`);
 }
-const n = Object.keys(labels.photos).length;
-console.log(`\n- 큰 종류 ${catOk}/${n}, 세부 종류 ${subOk}/${subN}, 색 ${colorOk}/${n}\n`);
 
 // 2. 후보 순위와 주인 확인: 체험 시드 14개에 실제 사진 물건을 습득물로 섞고, 설명 두 가지로 신고한다
 const now = new Date();
 await seedDemoItems(now);
 const place = await prisma.storagePlace.findFirstOrThrow({ where: { isActive: true } });
 const registered = new Map<string, string>();
+const regStatus: string[] = [];
+// 사진 분석 장애 주입: 습득물 사진 분석만 실패하고 나머지(설명 분석·임베딩·판정)는 같은 AI로 한다
+if (opts["fail-photo"]) {
+  const real = createAiClient();
+  setAiClient({
+    ...real,
+    extractFoundItem: async () => {
+      throw new Error("평가용 사진 분석 장애");
+    },
+  });
+}
 for (const [i, item] of labels.items.entries()) {
   const file = fileOf.get(item.photo);
   const building = await prisma.building.findUniqueOrThrow({ where: { name: item.building } });
   if (!file) continue;
   const image = await readFile(join(dir, file));
+  const fingerprint = `eval-photos-${Date.now()}-${i}`;
+  const consent = { consentVersion: CONSENT_VERSION, consentExternalAi: true, consentLocation: false };
+  const twoStep = async () => {
+    const d = await analyzeFoundItem({ image, fields: consent as never, fingerprint });
+    return confirmFoundItem(d.id, {
+      confirmToken: d.confirmToken,
+      buildingId: building.id,
+      storageType: "HANDED_OVER",
+      storagePlaceId: place.id,
+      ...(opts.note && item.note ? { note: item.note } : {}),
+    } as never);
+  };
   const res = await retry(() =>
-    registerFoundItem({
-      image,
-      fields: {
-        buildingId: building.id,
-        storageType: "HANDED_OVER",
-        storagePlaceId: place.id,
-        consentVersion: CONSENT_VERSION,
-        consentExternalAi: true,
-        consentLocation: false,
-      } as Parameters<typeof registerFoundItem>[0]["fields"],
-      fingerprint: `eval-photos-${Date.now()}-${i}`,
-    }),
+    opts.note || opts["fail-photo"]
+      ? twoStep()
+      : registerFoundItem({
+          image,
+          fields: {
+            buildingId: building.id,
+            storageType: "HANDED_OVER",
+            storagePlaceId: place.id,
+            consentVersion: CONSENT_VERSION,
+            consentExternalAi: true,
+            consentLocation: false,
+          } as Parameters<typeof registerFoundItem>[0]["fields"],
+          fingerprint,
+        }),
   );
+  regStatus.push(res.status);
   // 체험 계정 후보는 시드만 보여 주므로(진짜 물건과 섞이지 않게), 평가용 DB에서는 시드로 표시해 함께 줄 세운다
   await prisma.foundItem.update({ where: { id: res.id }, data: { isSeed: true } });
   registered.set(item.key, res.id);
   console.error(`등록 ${item.key}: ${res.status} ${res.category ?? "-"}`);
 }
 
+// 장애 주입은 등록까지만. 신고·판정은 실제 AI로 한다
+if (opts["fail-photo"]) resetAiClient();
+const regCount = (st: string) => regStatus.filter((x) => x === st).length;
+console.log(
+  `\n- 조건: ${opts["fail-photo"] ? "사진 분석 실패 주입 + " : ""}${opts.note ? "습득자 설명 있음" : "사진만"}. 등록 ${regStatus.length}건 중 REGISTERED ${regCount("REGISTERED")}, REVIEW(관리자 검토) ${regCount("REVIEW")}\n`,
+);
 console.log("## 2. 후보 순위·주인 확인\n");
 console.log("| 물건 | 설명 | 1등 | 3개 안 | 1단계 판정 | 최종 |");
 console.log("| --- | --- | --- | --- | --- | --- |");

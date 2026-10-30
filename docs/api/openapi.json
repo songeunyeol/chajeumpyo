@@ -704,6 +704,12 @@
                         "null"
                       ]
                     },
+                    "finderNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "isSensitive": {
                       "type": "boolean"
                     },
@@ -881,6 +887,7 @@
                     "features",
                     "description",
                     "locationDetail",
+                    "finderNote",
                     "isSensitive",
                     "originalImageUrl",
                     "publicImageUrl",
@@ -1536,6 +1543,12 @@
                         "null"
                       ]
                     },
+                    "finderNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "isSensitive": {
                       "type": "boolean"
                     },
@@ -1713,6 +1726,7 @@
                     "features",
                     "description",
                     "locationDetail",
+                    "finderNote",
                     "isSensitive",
                     "originalImageUrl",
                     "publicImageUrl",
@@ -2707,6 +2721,12 @@
                         "null"
                       ]
                     },
+                    "finderNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "isSensitive": {
                       "type": "boolean"
                     },
@@ -2884,6 +2904,7 @@
                     "features",
                     "description",
                     "locationDetail",
+                    "finderNote",
                     "isSensitive",
                     "originalImageUrl",
                     "publicImageUrl",
@@ -6962,6 +6983,10 @@
                       "MEDICINE",
                       null
                     ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 200
                   }
                 },
                 "required": [
