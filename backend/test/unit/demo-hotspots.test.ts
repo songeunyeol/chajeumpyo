@@ -13,13 +13,13 @@ describe("시연 분실 다발", () => {
     expect(res.isSeedData).toBe(true);
     expect(res.from).toBe("2026-10-01");
     expect(res.to).toBe("2026-10-30");
-    expect(res.total).toBe(DEMO_FOUND.length);
+    expect(res.total).toBe(DEMO_FOUND.filter((f) => f.daysAgo <= 29).length);
   });
 
   it("우선순위·한 줄 요약은 실제 집계 함수가 낸 결과와 같다", () => {
     const res = demoHotspots({}, NOW);
     const range = hotspotRange({}, NOW);
-    const rows = DEMO_FOUND.map((f) => ({
+    const rows = DEMO_FOUND.filter((f) => f.daysAgo <= 29).map((f) => ({
       building: f.building,
       hour: f.hour,
       category: f.category,
@@ -60,5 +60,45 @@ describe("시연 분실 다발", () => {
     });
     for (const k of ["id", "email", "userId", "phone", "imageUrl", "hiddenTrait"]) expect(keys.has(k)).toBe(false);
     expect(JSON.stringify(demoHotspots({}, NOW))).not.toContain("@");
+  });
+  it("7·30·90일 결과가 서로 다르고, 90일은 방학까지 포함한다", () => {
+    const totals = [7, 30, 90].map(
+      (d) =>
+        demoHotspots(
+          {
+            from: new Date(NOW.getTime() + 9 * 3_600_000 - (d - 1) * 86_400_000).toISOString().slice(0, 10),
+            to: "2026-10-30",
+          },
+          NOW,
+        ).total,
+    );
+    expect(new Set(totals).size).toBe(3);
+    expect(totals[2]).toBe(DEMO_FOUND.length);
+    expect(DEMO_FOUND.some((f) => f.daysAgo >= 60)).toBe(true);
+  });
+
+  it("추세와 다음 7일 예상이 같은 숫자에서 나와 서로 어긋나지 않는다", () => {
+    for (const d of [7, 30, 90]) {
+      const from = new Date(NOW.getTime() + 9 * 3_600_000 - (d - 1) * 86_400_000).toISOString().slice(0, 10);
+      const res = demoHotspots({ from, to: "2026-10-30" }, NOW);
+      const half = d / 2;
+      for (const p of res.priorities) {
+        expect(p.trend).toBe(p.recent > p.earlier ? "UP" : p.recent < p.earlier ? "DOWN" : "SAME");
+        expect(p.expectedNextWeek).toBe(Math.round((p.recent / half) * 7 * 10) / 10);
+        expect(p.forecastBasis).toContain(`앞 ${p.earlier}건 → 최근 ${p.recent}건`);
+        // 늘고 있으면 예상은 기간 평균보다 크거나 같고, 줄고 있으면 작거나 같다
+        const avgWeek = (p.count / d) * 7;
+        if (p.trend === "UP") expect(p.expectedNextWeek).toBeGreaterThanOrEqual(Math.round(avgWeek * 10) / 10 - 0.05);
+        if (p.trend === "DOWN") expect(p.expectedNextWeek).toBeLessThanOrEqual(Math.round(avgWeek * 10) / 10 + 0.05);
+      }
+    }
+  });
+
+  it("7일로 봐도 유담관 충전기는 늘어남으로 나온다", () => {
+    const res = demoHotspots({ from: "2026-10-24", to: "2026-10-30" }, NOW);
+    expect(res.priorities.find((p) => p.building === "유담관" && p.category === "CHARGER")).toMatchObject({
+      trend: "UP",
+    });
+    expect(res.priorities[0]?.forecastBasis).toContain("참고용");
   });
 });
