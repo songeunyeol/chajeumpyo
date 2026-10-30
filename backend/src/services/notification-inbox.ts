@@ -11,7 +11,7 @@ type Row = { id: string; type: string; foundItemId: string | null; readAt: Date 
  * rows는 최신순이어야 한다.
  */
 /** 물건 하나에 하나만 보이면 되는 알림. 관리자 정보 알림(맡긴 물건, 수령 예정)도 같은 물건이면 묶는다 */
-const PER_ITEM = new Set(["NEW_CANDIDATE", "ITEM_INCOMING", "PICKUP_SCHEDULED"]);
+const PER_ITEM = new Set(["NEW_CANDIDATE", "ITEM_INCOMING", "PICKUP_SCHEDULED", "VALUABLE_IN_PLACE"]);
 
 function dedupe<T extends Row>(rows: T[]): T[] {
   const seen = new Set<string>();

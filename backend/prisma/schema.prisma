@@ -99,6 +99,8 @@ enum NotificationType {
   ITEM_INCOMING
   /// 관리자: 확인을 통과한 사람이 수령 QR을 받았다. 24시간 안에 찾으러 온다
   PICKUP_SCHEDULED
+  /// 관리자: 귀중품이 그 자리에 등록됐다. 필요하면 교무처로 옮긴다 (10/30 귀중품 보관처 추천으로 변경)
+  VALUABLE_IN_PLACE
 }
 
 /// 관리자가 보관을 끝낸 이유 (QA 10/30 3차: 관리자 화면에 지우는 기능이 없음)

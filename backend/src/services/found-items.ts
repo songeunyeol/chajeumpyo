@@ -24,7 +24,7 @@ import { prisma } from "../lib/prisma";
 import { premaskSafely } from "../privacy/premask";
 import { setFoundItemEmbedding } from "../repositories/embedding";
 import { storage } from "../storage";
-import { adminAlertSafely, alertItemIncoming } from "./admin-alerts";
+import { adminAlertSafely, alertItemIncoming, alertValuableInPlace } from "./admin-alerts";
 import { alertNewCandidateSafely } from "./candidate-alerts";
 import { alertHotspotSafely } from "./hotspots";
 
@@ -34,24 +34,13 @@ export const REGISTER_LIMIT = { windowMinutes: 10, count: 5 };
 export const DRAFT_TTL_MINUTES = 60;
 
 export const REVIEW_MESSAGE = "분석이 늦어져서 관리자가 확인한 뒤 등록돼요.";
-/** 고가품을 그 자리에 두려 할 때의 거절 문구 (QA B11) */
-export const HAND_OVER_REQUIRED_MESSAGE = "귀중품은 보관처(교무처)에 맡겨 주세요.";
-
-export function isValuableCategory(category: Category | null | undefined): boolean {
-  return !!category && VALUABLE_CATEGORIES.includes(category);
-}
 
 /**
- * 고가품은 보관 방식으로 센터·경비실(HANDED_OVER)만 고를 수 있다 (QA B11, open-issues #32).
- * AI가 종류를 못 읽었으면(null → REVIEW) 막지 않고 관리자 검토에 맡긴다.
- * 요청 형식 오류(VALIDATION_ERROR)와 달리 서버의 AI 결과에 따라 갈리므로 화면이 따로 처리하게 전용 코드를 쓴다.
+ * 귀중품 여부(화면의 보관처 추천용). 귀중품도 그 자리에 둘 수 있다 (10/30 팀 결정, QA B11 정책 변경).
+ * 막으면 "3초 등록"이 어려워 아예 안 올리게 되므로, 화면이 보관처를 추천만 하고 그 자리에 둔 귀중품은 교무처에 알린다.
  */
-function assertHandOverIfValuable(category: Category | null | undefined, storageType: string) {
-  if (storageType === "IN_PLACE" && isValuableCategory(category)) {
-    throw new AppError("VALUABLE_HAND_OVER_REQUIRED", HAND_OVER_REQUIRED_MESSAGE, [
-      { path: "storageType", message: "귀중품은 보관처에 맡김(HANDED_OVER)만 고를 수 있어요." },
-    ]);
-  }
+export function isValuableCategory(category: Category | null | undefined): boolean {
+  return !!category && VALUABLE_CATEGORIES.includes(category);
 }
 
 /** 습득자 기기·IP 지문. 원문은 저장하지 않고 서버 키로 HMAC한 값만 남긴다. */
@@ -154,7 +143,7 @@ type ProcessedPhoto = {
  * 사진을 정리하고, 가린 사본으로 AI 분석을 한 뒤 원본·공개본·후보용 사본을 저장한다.
  * 물건이 없다고 분석되면 아무것도 저장하지 않고 NO_OBJECT_DETECTED.
  */
-async function processPhoto(image: Buffer, beforeStore?: (analysis: Analysis | null) => void): Promise<ProcessedPhoto> {
+async function processPhoto(image: Buffer): Promise<ProcessedPhoto> {
   const original = await normalizeImage(image);
   // 얼굴·글자 영역을 먼저 가린 사본만 AI로 보내고 공개본·후보용 사본도 이것으로 만든다 (QA B3, T4).
   // 가리기에 실패하면 원본을 보내지 않고 AI 없이 검토 대기로 저장한다. 원본은 관리자만 본다.
@@ -167,9 +156,6 @@ async function processPhoto(image: Buffer, beforeStore?: (analysis: Analysis | n
   if (analysis && !analysis.extraction.hasObject) {
     throw new AppError("NO_OBJECT_DETECTED", "사진에서 물건을 찾지 못했어요. 물건이 잘 보이게 다시 찍어 주세요.");
   }
-
-  // 저장 전에 막아야 할 조건(고가품을 그 자리에 둠 등). 여기서 던지면 사진은 하나도 남지 않는다
-  beforeStore?.(analysis);
 
   const ex = analysis?.extraction;
   const privacy = publicPrivacy(ex ?? null);
@@ -241,10 +227,7 @@ export async function registerFoundItem(input: {
   const { fields, fingerprint } = input;
   await checkRegisterLimit(fingerprint);
   const { building, place } = await resolvePlace(fields);
-  // 한 번에 등록은 AI 분석 뒤에야 종류를 안다. 고가품인데 그 자리에 둠이면 사진을 저장하기 전에 거절한다
-  const photo = await processPhoto(input.image, (analysis) =>
-    assertHandOverIfValuable(analysis?.extraction.category, fields.storageType),
-  );
+  const photo = await processPhoto(input.image);
 
   const foundAt = new Date();
   const status = photo.analysis ? "REGISTERED" : "REVIEW";
@@ -270,6 +253,7 @@ export async function registerFoundItem(input: {
     await alertHotspotSafely(photo.id);
   }
   await adminAlertSafely(() => alertItemIncoming(photo.id), photo.id, "ITEM_INCOMING");
+  await adminAlertSafely(() => alertValuableInPlace(photo.id), photo.id, "VALUABLE_IN_PLACE");
 
   const category = photo.analysis?.extraction.category ?? null;
   return {
@@ -373,10 +357,8 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
       if (done > 0) throw new AppError("ALREADY_CONFIRMED", "이미 등록을 마친 물건이에요.");
       throw new AppError("NOT_FOUND", "등록 시간이 지났거나 없는 물건이에요. 사진부터 다시 올려 주세요.");
     }
-    // 거절해도 초안은 그대로 남아 같은 토큰으로 보관처를 골라 다시 확정할 수 있다
     const category = fix?.category ?? draft.category;
     const subCategory = fix ? fix.subCategory : subCategoryWithin(draft.category, draft.subCategory);
-    assertHandOverIfValuable(category, body.storageType);
     const status = draft.category ? ("REGISTERED" as const) : ("REVIEW" as const);
     // 같은 초안을 두 번 확정하지 않게 상태를 조건으로 바꾼다
     const changed = await tx.foundItem.updateMany({
@@ -412,6 +394,7 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
     await alertHotspotSafely(id);
   }
   await adminAlertSafely(() => alertItemIncoming(id), id, "ITEM_INCOMING");
+  await adminAlertSafely(() => alertValuableInPlace(id), id, "VALUABLE_IN_PLACE");
 
   return {
     id,

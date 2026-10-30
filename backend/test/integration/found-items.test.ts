@@ -1,7 +1,4 @@
 // F-01 습득물 등록, F-02 AI 속성 추출, F-03 개인정보 자동 블러: 이슈의 완료 기준 10개
-import { existsSync } from "node:fs";
-import { readdir } from "node:fs/promises";
-import { join } from "node:path";
 import type { FoundItemExtraction } from "@chajeumpyo/shared";
 import sharp from "sharp";
 import request from "supertest";
@@ -480,34 +477,21 @@ describe("기준 11. AI에는 얼굴·글자를 가린 사본만 보낸다 (QA B
   });
 });
 
-describe("기준 12. 귀중품은 보관처(센터·경비실)에만 맡길 수 있다 (QA B11)", () => {
-  async function storedFiles() {
-    const { env } = await import("../../src/config/env");
-    const dir = join(env.STORAGE_LOCAL_DIR, "found");
-    return existsSync(dir) ? (await readdir(dir, { recursive: true })).length : 0;
-  }
-
-  it("AI가 귀중품으로 보는데 그 자리에 둠이면 400, 물건 행도 사진 파일도 남지 않는다", async () => {
-    const before = await storedFiles();
+describe("기준 12. 귀중품도 그 자리에 둘 수 있다. 화면이 보관처를 추천한다 (10/30 정책 변경, QA B11)", () => {
+  it("AI가 귀중품으로 봐도 그 자리에 둠이면 201로 등록한다", async () => {
     const res = await register(inPlace(), await noisyJpeg()); // 가짜 AI: 이어폰
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatchObject({
-      code: "VALUABLE_HAND_OVER_REQUIRED",
-      message: "귀중품은 보관처(교무처)에 맡겨 주세요.",
-      details: [{ path: "storageType" }],
-    });
-    expect(await prisma.foundItem.count()).toBe(0);
-    expect(await storedFiles()).toBe(before);
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ category: "EARPHONE", storageType: "IN_PLACE", handOverAdvice: null });
+    expect(await prisma.foundItem.count()).toBe(1);
   });
 
-  it("거절은 등록 횟수에 세지 않고, 같은 사진을 보관처에 맡기면 201", async () => {
-    for (let i = 0; i < 5; i++) expect((await register(inPlace(), await noisyJpeg(), "phone-V")).status).toBe(400);
+  it("보관처에 맡겨도 201", async () => {
     const res = await register(handedOver(), await noisyJpeg(), "phone-V");
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ category: "EARPHONE", storageType: "HANDED_OVER", handOverAdvice: null });
   });
 
-  it("AI가 실패해 종류를 모르면(REVIEW) 막지 않고 관리자가 확인한다", async () => {
+  it("AI가 실패해 종류를 모르면(REVIEW) 관리자가 확인한다", async () => {
     useExtraction(async () => {
       throw new Error("AI 장애");
     });
