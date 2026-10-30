@@ -8,6 +8,7 @@ import {
 } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { getAuth, requireMember } from "../middlewares/auth";
+import { accountRateLimit, ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import * as service from "../services/lost-reports";
@@ -75,10 +76,29 @@ export function createLostReportsRouter() {
     return { userId: a.userId, role: a.role };
   };
 
-  router.post("/lost-reports", requireMember(), validate("body", CreateLostReportRequest), async (_req, res) => {
-    const result: LostReportWithCandidates = await service.createLostReport(viewer(res), res.locals.body);
-    res.status(201).json(result);
+  // 신고·수정마다 AI 추출과 임베딩을 부른다. 비용 남용과 조건을 바꿔 가며 후보를 훑는 것을 막는다 (10/30 코드 평가)
+  const reportIpLimit = ipRateLimit({
+    windowMinutes: 10,
+    limit: 30,
+    message: "신고 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
+  const reportAccountLimit = accountRateLimit({
+    windowMinutes: 10,
+    limit: 10,
+    message: "신고를 너무 자주 만들거나 고쳤어요. 잠시 후 다시 시도해 주세요.",
+  });
+
+  router.post(
+    "/lost-reports",
+    reportIpLimit,
+    requireMember(),
+    reportAccountLimit,
+    validate("body", CreateLostReportRequest),
+    async (_req, res) => {
+      const result: LostReportWithCandidates = await service.createLostReport(viewer(res), res.locals.body);
+      res.status(201).json(result);
+    },
+  );
 
   router.get("/lost-reports", requireMember(), async (_req, res) => {
     const result: LostReportListResponse = await service.listLostReports(viewer(res));
@@ -97,7 +117,9 @@ export function createLostReportsRouter() {
 
   router.patch(
     "/lost-reports/:id",
+    reportIpLimit,
     requireMember(),
+    reportAccountLimit,
     validate("params", LostReportIdParams),
     validate("body", UpdateLostReportRequest),
     async (_req, res) => {

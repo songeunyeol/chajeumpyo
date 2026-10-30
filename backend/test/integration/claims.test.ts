@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetAiClient, setAiClient } from "../../src/ai";
 import { mockAiClient } from "../../src/ai/mock";
 import { createApp } from "../../src/app";
+import { similarShape } from "../../src/matching/quiz";
 import { alertNewCandidate } from "../../src/services/candidate-alerts";
 import { demoLogin, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
@@ -61,8 +62,20 @@ const claim = (reportId: string, foundItemId: string, t = token) =>
     .post(`/api/v1/lost-reports/${reportId}/claims`)
     .set("Authorization", `Bearer ${t}`)
     .send({ foundItemId });
-const answer = (attemptId: string, text: string, t = token) =>
-  request(app).post(`/api/v1/claims/${attemptId}/answer`).set("Authorization", `Bearer ${t}`).send({ answer: text });
+/** 자유 입력 답을 보낸다. 객관식이 저장된 시도는 자유 입력을 거절하므로(10/30), 객관식이 없던 예전 시도처럼 만든 뒤 보낸다 */
+async function answer(attemptId: string, text: string, t = token) {
+  const a = await prisma.matchAttempt.findUnique({ where: { id: attemptId } });
+  if (a && quizLength(a.matchedFields) > 0)
+    await prisma.matchAttempt.update({
+      where: { id: attemptId },
+      data: { matchedFields: { ...(a.matchedFields as object), quiz: [] } },
+    });
+  return request(app)
+    .post(`/api/v1/claims/${attemptId}/answer`)
+    .set("Authorization", `Bearer ${t}`)
+    .send({ answer: text });
+}
+const quizLength = (m: unknown) => ((m as { quiz?: unknown[] } | null)?.quiz ?? []).length;
 const feature = (key: FeatureKey, value: string) => ({ key, value });
 const choose = (attemptId: string, choices: number[], t = token) =>
   request(app).post(`/api/v1/claims/${attemptId}/answer`).set("Authorization", `Bearer ${t}`).send({ choices });
@@ -417,7 +430,7 @@ describe("기준 9. 답은 한 번만, 내 질문에만", () => {
 
   it("두 번째 답은 409 ALREADY_ANSWERED", async () => {
     const id = await borderlineAttempt();
-    await answer(id, "토끼").expect(200);
+    expect((await answer(id, "토끼")).status).toBe(200);
     const res = await answer(id, "곰돌이");
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("ALREADY_ANSWERED");
@@ -534,6 +547,83 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect(empty.status).toBe(400);
     const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
     expect(a.answerCorrect).toBeNull();
+  });
+
+  it("객관식이 나온 시도에 자유 입력으로 답하면 400, 시도는 그대로 (보기를 그대로 적는 우회 막기, 10/30)", async () => {
+    const { res } = await borderline();
+    const opts = res.body.questions[0].options as string[];
+    for (const text of ["고양이 키링", opts[0] as string]) {
+      const r = await request(app)
+        .post(`/api/v1/claims/${res.body.attemptId}/answer`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ answer: text });
+      expect(r.status).toBe(400);
+      expect(r.body.error.code).toBe("VALIDATION_ERROR");
+    }
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
+    expect(a.answerCorrect).toBeNull();
+  });
+
+  it("설명에 맞힌 특징이 없으면(특징 없이 신고) 질문을 3개까지 낸다 (찍기 1/64, 10/30)", async () => {
+    const it1 = await item();
+    const r = await newReport({ features: [] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const qs = res.body.questions as { options: string[] }[];
+    expect(qs).toHaveLength(3);
+    for (const q of qs) expect(q.options).toHaveLength(4);
+    const right = await correctChoices(res.body.attemptId);
+    expect((await choose(res.body.attemptId, right)).body.result).toBe("PASS");
+  });
+
+  it("맞힌 특징 없이 찍기는 계정·물건마다 한 번: 틀린 뒤 또 특징 없이 신고하면 질문 없이 실패 (10/30)", async () => {
+    const it1 = await item();
+    const r1 = await newReport({ features: [] }, token, "흰색 에어팟을 잃어버렸어요");
+    const a1 = await claim(r1, it1.id);
+    const right = await correctChoices(a1.body.attemptId);
+    const wrong = right.map((x) => (x + 1) % 4);
+    expect((await choose(a1.body.attemptId, wrong)).body.result).toBe("FAIL");
+    const r2 = await newReport({ features: [] }, token, "하얀 무선 이어폰이에요 찾고 있어요");
+    const a2 = await claim(r2, it1.id);
+    expect(a2.body.result).toBe("FAIL");
+    // 특징을 적으면 다시 확인할 수 있다
+    const r3 = await newReport({ features: [feature("sticker", "곰돌이 스티커")] }, token, "곰돌이 스티커 붙은 에어팟");
+    expect((await claim(r3, it1.id)).body.result).toBe("PASS");
+  });
+
+  it("다시 시도해도(다른 설명·다른 계정) 같은 물건·같은 질문이면 같은 보기 세트, 순서만 섞는다 (교집합 공격 막기, 10/30)", async () => {
+    const it1 = await item();
+    const r1 = await newReport({ features: [] }, token, "흰색 에어팟을 잃어버렸어요");
+    const a1 = await claim(r1, it1.id);
+    const r2 = await newReport({ features: [] }, token, "하얀 이어폰을 잃어버렸어요 찾아 주세요");
+    const a2 = await claim(r2, it1.id);
+    const other = await signupUser(app, "other@skuniv.ac.kr");
+    const r3 = await newReport({ features: [] }, other.accessToken, "흰 무선 이어폰이에요");
+    const a3 = await claim(r3, it1.id, other.accessToken);
+    const sets = (b: { questions: { text: string; options: string[] }[] }) =>
+      Object.fromEntries(b.questions.map((q) => [q.text, [...q.options].sort()]));
+    expect(a1.body.questions.length).toBeGreaterThan(0);
+    expect(sets(a2.body)).toEqual(sets(a1.body));
+    expect(sets(a3.body)).toEqual(sets(a1.body));
+  });
+
+  it("정답 보기가 길이·영문·숫자로 튀지 않는다 (막연한 준비 보기 대신 같은 형식, 10/30)", async () => {
+    const it1 = await item({
+      features: [
+        { key: "text", value: "안쪽에 J.H 각인" },
+        { key: "scratch", value: "케이스 뒷면에 있음" },
+      ],
+    });
+    const r = await newReport({ features: [] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
+    const quiz = (a.matchedFields as { quiz: { options: string[]; answer: number; featureKey: string }[] }).quiz;
+    for (const q of quiz.filter((x) => x.featureKey !== "color")) {
+      const correct = q.options[q.answer] as string;
+      for (const o of q.options) expect(similarShape(o, correct)).toBe(true);
+    }
+    expect(quiz.find((q) => q.featureKey === "text")?.options.every((o) => /[A-Z]/.test(o))).toBe(true);
   });
 
   it("같은 설명으로 다시 확인하면 같은 보기를 같은 순서로 준다", async () => {
