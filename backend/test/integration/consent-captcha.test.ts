@@ -39,7 +39,12 @@ async function register(fields: Record<string, string | number>, headers: Record
   return req.attach("image", await noisyJpeg(), "p.jpg");
 }
 /** 그 자리에 둠. 가짜 AI(이어폰)는 귀중품이라 등록이 성공해야 하는 테스트는 extractAs로 귀중품이 아닌 종류를 고른다 (QA B11) */
-const base = () => ({ ...finderConsentFields(), buildingId: A, storageType: "IN_PLACE" });
+const base = () => ({
+  ...finderConsentFields(),
+  buildingId: A,
+  storageType: "IN_PLACE",
+  locationDetail: "강의실 뒤 책상 위",
+});
 
 function extractAs(category: FoundItemExtraction["category"]) {
   setAiClient({
