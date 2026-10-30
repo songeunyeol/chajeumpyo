@@ -9,7 +9,8 @@ import { newCandidateMessage } from "./notifications";
  * - 종류(연관 묶음·2순위 포함)와 시간이 맞는 열린 신고를 찾고
  * - 그 신고의 실제 후보(상위 CANDIDATE_LIMIT개)에 이 물건이 들어갈 때만 알린다. 목록에 없는 물건을 알리면 헷갈린다.
  * - 시드 물건은 체험 계정 신고에만, 일반 물건은 일반 계정 신고에만
- * - 같은 신고·물건 조합은 한 번만
+ * - 같은 사람에게 같은 물건은 한 번만. 한 사람이 신고를 여러 개 열어 두면 신고마다 알림이 쌓여
+ *   목록에 같은 알림이 여러 번 보였다(QA 10/30). 알림은 가장 최근 신고에 붙이고, 노출 기록은 신고마다 남긴다.
  * 실패해도 등록 자체는 성공으로 둔다(에러는 로그만 남김).
  */
 export async function alertNewCandidate(foundItemId: string): Promise<number> {
@@ -32,18 +33,30 @@ export async function alertNewCandidate(foundItemId: string): Promise<number> {
       notifications: { none: { foundItemId, type: "NEW_CANDIDATE" } },
     },
     include: { user: { select: { role: true } } },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
   });
+  // 이미 이 물건 알림을 받은 사람 (다른 신고로, 또는 이번 실행에서 먼저)
+  const notified = new Set(
+    (
+      await prisma.notification.findMany({
+        where: { foundItemId, type: "NEW_CANDIDATE", userId: { in: [...new Set(reports.map((r) => r.userId))] } },
+        select: { userId: true },
+      })
+    ).map((n) => n.userId),
+  );
 
   const message = newCandidateMessage(item.building?.name ?? null, CATEGORY_LABELS[item.category]);
   let sent = 0;
   for (const report of reports) {
     const candidates = await findCandidates(report, report.user.role);
     if (!candidates.some((c) => c.foundItemId === foundItemId)) continue;
+    // 알림으로 알려 준 물건도 보여 준 후보로 남긴다 (나중에 상위에서 밀려나도 판정할 수 있게)
+    await recordExposure(report.id, [foundItemId]);
+    if (notified.has(report.userId)) continue;
     await prisma.notification.create({
       data: { userId: report.userId, type: "NEW_CANDIDATE", foundItemId, lostReportId: report.id, message },
     });
-    // 알림으로 알려 준 물건도 보여 준 후보로 남긴다 (나중에 상위에서 밀려나도 판정할 수 있게)
-    await recordExposure(report.id, [foundItemId]);
+    notified.add(report.userId);
     sent++;
   }
   return sent;
