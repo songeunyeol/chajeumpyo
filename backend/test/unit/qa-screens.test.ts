@@ -347,3 +347,23 @@ describe("귀중품은 막지 않고 보관처를 추천한다 (10/30 정책 변
     expect(josa("학술정보관")).toBe("이");
   });
 });
+
+describe("습득 등록: 물건 설명(선택)", () => {
+  const register = read("frontend/found/register.html");
+
+  it("접힌 선택 칸이고 200자 제한, 개인정보 주의 문구가 있다", () => {
+    expect(register).toContain('<details class="note-box" id="noteBox">');
+    expect(register).toMatch(/id="finderNote"[^>]*maxlength="200"/);
+    expect(register).toContain("이름·학번·전화번호는 적지 마세요");
+  });
+
+  it("사진 분석이 실패하면 펼쳐서 글로 분류한다고 알리고, 설명은 note로 보낸다", () => {
+    expect(register).toContain("noteBox.open = true");
+    expect(register).toContain("AI가 글로 분류해요");
+    expect(register).toContain("{ note: finderNote.value.trim().slice(0, 200) }");
+  });
+
+  it("관리자 물건 상세에 습득자 설명을 보여 준다", () => {
+    expect(read("frontend/admin/item.html")).toContain('$("kvNote").textContent = item.finderNote');
+  });
+});

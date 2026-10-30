@@ -75,6 +75,11 @@ export const ConfirmFoundItemBody = FoundPlaceFields.extend({
   category: Category.optional(),
   /** 습득자가 고친 세부 종류. category와 같이 보내고, 그 종류에 속하지 않으면 무시한다 */
   subCategory: SubCategory.nullable().optional(),
+  /**
+   * 습득자가 적은 물건 설명 (선택). 공개하지 않고 비공개 상세에만 둔다.
+   * 사진 분석을 보강하고, 사진 분석이 실패하면 이 글로 종류를 정한다. 전화번호·메일·학번 같은 숫자는 서버가 지운다
+   */
+  note: z.string().trim().max(200).optional(),
 }).superRefine(checkPlace);
 export type ConfirmFoundItemBody = z.infer<typeof ConfirmFoundItemBody>;
 

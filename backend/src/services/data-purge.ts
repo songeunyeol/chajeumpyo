@@ -41,6 +41,7 @@ export async function purgeFoundItemData(foundItemId: string, now = new Date()):
           description: null,
           title: null,
           locationDetail: null,
+          finderNote: null,
         },
       });
       await tx.$executeRaw`UPDATE found_item_detail SET embedding = NULL, raw_ai_response = NULL WHERE found_item_id = ${foundItemId}::uuid`;
