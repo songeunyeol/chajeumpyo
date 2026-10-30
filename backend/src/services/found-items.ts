@@ -8,6 +8,7 @@ import {
   itemLabel,
   type RegisterFoundItemFields,
   type RegisterFoundItemResponse,
+  type SensitiveRegion,
   subCategoryWithin,
   VALUABLE_CATEGORIES,
 } from "@chajeumpyo/shared";
@@ -53,6 +54,22 @@ function assertHandOverIfValuable(category: Category | null | undefined, storage
 }
 
 /** 습득자 기기·IP 지문. 원문은 저장하지 않고 서버 키로 HMAC한 값만 남긴다. */
+/** 이름·번호·얼굴 사진이 들어가는 카드. AI가 이 종류로 보면 공개 사진은 통째로 흐린다 */
+const CARD_CATEGORIES: Category[] = ["ID_CARD", "DRIVER_LICENSE", "PAYMENT_CARD", "TRANSIT_CARD", "OTHER_CARD"];
+
+/**
+ * 공개 사진 흐리기 기준 (2단계 가리기). 서버 안 1단계 가리기가 작은·기울어진·세로 글자 줄이나 사진 속 얼굴을 놓칠 수 있어서
+ * (10/30 커뮤니티 실제 사진 점검: 개인정보 사진 7장 중 4장 일부 남음), 카드로 분류된 물건은 AI가 알려 준 영역만이 아니라 사진 전체를 흐린다.
+ * AI가 실패해 민감 여부를 모르면 흐리게 처리하는 쪽이 기본 (F-03)
+ */
+export function publicPrivacy(
+  ex: { isSensitive: boolean; category: Category; sensitiveRegions: SensitiveRegion[] } | null,
+) {
+  if (!ex) return { sensitive: true, regions: [] };
+  if (CARD_CATEGORIES.includes(ex.category)) return { sensitive: true, regions: [] };
+  return { sensitive: ex.isSensitive, regions: ex.sensitiveRegions };
+}
+
 export function uploaderFingerprint(ip: string, userAgent: string): string {
   return hmac(`uploader:${ip}:${userAgent}`);
 }
@@ -154,8 +171,8 @@ async function processPhoto(image: Buffer, beforeStore?: (analysis: Analysis | n
   beforeStore?.(analysis);
 
   const ex = analysis?.extraction;
-  // AI가 실패해 민감 여부를 모르면 흐리게 처리하는 쪽이 기본 (F-03)
-  const sensitive = ex ? ex.isSensitive : true;
+  const privacy = publicPrivacy(ex ?? null);
+  const sensitive = privacy.sensitive;
   const id = randomUUID();
   const keys = {
     original: `found/${id}/original.jpg`,
@@ -163,7 +180,7 @@ async function processPhoto(image: Buffer, beforeStore?: (analysis: Analysis | n
     thumb: `found/${id}/thumb.jpg`,
   };
   const [publicImage, thumbImage] = await Promise.all([
-    makePublicImage(masked?.image ?? original, { sensitive, regions: ex?.sensitiveRegions ?? [] }),
+    makePublicImage(masked?.image ?? original, privacy),
     makeThumbImage(masked?.image ?? original),
   ]);
   await storage.put(keys.original, masked?.image ?? original, "image/jpeg");

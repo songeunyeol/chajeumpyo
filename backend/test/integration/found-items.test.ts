@@ -246,9 +246,14 @@ describe("기준 6. 공개본은 개인정보만 가리고, 후보용 사진은 
     expect(pub).toBeGreaterThan(orig * 0.7);
   });
 
-  it("민감 영역을 알면 그 영역만 흐리고 나머지는 선명", async () => {
-    // 400x300 사진의 왼쪽 위 1/4을 개인정보 영역으로
-    useExtraction({ ...SENSITIVE, sensitiveRegions: [{ x: 0, y: 0, width: 0.25, height: 0.25 }] });
+  it("민감 영역을 알면 그 영역만 흐리고 나머지는 선명 (카드가 아닌 물건)", async () => {
+    // 400x300 사진의 왼쪽 위 1/4을 개인정보 영역으로. 지갑 속 카드처럼 카드가 아닌 물건
+    useExtraction({
+      ...SENSITIVE,
+      category: "WALLET",
+      categoryAlt: null,
+      sensitiveRegions: [{ x: 0, y: 0, width: 0.25, height: 0.25 }],
+    });
     const { body } = await register(handedOver(), await noisyJpeg(400, 300));
     const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: body.id } });
     const pub = (await readLocalFile(d.imagePublicKey as string)) as Buffer;
@@ -261,6 +266,17 @@ describe("기준 6. 공개본은 개인정보만 가리고, 후보용 사진은 
     const origOutside = await sharpness(await crop(orig, 300, 220));
     expect(inside).toBeLessThan(origInside * 0.3);
     expect(outside).toBeGreaterThan(origOutside * 0.7);
+  });
+
+  it("카드로 분류된 물건은 민감 영역을 알아도 공개본 전체를 흐린다 (2단계 가리기, 10/30)", async () => {
+    useExtraction({ ...SENSITIVE, sensitiveRegions: [{ x: 0, y: 0, width: 0.25, height: 0.25 }] });
+    const { body } = await register(handedOver(), await noisyJpeg(400, 300));
+    const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: body.id } });
+    const pub = (await readLocalFile(d.imagePublicKey as string)) as Buffer;
+    const orig = (await readLocalFile(d.imageOriginalKey as string)) as Buffer;
+    const crop = (img: Buffer) => sharp(img).extract({ left: 300, top: 220, width: 80, height: 60 }).toBuffer();
+    // 영역 밖도 흐리다
+    expect(await sharpness(await crop(pub))).toBeLessThan((await sharpness(await crop(orig))) * 0.3);
   });
 
   it("후보용 사진은 민감 여부와 관계없이 강하게 흐린 작은 사본", async () => {

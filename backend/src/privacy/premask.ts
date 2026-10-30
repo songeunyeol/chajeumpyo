@@ -26,6 +26,11 @@ const FACE_NMS_IOU = 0.3;
  * 털 인형(15~20%)은 가린 얼굴과 겹쳐서 가리는 쪽으로 남긴다(개인정보 우선).
  */
 const FACE_MIN_SKIN = 0.08;
+/**
+ * 피부색 검사는 사진의 12% 이상을 차지하는 큰 얼굴 후보에만 한다. 오탐은 큰 물건 전체(데님 모자 39%, 털 인형 29~44%)였고,
+ * 작은 얼굴(포토카드·학생증 사진 속 얼굴, 단체 사진)은 색이 바래거나 작아도 그대로 가린다 (10/30 커뮤니티 실제 사진 점검: 포토카드 얼굴을 놓친 적이 있다).
+ */
+const FACE_SKIN_CHECK_AREA = 0.12;
 /** 색이 있는 픽셀이 이보다 적으면 흑백 사진으로 보고 피부색 검사를 하지 않는다(흑백 얼굴은 피부색 0%) */
 const COLOR_PHOTO_MIN = 0.01;
 /** 얼굴 상자는 머리카락·귀까지 가리게 사방으로 넓힌다 */
@@ -218,11 +223,22 @@ async function skinRatio(image: Buffer, [x1, y1, x2, y2]: Box, W: number, H: num
   return skin / (px.length / 3);
 }
 
-/** 컬러 사진에서 피부색이 거의 없는 얼굴 후보(물건 오탐)를 뺀다 */
+/** 얼굴 후보를 물건 오탐으로 보고 뺄지. 컬러 사진의 큰 후보이면서 피부색이 거의 없을 때만 뺀다 */
+export function isObjectNotFace(o: { areaRatio: number; skinRatio: number; colorRatio: number }): boolean {
+  return o.colorRatio >= COLOR_PHOTO_MIN && o.areaRatio >= FACE_SKIN_CHECK_AREA && o.skinRatio < FACE_MIN_SKIN;
+}
+
+/** 컬러 사진에서 피부색이 거의 없는 큰 얼굴 후보(물건 오탐)를 뺀다 */
 async function dropNonSkinFaces(image: Buffer, faces: Box[], W: number, H: number): Promise<Box[]> {
-  if (!faces.length || (await colorRatio(image)) < COLOR_PHOTO_MIN) return faces;
+  const large = faces.filter(([x1, y1, x2, y2]) => ((x2 - x1) * (y2 - y1)) / (W * H) >= FACE_SKIN_CHECK_AREA);
+  if (!large.length) return faces;
+  const colored = await colorRatio(image);
   const kept: Box[] = [];
-  for (const f of faces) if ((await skinRatio(image, f, W, H)) >= FACE_MIN_SKIN) kept.push(f);
+  for (const f of faces) {
+    const areaRatio = ((f[2] - f[0]) * (f[3] - f[1])) / (W * H);
+    const skin = areaRatio >= FACE_SKIN_CHECK_AREA ? await skinRatio(image, f, W, H) : 1;
+    if (!isObjectNotFace({ areaRatio, skinRatio: skin, colorRatio: colored })) kept.push(f);
+  }
   return kept;
 }
 
