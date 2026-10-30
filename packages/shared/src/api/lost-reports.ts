@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Category, ReportStatus, SubCategory } from "../enums";
+import { Category, Color, ReportStatus, SubCategory } from "../enums";
 import { BuildingSummary } from "./buildings";
 
 /** 분실 설명 길이 (초안) */
@@ -53,7 +53,7 @@ export type CandidateReason = z.infer<typeof CandidateReason>;
 
 export const CANDIDATE_REASON_LABELS: Record<CandidateReason, string> = {
   SAME_CATEGORY: "같은 종류",
-  RELATED_CATEGORY: "비슷한 종류",
+  RELATED_CATEGORY: "연관 종류",
   SAME_BUILDING: "같은 건물",
   FOUND_SOON_AFTER: "잃어버린 뒤 2시간 안에 습득",
 };
@@ -84,16 +84,32 @@ export const Candidate = z.object({
 });
 export type Candidate = z.infer<typeof Candidate>;
 
+/**
+ * AI가 신고자 본인의 설명에서 읽은 것. 화면에 "AI가 이렇게 읽었어요"로 보여 준다.
+ * 신고자가 직접 적은 내용에서 나온 값만 담는다(습득물의 숨은 특징은 담지 않는다).
+ */
+export const ReportAiRead = z.object({
+  category: Category,
+  subCategory: SubCategory.nullable(),
+  color: Color.nullable(),
+  brand: z.string().nullable(),
+  /** 설명에서 뽑은 특징 문구 (신고자 표현 그대로). 예: "냥이 열쇠고리" */
+  features: z.array(z.object({ key: z.string(), value: z.string() })),
+});
+export type ReportAiRead = z.infer<typeof ReportAiRead>;
+
 /** POST /lost-reports 201, PATCH /lost-reports/:id 200 */
 export const LostReportWithCandidates = z.object({
   id: z.string(),
   status: ReportStatus,
   candidates: z.array(Candidate),
+  /** AI 분석 결과가 없거나 형식이 다르면 null */
+  aiRead: ReportAiRead.nullable(),
 });
 export type LostReportWithCandidates = z.infer<typeof LostReportWithCandidates>;
 
 /** GET /lost-reports/:id/candidates */
-export const CandidateListResponse = z.object({ candidates: z.array(Candidate) });
+export const CandidateListResponse = z.object({ candidates: z.array(Candidate), aiRead: ReportAiRead.nullable() });
 export type CandidateListResponse = z.infer<typeof CandidateListResponse>;
 
 /** GET /lost-reports */

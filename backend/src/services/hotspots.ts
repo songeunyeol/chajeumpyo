@@ -179,7 +179,7 @@ export function buildPriorities(rows: Row[], start: Date, end: Date): HotspotPri
       // 추세와 예상은 같은 숫자에서 나온다: 기간을 반으로 나눈 앞·뒤 건수, 뒤쪽 하루 평균 × 7
       const perDay = c.recent / recentDays;
       const expectedNextWeek = Math.round(perDay * 7 * 10) / 10;
-      const forecastBasis = `${round1(recentDays)}일씩 나눠 보면 앞 ${earlier}건 → 최근 ${c.recent}건. 다음 7일 ≈ 최근 하루 ${round1(perDay)}건 × 7${recentDays < SHORT_HALF_DAYS ? " (기간이 짧아 참고용)" : ""}`;
+      const forecastBasis = `${round1(recentDays)}일씩 나눠 보면 앞 ${earlier}건 → 최근 ${c.recent}건. 다음 7일 ≈ 최근 ${c.recent}건 ÷ ${round1(recentDays)}일 × 7${recentDays < SHORT_HALF_DAYS ? " (기간이 짧아 참고용)" : ""}`;
       return {
         score,
         priority: {
