@@ -46,7 +46,7 @@
   const me = AdminApi.requireLogin();
   if (me) {
     document.getElementById("place").textContent = me.storagePlace ? me.storagePlace.name : "전체 관리";
-    document.getElementById("who").textContent = `${me.user.email}로 들어왔어요.`;
+    document.getElementById("who").textContent = me.demo ? "시연 관리자로 들어왔어요. 실제 계정이 아니에요." : `${me.user.email}로 들어왔어요.`;
     if (me.demo) {
       const banner = document.createElement("div");
       banner.className = "banner";

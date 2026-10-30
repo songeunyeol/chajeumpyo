@@ -122,6 +122,11 @@ export function preventiveAction(category: Category, building: string, slot: str
   return `${building}에 ${slot} 뒤 분실물 확인 순찰을 넣고, 찾음표 등록 QR 안내를 붙여요.`;
 }
 
+/** 소수 첫째 자리 */
+const round1 = (n: number) => Math.round(n * 10) / 10;
+/** 반으로 나눈 기간이 이보다 짧으면(전체 14일 미만) 예상은 참고용이라고 밝힌다 */
+const SHORT_HALF_DAYS = 7;
+
 /** 원형(24시간) 거리 */
 const hourDistance = (a: number, b: number) => Math.min((a - b + 24) % 24, (b - a + 24) % 24);
 
@@ -129,7 +134,7 @@ const hourDistance = (a: number, b: number) => Math.min((a - b + 24) % 24, (b - 
  * 먼저 손볼 구간 (반복 탐지 + 우선순위 제안).
  * - 건물 × 2시간 창 × 종류에서 2건 이상 반복된 구간만 본다. 같은 건물·종류에서 겹치는 창은 건수가 많은 하나만 남긴다.
  * - 점수 = 건수 + 보관 중인 수 × 0.5 + (최근 절반이 더 많으면 1). 5 이상 높음, 3 이상 보통, 그 밖 낮음.
- * - 기간을 반으로 나눠 뒤쪽이 많으면 늘어남(UP)으로 본다.
+ * - 기간을 반으로 나눠 뒤쪽이 많으면 늘어남(UP)으로 본다. 다음 7일 예상도 같은 뒤쪽 절반의 하루 평균 × 7이라 추세와 어긋나지 않는다.
  */
 export function buildPriorities(rows: Row[], start: Date, end: Date): HotspotPriority[] {
   const mid = start.getTime() + (end.getTime() - start.getTime()) / 2;
@@ -171,7 +176,10 @@ export function buildPriorities(rows: Row[], start: Date, end: Date): HotspotPri
       const level: HotspotPriority["level"] = score >= 5 ? "HIGH" : score >= 3 ? "MEDIUM" : "LOW";
       const slot = slotLabel(c.startHour);
       const trendText = trend === "UP" ? "늘고 있어요" : trend === "DOWN" ? "줄고 있어요" : "비슷해요";
-      const expectedNextWeek = Math.round((c.recent / recentDays) * 7 * 10) / 10;
+      // 추세와 예상은 같은 숫자에서 나온다: 기간을 반으로 나눈 앞·뒤 건수, 뒤쪽 하루 평균 × 7
+      const perDay = c.recent / recentDays;
+      const expectedNextWeek = Math.round(perDay * 7 * 10) / 10;
+      const forecastBasis = `${round1(recentDays)}일씩 나눠 보면 앞 ${earlier}건 → 최근 ${c.recent}건. 다음 7일 ≈ 최근 하루 ${round1(perDay)}건 × 7${recentDays < SHORT_HALF_DAYS ? " (기간이 짧아 참고용)" : ""}`;
       return {
         score,
         priority: {
@@ -185,6 +193,7 @@ export function buildPriorities(rows: Row[], start: Date, end: Date): HotspotPri
           unclaimed,
           level,
           expectedNextWeek,
+          forecastBasis,
           summary: `${c.building} ${slot} ${CATEGORY_LABELS[c.category]} 분실 ${count}건 (최근 ${trendText}, 보관 중 ${unclaimed}건)`,
           action: preventiveAction(c.category, c.building, slot),
         },

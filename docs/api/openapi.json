@@ -3412,6 +3412,9 @@
                           "expectedNextWeek": {
                             "type": "number"
                           },
+                          "forecastBasis": {
+                            "type": "string"
+                          },
                           "summary": {
                             "type": "string"
                           },
@@ -3430,6 +3433,7 @@
                           "unclaimed",
                           "level",
                           "expectedNextWeek",
+                          "forecastBasis",
                           "summary",
                           "action"
                         ]
@@ -3801,6 +3805,9 @@
                           "expectedNextWeek": {
                             "type": "number"
                           },
+                          "forecastBasis": {
+                            "type": "string"
+                          },
                           "summary": {
                             "type": "string"
                           },
@@ -3819,6 +3826,7 @@
                           "unclaimed",
                           "level",
                           "expectedNextWeek",
+                          "forecastBasis",
                           "summary",
                           "action"
                         ]

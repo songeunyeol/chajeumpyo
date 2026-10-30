@@ -296,8 +296,8 @@
         thumbnailUrl: photoSvg("블러본", "#d5cbbd"),
         expiresAt: null,
         attempts: [
-          { emailMasked: "st****@skuniv.ac.kr", result: "FAIL", answerCorrect: false, createdAt: hoursAgo(5) },
-          { emailMasked: "ab***@skuniv.ac.kr", result: "FAIL", answerCorrect: false, createdAt: hoursAgo(2) },
+          { emailMasked: "st****@example.invalid", result: "FAIL", answerCorrect: false, createdAt: hoursAgo(5) },
+          { emailMasked: "ab***@example.invalid", result: "FAIL", answerCorrect: false, createdAt: hoursAgo(2) },
         ],
         reveals: [],
         pickups: [],
@@ -326,13 +326,13 @@
         thumbnailUrl: photoSvg("블러본", "#d5cbbd"),
         expiresAt: null,
         attempts: [
-          { emailMasked: "st****@skuniv.ac.kr", result: "PASS", answerCorrect: true, createdAt: hoursAgo(1) },
+          { emailMasked: "st****@example.invalid", result: "PASS", answerCorrect: true, createdAt: hoursAgo(1) },
         ],
-        reveals: [{ emailMasked: "st****@skuniv.ac.kr", revealedAt: hoursAgo(1) }],
+        reveals: [{ emailMasked: "st****@example.invalid", revealedAt: hoursAgo(1) }],
         pickups: [
           {
             id: "pk_demo",
-            emailMasked: "st****@skuniv.ac.kr",
+            emailMasked: "st****@example.invalid",
             method: "CENTER_QR",
             status: "ISSUED",
             completedAt: null,
@@ -365,16 +365,16 @@
         thumbnailUrl: null,
         expiresAt: null,
         attempts: [],
-        reveals: [{ emailMasked: "cd***@skuniv.ac.kr", revealedAt: hoursAgo(70) }],
+        reveals: [{ emailMasked: "cd***@example.invalid", revealedAt: hoursAgo(70) }],
         pickups: [
           {
             id: "pk_done",
-            emailMasked: "cd***@skuniv.ac.kr",
+            emailMasked: "cd***@example.invalid",
             method: "CENTER_QR",
             status: "COMPLETED",
             completedAt: hoursAgo(70),
             createdAt: hoursAgo(71),
-            processedByEmailMasked: "ce***@skuniv.ac.kr",
+            processedByEmailMasked: "ce***@example.invalid",
             verificationNote: null,
           },
         ],
@@ -436,7 +436,7 @@
       auth.set({
         accessToken: "demo",
         expiresAt: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
-        user: { id: "admin-demo", email: "center@skuniv.ac.kr", role: "ADMIN" },
+        user: { id: "admin-demo", email: "demo-admin@example.invalid", role: "ADMIN" },
         storagePlace: { id: 1, name: "교무처" },
         demo: true,
       });
@@ -485,7 +485,7 @@
         status: "EXPIRED",
         closedAt,
         closedReason: body?.reason === "MISREGISTERED" ? "MISREGISTERED" : "DISPOSED",
-        closedByEmailMasked: "ce***@skuniv.ac.kr",
+        closedByEmailMasked: "ce***@example.invalid",
         ...(purge ? { originalImageUrl: null, publicImageUrl: null, thumbnailUrl: null, hiddenTrait: null } : {}),
         pickups: item.pickups.map((p) => (p.status === "ISSUED" ? { ...p, status: "EXPIRED" } : p)),
       };
@@ -525,7 +525,7 @@
                   status: "COMPLETED",
                   completedAt,
                   createdAt: completedAt,
-                  processedByEmailMasked: "ce***@skuniv.ac.kr",
+                  processedByEmailMasked: "ce***@example.invalid",
                   verificationNote: note,
                 },
               ],
@@ -571,7 +571,7 @@
           building: item.building?.name || null,
           imageUrl: item.originalImageUrl,
         },
-        claimant: { emailMasked: "st****@skuniv.ac.kr" },
+        claimant: { emailMasked: "st****@example.invalid" },
         expiresAt: new Date(Date.now() + 20 * 3600 * 1000).toISOString(),
       };
     }
