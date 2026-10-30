@@ -679,7 +679,8 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
     const keys = ((a.matchedFields as { quiz: { featureKey: string }[] }).quiz ?? []).map((q) => q.featureKey);
     expect(keys).not.toContain("keyring");
-    expect(JSON.stringify(res.body)).not.toContain("고양이");
+    // 스티커 질문의 오답 보기에 "고양이 스티커"가 나올 수 있어, 습득자 특징 낱말("키링")로 본다
+    expect(JSON.stringify(res.body)).not.toContain("키링");
     // 대조에는 쓴다: 설명에 그 특징을 적으면 통과
     const r2 = await newReport({ features: [feature("keyring", "고양이 키링")] }, token, "고양이 키링 달린 에어팟");
     expect((await claim(r2, it1.id)).body.result).toBe("PASS");
