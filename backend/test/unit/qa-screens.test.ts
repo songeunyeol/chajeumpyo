@@ -336,3 +336,69 @@ describe("귀중품은 막지 않고 보관처를 추천한다 (10/30 정책 변
     expect(josa("학술정보관")).toBe("이");
   });
 });
+
+describe("습득 등록: 물건 설명(선택)", () => {
+  const register = read("frontend/found/register.html");
+
+  it("접힌 선택 칸이고 200자 제한, 개인정보 주의 문구가 있다", () => {
+    expect(register).toContain('<details class="note-box" id="noteBox">');
+    expect(register).toMatch(/id="finderNote"[^>]*maxlength="200"/);
+    expect(register).toContain("이름·학번·전화번호는 적지 마세요");
+  });
+
+  it("사진 분석이 실패하면 펼쳐서 글로 분류한다고 알리고, 설명은 note로 보낸다", () => {
+    expect(register).toContain("noteBox.open = true");
+    expect(register).toContain("AI가 글로 분류해요");
+    expect(register).toContain("{ note: finderNote.value.trim().slice(0, 200) }");
+  });
+
+  it("관리자 물건 상세에 습득자 설명을 보여 준다", () => {
+    expect(read("frontend/admin/item.html")).toContain('$("kvNote").textContent = item.finderNote');
+  });
+});
+
+describe("실서비스 평가 10/30 오후 (체험 진입·문구·시연 데이터)", () => {
+  it("캡차가 막히면 '알 수 없는 문제' 대신 이유와 '다시 확인'을 보여 준다", () => {
+    const cap = read("frontend/found/captcha.js");
+    expect(cap).toContain("보안 확인을 마치지 못했어요");
+    expect(cap).toContain("광고 차단·VPN");
+    expect(cap).toContain("다시 확인");
+    expect(cap).toContain("window.FoundCaptcha = { mount, helpMessage, showHelp, HELP }");
+    expect(read("frontend/lost/api.js")).toContain("window.FoundCaptcha?.helpMessage(err)");
+    for (const page of ["frontend/lost/consent-social.html", "frontend/lost/signup.html", "frontend/lost/code.html"]) {
+      const html = read(page);
+      expect(html).toContain("function showCaptchaHelp");
+      expect(html).not.toContain('code: "CAPTCHA_FAILED", message: "사람인지 확인하지 못했어요');
+    }
+    expect(read("frontend/found/photo.html")).toContain("showCaptchaRetry");
+  });
+
+  it("확인 질문 화면에 예시 질문과 '세 문제'가 박혀 있지 않다", () => {
+    const html = read("frontend/lost/question.html");
+    expect(html).not.toContain("케이스에 스티커가 있나요?");
+    expect(html).not.toContain("세 문제");
+    expect(html).not.toContain(">질문 1 / 3<");
+  });
+
+  it("사진 없이 등록 화면에 들어오면 alert 없이 사진 화면으로", () => {
+    const html = read("frontend/found/register.html");
+    expect(html).not.toContain(".catch((err) => alert(err.message));");
+    expect(html).toContain('"photo.html?need=photo"');
+    expect(read("frontend/found/photo.html")).toContain("사진을 먼저 올려 주세요.");
+  });
+
+  it("관리자 시연 반지갑: 수령 QR이 있으니 교무처 보관, 열람한 계정은 2개", () => {
+    const js = read("frontend/admin/admin.js");
+    const item = js.slice(js.indexOf('id: "fi-revealed"'), js.indexOf('id: "fi-claimed"'));
+    expect(item).toContain('storageType: "HANDED_OVER"');
+    expect(item).toContain("ab***@example.invalid");
+    expect(item.match(/revealedAt/g)?.length).toBe(2);
+  });
+
+  it("통계 화면: 미래 날짜를 못 고르고, 잘못 고르면 옛 결과를 지운다", () => {
+    const html = read("frontend/admin/stats.html");
+    expect(html).toContain(".max = AdminApi.seoulDate(0)");
+    expect(html).toContain('clearResults("기간을 다시 골라 주세요.")');
+    expect(html).toContain("clampedToToday");
+  });
+});

@@ -7,7 +7,7 @@ import type { AiClient } from "./types";
 export type { AiClient } from "./types";
 export { EMBEDDING_DIM } from "./types";
 
-function createAiClient(): AiClient {
+export function createAiClient(): AiClient {
   if (env.AI_MODE === "mock") return mockAiClient;
   const genai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
   return createGeminiClient(genai.models, {

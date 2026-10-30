@@ -276,7 +276,7 @@
     VALIDATION_ERROR: "입력한 내용을 다시 확인해 주세요.",
     INVALID_EMAIL_DOMAIN: "서경대 학교 이메일만 가입할 수 있어요.",
     INVALID_CODE: "인증 코드가 맞지 않거나 시간이 지났어요. 다시 받아 주세요.",
-    CAPTCHA_FAILED: "사람인지 확인하지 못했어요. 다시 시도해 주세요.",
+    CAPTCHA_FAILED: "보안 확인을 마치지 못했어요. 새로고침하거나 광고 차단·VPN을 끄고 다시 시도해 주세요.",
     UNAUTHORIZED: "로그인이 필요해요. 다시 로그인해 주세요.",
     FORBIDDEN: "이 물건은 볼 수 없어요. 확인을 통과한 물건만 볼 수 있어요.",
     NOT_FOUND: "찾을 수 없어요. 이미 지워졌거나 기한이 지났어요.",
@@ -321,6 +321,8 @@
     return friendlyMessage(err);
   }
   function friendlyMessage(err) {
+    const captchaHelp = window.FoundCaptcha?.helpMessage(err);
+    if (captchaHelp) return captchaHelp;
     if (!(err instanceof ApiError)) return "알 수 없는 문제가 생겼어요. 다시 시도해 주세요.";
     if (err.code === "VALIDATION_ERROR")
       return err.details[0]?.message || err.message || ERROR_MESSAGES.VALIDATION_ERROR;
@@ -423,6 +425,14 @@
    * 서버가 off면 위젯 없이 개발용 토큰을 보낸다. 토큰은 한 번만 쓸 수 있어 보낸 뒤 위젯을 reset해 새로 받는다.
    * @returns {Promise<{ mode: string, reset(): void } | null>} 위젯을 못 그리면 null (화면이 안내하고 다시 부른다)
    */
+  let lastCaptchaMountError = null;
+  /** 위젯을 못 그렸을 때(null) 화면이 던질 오류. 막힌 이유(blocked/failed)를 안내 문구로 이어 준다 */
+  function captchaUnavailableError() {
+    const err = new Error("캡차를 쓸 수 없어요");
+    err.name = "CaptchaError";
+    err.captchaKind = lastCaptchaMountError?.captchaKind || "blocked";
+    return err;
+  }
   async function useCaptcha(container, action, { onError } = {}) {
     if (!window.FoundCaptcha) return null;
     let cap;
@@ -433,7 +443,9 @@
         persist: false,
         onError,
       });
-    } catch (_) {
+      lastCaptchaMountError = null;
+    } catch (e) {
+      lastCaptchaMountError = e;
       return null;
     }
     if (cap.mode !== "turnstile") return cap;
@@ -723,6 +735,7 @@
     onLog,
     setCaptchaProvider,
     useCaptcha,
+    captchaUnavailableError,
     CAPTCHA_ACTIONS,
 
     // 시간

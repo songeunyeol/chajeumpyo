@@ -14,6 +14,7 @@ import { z } from "zod";
 import { AppError } from "../lib/errors";
 import { getAuth, requireMember } from "../middlewares/auth";
 import { CAPTCHA_ACTIONS, requireCaptcha } from "../middlewares/captcha";
+import { ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import {
@@ -205,9 +206,16 @@ export function createFoundItemsRouter() {
     },
   );
 
-  // 캡차는 analyze에서 이미 받았다. confirmToken이 그 기기임을 보인다
+  // 캡차는 analyze에서 이미 받았다. confirmToken이 그 기기임을 보인다.
+  // 확정은 설명 분석(AI)을 부를 수 있어 IP 기준으로도 막는다 (10/30 코드 평가)
+  const confirmLimit = ipRateLimit({
+    windowMinutes: 10,
+    limit: 30,
+    message: "등록 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
+  });
   router.post(
     "/found-items/:id/confirm",
+    confirmLimit,
     validate("params", FoundItemIdParams),
     validate("body", ConfirmFoundItemBody),
     async (_req, res) => {

@@ -44,6 +44,22 @@ type Attempt = Prisma.MatchAttemptGetPayload<object>;
 
 const Features = z.array(AiFeature).catch([]);
 
+/**
+ * 습득자 설명에서 나온 특징(source: "finder")의 "종류|값". 이 특징은 대조에만 쓰고 객관식 질문으로는 내지 않는다.
+ * 습득자가 쓴 글이 보기에 그대로 나가 남에게 보이지 않게 (10/30 코드 평가).
+ */
+export function finderFeatureIds(raw: unknown): Set<string> {
+  const ids = new Set<string>();
+  if (!Array.isArray(raw)) return ids;
+  for (const f of raw) {
+    if (f && typeof f === "object" && (f as { source?: unknown }).source === "finder") {
+      const { key, value } = f as { key?: unknown; value?: unknown };
+      if (typeof key === "string" && typeof value === "string") ids.add(`${key}|${value.trim()}`);
+    }
+  }
+  return ids;
+}
+
 /** 실패 응답에 넣을 값. 트랜잭션 안에서 부르면 방금 만든 시도와 방금 건 잠금까지 반영한다. */
 async function failFields(userId: string, foundItemId: string, db: Prisma.TransactionClient = prisma) {
   if (await isInPersonOnly(foundItemId, db)) return { attemptsLeft: 0, inPersonOnly: true };
@@ -239,14 +255,17 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   const mentionedKeys = comparison.features
     .filter((f) => !(f.verdict === "UNKNOWN" && f.storedKey))
     .map((f) => f.reportedKey);
-  let j = judge(comparison, storedFeatures, mentionedKeys);
+  // 질문으로 낼 수 있는 특징: 습득자 설명에서 나온 것은 뺀다
+  const fromFinder = finderFeatureIds(item.detail?.features);
+  const askableFeatures = storedFeatures.filter((f) => !fromFinder.has(`${f.key}|${f.value.trim()}`));
+  let j = judge(comparison, askableFeatures, mentionedKeys);
   const itemName = item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null;
   // 보기 만들기(AI)도 트랜잭션 밖에서 한다
   let quiz = j.questionFeature
     ? await buildQuiz(
         foundItemId,
         j.questionFeature,
-        storedFeatures,
+        askableFeatures,
         mentionedKeys,
         { stored: item.detail?.color ?? null, reported: extracted.color ?? null },
         itemName,
@@ -254,22 +273,11 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
         j.matches === 0 ? QUIZ_QUESTIONS_NO_EVIDENCE : QUIZ_QUESTIONS,
       )
     : [];
-  // 맞힌 특징 없는 찍기는 계정·물건마다 한 번만: 이미 틀렸으면 특징을 더 적어야 다시 물어본다 (10/30 코드 평가).
-  // 질문을 하나도 못 만들면 온라인으로는 확인할 수 없다.
-  if (j.result === "BORDERLINE" && j.matches === 0) {
-    const guessedBefore = await prisma.matchAttempt.count({
-      where: {
-        userId: viewer.userId,
-        foundItemId,
-        answerCorrect: false,
-        matchedFields: { path: ["matches"], equals: 0 },
-      },
-    });
-    if (guessedBefore > 0 || quiz.length === 0) {
-      j = { ...j, result: "FAIL", questionFeature: null };
-      quiz = [];
-    }
+  // 질문을 하나도 못 만들면 온라인으로는 확인할 수 없다
+  if (j.result === "BORDERLINE" && quiz.length === 0) {
+    j = { ...j, result: "FAIL", questionFeature: null };
   }
+  const isGuess = j.result === "BORDERLINE" && j.matches === 0;
   const publicFields = [
     ...comparison.features.filter((f) => f.verdict === "MATCH").map((f) => `feature:${f.storedKey ?? f.reportedKey}`),
     ...(comparison.color === "MATCH" ? ["color"] : []),
@@ -283,6 +291,27 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
     await lockItem(tx, foundItemId);
     const again = await reuseOrLock(tx, viewer.userId, foundItemId, report);
     if (again) return again;
+
+    // 맞힌 특징 없는 찍기는 계정·물건마다 한 번만 (10/30 코드 평가).
+    // 설명만 바꿔 찍기 시도를 여러 개 열어 같은 보기를 하나씩 고르는 우회를 막는다:
+    // 아직 안 답한 찍기 시도가 있으면 그것을 돌려주고, 이미 답했으면 특징을 더 적어야 다시 물어본다.
+    if (isGuess) {
+      const guesses = await tx.matchAttempt.findMany({
+        where: {
+          userId: viewer.userId,
+          foundItemId,
+          result: "BORDERLINE",
+          matchedFields: { path: ["matches"], equals: 0 },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      const open = guesses.find((a) => a.answerCorrect === null);
+      if (open) return toResponse(open, true, tx);
+      if (guesses.length > 0) {
+        j = { ...j, result: "FAIL", questionFeature: null };
+        quiz = [];
+      }
+    }
 
     const attempt = await tx.matchAttempt.create({
       data: {
@@ -373,6 +402,16 @@ export async function answer(viewer: Viewer, attemptId: string, body: AnswerRequ
     // 판정과 같은 줄에 선다. 기다리는 사이 다른 계정의 실패로 잠겼을 수 있어 다시 확인한다.
     await lockItem(tx, attempt.foundItemId);
     if (await isInPersonOnly(attempt.foundItemId, tx)) throw new AppError("IN_PERSON_REQUIRED", IN_PERSON_MESSAGE);
+    // 이 계정의 실패가 이미 한도면 남아 있던 시도로도 답할 수 없다
+    const failures =
+      (await failedAttemptCounts(viewer.userId, [attempt.foundItemId], tx)).get(attempt.foundItemId) ?? 0;
+    if (failures >= MAX_FAILED_ATTEMPTS)
+      throw new AppError("MATCH_LOCKED", "이 물건은 확인 시도 횟수를 모두 사용했어요.");
+    // 같은 물건에 더 새 시도가 있으면 이 질문은 닫힌 것이다. 옛 시도를 모아 두고 하나씩 답하는 우회를 막는다
+    const newer = await tx.matchAttempt.count({
+      where: { userId: viewer.userId, foundItemId: attempt.foundItemId, createdAt: { gt: attempt.createdAt } },
+    });
+    if (newer > 0) throw new AppError("VALIDATION_ERROR", "이전 확인 질문은 닫혔어요. 가장 최근 질문에 답해 주세요.");
 
     // 동시에 두 번 답해도 한 번만 반영된다
     const { count } = await tx.matchAttempt.updateMany({

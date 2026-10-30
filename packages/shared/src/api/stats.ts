@@ -71,6 +71,8 @@ export const HotspotResponse = z.object({
   to: Day,
   /** 실제 데이터가 없어 시드 데이터로 집계했으면 true. 화면에 "시드 집계" 표시 */
   isSeedData: z.boolean(),
+  /** 끝 날짜가 오늘(한국)보다 뒤라 오늘까지로 잘라 집계했으면 true. 화면에 "오늘까지만 집계" 표시 */
+  clampedToToday: z.boolean().optional(),
   total: z.number().int(),
   byBuilding: z.array(z.object({ building: z.string(), count: z.number().int() })),
   /** 0~23시, 한국 시간 */
