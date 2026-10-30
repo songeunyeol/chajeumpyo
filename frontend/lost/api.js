@@ -156,7 +156,7 @@
   /** packages/shared/src/api/lost-reports.ts의 CANDIDATE_REASON_LABELS (후보 카드 칩) */
   const REASON_LABELS = {
     SAME_CATEGORY: "같은 종류",
-    RELATED_CATEGORY: "비슷한 종류",
+    RELATED_CATEGORY: "연관 종류",
     SAME_BUILDING: "같은 건물",
     FOUND_SOON_AFTER: "잃어버린 뒤 2시간 안에 습득",
   };
@@ -241,6 +241,43 @@
         SUB_CATEGORY_LABELS[sub].split("·").some((w) => w && t.includes(w.replace(/\s+/g, ""))),
       ) || null
     );
+  };
+
+  /**
+   * AI가 신고 설명에서 읽은 것을 한 줄로 ("흰색 · 무선 이어폰 · 곰돌이 스티커").
+   * 신고자 본인이 적은 내용에서 나온 값만 쓴다. 없으면 "".
+   */
+  const aiReadSummary = (aiRead) => {
+    if (!aiRead) return "";
+    const parts = [];
+    if (aiRead.color && COLOR_LABELS[aiRead.color]) parts.push(COLOR_LABELS[aiRead.color]);
+    if (aiRead.brand) parts.push(aiRead.brand);
+    parts.push(itemLabel(aiRead.category, aiRead.subCategory));
+    for (const f of aiRead.features || []) parts.push(f.value);
+    return parts.filter(Boolean).join(" · ");
+  };
+
+  /**
+   * 확인 통과 화면의 "AI가 한 일" 한 줄. 신고자 본인이 적은 표현만 쓴다(숨은 특징 원문은 쓰지 않는다).
+   * claim: 마지막 판정 응답(KEYS.claim), aiRead: KEYS.aiRead, itemId: 지금 보는 물건(다른 물건의 판정이면 안 보인다). 근거가 없으면 "".
+   */
+  const passExplanation = (claim, aiRead, itemId) => {
+    if (!claim || claim.result !== "PASS") return "";
+    if (itemId && claim.foundItemId && claim.foundItemId !== itemId) return "";
+    const fields = claim.matchedFields;
+    if (!Array.isArray(fields)) return "AI가 만든 확인 질문을 모두 맞혔어요.";
+    const said = [];
+    for (const f of fields) {
+      if (f === "color" && aiRead?.color && COLOR_LABELS[aiRead.color]) said.push(COLOR_LABELS[aiRead.color]);
+      else if (f === "brand" && aiRead?.brand) said.push(aiRead.brand);
+      else if (f.startsWith("feature:")) {
+        const key = f.slice("feature:".length);
+        const hit = (aiRead?.features || []).find((x) => x.key === key);
+        if (hit) said.push(hit.value);
+      }
+    }
+    if (!said.length) return "AI가 설명과 등록된 특징을 비교해 같은 물건으로 봤어요.";
+    return `AI가 설명의 '${said.join("', '")}'을(를) 등록된 특징과 같은 뜻으로 봤어요.`;
   };
 
   /** 화면 이름: 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름 (shared itemLabel) */
@@ -332,6 +369,7 @@
     verification: "lost.verification", // { verificationToken, expiresAt } 인증 코드 → 동의 화면
     reportDraft: "lost.reportDraft", // 신고 화면 ↔ 건물 화면 왕복
     reportId: "lost.reportId", // 지금 보고 있는 신고
+    aiRead: "lost.aiRead", // 그 신고 설명에서 AI가 읽은 것 (ReportAiRead). 후보·통과 화면의 "AI가 한 일"
     candidate: "lost.candidate", // 확인하려는 후보 한 개 (Candidate)
     claim: "lost.claim", // 마지막 판정 응답 (ClaimResponse/AnswerResponse)
     foundItemId: "lost.foundItemId", // 통과한 물건
@@ -669,6 +707,8 @@
     SUB_CATEGORY_LABELS,
     SUB_CATEGORIES,
     COLOR_LABELS,
+    aiReadSummary,
+    passExplanation,
     REASON_LABELS,
     REPORT_STATUS_LABELS,
     STORAGE_TYPE_LABELS,
@@ -831,6 +871,7 @@
       if (buildingId) body.buildingId = Number(buildingId);
       const r = await call("/lost-reports", { method: "POST", body });
       store.set(KEYS.reportId, r.id);
+      store.set(KEYS.aiRead, r.aiRead ?? null);
       return r;
     },
     /** GET /lost-reports → [{ id, category, status, description, lostFrom, lostTo, building, candidateCount, createdAt }] */
@@ -841,12 +882,18 @@
      * 후보는 부를 때마다 서버가 다시 고른다: 새 물건이 들어오면 보던 후보가 빠질 수 있고, 그 물건에 claim하면 403 FORBIDDEN.
      */
     candidates: (reportId = store.get(KEYS.reportId)) =>
-      call(`/lost-reports/${reportId}/candidates`).then((r) => r.candidates),
+      call(`/lost-reports/${reportId}/candidates`).then((r) => {
+        store.set(KEYS.aiRead, r.aiRead ?? null);
+        return r.candidates;
+      }),
     /** PATCH /lost-reports/:id { status: "CLOSED" } */
     closeReport: (reportId) => call(`/lost-reports/${reportId}`, { method: "PATCH", body: { status: "CLOSED" } }),
     /** PATCH /lost-reports/:id { description } → 다시 분석하고 후보를 다시 고른다 (502면 안 바뀜) */
     editReport: (reportId, description) =>
-      call(`/lost-reports/${reportId}`, { method: "PATCH", body: { description } }),
+      call(`/lost-reports/${reportId}`, { method: "PATCH", body: { description } }).then((r) => {
+        if (r && "aiRead" in r) store.set(KEYS.aiRead, r.aiRead ?? null);
+        return r;
+      }),
 
     // ── 일치 판정 ──
     /**

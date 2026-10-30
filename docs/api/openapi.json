@@ -8754,12 +8754,147 @@
                           "isSeed"
                         ]
                       }
+                    },
+                    "aiRead": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "WALLET",
+                            "ID_CARD",
+                            "DRIVER_LICENSE",
+                            "PAYMENT_CARD",
+                            "TRANSIT_CARD",
+                            "OTHER_CARD",
+                            "PHONE",
+                            "EARPHONE",
+                            "SMARTWATCH",
+                            "TABLET",
+                            "LAPTOP",
+                            "CHARGER",
+                            "BAG",
+                            "CLOTHING",
+                            "HAT",
+                            "BOOK",
+                            "GLASSES",
+                            "ACCESSORY",
+                            "CASH",
+                            "UMBRELLA",
+                            "TUMBLER",
+                            "KEY",
+                            "STATIONERY",
+                            "ETC"
+                          ]
+                        },
+                        "subCategory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "CABLE_CHARGER",
+                            "POWER_BANK",
+                            "MOUSE",
+                            "KEYBOARD",
+                            "USB_MEMORY",
+                            "CAMERA",
+                            "GAME_CONSOLE",
+                            "WIRELESS_EARBUDS",
+                            "WIRED_EARPHONE",
+                            "HEADPHONE",
+                            "BACKPACK",
+                            "SHOULDER_BAG",
+                            "ECO_BAG",
+                            "POUCH",
+                            "SHOPPING_BAG",
+                            "OUTER",
+                            "TOP",
+                            "BOTTOM",
+                            "SCARF_GLOVES",
+                            "SHOES",
+                            "LONG_WALLET",
+                            "BIFOLD_WALLET",
+                            "CARD_WALLET",
+                            "WRISTWATCH",
+                            "JEWELRY",
+                            "HAIR_ACCESSORY",
+                            "TEXTBOOK",
+                            "NOTEBOOK",
+                            "PENCIL_CASE",
+                            "CALCULATOR",
+                            "PEN",
+                            "DOOR_KEY",
+                            "CAR_KEY",
+                            "DOLL_KEYRING",
+                            "COSMETICS",
+                            "MEDICINE",
+                            null
+                          ]
+                        },
+                        "color": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WHITE",
+                            "BLACK",
+                            "GRAY_SILVER",
+                            "RED",
+                            "ORANGE_CORAL",
+                            "YELLOW",
+                            "GREEN",
+                            "BLUE_TEAL",
+                            "PURPLE",
+                            "PINK_MAGENTA",
+                            "BROWN",
+                            "OTHER",
+                            null
+                          ]
+                        },
+                        "brand": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "features": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "value"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "category",
+                        "subCategory",
+                        "color",
+                        "brand",
+                        "features"
+                      ]
                     }
                   },
                   "required": [
                     "id",
                     "status",
-                    "candidates"
+                    "candidates",
+                    "aiRead"
                   ]
                 }
               }
@@ -9364,10 +9499,145 @@
                           "isSeed"
                         ]
                       }
+                    },
+                    "aiRead": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "WALLET",
+                            "ID_CARD",
+                            "DRIVER_LICENSE",
+                            "PAYMENT_CARD",
+                            "TRANSIT_CARD",
+                            "OTHER_CARD",
+                            "PHONE",
+                            "EARPHONE",
+                            "SMARTWATCH",
+                            "TABLET",
+                            "LAPTOP",
+                            "CHARGER",
+                            "BAG",
+                            "CLOTHING",
+                            "HAT",
+                            "BOOK",
+                            "GLASSES",
+                            "ACCESSORY",
+                            "CASH",
+                            "UMBRELLA",
+                            "TUMBLER",
+                            "KEY",
+                            "STATIONERY",
+                            "ETC"
+                          ]
+                        },
+                        "subCategory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "CABLE_CHARGER",
+                            "POWER_BANK",
+                            "MOUSE",
+                            "KEYBOARD",
+                            "USB_MEMORY",
+                            "CAMERA",
+                            "GAME_CONSOLE",
+                            "WIRELESS_EARBUDS",
+                            "WIRED_EARPHONE",
+                            "HEADPHONE",
+                            "BACKPACK",
+                            "SHOULDER_BAG",
+                            "ECO_BAG",
+                            "POUCH",
+                            "SHOPPING_BAG",
+                            "OUTER",
+                            "TOP",
+                            "BOTTOM",
+                            "SCARF_GLOVES",
+                            "SHOES",
+                            "LONG_WALLET",
+                            "BIFOLD_WALLET",
+                            "CARD_WALLET",
+                            "WRISTWATCH",
+                            "JEWELRY",
+                            "HAIR_ACCESSORY",
+                            "TEXTBOOK",
+                            "NOTEBOOK",
+                            "PENCIL_CASE",
+                            "CALCULATOR",
+                            "PEN",
+                            "DOOR_KEY",
+                            "CAR_KEY",
+                            "DOLL_KEYRING",
+                            "COSMETICS",
+                            "MEDICINE",
+                            null
+                          ]
+                        },
+                        "color": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WHITE",
+                            "BLACK",
+                            "GRAY_SILVER",
+                            "RED",
+                            "ORANGE_CORAL",
+                            "YELLOW",
+                            "GREEN",
+                            "BLUE_TEAL",
+                            "PURPLE",
+                            "PINK_MAGENTA",
+                            "BROWN",
+                            "OTHER",
+                            null
+                          ]
+                        },
+                        "brand": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "features": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "value"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "category",
+                        "subCategory",
+                        "color",
+                        "brand",
+                        "features"
+                      ]
                     }
                   },
                   "required": [
-                    "candidates"
+                    "candidates",
+                    "aiRead"
                   ]
                 }
               }
@@ -9666,12 +9936,147 @@
                           "isSeed"
                         ]
                       }
+                    },
+                    "aiRead": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "WALLET",
+                            "ID_CARD",
+                            "DRIVER_LICENSE",
+                            "PAYMENT_CARD",
+                            "TRANSIT_CARD",
+                            "OTHER_CARD",
+                            "PHONE",
+                            "EARPHONE",
+                            "SMARTWATCH",
+                            "TABLET",
+                            "LAPTOP",
+                            "CHARGER",
+                            "BAG",
+                            "CLOTHING",
+                            "HAT",
+                            "BOOK",
+                            "GLASSES",
+                            "ACCESSORY",
+                            "CASH",
+                            "UMBRELLA",
+                            "TUMBLER",
+                            "KEY",
+                            "STATIONERY",
+                            "ETC"
+                          ]
+                        },
+                        "subCategory": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "CABLE_CHARGER",
+                            "POWER_BANK",
+                            "MOUSE",
+                            "KEYBOARD",
+                            "USB_MEMORY",
+                            "CAMERA",
+                            "GAME_CONSOLE",
+                            "WIRELESS_EARBUDS",
+                            "WIRED_EARPHONE",
+                            "HEADPHONE",
+                            "BACKPACK",
+                            "SHOULDER_BAG",
+                            "ECO_BAG",
+                            "POUCH",
+                            "SHOPPING_BAG",
+                            "OUTER",
+                            "TOP",
+                            "BOTTOM",
+                            "SCARF_GLOVES",
+                            "SHOES",
+                            "LONG_WALLET",
+                            "BIFOLD_WALLET",
+                            "CARD_WALLET",
+                            "WRISTWATCH",
+                            "JEWELRY",
+                            "HAIR_ACCESSORY",
+                            "TEXTBOOK",
+                            "NOTEBOOK",
+                            "PENCIL_CASE",
+                            "CALCULATOR",
+                            "PEN",
+                            "DOOR_KEY",
+                            "CAR_KEY",
+                            "DOLL_KEYRING",
+                            "COSMETICS",
+                            "MEDICINE",
+                            null
+                          ]
+                        },
+                        "color": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WHITE",
+                            "BLACK",
+                            "GRAY_SILVER",
+                            "RED",
+                            "ORANGE_CORAL",
+                            "YELLOW",
+                            "GREEN",
+                            "BLUE_TEAL",
+                            "PURPLE",
+                            "PINK_MAGENTA",
+                            "BROWN",
+                            "OTHER",
+                            null
+                          ]
+                        },
+                        "brand": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "features": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "value"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "category",
+                        "subCategory",
+                        "color",
+                        "brand",
+                        "features"
+                      ]
                     }
                   },
                   "required": [
                     "id",
                     "status",
-                    "candidates"
+                    "candidates",
+                    "aiRead"
                   ]
                 }
               }

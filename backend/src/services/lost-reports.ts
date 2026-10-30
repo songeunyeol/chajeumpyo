@@ -5,6 +5,7 @@ import {
   LostReportExtraction,
   type LostReportListResponse,
   type LostReportWithCandidates,
+  type ReportAiRead,
   type Role,
   type UpdateLostReportRequest,
 } from "@chajeumpyo/shared";
@@ -59,7 +60,26 @@ async function withCandidates(
     report.id,
     candidates.map((c) => c.foundItemId),
   );
-  return { id: report.id, status: report.status, candidates: await publicCandidates(candidates) };
+  return {
+    id: report.id,
+    status: report.status,
+    candidates: await publicCandidates(candidates),
+    aiRead: aiReadOf(report.extractedAttributes),
+  };
+}
+
+/** 신고자 본인 설명에서 AI가 읽은 값만 화면용으로 꺼낸다. 형식이 다르면 null */
+export function aiReadOf(extracted: unknown): ReportAiRead | null {
+  const parsed = LostReportExtraction.safeParse(extracted);
+  if (!parsed.success) return null;
+  const e = parsed.data;
+  return {
+    category: e.category,
+    subCategory: e.subCategory ?? null,
+    color: e.color,
+    brand: e.brand,
+    features: e.features.map((f) => ({ key: f.key, value: f.value })),
+  };
 }
 
 /** POST /lost-reports (F-06, F-07) */
@@ -153,7 +173,8 @@ export async function listLostReports(viewer: Viewer): Promise<LostReportListRes
 /** GET /lost-reports/:id/candidates */
 export async function getCandidates(viewer: Viewer, reportId: string) {
   const report = await getOwnReport(reportId, viewer.userId);
-  return { candidates: (await withCandidates(report, viewer.role)).candidates };
+  const { candidates, aiRead } = await withCandidates(report, viewer.role);
+  return { candidates, aiRead };
 }
 
 /** PATCH /lost-reports/:id: 닫기 또는 설명 고치기 (#8) */

@@ -43,7 +43,7 @@
   <label class="field">
     <span>어디 (건물) <b class="req" aria-hidden="true">*</b></span>
     <select id="lostBuildingSelect" aria-label="잃어버린 건물 선택">
-      <option value="혜인관" selected>혜인관</option>
+      <option value="혜인관">혜인관</option>
       <option value="유담관">유담관</option>
       <option value="청운관">청운관</option>
       <option value="북악관">북악관</option>
@@ -51,7 +51,7 @@
       <option value="한림관">한림관</option>
       <option value="중앙도서관">중앙도서관</option>
       <option value="학생회관">학생회관</option>
-      <option value="잘 모르겠음">잘 모르겠음 (캠퍼스 전체)</option>
+      <option value="" selected>잘 모르겠음 (캠퍼스 전체)</option>
     </select>
   </label>
 
@@ -86,6 +86,7 @@
   const endSelect = document.getElementById("lostEndHour");
   const itemInput = document.getElementById("lostItemInput");
   const buildingSelect = document.getElementById("lostBuildingSelect");
+  buildingSelect.addEventListener("change", () => (buildingSelect.dataset.touched = "1"));
   const memoInput = document.getElementById("memoInput");
   const memoCount = document.getElementById("memoCount");
   const submitBtn = document.getElementById("reportSubmitBtn");
@@ -142,9 +143,14 @@
     LostApi.buildings()
       .then((list) => {
         const sel = document.getElementById("lostBuildingSelect");
+        // 목록이 늦게 오면 그사이 고른 건물을 이름으로 이어 준다. 전에는 무조건 "잘 모르겠음"으로 돌아가
+        // 청운관을 골라도 건물 없이 신고돼 "같은 건물" 근거가 빠졌다 (교수 평가 10/30)
+        const picked = sel.dataset.touched ? sel.selectedOptions[0]?.textContent : "";
         sel.replaceChildren(...list.map((b) => new Option(b.name, String(b.id))));
         sel.add(new Option("잘 모르겠음 (캠퍼스 전체)", ""));
-        sel.value = "";
+        const again = [...sel.options].find((o) => o.value && o.textContent === picked);
+        sel.value = again ? again.value : "";
+        sel.dataset.loaded = "1";
       })
       .catch(() => {});
   }
@@ -278,7 +284,9 @@
     } else {
       range = LostApi.lostRange(dateSelect.value, sh, eh);
     }
-    const buildingId = buildingSelect.value ? Number(buildingSelect.value) : null;
+    // 서버 목록이 오기 전의 임시 선택지는 값이 건물 이름이라 숫자가 아니다(NaN을 보내지 않는다). 목록이 오면 위에서 이름으로 이어 준다
+    const rawBuilding = buildingSelect.value;
+    const buildingId = /^\d+$/.test(rawBuilding) ? Number(rawBuilding) : null;
     LostApi.store.set(LostApi.KEYS.reportDraft, { category, ...range, buildingId, description });
     try {
       sessionStorage.setItem("refreshLeft", "5"); // 새 신고는 후보 새로고침 5번부터

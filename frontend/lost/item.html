@@ -21,6 +21,7 @@
         <span class="pass-badge" id="passBadge"></span>
         <h1>내 물건이 맞아요</h1>
         <p class="lead" style="margin-bottom:0">이제 사진과 놓인 곳을 볼 수 있어요.</p>
+        <p class="ai-read-line" id="passAiLine" hidden style="margin-top:10px">🤖 <span id="passAiText"></span></p>
       </div>
     </section>
 
@@ -109,6 +110,14 @@
     viewportBox.hidden = false;
     passIntro.hidden = false;
     document.getElementById("passBadge").textContent = "✓ 확인 통과";
+    // AI가 한 일 한 줄 (신고자 본인 표현 기준, 통과 후에만)
+    const aiText = LostApi.passExplanation(
+      LostApi.store.get(LostApi.KEYS.claim),
+      LostApi.store.get(LostApi.KEYS.aiRead),
+      new URLSearchParams(location.search).get("id") || LostApi.store.get(LostApi.KEYS.foundItemId),
+    );
+    document.getElementById("passAiText").textContent = aiText;
+    document.getElementById("passAiLine").hidden = !aiText;
     const wait = isFromClosed ? 0 : 2200;
     setTimeout(() => {
       viewport.classList.add("is-shifted");

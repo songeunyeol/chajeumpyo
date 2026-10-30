@@ -39,7 +39,7 @@
     <div class="guide-step"><b>①</b><span>첫 화면 <b>잃어버린 사람</b> → 로그인 화면의 <b>체험해 보기</b>. 가입 없이 체험 계정이 생기고 24시간 뒤 지워져요.</span></div>
     <div class="guide-step"><b>②</b><span><b>분실 신고</b>: 아래 표에서 물건 하나를 골라 종류·건물을 고르세요. 잃어버린 때는 기본값(직전 2시간) 그대로 둬도 돼요. 신고하면 바로 <b>후보 화면</b>으로 넘어가요.</span></div>
     <div class="guide-step"><b>③</b><span>기억나는 점에 <b>숨은 특징</b>을 적으면 바로 통과해요. 예: "흰색 에어팟, 케이스에 곰돌이 스티커". 특징 없이 "흰색 무선 이어폰"만 적으면 <b>객관식 확인 질문</b>이 나와요.</span></div>
-    <div class="guide-step"><b>④</b><span>통과하면 선명한 사진, 보관 위치, 수령 QR이 열려요. 체험에서는 QR 아래 <b>교무처 스캔 대신하기</b>를 누르면 수령까지 끝나요. 틀리면 기회가 1번 줄고, 3번이면 그 물건은 잠겨요.</span></div>
+    <div class="guide-step"><b>④</b><span>통과하면 선명한 사진, 보관 위치, 수령 QR이 열려요. 체험에서는 QR 아래 <b>교무처 스캔 대신하기</b>를 누르면 수령까지 끝나요. 틀리면 기회가 1번 줄어요. 한 계정은 3번 틀리면 그 물건 확인이 잠기고, 모든 계정을 합쳐 10번 틀리면 교무처 대면 확인으로 넘어가요.</span></div>
     <a class="btn" href="lost/login.html" style="display:block;text-align:center;margin-top:8px">잃어버린 사람 체험 시작</a>
   </div>
 
@@ -52,6 +52,14 @@
 
   <p class="section">3. 주운 사람으로 등록해 보기</p>
   <div class="guide-card">
+    <div class="ai-read" style="margin-top:0">
+      <p class="ai-read-title">🤖 사진 한 장으로 AI가 하는 일 (등록 없이 보기)</p>
+      <p class="ai-read-line">① 서버 안의 작은 모델이 얼굴·카드 글자를 <b>먼저 가려요</b> (외부로 원본을 보내지 않아요)<br>
+      ② 가린 사진만 Gemini가 보고 <b>종류·색·브랜드·숨은 특징</b>을 정리해요<br>
+      ③ 숨은 특징은 비공개로 두고, 공개용은 <b>강하게 흐린 사진</b>만 써요</p>
+      <p class="note" style="margin-top:6px">예시(체험용 무선 이어폰에 저장된 결과): 종류 <b>무선 이어폰</b> · 색 <b>흰색</b> · 숨은 특징 <b>곰돌이 스티커, 케이스 뒷면 긁힘</b> → 후보 화면에는 "무선 이어폰 · 혜인관"과 흐린 사진만 보여요.</p>
+      <p class="note" style="margin-top:4px">팀원이 직접 찍은 실제 분실물 사진 35장으로 잰 결과: 큰 종류 34/35장 정답, 개인정보 놓침 0건.</p>
+    </div>
     <p>첫 화면 <b>찾은 사람</b> → 동의 → 사진 찍기. AI가 물건 이름을 보여 주고, 건물을 위치로 추천해요. <b>실제 등록</b>이 되므로 주변 물건으로 해 주세요. 얼굴·카드 글자는 AI로 보내기 전에 서버에서 먼저 가려요.</p>
     <a class="btn white" href="found/consent.html" style="display:block;text-align:center;margin-top:8px">사진 등록해 보기</a>
   </div>
@@ -83,14 +91,14 @@
   <p class="section" style="margin-top:20px">AI가 하는 일</p>
   <div class="guide-card">
     <p><b>사진 → 물건 정보</b>: Gemini가 종류·색·숨은 특징을 정리해요. 그 전에 서버 안의 작은 모델이 얼굴·글자를 먼저 가려요.</p>
-    <p><b>후보 찾기</b>: 종류·장소·시간과 설명의 뜻(임베딩)으로 후보 3개를 골라요.</p>
+    <p><b>후보 찾기</b>: 종류·장소·시간과 설명의 뜻(임베딩)으로 후보를 최대 3개 골라요.</p>
     <p><b>주인 확인</b>: 설명의 특징을 숨은 특징과 규칙으로 대조하고, 규칙이 다르다고 본 것만 AI가 같은 뜻인지 다시 봐요. 애매하면 AI가 만든 보기로 객관식 질문을 내요.</p>
     <p><b>반복 분실</b>: 같은 건물·시간대·종류로 반복되는 분실을 찾아 우선순위와 예방 조치를 교무처에 제안해요.</p>
   </div>
 
   <p class="section">개인정보</p>
   <div class="guide-card">
-    <p>이름·학번은 받지 않아요. 사진 속 얼굴·카드 글자는 AI로 보내기 전에 가리고, 저장 원본도 가린 사본이에요. 위치 좌표는 건물로 바꾼 뒤 버려요. 수령되면 사진과 숨은 정보는 바로 지워요.</p>
+    <p>이름·학번은 받지 않아요. 사진 속 얼굴·카드 글자는 AI로 보내기 전에 가리고, 저장 원본도 가린 사본이에요. 위치 좌표는 건물로 바꾼 뒤 버려요. 수령되면 사진과 숨은 정보는 바로 지워요(체험용 시연 물건은 다른 심사위원도 써야 해서 남겨 둬요).</p>
   </div>
 
   <p class="note" style="margin:16px 0 24px">코드와 결과보고서: <a href="https://github.com/songeunyeol/chajeumpyo" rel="noopener">github.com/songeunyeol/chajeumpyo</a></p>

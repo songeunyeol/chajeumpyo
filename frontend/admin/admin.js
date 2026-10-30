@@ -387,7 +387,7 @@
       {
         id: "nt-lock",
         type: "CLAIM_LOCKED",
-        message: "검정 접이식 우산은 확인 실패가 10번이라 대면 확인만 받아요.",
+        message: "검정 접이식 우산은 모든 계정을 합쳐 확인 실패가 10번이라 대면 확인만 받아요.",
         foundItemId: "fi-locked",
         lostReportId: null,
         readAt: null,
