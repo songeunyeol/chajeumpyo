@@ -120,6 +120,20 @@
     MEDICINE: "약·의약품",
   };
 
+  /** packages/shared/src/enums.ts의 SUB_CATEGORIES (큰 종류별 세부 종류). 신고 화면 종류 선택에 세부 종류도 보여 준다 */
+  const SUB_CATEGORIES = {
+    CHARGER: ["CABLE_CHARGER", "POWER_BANK", "MOUSE", "KEYBOARD", "USB_MEMORY", "CAMERA", "GAME_CONSOLE"],
+    EARPHONE: ["WIRELESS_EARBUDS", "WIRED_EARPHONE", "HEADPHONE"],
+    BAG: ["BACKPACK", "SHOULDER_BAG", "ECO_BAG", "POUCH", "SHOPPING_BAG"],
+    CLOTHING: ["OUTER", "TOP", "BOTTOM", "SCARF_GLOVES", "SHOES"],
+    WALLET: ["LONG_WALLET", "BIFOLD_WALLET", "CARD_WALLET"],
+    ACCESSORY: ["WRISTWATCH", "JEWELRY", "HAIR_ACCESSORY"],
+    BOOK: ["TEXTBOOK", "NOTEBOOK"],
+    STATIONERY: ["PENCIL_CASE", "CALCULATOR", "PEN"],
+    KEY: ["DOOR_KEY", "CAR_KEY"],
+    ETC: ["DOLL_KEYRING", "COSMETICS", "MEDICINE"],
+  };
+
   /** packages/shared/src/enums.ts의 COLOR_LABELS (상세 화면의 color) */
   const COLOR_LABELS = {
     WHITE: "흰색",
@@ -213,6 +227,17 @@
     const t = String(text || "").replace(/\s+/g, "");
     if (!t) return null;
     return CATEGORY_WORDS.find(([w]) => t.includes(w))?.[1] || null;
+  };
+
+  /** 물건 이름에 세부 종류 이름("마우스", "보조배터리")이 들어 있으면 그 세부 종류. 그 큰 종류 안에서만 찾는다 */
+  const guessSubCategory = (category, text) => {
+    const t = String(text || "").replace(/\s+/g, "");
+    if (!t) return null;
+    return (
+      (SUB_CATEGORIES[category] || []).find((sub) =>
+        SUB_CATEGORY_LABELS[sub].split("·").some((w) => w && t.includes(w.replace(/\s+/g, ""))),
+      ) || null
+    );
   };
 
   /** 화면 이름: 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름 (shared itemLabel) */
@@ -639,6 +664,7 @@
     CATEGORIES,
     CATEGORY_LABELS,
     SUB_CATEGORY_LABELS,
+    SUB_CATEGORIES,
     COLOR_LABELS,
     REASON_LABELS,
     REPORT_STATUS_LABELS,
@@ -650,6 +676,7 @@
     dropSignupPassword,
     itemLabel,
     guessCategory,
+    guessSubCategory,
     colorLabel: (c) => (c && COLOR_LABELS[c]) || "",
     /** "abcd@skuniv.ac.kr" → "ab***@skuniv.ac.kr" (인증 코드 화면, 내 정보) */
     maskEmail: (email) => {
