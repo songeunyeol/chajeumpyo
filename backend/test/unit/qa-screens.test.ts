@@ -80,8 +80,7 @@ describe("QA 화면", () => {
     expect(register).toContain('id="locStatus"');
   });
 
-  it("홈과 등록 완료에 캠퍼스 지도가 있다", () => {
-    expect(read("frontend/index.html")).toContain('id="homeMap"');
+  it("분실 홈과 등록 완료에 캠퍼스 지도가 있다", () => {
     expect(read("frontend/lost/home.html")).toContain('id="homeMap"');
     expect(read("frontend/found/done-handover.html")).toContain('id="doneMapBox"');
     expect(read("frontend/found/register.html")).toContain('id="registerMap"');

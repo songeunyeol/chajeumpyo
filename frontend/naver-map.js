@@ -1,13 +1,12 @@
 /**
  * 찾음표 캠퍼스 지도.
- * 기본은 학교 캠퍼스맵 그림 위에 건물 핀을 모두 찍고, 이 화면에서 중요한 건물(주운 곳, 교무처)만 이름과 색으로 강조한다.
- * "위성 사진"을 누르면 네이버 위성 지도로 바꾸고, 인증이 막히면 같은 좌표의 위성 타일 위에 핀을 올린다.
+ * 네이버 지도에 건물 핀을 모두 찍고, 이 화면에서 중요한 건물(주운 곳, 교무처)만 이름과 색으로 강조한다.
+ * 네이버 지도를 못 쓰면(키 없음, 인증 실패, 스크립트 차단) 학교 캠퍼스맵 그림 위에 같은 핀을 올린다.
  * Client ID: n33l81gjaz (공개 웹 키. Secret은 넣지 않는다.)
  */
 (() => {
   const DEFAULT_NAVER_MAP_KEY = "n33l81gjaz";
   const SATELLITE_ZOOM = 18;
-  const TILE_SIZE = 256;
 
   const CAMPUS_BUILDINGS = {
     본관: { lat: 37.615438, lng: 127.012118 },
@@ -110,14 +109,6 @@
     `;
   }
 
-  function project(lng, lat, zoom) {
-    const n = 2 ** zoom;
-    const latRad = (lat * Math.PI) / 180;
-    const x = ((lng + 180) / 360) * n;
-    const y = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
-    return { x, y };
-  }
-
   /** 그림 지도 위 핀 위치(잘라 낸 영역 기준 %) */
   function campusPoint(name) {
     const px = CAMPUS_MAP_PIXELS[CAMPUS_MAP_ALIAS[name] || name];
@@ -218,70 +209,6 @@
     else canvasEl.prepend(box);
   }
 
-  /** 위성 타일 위 핀: 모든 건물 점 + 강조 핀 */
-  function satellitePins(originX, originY, highlights) {
-    const at = (name) => {
-      const spot = CAMPUS_BUILDINGS[name];
-      const p = project(spot.lng, spot.lat, SATELLITE_ZOOM);
-      return { x: (p.x - originX) * TILE_SIZE, y: (p.y - originY) * TILE_SIZE };
-    };
-    const strong = new Set(highlights.map((h) => h.name));
-    const dots = Object.keys(CAMPUS_MAP_PIXELS)
-      .filter((name) => !strong.has(name))
-      .map((name) => {
-        const p = at(name);
-        return `<span class="sat-pin" title="${esc(name)}" style="left:${p.x}px;top:${p.y}px;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:999px;background:#1e5b3d;border:1.5px solid #fff"></span>`;
-      })
-      .join("");
-    const pins = highlights
-      .map((h) => {
-        const p = at(h.name);
-        return `<div class="sat-pin" style="left:${p.x}px;top:${p.y}px">${createMarkerHtml(h.label, PIN_COLORS[h.kind])}</div>`;
-      })
-      .join("");
-    return dots + pins;
-  }
-
-  function renderSatelliteTiles(canvasEl, loc, highlights) {
-    const point = project(loc.lng, loc.lat, SATELLITE_ZOOM);
-    const originX = Math.floor(point.x) - 1;
-    const originY = Math.floor(point.y) - 1;
-    const cols = 3;
-    const rows = 3;
-    const px = (point.x - originX) * TILE_SIZE;
-    const py = (point.y - originY) * TILE_SIZE;
-    const tiles = [];
-    for (let row = 0; row < rows; row += 1) {
-      for (let col = 0; col < cols; col += 1) {
-        const tx = originX + col;
-        const ty = originY + row;
-        const src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${SATELLITE_ZOOM}/${ty}/${tx}`;
-        tiles.push(
-          `<img alt="" draggable="false" width="${TILE_SIZE}" height="${TILE_SIZE}" style="position:absolute;left:${col * TILE_SIZE}px;top:${row * TILE_SIZE}px" src="${src}">`,
-        );
-      }
-    }
-
-    canvasEl.innerHTML = `
-      <div class="sat-stage" role="img" aria-label="서경대학교 ${loc.buildingName} 위성 사진">
-        <div class="sat-layer" style="width:${cols * TILE_SIZE}px;height:${rows * TILE_SIZE}px;left:calc(50% - ${px}px);top:calc(42% - ${py}px)">
-          ${tiles.join("")}
-          ${satellitePins(originX, originY, highlights)}
-        </div>
-        <span class="sat-attr">위성 · Esri</span>
-      </div>
-    `;
-
-    const images = [...canvasEl.querySelectorAll(".sat-layer img")];
-    let failed = 0;
-    images.forEach((img) => {
-      img.addEventListener("error", () => {
-        failed += 1;
-        if (failed >= images.length) renderFallbackCampusMap(canvasEl, highlights);
-      });
-    });
-  }
-
   function loadNaverSdk(key) {
     return new Promise((resolve, reject) => {
       if (window.naver && window.naver.maps && window.naver.maps.Map) {
@@ -307,7 +234,8 @@
     return Boolean(canvasEl.querySelector('img[src*="auth_fail"], img[alt*="인증"]'));
   }
 
-  function mountNaverSatellite(canvasEl, loc, highlights) {
+  /** onLateFail: 지도가 뜬 뒤에 인증 실패 화면으로 바뀌면 부른다 */
+  function mountNaverSatellite(canvasEl, loc, highlights, onLateFail) {
     return new Promise((resolve, reject) => {
       let failed = false;
       window.navermap_authFailure = () => {
@@ -381,7 +309,7 @@
         const watch = new MutationObserver(() => {
           if (naverAuthFailed(canvasEl)) {
             watch.disconnect();
-            renderSatelliteTiles(canvasEl, loc, highlights);
+            onLateFail();
           }
         });
         watch.observe(canvasEl, { childList: true, subtree: true });
@@ -412,48 +340,20 @@
     const highlights = resolveHighlights(loc, opts);
     renderCampusPhoto(canvasEl, loc, highlights);
 
-    // 위성 사진은 누를 때만 불러온다. 캠퍼스맵 그림이 기본이다 (QA 10/30: 건물 핀이 여러 개 보이는 지도)
+    // 캠퍼스맵 그림은 네이버 지도 아래에 깔아 둔다. 네이버가 안 뜨거나 나중에 인증이 막히면 덮개만 걷어 그림이 보인다
     const apiKey = getSavedKey();
     if (!apiKey || location.protocol === "file:") return;
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "map-view-toggle";
-    toggle.textContent = "위성 사진";
-    // 오른쪽 아래(풋살장 그림 자리)에 둬서 건물 핀을 가리지 않는다
-    toggle.style.cssText =
-      "position:absolute;right:10px;bottom:10px;z-index:6;height:28px;padding:0 11px;border:0;border-radius:999px;background:rgba(255,255,255,.94);color:#1c1915;font:inherit;font-size:12px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer";
-    containerEl.appendChild(toggle);
-
-    let holder = null;
-    toggle.addEventListener("click", async () => {
-      if (holder) {
-        holder.remove();
-        holder = null;
-        toggle.textContent = "위성 사진";
-        return;
-      }
-      toggle.disabled = true;
-      toggle.textContent = "불러오는 중…";
-      holder = document.createElement("div");
-      holder.className = "naver-holder";
-      holder.style.cssText = "position:absolute;inset:0;z-index:1";
-      canvasEl.appendChild(holder);
-      try {
-        await loadNaverSdk(apiKey);
-        await mountNaverSatellite(holder, loc, highlights);
-        if (naverAuthFailed(holder)) throw new Error("NAVER_AUTH");
-        toggle.textContent = "캠퍼스 지도";
-      } catch (_) {
-        if (holder) holder.remove();
-        holder = null;
-        toggle.textContent = "위성 사진을 못 불러왔어요";
-        window.setTimeout(() => {
-          toggle.textContent = "위성 사진";
-        }, 2500);
-      } finally {
-        toggle.disabled = false;
-      }
-    });
+    const holder = document.createElement("div");
+    holder.className = "naver-holder";
+    holder.style.cssText = "position:absolute;inset:0;z-index:1";
+    canvasEl.appendChild(holder);
+    try {
+      await loadNaverSdk(apiKey);
+      await mountNaverSatellite(holder, loc, highlights, () => holder.remove());
+      if (naverAuthFailed(holder)) throw new Error("NAVER_AUTH");
+    } catch (_) {
+      holder.remove();
+    }
   }
 
   window.NaverCampusMap = {
