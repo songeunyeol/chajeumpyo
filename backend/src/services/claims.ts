@@ -73,6 +73,19 @@ export function finderFeatureIds(raw: unknown): Set<string> {
   return ids;
 }
 
+/** 습득자 설명에서 나온 특징 전부의 "종류|값". 바로 통과 비율(75%)의 분모에서 뺀다 (10/31 QA) */
+function allFinderFeatureIds(raw: unknown): Set<string> {
+  const ids = new Set<string>();
+  if (!Array.isArray(raw)) return ids;
+  for (const f of raw) {
+    if (f && typeof f === "object" && (f as { source?: unknown }).source === "finder") {
+      const { key, value } = f as { key?: unknown; value?: unknown };
+      if (typeof key === "string" && typeof value === "string") ids.add(`${key}|${value.trim()}`);
+    }
+  }
+  return ids;
+}
+
 /** 실패 응답에 넣을 값. 트랜잭션 안에서 부르면 방금 만든 시도와 방금 건 잠금까지 반영한다. */
 async function failFields(userId: string, foundItemId: string, db: Prisma.TransactionClient = prisma) {
   if (await isInPersonOnly(foundItemId, db)) return { attemptsLeft: 0, inPersonOnly: true };
@@ -277,7 +290,11 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   // 질문으로 낼 수 있는 특징: 습득자 설명에서 나온 것 중 이름이 섞일 수 있는 것은 뺀다
   const fromFinder = finderFeatureIds(item.detail?.features);
   const askableFeatures = storedFeatures.filter((f) => !fromFinder.has(`${f.key}|${f.value.trim()}`));
-  let j = judge(comparison, askableFeatures, mentionedKeys, storedFeatures);
+  // 바로 통과 비율은 사진에서 나온 특징 기준으로 센다. 주인은 습득자가 덧붙인 설명을 알 수 없다 (10/31 QA).
+  // 사진 특징이 하나도 없으면(사진 분석 실패 후 설명으로 등록) 설명 특징으로 센다
+  const allFinder = allFinderFeatureIds(item.detail?.features);
+  const photoFeatures = storedFeatures.filter((f) => !allFinder.has(`${f.key}|${f.value.trim()}`));
+  let j = judge(comparison, askableFeatures, mentionedKeys, photoFeatures.length > 0 ? photoFeatures : storedFeatures);
   const itemName = item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null;
   // 보기 만들기(AI)도 트랜잭션 밖에서 한다
   let quiz = j.questionFeature
