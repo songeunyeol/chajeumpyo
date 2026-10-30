@@ -741,6 +741,22 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect((await claim(r2, it1.id)).body.result).not.toBe("FAIL");
   });
 
+  it("바로 통과 비율(75%)은 사진 특징 기준이라, 습득자가 덧붙인 설명 특징 때문에 주인이 객관식으로 밀리지 않는다 (10/31 QA)", async () => {
+    const it1 = await item({
+      features: [
+        { key: "sticker", value: "곰돌이 스티커" },
+        { key: "scratch", value: "오른쪽 아래 긁힘" },
+        { key: "case", value: "흰색 이어폰 케이스", source: "finder" } as AiFeature,
+      ],
+    });
+    const r = await newReport(
+      { features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "오른쪽 아래 긁힘")] },
+      token,
+      "곰돌이 스티커, 오른쪽 아래 긁힘",
+    );
+    expect((await claim(r, it1.id)).body.result).toBe("PASS");
+  });
+
   it("습득자 설명 특징 중 키링·스티커처럼 이름이 들어가기 어려운 종류는 객관식 질문으로 쓸 수 있다 (10/31 QA)", async () => {
     const it1 = await item({
       features: [{ key: "keyring", value: "고양이 키링", source: "finder" } as AiFeature],
