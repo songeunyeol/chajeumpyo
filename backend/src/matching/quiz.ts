@@ -81,8 +81,11 @@ const SWAP_GROUPS: string[][] = [
   ["하트", "별", "꽃", "달", "구름", "나비", "체리", "리본"],
   ["흰색", "검정", "회색", "빨간", "주황", "노란", "초록", "파란", "보라", "분홍", "갈색", "남색"],
   ["줄무늬", "체크무늬", "꽃무늬", "물방울무늬", "격자무늬", "호피무늬"],
-  ["스티커", "배지", "키링", "자수", "각인", "라벨"],
   ["금속", "가죽", "실리콘", "아크릴", "고무", "천"],
+  ["영화", "버스", "콘서트", "기차", "공연", "전시회"],
+  ["티켓", "영수증", "쿠폰", "명함", "사진", "메모지"],
+  ["한", "두", "세", "네"],
+  ["하나", "두 개", "세 개"],
 ];
 const INITIALS = "ABCDEFGHJKLMNPRSTWY";
 
@@ -105,15 +108,24 @@ export function mutateDistractors(correct: string, n = QUIZ_OPTIONS - 1): string
     if (latinOrDigit.test(correct)) next = correct.replace(latinOrDigit, (m) => randomLike(m));
     latinOrDigit.lastIndex = 0;
     if (next === correct) {
-      const groups = shuffle(SWAP_GROUPS.filter((g) => g.some((w) => correct.includes(w))));
-      for (const g of groups) {
-        const hit = g.filter((w) => correct.includes(w)).sort((a, b) => b.length - a.length)[0];
-        if (!hit) continue;
-        const others = g.filter((w) => w !== hit && !correct.includes(w));
-        if (others.length) {
-          next = correct.replace(hit, others[randomInt(others.length)] as string);
-          break;
+      // 낱말 단위로 바꾼다 (낱말 앞부분이 묶음 낱말과 같으면 그 부분만: "안쪽에" → "뒷면에")
+      const tokens = correct.split(/\s+/);
+      const spots: { i: number; hit: string; group: string[] }[] = [];
+      tokens.forEach((t, i) => {
+        // 낱말마다 가장 길게 맞는 묶음 하나만 ("곰돌이"는 "곰"이 아니라 "곰돌이" 묶음)
+        let best: { i: number; hit: string; group: string[] } | null = null;
+        for (const g of SWAP_GROUPS) {
+          const hit = g.filter((w) => t.startsWith(w)).sort((a, b) => b.length - a.length)[0];
+          if (hit && (!best || hit.length > best.hit.length)) best = { i, hit, group: g };
         }
+        if (best) spots.push(best);
+      });
+      const spot = spots[randomInt(Math.max(1, spots.length))];
+      if (spot) {
+        const others = spot.group.filter((w) => w !== spot.hit);
+        const t = tokens[spot.i] as string;
+        tokens[spot.i] = (others[randomInt(others.length)] as string) + t.slice(spot.hit.length);
+        next = tokens.join(" ");
       }
     }
     if (next !== correct && !looselyContains(next, correct) && !looselyContains(correct, next)) out.add(next);
@@ -126,20 +138,34 @@ export function mutateDistractors(correct: string, n = QUIZ_OPTIONS - 1): string
  * 3개를 못 채우면 빈 배열(이 질문은 내지 않는다).
  */
 export function uniformDistractors(correct: string, aiPool: string[], presets: string[], question = ""): string[] {
-  const shaped = (xs: string[]) => xs.filter((x) => similarShape(x, correct));
-  const fromAi = pickDistractors([correct], shaped(aiPool), question);
-  const out = [...fromAi];
-  for (const m of mutateDistractors(correct, QUIZ_OPTIONS)) {
-    if (out.length >= QUIZ_OPTIONS - 1) break;
-    if (!out.includes(m) && similarShape(m, correct)) out.push(m);
-  }
-  if (out.length < QUIZ_OPTIONS - 1) {
-    for (const p of pickDistractors([correct, ...out], shaped(presets), question)) {
-      if (out.length >= QUIZ_OPTIONS - 1) break;
-      out.push(p);
-    }
-  }
-  return out.length >= QUIZ_OPTIONS - 1 ? out.slice(0, QUIZ_OPTIONS - 1) : [];
+  const out: string[] = [];
+  const add = (x: string) => {
+    const v = x.trim();
+    if (out.length >= QUIZ_OPTIONS - 1 || !v || v.length > 30 || !similarShape(v, correct)) return;
+    if ([correct, ...out].every((c) => distinctOption(c, v, question))) out.push(v);
+  };
+  for (const a of aiPool) add(a);
+  for (const m of mutateDistractors(correct, QUIZ_OPTIONS)) add(m);
+  for (const p of presets) add(p);
+  return out.length >= QUIZ_OPTIONS - 1 ? out : [];
+}
+
+/**
+ * 두 보기가 서로 다른 것을 가리키는지. 낱말이 하나도 안 겹치면 다르다.
+ * 같은 형식의 보기("안쪽에 J.H 각인" ↔ "안쪽에 S.Y 각인")는 틀 낱말을 함께 쓰므로, 양쪽에 서로 바뀐 낱말이 있고
+ * 그 낱말끼리 겹치지 않으면 다르다고 본다. 한쪽에 꾸밈만 더한 것("고양이 키링" ↔ "고양이 모양 키링")은 같은 것.
+ */
+export function distinctOption(a: string, b: string, question = ""): boolean {
+  if (looselyContains(a, b)) return false;
+  if (!overlaps(a, b, question)) return true;
+  const asked = rawWords(question);
+  const own = (t: string) => rawWords(t).filter((w) => !asked.some((q) => sameWord(w, q) !== null));
+  const wa = own(a);
+  const wb = own(b);
+  const onlyA = wa.filter((w) => !wb.some((v) => sameWord(w, v) !== null));
+  const onlyB = wb.filter((w) => !wa.some((v) => sameWord(w, v) !== null));
+  if (onlyA.length === 0 || onlyB.length === 0) return false;
+  return onlyA.every((x) => onlyB.every((y) => !looselyContains(x, y)));
 }
 
 /** 이미 낸 질문의 보기 세트를 순서만 섞어 다시 쓴다. 다시 시도해도 보기 교집합으로 정답을 좁히지 못하게 (10/30) */
