@@ -43,6 +43,8 @@
           <circle cx="208" cy="58" r="15" fill="#1c1915"/>
         </svg>
       </div>
+      <!-- 주운 건물과 찾으러 갈 곳(교무처)을 같이 찍는 캠퍼스 지도 (QA 10/30) -->
+      <div class="map-box" id="itemMapBox" aria-label="주운 곳과 수령 장소 지도" hidden></div>
       <h1 id="itemTitle"></h1>
       <table class="kv">
         <tr><th>주운 곳</th><td id="itemBuilding"></td></tr>
@@ -65,6 +67,7 @@
   </div>
 </main>
 <script src="../vendor/qrcode.min.js"></script>
+<script src="../naver-map.js"></script>
 <script src="api.js"></script>
 <script>
   // 내 물건 (보관처에 맡김): GET /found-items/:id/detail → "수령 QR 받기" POST /found-items/:id/pickup-qr
@@ -147,6 +150,16 @@
     if (await LostApi.setImage(itemPhotoImg, d.imageUrl)) {
       itemPhotoImg.hidden = false;
       itemFallbackSvg.setAttribute("hidden", "");
+    }
+    // 보관처는 교무처(혜인관) 한 곳이다. 주운 건물을 모르면 교무처만 찍는다
+    if (window.NaverCampusMap) {
+      const found = d.building && d.building.name;
+      window.NaverCampusMap.mount(document.getElementById("itemMapBox"), {
+        buildingName: found || "혜인관",
+        caption: `찾으러 갈 곳 · ${d.storagePlace ? d.storagePlace.name : "교무처"}`,
+        highlights: found ? [{ name: found, label: `${found} · 주운 곳`, kind: "here" }] : [],
+        office: true,
+      });
     }
     showPassed();
   }
