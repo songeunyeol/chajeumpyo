@@ -159,6 +159,31 @@ function tokens(text: string): string[] {
   return [...new Set([...words(text), ...chunks].map((w) => SYNONYMS[compact(w)] ?? compact(w)).filter(Boolean))];
 }
 
+/**
+ * 한 물건에 여러 측면이 있을 수 있는 종류. 같은 종류라도 다른 측면을 말하면 모순이 아니라 "말하지 않은 것"으로 본다
+ * (10/30 실제 사진 평가: 핸드크림 "흰 뚜껑" ↔ 저장 "튜브형 용기", 볼캡 "흰색 챙" ↔ "데님 원단"이 모순으로 나와 진짜 주인이 떨어졌다).
+ * 스티커·흠집·케이스처럼 종류 자체가 대상인 것은 값이 다르면 그대로 모순이다.
+ */
+const MULTI_ASPECT_KEYS = new Set(["other", "pattern"]);
+
+/** 측면을 나타내는 낱말: 색·위치를 뺀 낱말과, 그 안에 든 일반 낱말("체크무늬"의 "무늬") */
+function aspectWords(value: string): Set<string> {
+  const out = new Set<string>();
+  for (const w of tokens(value)) {
+    if (WEAK_WORDS.has(w)) continue;
+    out.add(w);
+    for (const g of GENERIC_WORDS) if (g.length >= 2 && w !== g && w.includes(g)) out.add(g);
+  }
+  return out;
+}
+
+/** 두 값이 같은 측면(같은 대상)을 말하는지. 겹치는 측면 낱말이 하나라도 있으면 같은 측면이다 */
+function sameAspect(a: string, b: string): boolean {
+  const bw = aspectWords(b);
+  for (const w of aspectWords(a)) if (bw.has(w) || (w.length >= 2 && looselyContains(b, w))) return true;
+  return false;
+}
+
 /** 값에 일반 낱말 말고 실제 내용이 있는지 */
 function hasSpecificValue(feature: AiFeature): boolean {
   return tokens(feature.value).some((w) => !GENERIC_WORDS.has(w));
@@ -237,8 +262,13 @@ function compareFeature(reported: AiFeature, stored: AiFeature[]): FeatureCompar
   const sameKey = stored.filter((s) => s.key === reported.key);
   const hit = sameKey.find(matches) ?? stored.find(matches);
   if (hit) return { reportedKey: reported.key, verdict: "MATCH", storedKey: hit.key };
-  if (sameKey.length === 0) return { reportedKey: reported.key, verdict: "UNKNOWN", storedKey: null };
-  return { reportedKey: reported.key, verdict: "CONTRADICT", storedKey: sameKey[0]?.key ?? null };
+  // 여러 측면이 있는 종류는 같은 측면을 말한 저장 특징과만 견준다
+  const rivals = MULTI_ASPECT_KEYS.has(reported.key)
+    ? sameKey.filter((s) => sameAspect(reported.value, s.value))
+    : sameKey;
+  // 다른 측면이면 모름. 저장 특징 종류는 남겨, AI가 같은 뜻인지 다시 볼 수 있게 한다("모눈 칸" ↔ "격자 무늬")
+  if (rivals.length === 0) return { reportedKey: reported.key, verdict: "UNKNOWN", storedKey: sameKey[0]?.key ?? null };
+  return { reportedKey: reported.key, verdict: "CONTRADICT", storedKey: rivals[0]?.key ?? null };
 }
 
 export function compareByRules(reported: ComparableAttributes, stored: ComparableAttributes): FeatureComparison {

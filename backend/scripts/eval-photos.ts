@@ -135,6 +135,7 @@ console.log("| 물건 | 설명 | 1등 | 3개 안 | 1단계 판정 | 최종 |");
 console.log("| --- | --- | --- | --- | --- | --- |");
 type Row = { kind: Kind; top1: boolean; top3: boolean; final: string };
 const rows: Row[] = [];
+const details: unknown[] = [];
 let k = 0;
 for (const item of labels.items) {
   const id = registered.get(item.key);
@@ -165,6 +166,17 @@ for (const item of labels.items) {
       const r = await retry(() => claim(viewer, created.id, id));
       first = r.result;
       final = r.result;
+      // 판정 근거(저장 특징·신고 특징·대조 결과)를 남겨 떨어진 이유를 본다
+      const detail = await prisma.foundItemDetail.findUnique({ where: { foundItemId: id } });
+      const tried = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: r.attemptId } });
+      details.push({
+        item: item.key,
+        kind,
+        result: r.result,
+        stored: { color: detail?.color, brand: detail?.brand, features: detail?.features },
+        reported: report.extractedAttributes,
+        comparison: (tried.matchedFields as { comparison?: unknown }).comparison,
+      });
       if (r.result === "BORDERLINE") {
         const attempt = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: r.attemptId } });
         const quiz = quizOf(attempt.matchedFields);
@@ -188,4 +200,5 @@ for (const kind of [...KINDS, "전체"] as const) {
     `| ${kind} | ${r.length} | ${c((x) => x.top1)} | ${c((x) => x.top3)} | ${c((x) => x.final === "PASS" || x.final.endsWith("PASS"))} |`,
   );
 }
+await writeFile(join(opts.out, "details.json"), JSON.stringify(details, null, 2));
 await prisma.$disconnect();

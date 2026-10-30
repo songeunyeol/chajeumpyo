@@ -20,6 +20,19 @@ const FACE_INPUT = { width: 320, height: 240 };
 const FACE_THRESHOLD = 0.75;
 /** 겹친 얼굴 후보를 하나로 합치는 기준 */
 const FACE_NMS_IOU = 0.3;
+/**
+ * 컬러 사진에서 얼굴 상자 안 피부색 픽셀이 이보다 적으면 사람 얼굴이 아닌 물건(모자 로고, 털 인형 등)으로 보고 가리지 않는다.
+ * 10/30 실제 사진·웹 사진: 실제 얼굴은 17~94%(목도리로 코·입을 덮은 얼굴 17%), 오탐한 데님 모자 2~6%.
+ * 털 인형(15~20%)은 가린 얼굴과 겹쳐서 가리는 쪽으로 남긴다(개인정보 우선).
+ */
+const FACE_MIN_SKIN = 0.08;
+/**
+ * 피부색 검사는 사진의 12% 이상을 차지하는 큰 얼굴 후보에만 한다. 오탐은 큰 물건 전체(데님 모자 39%, 털 인형 29~44%)였고,
+ * 작은 얼굴(포토카드·학생증 사진 속 얼굴, 단체 사진)은 색이 바래거나 작아도 그대로 가린다 (10/30 커뮤니티 실제 사진 점검: 포토카드 얼굴을 놓친 적이 있다).
+ */
+const FACE_SKIN_CHECK_AREA = 0.12;
+/** 색이 있는 픽셀이 이보다 적으면 흑백 사진으로 보고 피부색 검사를 하지 않는다(흑백 얼굴은 피부색 0%) */
+const COLOR_PHOTO_MIN = 0.01;
 /** 얼굴 상자는 머리카락·귀까지 가리게 사방으로 넓힌다 */
 const FACE_PADDING = 0.15;
 /** 글자 감지 입력의 긴 변 상한. 32의 배수로 맞춘다 */
@@ -110,11 +123,13 @@ async function detectFaces(session: ort.InferenceSession, image: Buffer, W: numb
   found.sort((a, b) => b.score - a.score);
   const kept: Box[] = [];
   for (const f of found) if (kept.every((k) => iou(k, f.box) < FACE_NMS_IOU)) kept.push(f.box);
-  return kept.map(([x1, y1, x2, y2]) => {
-    const dx = (x2 - x1) * FACE_PADDING;
-    const dy = (y2 - y1) * FACE_PADDING;
-    return [x1 - dx, y1 - dy, x2 + dx, y2 + dy];
-  });
+  return kept;
+}
+
+function padFace([x1, y1, x2, y2]: Box): Box {
+  const dx = (x2 - x1) * FACE_PADDING;
+  const dy = (y2 - y1) * FACE_PADDING;
+  return [x1 - dx, y1 - dy, x2 + dx, y2 + dy];
 }
 
 async function detectText(session: ort.InferenceSession, image: Buffer, W: number, H: number): Promise<Box[]> {
@@ -177,11 +192,62 @@ async function detectText(session: ort.InferenceSession, image: Buffer, W: numbe
   return boxes;
 }
 
+/** YCbCr 피부색 범위 */
+function isSkin(r: number, g: number, b: number): boolean {
+  const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+  const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+  return cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173;
+}
+
+/** 색이 있는 픽셀 비율. 흑백 사진이면 0에 가깝다 */
+async function colorRatio(image: Buffer): Promise<number> {
+  const px = await sharp(image).resize(200, 200, { fit: "inside" }).removeAlpha().raw().toBuffer();
+  let colored = 0;
+  for (let p = 0; p < px.length; p += 3) {
+    const [r, g, b] = [px[p] ?? 0, px[p + 1] ?? 0, px[p + 2] ?? 0];
+    if (Math.hypot(-0.168736 * r - 0.331264 * g + 0.5 * b, 0.5 * r - 0.418688 * g - 0.081312 * b) > 15) colored++;
+  }
+  return colored / (px.length / 3);
+}
+
+/** 넓히기 전 얼굴 상자 안 피부색 픽셀 비율 */
+async function skinRatio(image: Buffer, [x1, y1, x2, y2]: Box, W: number, H: number): Promise<number> {
+  const left = Math.max(0, Math.floor(x1));
+  const top = Math.max(0, Math.floor(y1));
+  const width = Math.min(W, Math.ceil(x2)) - left;
+  const height = Math.min(H, Math.ceil(y2)) - top;
+  if (width < 2 || height < 2) return 1;
+  const px = await sharp(image).extract({ left, top, width, height }).removeAlpha().raw().toBuffer();
+  let skin = 0;
+  for (let p = 0; p < px.length; p += 3) if (isSkin(px[p] ?? 0, px[p + 1] ?? 0, px[p + 2] ?? 0)) skin++;
+  return skin / (px.length / 3);
+}
+
+/** 얼굴 후보를 물건 오탐으로 보고 뺄지. 컬러 사진의 큰 후보이면서 피부색이 거의 없을 때만 뺀다 */
+export function isObjectNotFace(o: { areaRatio: number; skinRatio: number; colorRatio: number }): boolean {
+  return o.colorRatio >= COLOR_PHOTO_MIN && o.areaRatio >= FACE_SKIN_CHECK_AREA && o.skinRatio < FACE_MIN_SKIN;
+}
+
+/** 컬러 사진에서 피부색이 거의 없는 큰 얼굴 후보(물건 오탐)를 뺀다 */
+async function dropNonSkinFaces(image: Buffer, faces: Box[], W: number, H: number): Promise<Box[]> {
+  const large = faces.filter(([x1, y1, x2, y2]) => ((x2 - x1) * (y2 - y1)) / (W * H) >= FACE_SKIN_CHECK_AREA);
+  if (!large.length) return faces;
+  const colored = await colorRatio(image);
+  const kept: Box[] = [];
+  for (const f of faces) {
+    const areaRatio = ((f[2] - f[0]) * (f[3] - f[1])) / (W * H);
+    const skin = areaRatio >= FACE_SKIN_CHECK_AREA ? await skinRatio(image, f, W, H) : 1;
+    if (!isObjectNotFace({ areaRatio, skinRatio: skin, colorRatio: colored })) kept.push(f);
+  }
+  return kept;
+}
+
 export const onnxPremasker: Premasker = async (jpeg) => {
   const { face, text } = await loadSessions();
   const { width: W = 0, height: H = 0 } = await sharp(jpeg).metadata();
   if (!W || !H) throw new Error("사진 크기를 읽지 못했어요.");
-  const [faces, texts] = await Promise.all([detectFaces(face, jpeg, W, H), detectText(text, jpeg, W, H)]);
+  const [detected, texts] = await Promise.all([detectFaces(face, jpeg, W, H), detectText(text, jpeg, W, H)]);
+  const faces = (await dropNonSkinFaces(jpeg, detected, W, H)).map(padFace);
   const overlays: OverlayOptions[] = [];
   for (const [x1, y1, x2, y2] of [...faces, ...texts]) {
     const left = Math.max(0, Math.floor(x1));
