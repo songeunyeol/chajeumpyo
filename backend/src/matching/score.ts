@@ -1,4 +1,4 @@
-import { type Category, RELATED_CATEGORIES } from "@chajeumpyo/shared";
+import { type Category, RELATED_CATEGORIES, relatedBySubCategory } from "@chajeumpyo/shared";
 import { ATTR_WEIGHTS, CATEGORY_SCORE, PLACE_SCORE, SUB_CATEGORY_MISMATCH_SCORE, TIME_SCORE, WEIGHTS } from "./policy";
 
 export type ReportSide = {
@@ -36,6 +36,9 @@ export function categoryScore(
   if (item.categoryAlt === reported) return CATEGORY_SCORE.alt;
   const related = RELATED_CATEGORIES[reported] ?? [];
   if ((item.category && related.includes(item.category)) || (item.categoryAlt && related.includes(item.categoryAlt))) {
+    return CATEGORY_SCORE.related;
+  }
+  if (relatedBySubCategory(reported, reportedSub, item.category ?? null, item.subCategory ?? null)) {
     return CATEGORY_SCORE.related;
   }
   if (reported === "ETC" || item.category === "ETC" || item.categoryAlt === "ETC") return CATEGORY_SCORE.etc;

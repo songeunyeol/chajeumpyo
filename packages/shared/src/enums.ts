@@ -216,6 +216,39 @@ export const RELATED_CATEGORIES: Partial<Record<Category, Category[]>> = Object.
     .filter(([, list]) => list.length > 0),
 );
 
+/**
+ * 세부 종류까지 봐야 하는 연관 묶음 (기능 명세서 F-07). [신고 종류, 신고 세부 종류(null이면 상관없음), 습득 종류, 습득 세부 종류]
+ * 동전지갑은 사진으로 파우치처럼 보여 AI가 가방 > 파우치로 분류하기도 한다 (실제 사진 35장 평가, 10/30).
+ * 가방 전체가 아니라 파우치만 묶어 배낭·에코백이 지갑 신고에 섞이지 않게 한다. 서로 대칭이다.
+ */
+const RELATED_SUB_PAIRS: [Category, string | null, Category, string][] = [["WALLET", null, "BAG", "POUCH"]];
+
+/** 세부 종류 기준으로 연관 종류인지 (같은 종류·RELATED_CATEGORIES는 따로 본다) */
+export function relatedBySubCategory(
+  reported: Category,
+  reportedSub: string | null,
+  item: Category | null,
+  itemSub: string | null,
+): boolean {
+  return RELATED_SUB_PAIRS.some(
+    ([a, aSub, b, bSub]) =>
+      (reported === a && (aSub === null || reportedSub === aSub) && item === b && itemSub === bSub) ||
+      (reported === b && reportedSub === bSub && item === a && (aSub === null || itemSub === aSub)),
+  );
+}
+
+/** 후보 검색에서 세부 종류 묶음으로 더 볼 종류·세부 종류 (신고 세부 종류를 모르면 세부 종류가 필요한 쪽은 넣지 않는다) */
+export function relatedSubCategoryTargets(
+  reported: Category,
+  reportedSub: string | null,
+): { category: Category; subCategory: string | null }[] {
+  return RELATED_SUB_PAIRS.flatMap(([a, aSub, b, bSub]) => {
+    if (reported === a && (aSub === null || reportedSub === aSub)) return [{ category: b, subCategory: bSub }];
+    if (reported === b && reportedSub === bSub) return [{ category: a, subCategory: aSub }];
+    return [];
+  });
+}
+
 /** 신고 종류로 후보 검색할 때 볼 종류 전체 (자기 자신 포함) */
 export function relatedCategories(category: Category): Category[] {
   if (category === "ETC") return [...Category.options];
@@ -385,6 +418,10 @@ const NEIGHBOR_COLORS: [Color, Color][] = [
   ["GREEN", "BLUE_TEAL"],
   ["BLUE_TEAL", "PURPLE"],
   ["PURPLE", "PINK_MAGENTA"],
+  // 실제 사진 35장 평가(10/30)에서 진짜 주인이 떨어진 이웃 색: 베이지(노랑↔갈색), 코랄(주황↔분홍), 남색(파랑↔검정)
+  ["YELLOW", "BROWN"],
+  ["ORANGE_CORAL", "PINK_MAGENTA"],
+  ["BLUE_TEAL", "BLACK"],
 ];
 
 /** 두 색이 이웃 색인지 (같은 색은 false) */

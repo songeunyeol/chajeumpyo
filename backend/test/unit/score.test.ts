@@ -52,3 +52,23 @@ describe("세부 종류 점수", () => {
     expect(SUB_CATEGORY_MISMATCH_SCORE).toBeGreaterThan(CATEGORY_SCORE.related);
   });
 });
+
+describe("지갑 ↔ 파우치 연관 (10/30)", () => {
+  it("지갑 신고에 파우치는 연관 종류, 다른 가방은 아니다", () => {
+    expect(categoryScore("WALLET", { category: "BAG", categoryAlt: null, subCategory: "POUCH" })).toBe(
+      CATEGORY_SCORE.related,
+    );
+    expect(categoryScore("WALLET", { category: "BAG", categoryAlt: null, subCategory: "BACKPACK" })).toBe(0);
+    expect(categoryScore("WALLET", { category: "BAG", categoryAlt: null, subCategory: null })).toBe(0);
+  });
+
+  it("파우치 신고에 지갑은 연관 종류, 세부 종류를 모르는 가방 신고에는 넣지 않는다", () => {
+    const wallet = { category: "WALLET" as const, categoryAlt: null, subCategory: "BIFOLD_WALLET" };
+    expect(categoryScore("BAG", wallet, "POUCH")).toBe(CATEGORY_SCORE.related);
+    expect(categoryScore("BAG", wallet, null)).toBe(0);
+  });
+
+  it("같은 종류가 연관 종류보다 먼저", () => {
+    expect(CATEGORY_SCORE.exact).toBeGreaterThan(CATEGORY_SCORE.related);
+  });
+});
