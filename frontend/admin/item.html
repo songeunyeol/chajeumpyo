@@ -36,6 +36,7 @@
       <tr><th>주운 시각</th><td id="kvFound"></td></tr>
       <tr><th>보관 기한</th><td id="kvExpires"></td></tr>
       <tr><th>개인정보</th><td id="kvSensitive"></td></tr>
+      <tr id="kvClosedRow" style="display:none"><th>보관 종료</th><td id="kvClosed"></td></tr>
     </table>
 
     <!-- 대면 확인 수령 (온라인 확인이 막힌 물건) -->
@@ -76,6 +77,17 @@
       </form>
     </section>
 
+    <!-- 보관 종료 (QA 10/30 3차): 행은 남기고 후보·목록에서 뺀다 -->
+    <section id="closeSection" style="display:none">
+      <p class="section" style="margin-top:24px">보관 끝내기</p>
+      <p class="note" style="margin:0 0 12px">기록은 남기고 후보에서 빼요. 잘못 등록이면 사진과 비공개 정보를 바로 지워요.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn white" data-close="DISPOSED">폐기·이관</button>
+        <button type="button" class="btn white" data-close="MISREGISTERED">잘못 등록</button>
+      </div>
+      <p class="note danger" id="closeError" role="alert" hidden></p>
+    </section>
+
     <!-- 기록 -->
     <p class="section" style="margin-top:24px">확인 시도</p>
     <div id="attempts"></div>
@@ -85,6 +97,16 @@
     <div id="pickups"></div>
   </div>
 </main>
+<div class="modal-backdrop" id="closeModal" role="dialog" aria-modal="true" aria-labelledby="closeModalTitle">
+  <div class="modal-card">
+    <h3 id="closeModalTitle">보관을 끝낼까요?</h3>
+    <p id="closeModalText"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn white" id="closeCancel">취소</button>
+      <button type="button" class="btn" id="closeConfirm">끝내기</button>
+    </div>
+  </div>
+</div>
 <script src="admin.js"></script>
 <script>
   AdminApi.requireLogin();
@@ -211,6 +233,18 @@
     $("kvFound").textContent = A.formatTime(item.foundAt);
     $("kvExpires").textContent = item.expiresAt ? A.formatTime(item.expiresAt, false) : "없음";
     $("kvSensitive").textContent = item.isSensitive ? "있음 (공개본은 가림)" : "없음";
+
+    const closed = !!item.closedAt;
+    A.show($("kvClosedRow"), closed);
+    if (closed) {
+      $("kvClosed").textContent = [
+        A.CLOSED_REASON_LABELS[item.closedReason] || "끝냄",
+        A.formatTime(item.closedAt),
+        item.closedByEmailMasked,
+      ].filter(Boolean).join(" · ");
+    }
+    // 보관 끝내기: 보관 중(검토 대기 포함)인 실제 물건만. 시드는 다음 심사위원도 써야 해서 막는다
+    A.show($("closeSection"), !item.isSeed && ["REGISTERED", "REVEALED", "REVIEW"].includes(item.status));
 
     // 대면 확인: 잠긴 보관 중 물건만
     A.show($("inPerson"), !!item.claimLockedAt && ["REGISTERED", "REVEALED"].includes(item.status));
@@ -374,6 +408,41 @@
       A.showError($("inPersonError"), err.code === "ALREADY_CLAIMED" ? "이미 내준 물건이에요." : err);
     } finally {
       $("inPersonBtn").textContent = "신분 확인하고 내주기";
+    }
+  });
+
+  // 보관 끝내기: 브라우저 confirm 대신 화면 안의 확인 창
+  let closeReason = null;
+  const closeModal = $("closeModal");
+  function openClose(reason) {
+    closeReason = reason;
+    $("closeModalText").textContent = reason === "MISREGISTERED"
+      ? "잘못 등록한 물건으로 처리해요. 후보에서 빠지고, 사진과 비공개 정보는 바로 지워져요. 되돌릴 수 없어요."
+      : "폐기하거나 다른 곳으로 넘긴 물건으로 처리해요. 후보에서 빠지고, 사진은 보관 기한이 끝난 물건처럼 정리돼요.";
+    closeModal.classList.add("is-open");
+    $("closeCancel").focus();
+  }
+  function hideClose() {
+    closeModal.classList.remove("is-open");
+    closeReason = null;
+  }
+  document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => openClose(b.dataset.close)));
+  $("closeCancel").addEventListener("click", hideClose);
+  closeModal.addEventListener("click", (e) => { if (e.target === closeModal) hideClose(); });
+  $("closeConfirm").addEventListener("click", async () => {
+    if (busy || !item || !closeReason) return;
+    const reason = closeReason;
+    hideClose();
+    busy = true;
+    A.showError($("closeError"));
+    try {
+      await A.closeItem(item.id, reason);
+      busy = false;
+      await load();
+      window.scrollTo(0, 0);
+    } catch (err) {
+      busy = false;
+      A.showError($("closeError"), err.code === "ALREADY_CLAIMED" ? "이미 수령된 물건이에요." : err);
     }
   });
 
