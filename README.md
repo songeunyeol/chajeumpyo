@@ -26,9 +26,9 @@
 
 | 문서 | 내용 |
 | --- | --- |
-| [01_기능명세서.md](01_기능명세서.md) | 기능과 정책 |
-| [02_ERD.md](02_ERD.md) | 데이터 구조와 DB 규칙 |
-| [03_API명세서.md](03_API명세서.md) | API (실행 중 `/api/docs`에서 OpenAPI로도 확인) |
+| [01_기능명세서.md](docs/spec/01_기능명세서.md) | 기능과 정책 |
+| [02_ERD.md](docs/spec/02_ERD.md) | 데이터 구조와 DB 규칙 |
+| [03_API명세서.md](docs/spec/03_API명세서.md) | API (실행 중 `/api/docs`에서 OpenAPI로도 확인) |
 | [docs/open-issues.md](docs/open-issues.md) | 명세 검토 이슈와 결정 이력 |
 | [docs/tech-stack.md](docs/tech-stack.md) | 기술 스택 |
 | [docs/결과보고서.md](docs/결과보고서.md) | 제출용 결과보고서 원본 |
@@ -76,7 +76,7 @@ npm run dev                    # http://localhost:4000, API 문서 /api/docs
 
 - API 요청·응답 타입은 `@chajeumpyo/shared`에서 바로 import한다. 백엔드와 같은 zod 스키마라 폼 검증에도 그대로 쓸 수 있다.
 - 에러는 항상 `{ "error": { "code", "message", "details?" } }` 형식이다. `code` 목록은 `packages/shared/src/errors.ts`.
-- 백엔드가 아직 없는 API는 `docs/api/openapi.json`이나 `03_API명세서.md` 예시로 목업을 만든다.
+- 백엔드가 아직 없는 API는 `docs/api/openapi.json`이나 `docs/spec/03_API명세서.md` 예시로 목업을 만든다.
 
 ## 환경 변수
 

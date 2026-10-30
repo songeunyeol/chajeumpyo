@@ -50,7 +50,7 @@
     if (me.demo) {
       const banner = document.createElement("div");
       banner.className = "banner";
-      banner.textContent = "시연 모드 · 예시 데이터로 움직여요.";
+      banner.textContent = "시연 모드 · 예시 데이터로 움직여요. 분실 다발은 서버가 실제 통계와 같은 코드로 계산해요.";
       document.getElementById("place").before(banner);
       for (const link of document.querySelectorAll("a.choice")) {
         const url = new URL(link.getAttribute("href"), location.href);

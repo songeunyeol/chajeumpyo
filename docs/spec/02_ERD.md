@@ -1,7 +1,7 @@
 # ERD
 
 > 상태: 초안 (2026-10-11, 검토 반영 2026-10-11). 기준 스택: PostgreSQL + pgvector, Prisma 7.
-> 연관 문서: [기능 명세서](./01_기능명세서.md) · [API 명세서](./03_API명세서.md) · [검토 이력](./docs/open-issues.md)
+> 연관 문서: [기능 명세서](./01_기능명세서.md) · [API 명세서](./03_API명세서.md) · [검토 이력](../open-issues.md)
 > **실제 스키마는 [`backend/prisma/schema.prisma`](./backend/prisma/schema.prisma)가 기준이다.** 이 문서는 구조와 규칙을 설명한다.
 
 ## 1. 설계 원칙

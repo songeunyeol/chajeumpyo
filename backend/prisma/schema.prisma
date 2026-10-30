@@ -1,4 +1,4 @@
-// 기준: 02_ERD.md. 테이블·컬럼 이름은 DB에서 snake_case로 쓴다(raw SQL 작성 편의).
+// 기준: docs/spec/02_ERD.md. 테이블·컬럼 이름은 DB에서 snake_case로 쓴다(raw SQL 작성 편의).
 // 바뀐 점과 미결 사항은 docs/open-issues.md 참고.
 
 generator client {

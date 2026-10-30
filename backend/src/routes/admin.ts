@@ -12,9 +12,11 @@ import {
 } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { getAuth, requireAdmin } from "../middlewares/auth";
+import { ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import * as service from "../services/admin-found-items";
+import { demoHotspots } from "../services/demo-hotspots";
 import { hotspots } from "../services/hotspots";
 import { completeInPersonPickup } from "../services/pickups";
 
@@ -109,6 +111,21 @@ registry.registerPath({
   responses: { 200: { description: "집계", ...json(HotspotResponse) }, 400: errorResponse("VALIDATION_ERROR") },
 });
 
+registry.registerPath({
+  method: "get",
+  path: "/demo/admin/stats/hotspots",
+  tags,
+  summary: "관리자 시연용 분실 다발 카드",
+  description:
+    "로그인 없이 관리자 시연 모드에서 쓴다. DB를 읽지 않고 서버 메모리의 시연 데이터(날짜는 오늘 기준 상대값)를 실제 통계와 같은 집계 함수로 계산한다. 학생 데이터·개인정보 없음. 항상 isSeedData=true.",
+  request: { query: HotspotQuery },
+  responses: {
+    200: { description: "집계", ...json(HotspotResponse) },
+    400: errorResponse("VALIDATION_ERROR"),
+    429: errorResponse("RATE_LIMITED"),
+  },
+});
+
 export function createAdminRouter() {
   const router = Router();
   const admin = (res: Parameters<typeof getAuth>[0]) => {
@@ -173,6 +190,16 @@ export function createAdminRouter() {
 
   router.get("/admin/stats/hotspots", requireAdmin(), validate("query", HotspotQuery), async (_req, res) => {
     const result: HotspotResponse = await hotspots(res.locals.query);
+    res.json(result);
+  });
+
+  const demoLimit = ipRateLimit({
+    windowMinutes: 1,
+    limit: 60,
+    message: "요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
+  });
+  router.get("/demo/admin/stats/hotspots", demoLimit, validate("query", HotspotQuery), (_req, res) => {
+    const result: HotspotResponse = demoHotspots(res.locals.query);
     res.json(result);
   });
 

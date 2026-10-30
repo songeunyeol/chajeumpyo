@@ -1,6 +1,6 @@
 # QA 기준표·위협 모델과 구현이 다른 것
 
-> 2026-10-12. `qa/CANONICAL-AC-PACK.md`, `docs/security/THREAT-MODEL.md`(노션 "확정 사항 (10/11)" 근거)와 레포 명세서(01~03)·P0 백엔드(PR #2~#20)를 비교했다.
+> 2026-10-12. `qa/CANONICAL-AC-PACK.md`, `docs/security/THREAT-MODEL.md`(노션 "확정 사항 (10/11)" 근거)와 레포 명세서(docs/spec/01~03)·P0 백엔드(PR #2~#20)를 비교했다.
 > 번호는 [open-issues](./open-issues.md)에 이어 붙였다. 결정되면 open-issues, 명세서 3개, QA 기준표를 같이 고친다.
 > 각 항목의 **추천**은 백엔드(윤호) 의견이다. 팀 결정 전까지는 구현을 바꾸지 않는다.
 
