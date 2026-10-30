@@ -236,9 +236,23 @@ function brandKey(b: string): string {
   return BRAND_NAMES.find((name) => c.includes(name)) ?? c;
 }
 
+/** 영문 두 단어 이상 브랜드의 머리글자 ("MICHAEL KORS" → "mk"). 한 단어면 null */
+function brandInitials(b: string): string | null {
+  const words = b
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter(Boolean);
+  return words.length >= 2 ? words.map((w) => w[0]).join("") : null;
+}
+
 export function compareBrand(reported: string | null, stored: string | null): FeatureVerdict {
   if (!reported || !stored) return "UNKNOWN";
-  return brandKey(reported) === brandKey(stored) || looselyContains(reported, stored) ? "MATCH" : "CONTRADICT";
+  if (brandKey(reported) === brandKey(stored) || looselyContains(reported, stored)) return "MATCH";
+  // 줄임말 (실제 사진 35장 평가 10/30: 저장 "MICHAEL KORS" ↔ 신고 "MK"가 모순으로 나왔다)
+  const r = compact(reported);
+  const st = compact(stored);
+  if (r.length >= 2 && (brandInitials(stored) === r || brandInitials(reported) === st)) return "MATCH";
+  return "CONTRADICT";
 }
 
 /**

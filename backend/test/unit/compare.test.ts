@@ -164,3 +164,24 @@ describe("답 판정 규칙", () => {
     expect(await judgeAnswer(q, "곰돌이 스티커", `곰돌이 ${"가".repeat(50)}`)).toBe("NO_MATCH");
   });
 });
+
+describe("실제 사진 35장 평가 (10/30)", () => {
+  it("베이지·코랄·남색처럼 경계에 있는 색은 모순이 아니라 확인 불가", () => {
+    expect(compareColor("BROWN", "YELLOW")).toBe("UNKNOWN");
+    expect(compareColor("ORANGE_CORAL", "PINK_MAGENTA")).toBe("UNKNOWN");
+    expect(compareColor("BLUE_TEAL", "BLACK")).toBe("UNKNOWN");
+  });
+
+  it("완전히 다른 색은 여전히 모순", () => {
+    expect(compareColor("RED", "BLUE_TEAL")).toBe("CONTRADICT");
+    expect(compareColor("WHITE", "BLACK")).toBe("CONTRADICT");
+    expect(compareColor("YELLOW", "PURPLE")).toBe("CONTRADICT");
+  });
+
+  it("영문 브랜드 머리글자는 같은 브랜드", () => {
+    expect(compareBrand("MK", "MICHAEL KORS")).toBe("MATCH");
+    expect(compareBrand("Michael Kors", "MK")).toBe("MATCH");
+    expect(compareBrand("MK", "Marc Jacobs")).toBe("CONTRADICT");
+    expect(compareBrand("Nike", "MICHAEL KORS")).toBe("CONTRADICT");
+  });
+});

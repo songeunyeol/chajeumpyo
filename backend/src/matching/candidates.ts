@@ -4,7 +4,9 @@ import {
   type Category,
   RELATED_CATEGORIES,
   type Role,
+  relatedBySubCategory,
   relatedCategories,
+  relatedSubCategoryTargets,
   subCategoryWithin,
 } from "@chajeumpyo/shared";
 import type { Prisma } from "../generated/prisma/client";
@@ -42,11 +44,16 @@ const FOUND_BEFORE_LOST_GRACE_MS = 24 * 3600_000;
 /** 공개 정보와 신고자 본인이 적은 값만으로 근거를 만든다. 2순위 종류(비공개)는 쓰지 않는다 */
 export function publicReasons(
   report: Pick<ReportForMatching, "category" | "buildingId" | "lostFrom" | "lostTo">,
-  item: { category: Candidate["category"]; buildingId: number | null; foundAt: Date },
+  item: { category: Candidate["category"]; subCategory?: string | null; buildingId: number | null; foundAt: Date },
+  reportSub: string | null = null,
 ): CandidateReason[] {
   const reasons: CandidateReason[] = [];
   if (item.category === report.category) reasons.push("SAME_CATEGORY");
-  else if (RELATED_CATEGORIES[report.category]?.includes(item.category)) reasons.push("RELATED_CATEGORY");
+  else if (
+    RELATED_CATEGORIES[report.category]?.includes(item.category) ||
+    relatedBySubCategory(report.category, reportSub, item.category, item.subCategory ?? null)
+  )
+    reasons.push("RELATED_CATEGORY");
   if (report.buildingId !== null && report.buildingId === item.buildingId) reasons.push("SAME_BUILDING");
   const hoursAfterLost = (item.foundAt.getTime() - report.lostTo.getTime()) / 3600_000;
   if (item.foundAt >= report.lostFrom && hoursAfterLost <= SOON_AFTER_HOURS) reasons.push("FOUND_SOON_AFTER");
@@ -123,10 +130,23 @@ type Ranked = { item: EligibleItem & { category: Category }; score: ScoreBreakdo
  * 세부 종류가 정해진 기타(인형·키링, 화장품, 약)는 이미 무엇인지 아는 물건이라 기타 신고에서만 찾는다.
  * 휴대폰을 찾는데 인형·키링이 비슷한 물건으로 뜨던 문제 (QA 10/29)
  */
-function categoryFilter(reported: Category, categories: Category[]): Prisma.FoundItemWhereInput[] {
+function categoryFilter(
+  reported: Category,
+  categories: Category[],
+  reportedSub: string | null = null,
+): Prisma.FoundItemWhereInput[] {
   if (reported === "ETC") return [{ category: { in: categories } }, { categoryAlt: { in: categories } }];
   const specific = categories.filter((c) => c !== "ETC");
-  return [{ category: { in: specific } }, { categoryAlt: { in: specific } }, { category: "ETC", subCategory: null }];
+  // 세부 종류 묶음(지갑 ↔ 파우치). 세부 종류가 정해진 쪽은 그 세부 종류만 본다
+  const bySub = relatedSubCategoryTargets(reported, reportedSub).map(({ category, subCategory }) =>
+    subCategory === null ? { category } : { category, subCategory },
+  );
+  return [
+    { category: { in: specific } },
+    { categoryAlt: { in: specific } },
+    { category: "ETC", subCategory: null },
+    ...bySub,
+  ];
 }
 
 /**
@@ -137,13 +157,14 @@ function categoryFilter(reported: Category, categories: Category[]): Prisma.Foun
 async function rankEligible(report: ReportForMatching, viewerRole: Role): Promise<Ranked[]> {
   if (report.status !== "OPEN") return [];
   const categories = relatedCategories(report.category);
+  const reportSide = { ...report, ...attrsOf(report.extractedAttributes, report.category) };
   const now = new Date();
 
   const items = await prisma.foundItem.findMany({
     where: {
       status: { in: ["REGISTERED", "REVEALED"] },
       foundAt: { gte: new Date(report.lostFrom.getTime() - FOUND_BEFORE_LOST_GRACE_MS) },
-      OR: categoryFilter(report.category, categories),
+      OR: categoryFilter(report.category, categories, reportSide.subCategory ?? null),
       AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }],
       isSeed: viewerRole === "DEMO",
     },
@@ -166,7 +187,6 @@ async function rankEligible(report: ReportForMatching, viewerRole: Role): Promis
     report.id,
     items.map((i) => i.id),
   );
-  const reportSide = { ...report, ...attrsOf(report.extractedAttributes, report.category) };
 
   return (
     items
@@ -213,7 +233,11 @@ async function toScored(report: ReportForMatching, ranked: Ranked[]): Promise<Sc
       foundAt: item.foundAt.toISOString(),
       building: item.building,
       thumbKey: item.detail?.imageThumbKey ?? null,
-      reasons: publicReasons(report, { category, buildingId: item.buildingId, foundAt: item.foundAt }),
+      reasons: publicReasons(
+        report,
+        { category, subCategory: item.subCategory, buildingId: item.buildingId, foundAt: item.foundAt },
+        attrsOf(report.extractedAttributes, report.category).subCategory,
+      ),
       attemptsLeft: left,
       locked: left === 0,
       awaitingPickup: passed.has(item.id),

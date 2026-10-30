@@ -528,3 +528,30 @@ describe("세부 종류로 신고: 마우스 (QA bot 10/30)", () => {
     expect(ids(byCategory)).toContain(mouse.id);
   });
 });
+
+describe("지갑 ↔ 파우치 연관 (실제 사진 평가 10/30)", () => {
+  it("지갑 신고에 파우치로 분류된 동전지갑이 후보로 나오고, 배낭은 나오지 않는다", async () => {
+    const pouch = await createFoundItem({
+      buildingId: A,
+      category: "BAG",
+      subCategory: "POUCH",
+      description: "흰색 캐릭터 동전지갑",
+      foundAt: hoursAgo(1),
+    });
+    const backpack = await createFoundItem({
+      buildingId: A,
+      category: "BAG",
+      subCategory: "BACKPACK",
+      description: "검정 백팩",
+      foundAt: hoursAgo(1),
+    });
+    const res = await post(report({ category: "WALLET", description: "캐릭터 얼굴이 있는 흰색 동전지갑" }));
+    expect(res.status).toBe(201);
+    const ids = res.body.candidates.map((c: { foundItemId: string }) => c.foundItemId);
+    expect(ids).toContain(pouch.id);
+    expect(ids).not.toContain(backpack.id);
+    expect(res.body.candidates.find((c: { foundItemId: string }) => c.foundItemId === pouch.id).reasons).toContain(
+      "RELATED_CATEGORY",
+    );
+  });
+});
