@@ -254,34 +254,23 @@ describe("학교 메일 칸 (@skuniv.ac.kr 고정)", () => {
 });
 
 function lostApiFns(): {
-  aiReadSummary: (aiRead: unknown) => string;
   passExplanation: (claim: unknown, aiRead: unknown, itemId?: string) => string;
 } {
   const api = read("frontend/lost/api.js");
-  const helpers = api.slice(api.indexOf("const aiReadSummary"), api.indexOf("/** 화면 이름"));
+  const helpers = api.slice(api.indexOf("const passExplanation"), api.indexOf("/** 화면 이름"));
   const body = `const COLOR_LABELS = { WHITE: "흰색" };
 const itemLabel = (category) => ({ EARPHONE: "무선 이어폰", KEY: "열쇠" })[category] || "";
 ${helpers}
-return { aiReadSummary, passExplanation };`;
+return { passExplanation };`;
   return new Function(body)() as ReturnType<typeof lostApiFns>;
 }
 
 describe("AI가 한 일 (교수 평가 10/30: 분실자 화면에 AI가 보이지 않음)", () => {
-  it("후보 화면에 AI가 신고 설명에서 읽은 것을 보여 준다", () => {
+  it("후보 화면에는 'AI가 한 일' 상자를 두지 않는다 (통과 화면 한 줄만 남긴다)", () => {
     const html = read("frontend/lost/candidates.html");
-    expect(html).toContain('id="aiReadBox"');
-    expect(html).toContain("AI가 한 일");
-    const { aiReadSummary } = lostApiFns();
-    expect(
-      aiReadSummary({
-        category: "EARPHONE",
-        subCategory: null,
-        color: "WHITE",
-        brand: null,
-        features: [{ key: "sticker", value: "곰돌이 스티커" }],
-      }),
-    ).toContain("곰돌이 스티커");
-    expect(aiReadSummary(null)).toBe("");
+    expect(html).not.toContain('id="aiReadBox"');
+    expect(html).not.toContain("AI가 한 일");
+    expect(read("frontend/lost/api.js")).not.toContain("aiReadSummary");
   });
 
   it("통과 화면은 신고자 표현으로 무엇이 맞았는지 말하고, 다른 물건의 판정이면 아무것도 말하지 않는다", () => {

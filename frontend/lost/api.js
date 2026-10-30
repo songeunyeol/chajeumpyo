@@ -244,20 +244,6 @@
   };
 
   /**
-   * AI가 신고 설명에서 읽은 것을 한 줄로 ("흰색 · 무선 이어폰 · 곰돌이 스티커").
-   * 신고자 본인이 적은 내용에서 나온 값만 쓴다. 없으면 "".
-   */
-  const aiReadSummary = (aiRead) => {
-    if (!aiRead) return "";
-    const parts = [];
-    if (aiRead.color && COLOR_LABELS[aiRead.color]) parts.push(COLOR_LABELS[aiRead.color]);
-    if (aiRead.brand) parts.push(aiRead.brand);
-    parts.push(itemLabel(aiRead.category, aiRead.subCategory));
-    for (const f of aiRead.features || []) parts.push(f.value);
-    return parts.filter(Boolean).join(" · ");
-  };
-
-  /**
    * 확인 통과 화면의 "AI가 한 일" 한 줄. 신고자 본인이 적은 표현만 쓴다(숨은 특징 원문은 쓰지 않는다).
    * claim: 마지막 판정 응답(KEYS.claim), aiRead: KEYS.aiRead, itemId: 지금 보는 물건(다른 물건의 판정이면 안 보인다). 근거가 없으면 "".
    */
@@ -371,7 +357,7 @@
     verification: "lost.verification", // { verificationToken, expiresAt } 인증 코드 → 동의 화면
     reportDraft: "lost.reportDraft", // 신고 화면 ↔ 건물 화면 왕복
     reportId: "lost.reportId", // 지금 보고 있는 신고
-    aiRead: "lost.aiRead", // 그 신고 설명에서 AI가 읽은 것 (ReportAiRead). 후보·통과 화면의 "AI가 한 일"
+    aiRead: "lost.aiRead", // 그 신고 설명에서 AI가 읽은 것 (ReportAiRead). 통과 화면의 "AI가 한 일" 한 줄
     candidate: "lost.candidate", // 확인하려는 후보 한 개 (Candidate)
     claim: "lost.claim", // 마지막 판정 응답 (ClaimResponse/AnswerResponse)
     foundItemId: "lost.foundItemId", // 통과한 물건
@@ -719,7 +705,6 @@
     SUB_CATEGORY_LABELS,
     SUB_CATEGORIES,
     COLOR_LABELS,
-    aiReadSummary,
     passExplanation,
     REASON_LABELS,
     REPORT_STATUS_LABELS,
