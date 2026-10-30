@@ -291,7 +291,7 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
     },
 
     /**
-     * 특징 대조는 규칙으로 먼저 한다(같은 입력엔 같은 결과). 규칙이 "모순"으로 본 특징만 AI에 같은 대상인지 다시 묻는다:
+     * 특징 대조는 규칙으로 먼저 한다(같은 입력엔 같은 결과). 규칙이 "모순"(또는 같은 종류의 다른 측면)으로 본 특징만 AI에 같은 대상인지 다시 묻는다:
      * "곰돌이 스티커" ↔ "곰 캐릭터 스티커"처럼 뜻은 같고 낱말이 다른 진짜 주인이 떨어지지 않게 (10/29 평가).
      * AI가 MATCH라고 할 때만 바꾸고, 실패하거나 애매하면 모순 그대로 둔다. 같은 설명 재확인은 저장된 결과를 쓰므로 결과가 흔들리지 않는다.
      */
@@ -300,7 +300,8 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
       const features = await Promise.all(
         result.features.map(async (f, i) => {
           const r = reported.features[i];
-          if (f.verdict !== "CONTRADICT" || !r) return f;
+          // 모순, 또는 같은 종류의 다른 측면으로 본 것(저장 종류가 있는 모름)만 다시 본다
+          if (!r || f.verdict === "MATCH" || (f.verdict === "UNKNOWN" && !f.storedKey)) return f;
           for (const s of stored.features.filter((x) => x.key === f.storedKey)) {
             try {
               const verdict = await judgeAnswer({

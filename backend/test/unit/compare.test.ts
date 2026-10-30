@@ -111,6 +111,14 @@ describe("실제 사진 평가 (10/30)", () => {
     ).toEqual(["UNKNOWN"]);
   });
 
+  it("다른 측면으로 본 모름은 저장 특징 종류를 남겨 AI가 다시 볼 수 있다 (모눈 칸 ↔ 격자 무늬)", () => {
+    const r = compareByRules(
+      { color: null, brand: null, features: [{ key: "pattern", value: "표지 모눈 칸" }] },
+      { color: null, brand: null, features: [{ key: "pattern", value: "하단 격자 무늬" }] },
+    );
+    expect(r.features[0]).toEqual({ reportedKey: "pattern", verdict: "UNKNOWN", storedKey: "pattern" });
+  });
+
   it("같은 측면을 다르게 말하면 여전히 모순 (사칭 막기)", () => {
     expect(verdicts([{ key: "other", value: "꽃 자수" }], [{ key: "other", value: "별 자수" }])).toEqual([
       "CONTRADICT",

@@ -266,7 +266,8 @@ function compareFeature(reported: AiFeature, stored: AiFeature[]): FeatureCompar
   const rivals = MULTI_ASPECT_KEYS.has(reported.key)
     ? sameKey.filter((s) => sameAspect(reported.value, s.value))
     : sameKey;
-  if (rivals.length === 0) return { reportedKey: reported.key, verdict: "UNKNOWN", storedKey: null };
+  // 다른 측면이면 모름. 저장 특징 종류는 남겨, AI가 같은 뜻인지 다시 볼 수 있게 한다("모눈 칸" ↔ "격자 무늬")
+  if (rivals.length === 0) return { reportedKey: reported.key, verdict: "UNKNOWN", storedKey: sameKey[0]?.key ?? null };
   return { reportedKey: reported.key, verdict: "CONTRADICT", storedKey: rivals[0]?.key ?? null };
 }
 

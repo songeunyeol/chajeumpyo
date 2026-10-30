@@ -197,18 +197,18 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
     logger.warn({ err }, "특징 대조 실패");
     throw new AppError("AI_UNAVAILABLE", "지금은 확인할 수 없어요. 잠시 후 다시 시도해 주세요.");
   }
-  const j = judge(
-    comparison,
-    storedFeatures,
-    reportedFeatures.map((f) => f.key),
-  );
+  // 같은 종류라도 다른 측면만 말했으면(저장 종류가 있는 모름) 그 종류는 아직 확인하지 않은 것으로 보고 물어볼 수 있게 둔다
+  const mentionedKeys = comparison.features
+    .filter((f) => !(f.verdict === "UNKNOWN" && f.storedKey))
+    .map((f) => f.reportedKey);
+  const j = judge(comparison, storedFeatures, mentionedKeys);
   const itemName = item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null;
   // 보기 만들기(AI)도 트랜잭션 밖에서 한다
   const quiz = j.questionFeature
     ? await buildQuiz(
         j.questionFeature,
         storedFeatures,
-        reportedFeatures.map((f) => f.key),
+        mentionedKeys,
         { stored: item.detail?.color ?? null, reported: extracted.color ?? null },
         itemName,
       )
