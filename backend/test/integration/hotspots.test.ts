@@ -284,3 +284,23 @@ describe("기준 13. 구간이 높음이 되면 관리자에게 미리 알림, 7
     expect(await alertHotspot(seed.id, now)).toBe(0);
   });
 });
+
+describe("기준 14. 관리자 시연용 분실 다발은 로그인 없이, 실제 데이터와 섞이지 않는다 (10/30)", () => {
+  it("비로그인 200, 시연 표시, 운영 등록이 있어도 결과가 같다", async () => {
+    const path = "/api/v1/demo/admin/stats/hotspots?from=2026-10-01&to=2026-10-30";
+    const before = await request(app).get(path);
+    expect(before.status).toBe(200);
+    expect(before.body.isSeedData).toBe(true);
+    expect(before.body.priorities.length).toBeGreaterThan(0);
+    await add(LIB, "CHARGER", kst("2026-10-20", 13));
+    await add(LIB, "CHARGER", kst("2026-10-21", 13));
+    const after = await request(app).get(path);
+    expect(after.body).toEqual(before.body);
+    expect(JSON.stringify(after.body)).not.toContain("학술정보관");
+  });
+
+  it("입력 검증은 실제 통계와 같다", async () => {
+    const res = await request(app).get("/api/v1/demo/admin/stats/hotspots?from=2026-10-10&to=2026-10-01");
+    expect(res.status).toBe(400);
+  });
+});
