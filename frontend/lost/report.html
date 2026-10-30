@@ -105,14 +105,33 @@
 
   // 종류: 물건 이름을 적으면 미리 고른다. 사람이 직접 고르면 그 뒤로는 바꾸지 않는다
   const categorySelect = document.getElementById("lostCategorySelect");
-  for (const c of LostApi.CATEGORIES) categorySelect.add(new Option(LostApi.CATEGORY_LABELS[c], c));
+  // 세부 종류가 있는 큰 종류는 묶음으로 보여 준다 (예: 기타 전자기기 → 마우스, 키보드). 값은 "큰종류:세부종류"
+  for (const c of LostApi.CATEGORIES) {
+    const subs = LostApi.SUB_CATEGORIES[c];
+    if (!subs) {
+      categorySelect.add(new Option(LostApi.CATEGORY_LABELS[c], c));
+      continue;
+    }
+    const group = document.createElement("optgroup");
+    group.label = LostApi.CATEGORY_LABELS[c];
+    group.append(new Option(`${LostApi.CATEGORY_LABELS[c]} (잘 모르겠음)`, c));
+    for (const sub of subs) group.append(new Option(LostApi.SUB_CATEGORY_LABELS[sub], `${c}:${sub}`));
+    categorySelect.append(group);
+  }
   categorySelect.value = "EARPHONE";
+  /** 물건 이름으로 고를 값: 세부 종류까지 알면 "큰종류:세부종류", 아니면 큰 종류 */
+  const guessOption = (text) => {
+    const c = LostApi.guessCategory(text);
+    if (!c) return null;
+    const sub = LostApi.guessSubCategory(c, text);
+    return sub ? `${c}:${sub}` : c;
+  };
   let categoryTouched = false;
   categorySelect.addEventListener("change", () => {
     categoryTouched = true;
   });
   document.getElementById("lostItemInput").addEventListener("input", (e) => {
-    const guess = LostApi.guessCategory(e.target.value);
+    const guess = guessOption(e.target.value);
     if (guess && !categoryTouched) categorySelect.value = guess;
   });
 
@@ -197,10 +216,14 @@
   const reportErr = document.getElementById("reportErr");
   submitBtn.addEventListener("click", () => {
     reportErr.hidden = true;
-    const category = categorySelect.value;
-    const itemName = itemInput.value.trim() || LostApi.CATEGORY_LABELS[category];
+    // 서버는 큰 종류만 받는다. 세부 종류는 설명(물건 이름)에서 AI가 다시 읽으므로, 이름을 비우면 세부 종류 이름을 넣는다
+    const [category, sub] = categorySelect.value.split(":");
+    const itemName = itemInput.value.trim() || (sub ? LostApi.SUB_CATEGORY_LABELS[sub] : LostApi.CATEGORY_LABELS[category]);
     // 서버는 설명 한 줄(5~500자)을 받는다. 물건 이름과 기억나는 점을 이어 보낸다
-    const description = [itemName, memoInput.value.trim()].filter(Boolean).join(". ");
+    const subLabel = sub ? LostApi.SUB_CATEGORY_LABELS[sub] : "";
+    const description = [subLabel && !itemName.includes(subLabel) ? subLabel : "", itemName, memoInput.value.trim()]
+      .filter(Boolean)
+      .join(". ");
     if (description.length < LostApi.DESCRIPTION_MIN) {
       memoInput.classList.add("is-invalid");
       reportErr.textContent = "기억나는 점을 조금 더 적어 주세요. 색, 스티커, 케이스 같은 특징이 확인에 쓰여요.";
