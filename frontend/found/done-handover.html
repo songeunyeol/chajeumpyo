@@ -106,6 +106,8 @@
     window.NaverCampusMap.mount(document.getElementById("doneMapBox"), {
       buildingName: pinName,
       caption: `서경대 ${pinName} · 주운 곳`,
+      highlights: [{ name: pinName, label: `${pinName} · 주운 곳`, kind: "here" }],
+      office: true,
     });
   }
 </script>
