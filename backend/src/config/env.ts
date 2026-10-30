@@ -67,7 +67,7 @@ const Env = z.object({
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
   /**
    * 앞단 프록시 신뢰 설정(express trust proxy). 숫자는 홉 수, true/false, 또는 IP·서브넷 목록.
-   * Railway는 프록시 한 겹이라 기본 1. 틀리면 req.ip가 프록시 IP가 돼 IP 기준 제한이 모두에게 같이 걸린다.
+   * Render는 프록시 한 겹이라 기본 1. 틀리면 req.ip가 프록시 IP가 돼 IP 기준 제한이 모두에게 같이 걸린다.
    */
   TRUST_PROXY: z
     .string()

@@ -1,15 +1,19 @@
 // 관리자 화면 ↔ 백엔드 연결. 화면마다 이 파일 하나만 불러온다.
-// API 주소는 found/api.js와 같은 규칙: ?api=... 로 한 번 주면 기억하고, 없으면
+// API 주소는 found/api.js와 같은 규칙: 개발 주소에서만 ?api=... 로 한 번 주면 기억하고, 없으면
 // 개발(정적 서버 5500 포트)은 이 호스트의 4000 포트, 배포는 같은 주소의 /api/v1.
 // 로그인 토큰은 sessionStorage에만 둔다(탭을 닫으면 사라진다).
 (function () {
+  // ?api= 주소 바꾸기는 개발(포트가 붙은 주소, localhost, 사설 IP)에서만 받는다. 배포 주소에서는 무시한다
+  const devHost =
+    location.port !== "" || /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
   const params = new URLSearchParams(location.search);
-  try {
-    if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
-  } catch (_) {}
   let saved = null;
   try {
-    saved = sessionStorage.getItem("apiBase");
+    if (!devHost) sessionStorage.removeItem("apiBase");
+    else {
+      if (params.get("api")) sessionStorage.setItem("apiBase", params.get("api"));
+      saved = sessionStorage.getItem("apiBase");
+    }
   } catch (_) {}
   const devStatic = location.port === "5500";
   const API_BASE =

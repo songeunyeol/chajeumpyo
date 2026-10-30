@@ -14,7 +14,7 @@ import { createFrontendRouter } from "./routes/frontend";
 export function createApp() {
   const app = express();
 
-  // 배포 환경 프록시 뒤에서 IP 기반 등록 제한이 동작하도록. 홉 수는 TRUST_PROXY (기본 1, Railway 기준)
+  // 배포 환경 프록시 뒤에서 IP 기반 등록 제한이 동작하도록. 홉 수는 TRUST_PROXY (기본 1, Render 기준)
   app.set("trust proxy", env.TRUST_PROXY);
   app.use(helmet());
   app.use(cors({ origin: corsOrigins }));
