@@ -79,7 +79,7 @@ registry.registerPath({
   tags: ["습득물"],
   summary: "두 단계 등록 2: 위치·보관 방식 확정",
   description:
-    "analyze 응답의 confirmToken과 위치를 보내 등록을 끝낸다. 응답은 POST /found-items와 같다. 귀중품(isValuable)은 storageType이 HANDED_OVER여야 하고, IN_PLACE면 400 VALUABLE_HAND_OVER_REQUIRED이며 초안은 남아 다시 확정할 수 있다.",
+    "analyze 응답의 confirmToken과 위치를 보내 등록을 끝낸다. 응답은 POST /found-items와 같다. 귀중품(isValuable)도 IN_PLACE로 둘 수 있다(화면이 보관처를 추천만 한다). 그 자리에 둔 귀중품은 관리자에게 VALUABLE_IN_PLACE 알림이 간다.",
   request: {
     params: FoundItemIdParams,
     body: { content: { "application/json": { schema: ConfirmFoundItemBody } } },
@@ -89,7 +89,7 @@ registry.registerPath({
       description: "등록됨 (REGISTERED 또는 REVIEW)",
       content: { "application/json": { schema: RegisterFoundItemResponse } },
     },
-    400: errorResponse("VALIDATION_ERROR, VALUABLE_HAND_OVER_REQUIRED"),
+    400: errorResponse("VALIDATION_ERROR"),
     404: errorResponse("NOT_FOUND: 없거나, 토큰이 틀리거나, 확정 시간이 지남"),
     409: errorResponse("ALREADY_CONFIRMED"),
   },
@@ -105,7 +105,7 @@ registry.registerPath({
     "AI 분석이 실패해도 201로 응답하고 status가 REVIEW다.",
     `사진은 ${MAX_IMAGE_MB}MB 이하 JPG·PNG·WEBP·HEIC. 같은 기기·IP는 10분에 5건까지.`,
     "동의(외부 AI 처리)와 캡차(X-Captcha-Token 헤더)가 필요하다.",
-    "AI가 귀중품으로 보는데 IN_PLACE면 사진을 저장하지 않고 400 VALUABLE_HAND_OVER_REQUIRED. AI가 실패하면(REVIEW) 막지 않는다.",
+    "귀중품도 IN_PLACE로 등록할 수 있다. 그 자리에 둔 귀중품은 관리자에게 VALUABLE_IN_PLACE 알림이 간다.",
   ].join(" "),
   request: {
     body: {
@@ -125,7 +125,7 @@ registry.registerPath({
       description: "등록됨 (REGISTERED 또는 REVIEW)",
       content: { "application/json": { schema: RegisterFoundItemResponse } },
     },
-    400: errorResponse("VALIDATION_ERROR, CAPTCHA_FAILED, VALUABLE_HAND_OVER_REQUIRED"),
+    400: errorResponse("VALIDATION_ERROR, CAPTCHA_FAILED"),
     413: errorResponse("IMAGE_TOO_LARGE"),
     422: errorResponse("NO_OBJECT_DETECTED"),
     429: errorResponse("RATE_LIMITED"),

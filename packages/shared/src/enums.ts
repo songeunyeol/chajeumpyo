@@ -499,12 +499,13 @@ export const NotificationType = z.enum([
   "SYSTEM",
   "ITEM_INCOMING",
   "PICKUP_SCHEDULED",
+  "VALUABLE_IN_PLACE",
 ]);
 export type NotificationType = z.infer<typeof NotificationType>;
 
 /**
  * 관리자 알림 구분 (QA 10/30 3차). 확인 필요: 사람이 판단해야 하는 일(잠금, 여러 계정 열람, 반복 분실 높음).
- * 정보: 할 일 없이 알아 두면 되는 일(맡긴 물건 등록, 수령 예정). 확인 통과 자체는 분실자 개인 활동이라 알리지 않는다.
+ * 정보: 할 일 없이 알아 두면 되는 일(맡긴 물건 등록, 수령 예정). 그 자리에 둔 귀중품은 회수를 판단해야 해서 확인 필요. 확인 통과 자체는 분실자 개인 활동이라 알리지 않는다.
  */
 export const NOTIFICATION_KIND: Record<NotificationType, "ACTION" | "INFO"> = {
   NEW_CANDIDATE: "INFO",
@@ -513,6 +514,7 @@ export const NOTIFICATION_KIND: Record<NotificationType, "ACTION" | "INFO"> = {
   SYSTEM: "ACTION",
   ITEM_INCOMING: "INFO",
   PICKUP_SCHEDULED: "INFO",
+  VALUABLE_IN_PLACE: "ACTION",
 };
 
 export const ClosedReason = z.enum(["DISPOSED", "MISREGISTERED"]);

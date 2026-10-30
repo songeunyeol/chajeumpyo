@@ -1,17 +1,22 @@
-import { floorLabel, itemLabel, subCategoryWithin } from "@chajeumpyo/shared";
+import { floorLabel, itemLabel, subCategoryWithin, VALUABLE_CATEGORIES } from "@chajeumpyo/shared";
 import { withJosa } from "../lib/josa";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
 import { adminsInChargeOf } from "./notifications";
 
+function isValuableCategory(category: string | null): boolean {
+  return !!category && (VALUABLE_CATEGORIES as readonly string[]).includes(category);
+}
+
 /**
  * 교무처 실무용 정보 알림 (QA 10/30 3차: 관리자 알림에 등록·QR 발급이 안 뜸).
  * - 맡긴 물건 등록(ITEM_INCOMING): 습득자가 "보관처에 맡김"으로 등록하면, 실물이 오기를 기다릴 수 있게
  * - 수령 예정(PICKUP_SCHEDULED): 확인을 통과한 사람이 수령 QR을 받으면, 24시간 안에 찾으러 온다
+ * - 그 자리에 둔 귀중품(VALUABLE_IN_PLACE): 귀중품도 그 자리에 둘 수 있게 바꿨으므로(10/30), 교무처가 필요하면 회수하게
  * 확인 통과 자체는 분실자 개인 활동이라 알리지 않는다(관리자가 할 일이 없고, 열람 기록은 물건 상세에 남는다).
  * 알림에는 공개 정보(종류·건물·층)만 담는다. 같은 관리자에게 같은 물건은 안 읽은 알림이 있으면 다시 만들지 않는다.
  */
-type AdminAlertType = "ITEM_INCOMING" | "PICKUP_SCHEDULED";
+type AdminAlertType = "ITEM_INCOMING" | "PICKUP_SCHEDULED" | "VALUABLE_IN_PLACE";
 
 async function notifyAdminsOnce(type: AdminAlertType, foundItemId: string, message: string): Promise<number> {
   const item = await prisma.foundItem.findUnique({
@@ -61,6 +66,14 @@ export async function alertItemIncoming(foundItemId: string): Promise<number> {
   if (!d || d.isSeed || d.storageType !== "HANDED_OVER") return 0;
   const message = `${d.place ? `${d.place}에서 주운 ` : ""}${withJosa(d.label, "을/를")} 맡긴다고 등록했어요. 실물이 오면 확인해 주세요.`;
   return notifyAdminsOnce("ITEM_INCOMING", foundItemId, message);
+}
+
+/** "북악관 2층에 귀중품(반지갑)이 그 자리에 등록됐어요. 필요하면 교무처로 옮겨 주세요." */
+export async function alertValuableInPlace(foundItemId: string): Promise<number> {
+  const d = await describe(foundItemId);
+  if (!d || d.isSeed || d.storageType !== "IN_PLACE" || !isValuableCategory(d.category)) return 0;
+  const message = `${d.place ? `${d.place}에 ` : ""}귀중품(${d.label})이 그 자리에 등록됐어요. 필요하면 교무처로 옮겨 주세요.`;
+  return notifyAdminsOnce("VALUABLE_IN_PLACE", foundItemId, message);
 }
 
 /** "무선 마우스 수령 예정: 확인을 통과한 학생이 수령 QR을 받았어요(24시간 유효)." */

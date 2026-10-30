@@ -65,6 +65,13 @@ describe("기준 1. 신고를 저장하고 후보를 함께 준다", () => {
     expect(saved).toMatchObject({ category: "EARPHONE", buildingId: A, description: DESC });
     expect(saved.descriptionHash).toMatch(/^[0-9a-f]{64}$/);
     expect(saved.extractedAttributes).toMatchObject({ color: "WHITE" });
+    // 화면의 "AI가 한 일": 신고자 본인 설명에서 읽은 값만 돌려준다
+    expect(res.body.aiRead).toMatchObject({ category: "EARPHONE", color: "WHITE" });
+    expect(Array.isArray(res.body.aiRead.features)).toBe(true);
+    const list = await request(app)
+      .get(`/api/v1/lost-reports/${res.body.id}/candidates`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(list.body.aiRead).toMatchObject({ color: "WHITE" });
     const [row] = await prisma.$queryRaw<
       { dims: number }[]
     >`SELECT vector_dims(embedding) AS dims FROM lost_report WHERE id = ${res.body.id}::uuid`;
@@ -361,9 +368,12 @@ describe("기준 7. 순서는 습득 시각 최신순, 응답에 비공개 정�
     const newer = await createFoundItem({ buildingId: B, category: "CHARGER", color: "BLACK", foundAt: hoursAgo(0.5) });
     const res = await post(report());
     expect(res.body.candidates.map((c: { foundItemId: string }) => c.foundItemId)).toEqual([newer.id, best.id]);
-    const text = JSON.stringify(res.body);
+    // 후보에는 습득물의 비공개 정보가 없다. aiRead는 신고자 본인 설명에서 읽은 값이라 따로 본다
+    const text = JSON.stringify(res.body.candidates);
     for (const secret of ["WHITE", "BLACK", "score", "color", "곰돌이", "description", "categoryAlt", "public.jpg"])
       expect(text).not.toContain(secret);
+    expect(JSON.stringify(res.body.aiRead)).not.toContain("BLACK");
+    expect(Object.keys(res.body).sort()).toEqual(["aiRead", "candidates", "id", "status"]);
     expect(Object.keys(res.body.candidates[0]).sort()).toEqual([
       "attemptsLeft",
       "awaitingPickup",

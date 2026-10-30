@@ -208,3 +208,143 @@ describe("스토리텔링 화면 (QA 10/30 최종)", () => {
     }
   });
 });
+
+describe("학교 메일 칸 (@skuniv.ac.kr 고정)", () => {
+  type SchoolEmailApi = {
+    SCHOOL_DOMAIN: string;
+    schoolEmailId: (raw: string) => { id: string; error: string };
+    isValidSchoolId: (id: string) => boolean;
+  };
+  const load = (): SchoolEmailApi => {
+    const win: { SchoolEmail?: SchoolEmailApi } = {};
+    new Function("window", read("frontend/lost/school-email.js"))(win);
+    return win.SchoolEmail as SchoolEmailApi;
+  };
+  const se = load();
+
+  it("아이디만 적으면 그대로 쓴다", () => {
+    expect(se.schoolEmailId(" song12 ")).toEqual({ id: "song12", error: "" });
+  });
+
+  it("학교 주소를 통째로 붙여 넣으면 아이디만 남긴다", () => {
+    expect(se.schoolEmailId("song12@skuniv.ac.kr")).toEqual({ id: "song12", error: "" });
+    expect(se.schoolEmailId("Song12@SKUNIV.AC.KR")).toEqual({ id: "Song12", error: "" });
+    expect(se.schoolEmailId("song12@sku")).toEqual({ id: "song12", error: "" });
+  });
+
+  it("다른 도메인은 안내한다", () => {
+    expect(se.schoolEmailId("song12@gmail.com").error).toBe("서경대 메일만 쓸 수 있어요.");
+  });
+
+  it("공백·@가 있는 아이디는 받지 않는다", () => {
+    expect(se.isValidSchoolId("song12")).toBe(true);
+    expect(se.isValidSchoolId("")).toBe(false);
+    expect(se.isValidSchoolId("so ng")).toBe(false);
+  });
+
+  it("가입·로그인 화면은 아이디 칸과 고정 접미사를 쓴다", () => {
+    for (const page of ["frontend/lost/signup.html", "frontend/lost/login.html"]) {
+      const html = read(page);
+      expect(html).toContain('class="email-suffix"');
+      expect(html).toContain("@skuniv.ac.kr</span>");
+      expect(html).toContain('src="school-email.js"');
+      expect(html).not.toContain('placeholder="아이디@skuniv.ac.kr"');
+    }
+    expect(read("frontend/lost/signup.html")).toContain("서경대 학생·교직원만 쓸 수 있어요");
+  });
+});
+
+function lostApiFns(): {
+  aiReadSummary: (aiRead: unknown) => string;
+  passExplanation: (claim: unknown, aiRead: unknown, itemId?: string) => string;
+} {
+  const api = read("frontend/lost/api.js");
+  const helpers = api.slice(api.indexOf("const aiReadSummary"), api.indexOf("/** 화면 이름"));
+  const body = `const COLOR_LABELS = { WHITE: "흰색" };
+const itemLabel = (category) => ({ EARPHONE: "무선 이어폰", KEY: "열쇠" })[category] || "";
+${helpers}
+return { aiReadSummary, passExplanation };`;
+  return new Function(body)() as ReturnType<typeof lostApiFns>;
+}
+
+describe("AI가 한 일 (교수 평가 10/30: 분실자 화면에 AI가 보이지 않음)", () => {
+  it("후보 화면에 AI가 신고 설명에서 읽은 것을 보여 준다", () => {
+    const html = read("frontend/lost/candidates.html");
+    expect(html).toContain('id="aiReadBox"');
+    expect(html).toContain("AI가 한 일");
+    const { aiReadSummary } = lostApiFns();
+    expect(
+      aiReadSummary({
+        category: "EARPHONE",
+        subCategory: null,
+        color: "WHITE",
+        brand: null,
+        features: [{ key: "sticker", value: "곰돌이 스티커" }],
+      }),
+    ).toContain("곰돌이 스티커");
+    expect(aiReadSummary(null)).toBe("");
+  });
+
+  it("통과 화면은 신고자 표현으로 무엇이 맞았는지 말하고, 다른 물건의 판정이면 아무것도 말하지 않는다", () => {
+    const { passExplanation } = lostApiFns();
+    const aiRead = {
+      category: "KEY",
+      subCategory: null,
+      color: null,
+      brand: null,
+      features: [{ key: "keyring", value: "냥이 열쇠고리" }],
+    };
+    const claim = { result: "PASS", matchedFields: ["feature:keyring"], foundItemId: "a" };
+    expect(passExplanation(claim, aiRead, "a")).toContain("냥이 열쇠고리");
+    expect(passExplanation(claim, aiRead, "b")).toBe("");
+    expect(passExplanation({ result: "PASS", foundItemId: "a" }, aiRead, "a")).toContain("확인 질문");
+    expect(passExplanation({ result: "FAIL" }, aiRead, "a")).toBe("");
+    for (const page of ["frontend/lost/item.html", "frontend/lost/item-handover.html"]) {
+      expect(read(page)).toContain('id="passAiLine"');
+    }
+  });
+
+  it("신고 건물 목록이 늦게 와도 고른 건물을 지우지 않는다", () => {
+    const html = read("frontend/lost/report.html");
+    expect(html).toContain("dataset.touched");
+    expect(html).not.toContain('<option value="혜인관" selected>');
+    expect(html).toMatch(/\/\^\\d\+\$\/\.test\(rawBuilding\)/);
+  });
+
+  it("문구가 실제 동작과 맞는다", () => {
+    const guide = read("frontend/guide.html");
+    expect(guide).toContain("최대 3개");
+    expect(guide).toContain("모든 계정을 합쳐 10번");
+    expect(guide).toContain("사진 한 장으로 AI가 하는 일");
+    expect(read("frontend/lost/candidates.html")).not.toContain("곰돌이 스티커");
+    expect(read("frontend/lost/api.js")).toContain('RELATED_CATEGORY: "연관 종류"');
+  });
+});
+
+describe("귀중품은 막지 않고 보관처를 추천한다 (10/30 정책 변경, QA B11)", () => {
+  const register = read("frontend/found/register.html");
+
+  it("그 자리에 둠을 숨기지 않고, 누르면 앱 안 추천 창을 띄운다", () => {
+    expect(register).not.toContain("lockToHandover");
+    expect(register).not.toContain("VALUABLE_HAND_OVER_REQUIRED");
+    expect(register).toContain('id="valuableModal"');
+    expect(register).toContain("귀중품이라 보관처에 맡기는 걸 추천드려요!");
+    expect(register).toContain("그대로 둘게요");
+    expect(register).toContain("보관처에 맡길게요");
+  });
+
+  it("가장 가까운 보관처를 거리로 고르고, 완료 화면도 한 번 더 권한다", () => {
+    expect(register).toContain("function nearestPlace");
+    expect(register).toContain("FoundApi.distanceM");
+    expect(read("frontend/found/api.js")).toMatch(/nearestTo,\s+distanceM,/);
+    expect(read("frontend/found/done-inplace.html")).toContain("가능하면 보관처");
+  });
+
+  it("받침에 맞춰 이/가를 붙인다", () => {
+    const start = register.indexOf("const subjectJosa");
+    const body = register.slice(start, register.indexOf("};", start) + 2);
+    const josa = new Function(`${body}; return subjectJosa;`)() as (w: string) => string;
+    expect(josa("교무처")).toBe("가");
+    expect(josa("학술정보관")).toBe("이");
+  });
+});

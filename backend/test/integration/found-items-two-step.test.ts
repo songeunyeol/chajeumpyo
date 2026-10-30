@@ -11,7 +11,7 @@ import { placeScore } from "../../src/matching/score";
 import { expireUnclaimedItems } from "../../src/services/data-purge";
 import { REVIEW_MESSAGE } from "../../src/services/found-items";
 import { readLocalFile } from "../../src/storage/local";
-import { finderConsentFields, signupUser } from "../helpers/auth";
+import { createAdmin, finderConsentFields, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
 import { createAttempt } from "../helpers/fixtures";
 import { noisyJpeg } from "../helpers/images";
@@ -323,7 +323,15 @@ describe("③ 보관처에 맡기면 주운 건물은 선택 사항", () => {
   });
 });
 
-describe("④ 귀중품은 보관처(센터·경비실)에만 맡길 수 있다 (QA B11)", () => {
+describe("④ 귀중품도 그 자리에 둘 수 있다. 화면이 보관처를 추천하고, 교무처에 알린다 (10/30 정책 변경, QA B11)", () => {
+  /** 그 자리에 둔 물건은 보관처가 없어 교무처(CENTER) 관리자가 맡는다 (open-issues #18) */
+  async function centerAdmin() {
+    const center = await prisma.storagePlace.create({
+      data: { name: "교무처", buildingId, guideText: "혜인관 1층 교무처 · 평일 9~18시", org: "CENTER" },
+    });
+    return createAdmin("center@skuniv.ac.kr", "password123", center.id);
+  }
+
   function extractAs(category: "UMBRELLA" | "WALLET") {
     setAiClient({
       ...mockAiClient,
@@ -336,33 +344,30 @@ describe("④ 귀중품은 보관처(센터·경비실)에만 맡길 수 있다 
     });
   }
 
-  it("귀중품을 그 자리에 두면 400, 초안은 남아 같은 토큰으로 보관처에 맡기면 201", async () => {
+  it("귀중품을 그 자리에 두면 201, 담당 관리자에게 '그 자리에 둔 귀중품' 알림을 한 번 보낸다", async () => {
+    const admin = await centerAdmin();
     const d = await draft(); // 가짜 AI: 이어폰 (isValuable: true)
     const res = await confirm(d.id, { confirmToken: d.confirmToken, buildingId, storageType: "IN_PLACE" });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatchObject({
-      code: "VALUABLE_HAND_OVER_REQUIRED",
-      message: "귀중품은 보관처(교무처)에 맡겨 주세요.",
-      details: [{ path: "storageType" }],
-    });
-    const row = await prisma.foundItem.findUniqueOrThrow({ where: { id: d.id } });
-    expect(row).toMatchObject({ status: "ANALYZING", storageType: null, buildingId: null });
-    expect(await prisma.notification.count()).toBe(0);
-
-    const ok = await confirm(d.id, { confirmToken: d.confirmToken, ...kept() });
-    expect(ok.status).toBe(201);
-    expect(ok.body).toMatchObject({ status: "REGISTERED", storageType: "HANDED_OVER", handOverAdvice: null });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ status: "REGISTERED", storageType: "IN_PLACE", storagePlace: null });
+    const alerts = await prisma.notification.findMany({ where: { userId: admin.id, type: "VALUABLE_IN_PLACE" } });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]?.foundItemId).toBe(d.id);
+    expect(alerts[0]?.message).toContain("그 자리에 등록됐어요");
+    // 맡긴 물건 알림(ITEM_INCOMING)은 가지 않는다
+    expect(await prisma.notification.count({ where: { type: "ITEM_INCOMING" } })).toBe(0);
   });
 
-  it("새 고가품 종류(지갑)도 막고, 귀중품이 아니면(우산) 그 자리에 둘 수 있다", async () => {
+  it("지갑을 그 자리에 둬도 201, 귀중품이 아니면(우산) 알림 없이 그 자리에 둔다", async () => {
+    const admin = await centerAdmin();
     extractAs("WALLET");
     const wallet = await draft();
-    const blocked = await confirm(wallet.id, {
+    const walletRes = await confirm(wallet.id, {
       confirmToken: wallet.confirmToken,
       buildingId,
       storageType: "IN_PLACE",
     });
-    expect(blocked.body.error.code).toBe("VALUABLE_HAND_OVER_REQUIRED");
+    expect(walletRes.status).toBe(201);
 
     extractAs("UMBRELLA");
     const res = await analyze(await noisyJpeg(), "umbrella-agent");
@@ -374,6 +379,8 @@ describe("④ 귀중품은 보관처(센터·경비실)에만 맡길 수 있다 
     });
     expect(done.status).toBe(201);
     expect(done.body).toMatchObject({ status: "REGISTERED", storageType: "IN_PLACE", storagePlace: null });
+    const alerts = await prisma.notification.findMany({ where: { userId: admin.id, type: "VALUABLE_IN_PLACE" } });
+    expect(alerts.map((a) => a.foundItemId)).toEqual([wallet.id]);
   });
 
   it("AI가 실패해 종류를 모르면(REVIEW) 그 자리에 둠도 받는다", async () => {
@@ -407,7 +414,7 @@ describe("⑤ 습득자가 종류를 고친다 (AI 오인, 10/29 안경 → 학�
     expect(row.detail).toMatchObject({ title: "안경·선글라스", description: "안경·선글라스" });
   });
 
-  it("고친 종류가 귀중품이면 그 자리에 둘 수 없고, 다른 종류의 세부 종류는 버린다", async () => {
+  it("고친 종류가 귀중품이어도 그 자리에 둘 수 있고, 다른 종류의 세부 종류는 버린다", async () => {
     setAiClient({
       ...mockAiClient,
       extractFoundItem: async (...args) => ({
@@ -418,15 +425,22 @@ describe("⑤ 습득자가 종류를 고친다 (AI 오인, 10/29 안경 → 학�
       }),
     });
     const d = await draft();
-    const blocked = await confirm(d.id, {
+    const wallet = await confirm(d.id, {
       confirmToken: d.confirmToken,
       buildingId,
       storageType: "IN_PLACE",
       category: "WALLET",
     });
-    expect(blocked.body.error.code).toBe("VALUABLE_HAND_OVER_REQUIRED");
+    expect(wallet.status).toBe(201);
+    expect(wallet.body).toMatchObject({ category: "WALLET", storageType: "IN_PLACE" });
 
-    const ok = await confirm(d.id, { confirmToken: d.confirmToken, ...kept(), category: "BAG", subCategory: "MOUSE" });
+    const other = await draft();
+    const ok = await confirm(other.id, {
+      confirmToken: other.confirmToken,
+      ...kept(),
+      category: "BAG",
+      subCategory: "MOUSE",
+    });
     expect(ok.status).toBe(201);
     expect(ok.body).toMatchObject({ category: "BAG", subCategory: null });
   });

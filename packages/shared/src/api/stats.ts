@@ -39,6 +39,8 @@ export const HotspotPriority = z.object({
    * 모델 예측이 아니라 최근 추세를 그대로 이어 본 값이다
    */
   expectedNextWeek: z.number(),
+  /** 추세·예상의 근거 한 줄 (앞·뒤 절반 건수와 계산식). 화면에 그대로 보여 준다 */
+  forecastBasis: z.string(),
   /** 한 문장 요약 */
   summary: z.string(),
   /** 제안하는 예방 조치 */

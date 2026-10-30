@@ -16,6 +16,11 @@
   <p class="lead">확인 전에는 사진이 모자이크로 가려져요.<br>일치하는 이유만 먼저 공개돼요.</p>
 
   <div class="candidate-list is-animating" id="candidateList"></div>
+  <div class="card ai-read" id="aiReadBox" hidden>
+    <p class="ai-read-title">🤖 AI가 한 일</p>
+    <p class="ai-read-line">설명에서 <b id="aiReadText"></b>을(를) 읽었어요.</p>
+    <p class="note" style="margin-top:6px">이 내용을 습득물 사진에서 AI가 뽑아 둔 종류·색·특징과 의미로 비교해 가까운 물건을 골랐어요. 사진의 숨은 특징은 확인을 통과해야 보여요.</p>
+  </div>
   <p class="note danger" id="candErr" hidden></p>
 
   <div class="dock">
@@ -48,7 +53,7 @@
       </div>
       <label class="field" style="margin-bottom:6px">
         <span>추가 설명 <small class="opt">(선택) 빠뜨린 특징을 적어요</small></span>
-        <input id="claimExtra" maxlength="200" placeholder="예: 뒷면 오른쪽에 곰돌이 스티커" autocomplete="off" style="box-shadow:inset 0 0 0 1px var(--line)">
+        <input id="claimExtra" maxlength="200" placeholder="예: 손잡이에 빨간 리본이 묶여 있어요" autocomplete="off" style="box-shadow:inset 0 0 0 1px var(--line)">
       </label>
       <p class="note danger" id="claimDescNote" style="margin:4px 0 12px" hidden></p>
       <div class="modal-actions">
@@ -422,7 +427,16 @@
       candErr.hidden = false;
       candidates = [];
     }
+    renderAiRead();
     renderCards(round);
+  }
+
+  /** AI가 신고 설명에서 읽은 것 (신고자 본인 표현에서 나온 값만) */
+  function renderAiRead() {
+    const box = document.getElementById("aiReadBox");
+    const text = LostApi.aiReadSummary(LostApi.store.get(LostApi.KEYS.aiRead));
+    document.getElementById("aiReadText").textContent = text ? `'${text}'` : "";
+    box.hidden = !text;
   }
 
   function syncRefreshUI() {

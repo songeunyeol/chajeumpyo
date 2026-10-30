@@ -59,7 +59,7 @@ export const AnalyzeFoundItemResponse = z.object({
   category: Category.nullable(),
   /** 세부 종류 (예: CHARGER 안의 MOUSE). 없으면 null. 화면 이름은 itemLabel(category, subCategory) */
   subCategory: SubCategory.nullable(),
-  /** 귀중품이면 true. 이때 확정은 HANDED_OVER만 받으므로 등록 화면은 그 자리에 둠을 감춘다 (open-issues #32, QA B11) */
+  /** 귀중품이면 true. 등록 화면은 보관처에 맡김을 기본으로 두고, 그 자리에 둠을 고르면 보관처를 추천한다 (10/30 정책 변경, QA B11) */
   isValuable: z.boolean(),
   /** 분석 실패 안내 문구. 성공하면 null */
   message: z.string().nullable(),
@@ -102,8 +102,8 @@ export const RegisterFoundItemResponse = z.object({
   /** REVIEW일 때 안내 문구 */
   message: z.string().nullable(),
   /**
-   * 예전 고가품 안내 (open-issues #32 P0). 고가품을 그 자리에 두는 등록은 이제 VALUABLE_HAND_OVER_REQUIRED로 거절하므로
-   * 늘 null이다. 응답 호환을 위해 필드만 남긴다 (QA B11)
+   * 예전 고가품 안내 (open-issues #32 P0). 보관처 추천은 등록 화면이 확정 전에 직접 보여 주므로(10/30)
+   * 늘 null이다. 응답 호환을 위해 필드만 남긴다
    */
   handOverAdvice: z
     .object({

@@ -192,6 +192,7 @@ describe("기준 11. 먼저 손볼 구간: 반복 탐지·우선순위·예방 �
       level: "HIGH",
       // 10/01~10/10의 뒤쪽 절반(5일)에 3건 → 하루 0.6건 × 7
       expectedNextWeek: 4.2,
+      forecastBasis: "5일씩 나눠 보면 앞 1건 → 최근 3건. 다음 7일 ≈ 최근 3건 ÷ 5일 × 7 (기간이 짧아 참고용)",
     });
     expect(first.summary).toBe("학술정보관 오후 1시~3시 기타 전자기기 분실 4건 (최근 늘고 있어요, 보관 중 3건)");
     expect(first.action).toContain("콘센트");

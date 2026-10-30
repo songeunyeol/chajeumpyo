@@ -13,17 +13,22 @@
 <main class="screen" id="loginScreen" style="touch-action:none;user-select:none">
   <header class="bar"><a class="back" href="../index.html">←</a></header>
   <h1>잃어버렸어요</h1>
-  <p class="lead">학교 이메일로 로그인해요.</p>
+  <p class="lead">서경대 학교 메일로 로그인해요.</p>
 
   <label class="field">
-    <span>학교 이메일</span>
-    <input id="loginEmail" type="email" placeholder="아이디@skuniv.ac.kr" autocomplete="username">
+    <span id="loginEmailLabel">서경대 메일 아이디</span>
+    <span class="email-fixed">
+      <input id="loginEmailId" type="text" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="아이디" autocomplete="username" aria-labelledby="loginEmailLabel loginEmailSuffix" aria-describedby="loginErr">
+      <span class="email-suffix" id="loginEmailSuffix">@skuniv.ac.kr</span>
+    </span>
+    <!-- 서버로 보내는 전체 주소. 아이디 칸에서 만든다 -->
+    <input id="loginEmail" type="hidden">
   </label>
   <label class="field">
     <span>비밀번호</span>
     <input id="loginPw" type="password" placeholder="8자 이상" autocomplete="current-password">
   </label>
-  <p class="note danger" id="loginErr" hidden style="margin-top:-6px;margin-bottom:4px">서경대 이메일(@skuniv.ac.kr)과 8자 이상 비밀번호를 확인해 주세요.</p>
+  <p class="note danger" id="loginErr" hidden style="margin-top:-6px;margin-bottom:4px">서경대 메일 아이디와 8자 이상 비밀번호를 확인해 주세요.</p>
 
   <p class="or">또는</p>
   <div class="social" aria-label="간편 로그인">
@@ -58,12 +63,19 @@
   </div>
 </main>
 <script src="api.js"></script>
+<script src="school-email.js"></script>
 <script>
   // 이미 로그인했으면 홈으로
   if (LostApi.isLoggedIn()) location.replace("home.html");
 
   const loginScreen = document.getElementById("loginScreen");
-  const emailInput = document.getElementById("loginEmail");
+  const emailInput = document.getElementById("loginEmailId");
+  const loginErrEl = document.getElementById("loginErr");
+  const schoolEmail = SchoolEmail.bindSchoolEmail(emailInput, document.getElementById("loginEmail"), (message) => {
+    loginErrEl.textContent = message;
+    loginErrEl.hidden = false;
+    emailInput.classList.add("is-invalid");
+  });
   const pwInput = document.getElementById("loginPw");
   const loginErr = document.getElementById("loginErr");
   const loginBtn = document.getElementById("loginBtn");
@@ -87,17 +99,15 @@
     setProgress(0, false);
   }
 
-  function isValidSkunivEmail(v) {
-    return /^[^\s@]+@skuniv\.ac\.kr$/i.test(v.trim());
-  }
 
   // 1. 잘못된 양식으로 로그인 버튼을 눌렀을 때: 로그인 버튼이 올라가며 뒤에 있던 회원가입 버튼 노출
   loginBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    const validEmail = isValidSkunivEmail(emailInput.value);
+    const validEmail = schoolEmail.valid();
     const validPw = pwInput.value.length >= 8;
 
     if (!validEmail || !validPw) {
+      loginErr.textContent = schoolEmail.error() || "서경대 메일 아이디와 8자 이상 비밀번호를 확인해 주세요.";
       loginErr.hidden = false;
       openSignup();
       if (!validEmail) {
@@ -109,10 +119,10 @@
     }
     // POST /auth/login. 틀리면 401 (이메일·비밀번호 어느 쪽인지 알려 주지 않는다)
     loginBtn.disabled = true;
-    LostApi.login(emailInput.value.trim(), pwInput.value)
+    LostApi.login(schoolEmail.email(), pwInput.value)
       .then(() => {
         try {
-          sessionStorage.setItem("signupEmail", emailInput.value.trim());
+          sessionStorage.setItem("signupEmail", schoolEmail.email());
         } catch (_) {}
         window.location.href = "home.html";
       })
