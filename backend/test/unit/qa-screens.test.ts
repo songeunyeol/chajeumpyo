@@ -468,10 +468,8 @@ describe("QA 10/31: 화면 문구·기본값", () => {
       expect(read(f)).toContain("3번 틀리면 다시 확인할 수 없고(기다려도 풀리지 않아요)");
   });
 
-  it("첫 화면 부제목은 제목 아래 줄에 놓인다", () => {
-    const index = read("frontend/index.html");
-    expect(index).toMatch(/\.title \{[^}]*flex-direction: column/);
-    expect(index).not.toContain("door-map");
+  it("첫 화면에 지도는 다시 넣지 않는다", () => {
+    expect(read("frontend/index.html")).not.toContain("door-map");
   });
 });
 
