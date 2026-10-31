@@ -454,6 +454,17 @@ describe("QA 10/31: 화면 문구·기본값", () => {
     expect(read("frontend/lost/item-handover.html")).toContain('get("qr") === "1") qrBtn.click()');
   });
 
+  it("카메라 없는 PC: 학생 QR 아래 8자리 수령 코드와 복사 버튼, 관리자는 그 코드를 넣는다 (10/31 검증 #13)", () => {
+    const handover = read("frontend/lost/item-handover.html");
+    expect(handover).toContain('id="codeValue"');
+    expect(handover).toContain('id="codeCopyBtn"');
+    expect(handover).toContain("QR이 안 읽히면 교무처에 이 코드를 불러 주세요");
+    expect(handover).toContain("codeValue.textContent = r.shortCode");
+    const scanPage = read("frontend/admin/scan.html");
+    expect(scanPage).toContain("학생 화면의 8자리 코드");
+    expect(scanPage).toContain("RATE_LIMITED:");
+  });
+
   it("확인 모달과 질문 화면에 3번 틀리면 풀리지 않는 잠금 규칙을 처음부터 알린다", () => {
     for (const f of ["frontend/lost/candidates.html", "frontend/lost/question.html"])
       expect(read(f)).toContain("3번 틀리면 다시 확인할 수 없고(기다려도 풀리지 않아요)");

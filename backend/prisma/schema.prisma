@@ -352,7 +352,9 @@ model Pickup {
   status             PickupStatus @default(ISSUED)
   qrTokenHash        String?      @map("qr_token_hash")
   qrExpiresAt        DateTime?    @map("qr_expires_at")
-  processedBy        User?        @relation("PickupAdmin", fields: [processedByAdminId], references: [id])
+  /// 카메라 없이 넣는 8자리 수령 코드의 HMAC (#13). QR과 같은 때 만들고 같은 때 만료된다. 원문은 저장하지 않는다
+  shortCodeHash      String?      @map("short_code_hash")
+  processedBy       User?        @relation("PickupAdmin", fields: [processedByAdminId], references: [id])
   processedByAdminId String?      @map("processed_by_admin_id") @db.Uuid
   /// IN_PERSON일 때 관리자가 남긴 신분 확인 메모 (개인정보). 수령 기록과 함께 30일 뒤 지운다 (F-12)
   verificationNote   String?      @map("verification_note")
@@ -361,6 +363,7 @@ model Pickup {
   purgeAfter         DateTime?    @map("purge_after")
 
   @@unique([foundItemId], map: "pickup_one_completed_per_item", where: raw("status = 'COMPLETED' AND method <> 'DEMO'"))
+  @@unique([shortCodeHash], map: "pickup_short_code_issued", where: raw("status = 'ISSUED' AND short_code_hash IS NOT NULL"))
   @@index([foundItemId])
   @@index([userId, status])
   @@map("pickup")

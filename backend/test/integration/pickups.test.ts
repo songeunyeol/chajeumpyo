@@ -3,6 +3,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app";
 import { purgeExpiredRecords } from "../../src/jobs/record-purge";
+import { resetShortCodeFails, SHORT_CODE_FAIL_LIMIT } from "../../src/services/pickups";
 import { createAdmin, demoLogin, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
 import { createAttempt, createBuilding, createFoundItem, createStoragePlace, hoursAgo } from "../helpers/fixtures";
@@ -273,6 +274,66 @@ describe("기준 10. 수령 후 30일이 지나면 시도·열람 기록을 지�
     // 찾아간 사람 기록도 30일 뒤 지운다 (QA B13, open-issues #26·#33)
     expect(await prisma.pickup.count({ where: { foundItemId: old.id } })).toBe(0);
     expect(await prisma.pickup.count({ where: { foundItemId: recent.id } })).toBe(1);
+  });
+});
+
+describe("8자리 수령 코드: 카메라 없는 PC에서 코드로 수령 (10/31 검증 #13)", () => {
+  beforeEach(() => resetShortCodeFails());
+
+  it("발급 응답에 ABCD-EFGH 코드, DB에는 해시만. 코드(대소문자·하이픈·공백 무시)로 스캔·완료", async () => {
+    const { item } = await passedItem("HANDED_OVER");
+    const { body } = await qr(item.id);
+    expect(body.shortCode).toMatch(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/);
+    const p = await prisma.pickup.findUniqueOrThrow({ where: { id: body.pickupId } });
+    expect(p.shortCodeHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(p.shortCodeHash).not.toContain(body.shortCode.replace("-", ""));
+
+    const typed = ` ${body.shortCode.toLowerCase().replace("-", " ")} `;
+    const s = await scan(typed);
+    expect(s.status).toBe(200);
+    expect(s.body.pickupId).toBe(body.pickupId);
+    expect((await complete(body.pickupId)).status).toBe(200);
+    expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: item.id } })).status).toBe("CLAIMED");
+  });
+
+  it("긴 토큰(pk_…)도 그대로 된다", async () => {
+    const { item } = await passedItem("HANDED_OVER");
+    const { body } = await qr(item.id);
+    expect((await scan(body.qrToken)).body.pickupId).toBe(body.pickupId);
+  });
+
+  it("만료된 코드는 410, 다시 받으면 이전 코드는 못 쓴다", async () => {
+    const { item } = await passedItem("HANDED_OVER");
+    const first = (await qr(item.id)).body;
+    const second = (await qr(item.id)).body;
+    expect(second.shortCode).not.toBe(first.shortCode);
+    expect((await scan(first.shortCode)).body.error.code).toBe("QR_EXPIRED");
+    expect((await scan(second.shortCode)).status).toBe(200);
+    await prisma.pickup.update({ where: { id: second.pickupId }, data: { qrExpiresAt: hoursAgo(0.1) } });
+    expect((await scan(second.shortCode)).body.error.code).toBe("QR_EXPIRED");
+  });
+
+  it("다른 보관처 관리자는 403", async () => {
+    const { item } = await passedItem("HANDED_OVER");
+    const { body } = await qr(item.id);
+    const other = await adminLogin("other-guard@skuniv.ac.kr", otherPlaceId);
+    expect((await scan(body.shortCode, other)).status).toBe(403);
+  });
+
+  it("틀린 코드는 404이고 관리자별로 세어 10분에 20번을 넘으면 429 (다른 관리자는 그대로)", async () => {
+    const wrong = "2222-2222";
+    for (let i = 0; i < SHORT_CODE_FAIL_LIMIT.count; i++) expect((await scan(wrong)).status).toBe(404);
+    const blocked = await scan(wrong);
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error.code).toBe("RATE_LIMITED");
+    // 막힌 동안에는 맞는 코드도 막힌다 (코드 대입 방지)
+    const { item } = await passedItem("HANDED_OVER");
+    const { body } = await qr(item.id);
+    expect((await scan(body.shortCode)).status).toBe(429);
+    // 긴 토큰은 대입할 수 없어서 막지 않는다
+    expect((await scan(body.qrToken)).status).toBe(200);
+    const other = await adminLogin("center2@skuniv.ac.kr", placeId);
+    expect((await scan(body.shortCode, other)).status).toBe(200);
   });
 });
 

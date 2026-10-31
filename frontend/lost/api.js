@@ -955,7 +955,7 @@
     detail: (foundItemId = store.get(KEYS.foundItemId)) => call(`/found-items/${foundItemId}/detail`),
     /**
      * POST /found-items/:id/pickup-qr (보관처에 맡긴 물건)
-     * → CENTER_QR | DEMO { pickupId, qrToken, status: "ISSUED", expiresAt } (체험 QR은 demoPickup으로 끝낸다)
+     * → CENTER_QR | DEMO { pickupId, qrToken, shortCode("ABCD-EFGH"), status: "ISSUED", expiresAt } (체험 QR은 demoPickup으로 끝낸다)
      * 다시 부르면 이전 QR은 못 쓴다. 오류: 409 INVALID_STORAGE_TYPE, 409 ALREADY_CLAIMED
      */
     async pickupQr(foundItemId = store.get(KEYS.foundItemId)) {

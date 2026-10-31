@@ -1398,6 +1398,21 @@ h1 {
 }
 .qr svg { width: 176px; height: 176px; display: block; }
 
+/* 수령 QR 아래 8자리 코드: 카메라 없는 교무처 PC에서 불러 주거나 붙여 넣는다 */
+.pickup-code { text-align: center; margin: 0 auto 10px; }
+.pickup-code[hidden] { display: none; }
+.pickup-code-label { margin: 0; font-size: 13px; color: var(--mute); font-weight: 600; }
+.pickup-code-value {
+  margin: 2px 0 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  user-select: all;
+}
+.pickup-code-copy { width: auto; min-width: 140px; padding: 0 18px; display: inline-flex; }
+
 .tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

@@ -58,6 +58,13 @@
       <!-- [연결 추가] 수령 QR (qr.html이 없어져 이 화면에서 보여 준다). 기존 .qr 클래스 -->
       <div id="qrWrap" hidden>
         <div class="qr" id="qrBox" role="img" aria-label="수령 QR"></div>
+        <!-- 카메라가 없는 교무처 PC에서는 이 8자리 코드를 넣어 수령한다 (10/31 검증 #13) -->
+        <div class="pickup-code" id="codeBox" hidden>
+          <p class="pickup-code-label">수령 코드</p>
+          <p class="pickup-code-value" id="codeValue" aria-live="polite"></p>
+          <button class="btn line pickup-code-copy" id="codeCopyBtn" type="button">코드 복사</button>
+          <p class="note" style="margin:6px 0 0">QR이 안 읽히면 교무처에 이 코드를 불러 주세요</p>
+        </div>
         <p class="note" id="qrNote" style="text-align:center;margin-top:0"></p>
         <!-- 체험 계정: 교무처가 없으니 스캔을 대신 눌러 수령까지 끝까지 본다 (QA 10/30) -->
         <div class="card" id="demoPickupBox" hidden style="text-align:center">
@@ -245,6 +252,25 @@
     }
   });
 
+  const codeBox = document.getElementById("codeBox");
+  const codeValue = document.getElementById("codeValue");
+  const codeCopyBtn = document.getElementById("codeCopyBtn");
+  codeCopyBtn.addEventListener("click", async () => {
+    const code = codeValue.textContent;
+    try {
+      await navigator.clipboard.writeText(code);
+      codeCopyBtn.textContent = "복사했어요";
+    } catch (_) {
+      // 클립보드를 못 쓰는 브라우저: 코드를 골라 두어 직접 복사하게 한다
+      const range = document.createRange();
+      range.selectNodeContents(codeValue);
+      getSelection()?.removeAllRanges();
+      getSelection()?.addRange(range);
+      codeCopyBtn.textContent = "코드를 길게 눌러 복사해 주세요";
+    }
+    setTimeout(() => (codeCopyBtn.textContent = "코드 복사"), 2000);
+  });
+
   function showQr(r) {
     qrBox.replaceChildren();
     if (window.QRCode) {
@@ -252,6 +278,9 @@
     } else {
       qrBox.textContent = "QR을 그리지 못했어요. 인터넷 연결을 확인해 주세요.";
     }
+    // 다시 받으면 코드도 새로 바뀐다
+    codeValue.textContent = r.shortCode || "";
+    codeBox.hidden = !r.shortCode;
     qrWrap.hidden = false;
     demoPickupBox.hidden = r.method !== "DEMO";
     demoPickupBtn.disabled = false;

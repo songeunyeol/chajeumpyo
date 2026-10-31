@@ -12,6 +12,7 @@ import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../lib/errors";
 import { hmac } from "../lib/hash";
 import { prisma } from "../lib/prisma";
+import { formatShortCode, newShortCode, normalizeShortCode } from "../lib/short-code";
 import { storage } from "../storage";
 import { adminScope } from "./admin-found-items";
 import { purgeAfterClaimSafely } from "./data-purge";
@@ -60,7 +61,23 @@ async function markClaimed(tx: Tx, foundItemId: string, lostReportId: string, ex
   });
 }
 
-/** 같은 사람이 다시 받으면 이전 QR은 만료하고 새 토큰을 만든다 */
+/** 8자리 수령 코드의 저장값. QR 토큰과 섞이지 않게 접두어를 붙여 HMAC한다 */
+const shortCodeHash = (code: string) => hmac(`pickup-code:${code}`);
+
+/** 발급 중인 수령 건과 겹치지 않는 8자리 코드. 겹칠 확률은 거의 없지만 몇 번 다시 뽑는다 */
+async function uniqueShortCode(tx: Tx): Promise<string> {
+  for (let i = 0; i < 5; i++) {
+    const code = newShortCode();
+    const taken = await tx.pickup.findFirst({
+      where: { shortCodeHash: shortCodeHash(code), status: "ISSUED" },
+      select: { id: true },
+    });
+    if (!taken) return code;
+  }
+  throw new AppError("INTERNAL_ERROR", "수령 코드를 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
+}
+
+/** 같은 사람이 다시 받으면 이전 QR(과 8자리 코드)은 만료하고 새로 만든다 */
 async function issueToken(tx: Tx, userId: string, foundItemId: string, method: "CENTER_QR" | "DEMO") {
   await tx.pickup.updateMany({
     where: { foundItemId, userId, method, status: "ISSUED" },
@@ -68,6 +85,7 @@ async function issueToken(tx: Tx, userId: string, foundItemId: string, method: "
   });
   return {
     qrToken: `pk_${randomBytes(24).toString("base64url")}`,
+    shortCode: await uniqueShortCode(tx),
     expiresAt: new Date(Date.now() + QR_TTL_HOURS * 3600_000),
   };
 }
@@ -94,7 +112,7 @@ export async function issuePickupQr(viewer: Viewer, foundItemId: string): Promis
 
     // 체험 계정: 실제와 같은 QR을 준다. 관리자 스캔(CENTER_QR만 찾음)에는 안 쓰이고, 시드 상태는 그대로 (F-05)
     if (viewer.role === "DEMO") {
-      const { qrToken, expiresAt } = await issueToken(tx, viewer.userId, foundItemId, "DEMO");
+      const { qrToken, shortCode, expiresAt } = await issueToken(tx, viewer.userId, foundItemId, "DEMO");
       const p = await tx.pickup.create({
         data: {
           foundItemId,
@@ -102,14 +120,22 @@ export async function issuePickupQr(viewer: Viewer, foundItemId: string): Promis
           method: "DEMO",
           status: "ISSUED",
           qrTokenHash: hmac(qrToken),
+          shortCodeHash: shortCodeHash(shortCode),
           qrExpiresAt: expiresAt,
         },
       });
-      return { method: "DEMO", pickupId: p.id, qrToken, status: "ISSUED", expiresAt: expiresAt.toISOString() };
+      return {
+        method: "DEMO",
+        pickupId: p.id,
+        qrToken,
+        shortCode: formatShortCode(shortCode),
+        status: "ISSUED",
+        expiresAt: expiresAt.toISOString(),
+      };
     }
 
     if (item.status === "CLAIMED") throw claimedError();
-    const { qrToken, expiresAt } = await issueToken(tx, viewer.userId, foundItemId, "CENTER_QR");
+    const { qrToken, shortCode, expiresAt } = await issueToken(tx, viewer.userId, foundItemId, "CENTER_QR");
     const p = await tx.pickup.create({
       data: {
         foundItemId,
@@ -117,10 +143,18 @@ export async function issuePickupQr(viewer: Viewer, foundItemId: string): Promis
         method: "CENTER_QR",
         status: "ISSUED",
         qrTokenHash: hmac(qrToken),
+        shortCodeHash: shortCodeHash(shortCode),
         qrExpiresAt: expiresAt,
       },
     });
-    return { method: "CENTER_QR", pickupId: p.id, qrToken, status: "ISSUED", expiresAt: expiresAt.toISOString() };
+    return {
+      method: "CENTER_QR",
+      pickupId: p.id,
+      qrToken,
+      shortCode: formatShortCode(shortCode),
+      status: "ISSUED",
+      expiresAt: expiresAt.toISOString(),
+    };
   });
 }
 
@@ -191,6 +225,8 @@ export function maskEmail(email: string): string {
 async function usablePickup(db: Tx, admin: Admin, where: Prisma.PickupWhereInput) {
   const p = await db.pickup.findFirst({
     where: { ...where, method: "CENTER_QR" },
+    // 8자리 코드는 지난 수령 건과 겹칠 수 있어 가장 최근 건을 본다
+    orderBy: { createdAt: "desc" },
     include: {
       user: { select: { id: true, email: true } },
       foundItem: { include: { building: { select: { name: true } }, detail: { select: { imageOriginalKey: true } } } },
@@ -207,9 +243,45 @@ async function usablePickup(db: Tx, admin: Admin, where: Prisma.PickupWhereInput
   return { ...p, user: p.user };
 }
 
-/** POST /admin/pickups/scan (F-11, F-14) */
-export async function scanPickup(admin: Admin, qrToken: string): Promise<PickupScanResponse> {
-  const p = await usablePickup(prisma, admin, { qrTokenHash: hmac(qrToken) });
+/** 8자리 코드를 틀린 횟수 (관리자별). 코드를 하나씩 대 보는 것을 막는다 */
+export const SHORT_CODE_FAIL_LIMIT = { count: 20, windowMinutes: 10 } as const;
+const shortCodeFails = new Map<string, number[]>();
+
+function checkShortCodeLimit(adminId: string, now = Date.now()) {
+  const since = now - SHORT_CODE_FAIL_LIMIT.windowMinutes * 60_000;
+  const recent = (shortCodeFails.get(adminId) ?? []).filter((t) => t > since);
+  shortCodeFails.set(adminId, recent);
+  if (recent.length >= SHORT_CODE_FAIL_LIMIT.count) {
+    throw new AppError("RATE_LIMITED", "수령 코드를 너무 많이 틀렸어요. 10분 뒤에 다시 넣어 주세요.");
+  }
+}
+
+/** 테스트용: 틀린 횟수 기록을 비운다 */
+export function resetShortCodeFails() {
+  shortCodeFails.clear();
+}
+
+/**
+ * POST /admin/pickups/scan (F-11, F-14).
+ * QR 안의 긴 토큰(pk_…)이나 학생 화면의 8자리 코드를 받는다. 8자리 코드는 틀리면 관리자별로 센다.
+ */
+export async function scanPickup(admin: Admin, input: string): Promise<PickupScanResponse> {
+  const raw = input.trim();
+  const code = raw.startsWith("pk_") ? null : normalizeShortCode(raw);
+  let p: Awaited<ReturnType<typeof usablePickup>>;
+  if (code) {
+    checkShortCodeLimit(admin.userId);
+    try {
+      p = await usablePickup(prisma, admin, { shortCodeHash: shortCodeHash(code) });
+    } catch (err) {
+      if (err instanceof AppError && err.code === "NOT_FOUND") {
+        shortCodeFails.set(admin.userId, [...(shortCodeFails.get(admin.userId) ?? []), Date.now()]);
+      }
+      throw err;
+    }
+  } else {
+    p = await usablePickup(prisma, admin, { qrTokenHash: hmac(raw) });
+  }
   const item = p.foundItem;
   if (!item.category || !item.detail) throw new AppError("NOT_FOUND", "물건 정보가 없어요.");
   return {
