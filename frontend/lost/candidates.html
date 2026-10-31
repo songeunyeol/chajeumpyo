@@ -12,10 +12,11 @@
 <body>
 <main class="screen">
   <header class="bar"><a class="back" href="home.html">←</a><h2>후보</h2></header>
-  <h1 id="candHeading">비슷한 물건 3개</h1>
+  <!-- 처음에는 "불러오는 중"만 보인다. 예전엔 "비슷한 물건 3개"가 박혀 있어 카드 없이 숫자만 먼저 보였다 (QA 10/31) -->
+  <h1 id="candHeading">후보를 불러오고 있어요</h1>
   <p class="lead">확인 전에는 사진이 모자이크로 가려져요.<br>일치하는 이유만 먼저 공개돼요.</p>
 
-  <div class="candidate-list is-animating" id="candidateList"></div>
+  <div class="candidate-list is-animating" id="candidateList" aria-busy="true"><div class="card cand-loading">잠시만요, 비슷한 물건을 찾고 있어요…</div></div>
   <p class="note danger" id="candErr" hidden></p>
 
   <div class="dock">
@@ -31,7 +32,7 @@
       <h3 id="refreshModalTitle">후보를 새로고침할까요?</h3>
       <p>잘못 새로고침하면 지금 보이는 물건을 다시 찾지 못할 수도 있어요. 신중히 확인해 주세요.</p>
       <div class="modal-actions">
-        <button type="button" class="btn gray" id="cancelRefreshBtn">취소</button>
+        <button type="button" class="btn gray" id="cancelRefreshBtn" data-modal-cancel>취소</button>
         <button type="button" class="btn" id="confirmRefreshBtn">새로고침</button>
       </div>
     </div>
@@ -55,13 +56,14 @@
       <!-- 누르기 전에 기회가 줄 수 있음을 보여 준다. 근거가 부족하면(맞은 것도 틀린 것도 없음) 줄지 않는다 (10/31) -->
       <p class="note" id="claimFailNote" style="margin:4px 0 10px">실패하면 남은 횟수가 1번 줄어요 (남은 횟수 3번)</p>
       <div class="modal-actions">
-        <button type="button" class="btn gray" id="cancelClaimBtn">취소</button>
+        <button type="button" class="btn gray" id="cancelClaimBtn" data-modal-cancel>취소</button>
         <button type="button" class="btn" id="confirmClaimBtn">확인하기</button>
       </div>
     </div>
   </div>
 </main>
 <script src="api.js"></script>
+<script src="../modal-back.js"></script>
 <script>
   const authed = LostApi.requireLogin();
   const candidateList = document.getElementById("candidateList");
@@ -219,6 +221,7 @@
 
   function renderCards(round = 0) {
     candidateList.innerHTML = "";
+    candidateList.removeAttribute("aria-busy");
     candHeading.textContent = candidates.length ? `비슷한 물건 ${candidates.length}개` : "아직 비슷한 물건이 없어요";
     if (!candidates.length) {
       const empty = el("div", "card", "새 물건이 들어오면 알림으로 알려 줘요.");
@@ -449,6 +452,8 @@
 
   /** 다음 화면. 통과면 상세의 보관 방식에 따라 그 자리(item) / 보관처(item-handover) */
   async function goNext(screen) {
+    // 방금 닫은 확인 창의 history 칸을 걷어낸 뒤 넘어간다 (다음 화면에서 뒤로 가면 후보로 바로 오게)
+    if (window.ModalBack) await window.ModalBack.settled();
     if (screen === "pass") {
       const d = await LostApi.detail();
       location.href = d.storageType === "HANDED_OVER" ? "item-handover.html" : "item.html";
@@ -458,15 +463,29 @@
     else if (screen === "counter") location.href = "counter.html";
   }
 
+  // 가장 마지막 요청의 응답만 그린다. 새로고침과 다시 불러오기가 겹치면 늦게 온 옛 응답이 목록을 덮어썼다 (QA 10/31)
+  let loadSeq = 0;
+  function showLoading() {
+    candHeading.textContent = "후보를 불러오고 있어요";
+    candidateList.setAttribute("aria-busy", "true");
+    const wait = el("div", "card cand-loading", "잠시만요, 비슷한 물건을 찾고 있어요…");
+    candidateList.replaceChildren(wait);
+  }
   async function loadCandidates(round = 0) {
+    const seq = ++loadSeq;
+    showLoading();
+    let next;
     try {
-      candidates = await LostApi.candidates(reportId);
+      next = await LostApi.candidates(reportId);
     } catch (err) {
+      if (seq !== loadSeq) return;
       if (err.code === "UNAUTHORIZED") return location.replace("login.html");
       candErr.textContent = LostApi.friendlyMessage(err);
       candErr.hidden = false;
-      candidates = [];
+      next = [];
     }
+    if (seq !== loadSeq) return;
+    candidates = next;
     renderCards(round);
   }
 
