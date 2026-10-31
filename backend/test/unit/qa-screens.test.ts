@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -611,5 +612,25 @@ describe("QA 10/31 돌발 상황 (사소 묶음 1)", () => {
     const html = read("frontend/index.html");
     expect(html).toContain("html, body { overflow-x: hidden; }");
     expect(html).toContain("@supports (overflow: clip) { html, body { overflow-x: clip; } }");
+  });
+});
+
+describe("HEIC 사진 (QA 10/31: 크롬·안드로이드에서 '사진을 읽지 못했어요')", () => {
+  it("사진 화면은 HEIC도 고를 수 있고, 못 읽으면 JPEG로 바꿔 다시 넣는다", () => {
+    const photo = read("frontend/found/photo.html");
+    expect(photo).toContain('<script src="heic.js"></script>');
+    expect(photo.match(/accept="image\/\*,\.heic,\.heif"/g)).toHaveLength(2);
+    expect(photo).toContain("FoundHeic.looksHeic(file)");
+    expect(photo).toContain("await FoundHeic.toJpeg(file)");
+  });
+
+  it("libheif는 그때 불러오고, 무결성 값이 vendor 파일과 맞는다", () => {
+    const heic = read("frontend/found/heic.js");
+    const sri = heic.match(/LIBHEIF_SRI = "(sha384-[^"]+)"/)?.[1];
+    const vendor = readFileSync(resolve(root, "frontend/vendor/libheif.js"));
+    expect(sri).toBe(`sha384-${createHash("sha384").update(vendor).digest("base64")}`);
+    expect(read("frontend/sw.js")).toContain('"/found/heic.js"');
+    // 순수 JS 빌드: 화면 CSP(unsafe-eval·wasm 없음)를 넓히지 않는다
+    expect(vendor.toString("utf8")).not.toMatch(/new Function\(|\beval\(|WebAssembly/);
   });
 });
