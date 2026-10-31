@@ -14,21 +14,6 @@
     --white: #ffffff;
   }
   * { box-sizing: border-box; }
-  .guide-link {
-    position: fixed;
-    top: max(12px, env(safe-area-inset-top));
-    right: clamp(16px, 5vw, 24px);
-    z-index: 2;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: var(--green);
-    color: var(--white);
-    font-size: 13px;
-    font-weight: 650;
-    text-decoration: none;
-    box-shadow: 0 2px 8px rgba(20, 56, 40, 0.18);
-  }
-  .guide-link:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
   html, body { margin: 0; height: 100%; }
   body { overflow-x: clip; }
   body {
@@ -47,12 +32,11 @@
     grid-template-rows: 25svh 1fr 25svh;
     padding: 0 clamp(16px, 5vw, 24px);
   }
-  .title { display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: flex-end; gap: clamp(6px, 1.2svh, 10px); padding-top: clamp(16px, 3svh, 28px); padding-bottom: clamp(4px, 1svh, 8px); }
+  .title { display: flex; flex-direction: row; align-items: flex-end; gap: clamp(8px, 2vw, 14px); padding-top: clamp(16px, 3svh, 28px); }
   .lead {
-    margin: 0;
-    max-width: 22em;
+    margin: 0 0 clamp(4px, 1svh, 8px);
+    flex: 1;
     min-width: 0;
-    text-wrap: balance;
     font-size: clamp(12px, min(3.4vw, 2.1svh), 16px);
     font-weight: 500;
     letter-spacing: -0.03em;
@@ -220,7 +204,6 @@
         잃어버린 사람
       </a>
     </nav>
-    <a class="guide-link" href="guide.html">심사위원 체험 2분 →</a>
   </main>
   <script>
     document.documentElement.classList.add("js");
