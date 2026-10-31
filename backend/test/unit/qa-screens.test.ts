@@ -694,3 +694,41 @@ describe("수령 QR (QA 10/31: 교무처가 스캔해도 새로고침 전까지 
     expect(html).toContain('addEventListener("pageshow"');
   });
 });
+
+describe("연결 끊김 안내 (QA 10/31: 오프라인이면 화면이 깨져 보임)", () => {
+  it("세 API 모듈이 안내 파일을 불러오고 요청 결과를 알린다", () => {
+    for (const path of ["frontend/lost/api.js", "frontend/found/api.js", "frontend/admin/admin.js"]) {
+      const src = read(path);
+      expect(src).toContain('s.src = "/offline-notice.js"');
+      expect(src).toContain('reportNet(false, method === "GET")');
+      expect(src).toContain('reportNet(true, method === "GET")');
+    }
+  });
+
+  it("안내는 해요체로 다시 시도를 주고, 오프라인에서도 쓰게 앱 껍데기에 캐시한다", () => {
+    const notice = read("frontend/offline-notice.js");
+    expect(notice).toContain("인터넷 연결을 확인해 주세요");
+    expect(notice).toContain("다시 시도");
+    expect(notice).toContain('addEventListener("online"');
+    // 올리는 중 화면은 자체 다시 시도 화면을 쓴다 (#163)
+    expect(notice).toContain('"/found/uploading.html"');
+    expect(read("frontend/sw.js")).toContain('"/offline-notice.js"');
+  });
+});
+
+describe("분실 신고 종류 (QA 10/31 영상)", () => {
+  it("종류는 비어 있는 채로 시작하고, 고르지 않으면 신고하지 않는다", () => {
+    const report = read("frontend/lost/report.html");
+    expect(report).not.toContain('categorySelect.value = "EARPHONE"');
+    expect(report).toContain('new Option("종류를 골라 주세요", "")');
+    expect(report).toContain("if (!categorySelect.value)");
+  });
+
+  it("화장품 이름을 적으면 기타 → 화장품으로 고른다", () => {
+    const api = read("frontend/lost/api.js");
+    for (const w of ["화장품", "아이라이너", "틴트", "마스카라", "쿠션", "핸드크림"])
+      expect(api).toContain(`["${w}", "ETC", "COSMETICS"]`);
+    // "아이라이너 펜슬"이 펜(필기구)보다 먼저 걸린다
+    expect(api.indexOf('["아이라이너"')).toBeLessThan(api.indexOf('["펜", "STATIONERY"]'));
+  });
+});

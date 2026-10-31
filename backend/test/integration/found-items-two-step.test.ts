@@ -468,7 +468,7 @@ describe("④ 귀중품도 그 자리에 둘 수 있다. 화면이 보관처를 
 });
 
 describe("⑤ 습득자가 종류를 고친다 (AI 오인, 10/29 안경 → 학생증)", () => {
-  it("고친 종류·세부 종류로 등록하고, AI가 본 종류는 다른 후보로 남긴다", async () => {
+  it("고친 종류·세부 종류로 등록하고, AI가 본 종류(2순위 포함)는 버린다 (QA 10/31)", async () => {
     const d = await draft(); // 가짜 AI: 무선 이어폰 (귀중품)
     const res = await confirm(d.id, {
       confirmToken: d.confirmToken,
@@ -481,8 +481,32 @@ describe("⑤ 습득자가 종류를 고친다 (AI 오인, 10/29 안경 → 학�
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ status: "REGISTERED", category: "GLASSES", subCategory: null });
     const row = await prisma.foundItem.findUniqueOrThrow({ where: { id: d.id }, include: { detail: true } });
-    expect(row).toMatchObject({ category: "GLASSES", subCategory: null, categoryAlt: "EARPHONE" });
+    expect(row).toMatchObject({ category: "GLASSES", subCategory: null, categoryAlt: null });
     expect(row.detail).toMatchObject({ title: "안경·선글라스", description: "안경·선글라스" });
+  });
+
+  it("고친 물건은 AI가 본 원래 종류 신고에 후보·새 후보 알림으로 가지 않는다", async () => {
+    const user = await signupUser(app);
+    const report = await prisma.lostReport.create({
+      data: {
+        userId: user.user.id,
+        category: "EARPHONE",
+        lostFrom: new Date(Date.now() - 3600_000),
+        lostTo: new Date(),
+        buildingId,
+        description: "흰색 무선 이어폰",
+        descriptionHash: "h-earphone",
+      },
+    });
+    const d = await draft(); // 가짜 AI: 무선 이어폰 (2순위 충전기)
+    await confirm(d.id, { confirmToken: d.confirmToken, ...kept(), category: "BAG" }).expect(201);
+    expect(await prisma.notification.count({ where: { userId: user.user.id, type: "NEW_CANDIDATE" } })).toBe(0);
+    expect((await findCandidates(report, "USER")).map((c) => c.foundItemId)).not.toContain(d.id);
+
+    // 고치지 않으면 지금처럼 알린다
+    const kept2 = await draft();
+    await confirm(kept2.id, { confirmToken: kept2.confirmToken, ...kept() }).expect(201);
+    expect(await prisma.notification.count({ where: { userId: user.user.id, type: "NEW_CANDIDATE" } })).toBe(1);
   });
 
   it("고친 종류가 귀중품이어도 그 자리에 둘 수 있고, 다른 종류의 세부 종류는 버린다", async () => {

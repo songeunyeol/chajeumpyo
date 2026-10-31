@@ -212,7 +212,9 @@ export async function updateFoundItem(
     }
   }
 
-  const categoryAlt = input.categoryAlt === undefined ? item.categoryAlt : input.categoryAlt;
+  // 관리자가 종류를 바꾸고 2순위를 따로 주지 않으면 AI가 본 2순위는 버린다 (습득자가 고칠 때와 같은 규칙)
+  const categoryChanged = input.category !== undefined && input.category !== item.category;
+  const categoryAlt = input.categoryAlt !== undefined ? input.categoryAlt : categoryChanged ? null : item.categoryAlt;
   await prisma.$transaction(async (tx) => {
     await tx.foundItem.update({
       where: { id },

@@ -227,6 +227,25 @@ describe("기준 7. 등록된 물건의 속성 고치기", () => {
     expect(after[0]?.v).not.toBe(before[0]?.v);
   });
 
+  it("종류만 바꾸면 AI가 본 2순위는 버리고, 종류를 그대로 두면 2순위도 그대로 (QA 10/31)", async () => {
+    const changed = await at(guardPlace, { categoryAlt: "CHARGER" });
+    expect((await patch(guard, changed.id, { category: "BAG" })).body).toMatchObject({
+      category: "BAG",
+      categoryAlt: null,
+    });
+    const same = await at(guardPlace, { categoryAlt: "CHARGER" });
+    expect((await patch(guard, same.id, { category: "EARPHONE", color: "WHITE" })).body).toMatchObject({
+      category: "EARPHONE",
+      categoryAlt: "CHARGER",
+    });
+    // 2순위를 직접 주면 그 값을 쓴다
+    const explicit = await at(guardPlace, { categoryAlt: "CHARGER" });
+    expect((await patch(guard, explicit.id, { category: "BAG", categoryAlt: "WALLET" })).body).toMatchObject({
+      category: "BAG",
+      categoryAlt: "WALLET",
+    });
+  });
+
   it("설명을 안 바꾸면 임베딩을 다시 만들지 않는다", async () => {
     let embeds = 0;
     setAiClient({
