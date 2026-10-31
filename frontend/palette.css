@@ -567,6 +567,10 @@ h1 {
   overflow: hidden;
   flex: none;
 }
+.cand-loading {
+  color: var(--mute);
+  font-size: 14px;
+}
 .thumb-mosaic.dim {
   opacity: 0.55;
   filter: grayscale(0.35);
