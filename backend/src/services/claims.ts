@@ -15,7 +15,7 @@ import { z } from "zod";
 import { ai } from "../ai";
 import { env } from "../config/env";
 import type { Prisma } from "../generated/prisma/client";
-import { retryOnce, withTimeout } from "../lib/async";
+import { withTimeout } from "../lib/async";
 import { AppError } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
@@ -313,23 +313,23 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   const early = await reuseOrLock(prisma, viewer.userId, foundItemId, report);
   if (early) return early;
 
-  // AI 대조는 오래 걸릴 수 있어 트랜잭션 밖에서 한다
+  // AI 대조는 오래 걸릴 수 있어 트랜잭션 밖에서 한다.
+  // 안쪽 AI 호출은 함께 돌고 하나씩 제한 시간이 있어(넘으면 규칙 결과로 둔다) 다시 부르지 않는다. 다시 부르면 기다림이 두 배가 된다
   let comparison: Awaited<ReturnType<typeof ai.compareFeatures>>;
   try {
-    comparison = await retryOnce(() =>
-      withTimeout(
-        ai.compareFeatures(
-          { color: extracted.color ?? null, brand: extracted.brand ?? null, features: reportedFeatures },
-          {
-            color: item.detail?.color ?? null,
-            brand: item.detail?.brand ?? null,
-            features: storedFeatures,
-            description: item.detail?.description ?? null,
-          },
-        ),
-        env.AI_TIMEOUT_MS,
-        "특징 대조",
+    comparison = await withTimeout(
+      ai.compareFeatures(
+        { color: extracted.color ?? null, brand: extracted.brand ?? null, features: reportedFeatures },
+        {
+          color: item.detail?.color ?? null,
+          brand: item.detail?.brand ?? null,
+          features: storedFeatures,
+          description: item.detail?.description ?? null,
+        },
+        { callTimeoutMs: env.CLAIM_AI_CALL_TIMEOUT_MS },
       ),
+      env.CLAIM_AI_TIMEOUT_MS,
+      "특징 대조",
     );
   } catch (err) {
     logger.warn({ err }, "특징 대조 실패");

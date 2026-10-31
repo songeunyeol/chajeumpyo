@@ -295,74 +295,103 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
     },
 
     /**
-     * 특징 대조는 규칙으로 먼저 한다(같은 입력엔 같은 결과). 규칙이 "모순"(또는 같은 종류의 다른 측면)으로 본 특징만 AI에 같은 대상인지 다시 묻는다:
-     * "곰돌이 스티커" ↔ "곰 캐릭터 스티커"처럼 뜻은 같고 낱말이 다른 진짜 주인이 떨어지지 않게 (10/29 평가).
-     * AI가 MATCH라고 할 때만 바꾸고, 실패하거나 애매하면 모순 그대로 둔다. 같은 설명 재확인은 저장된 결과를 쓰므로 결과가 흔들리지 않는다.
+     * 특징 대조는 규칙으로 먼저 한다(같은 입력엔 같은 결과). 그 위에 AI에 세 가지를 묻는다:
+     * - 다시 보기: 규칙이 "모순"(또는 같은 종류의 다른 측면)으로 본 특징이 같은 대상인지.
+     *   "곰돌이 스티커" ↔ "곰 캐릭터 스티커"처럼 뜻은 같고 낱말이 다른 진짜 주인이 떨어지지 않게 (10/29 평가)
+     * - 설명 대조: 규칙이 모름으로 둔 특징이 습득물 설명(비공개)에 적혀 있는지 (10/31 실사용 영상)
+     * - 브랜드: 한글 읽기·제조사↔제품 라인("키스미" ↔ "Heroine Make")
+     * 셋은 서로 기다리지 않고 함께 부른다. 차례로 부르면 대조 한 번이 9초를 넘어 "지금은 확인할 수 없어요"가 났다 (10/31 실사진 평가).
+     * 호출마다 callTimeoutMs를 넘거나 실패하면 그 호출만 버리고 규칙 결과를 쓴다. AI가 MATCH라고 할 때만 바꾼다.
+     * 같은 설명 재확인은 저장된 결과를 쓰므로 결과가 흔들리지 않는다.
      */
-    async compareFeatures(reported, stored) {
+    async compareFeatures(reported, stored, options) {
       const result = compareByRules(reported, stored);
-      const features = await Promise.all(
+      const callTimeoutMs = options?.callTimeoutMs;
+      /** AI가 MATCH라고 했을 때만 true. 실패·시간 초과·다른 답은 false */
+      const saysMatch = async (input: { question: string; stored: string; answer: string }, label: string) => {
+        let timer: NodeJS.Timeout | undefined;
+        try {
+          const call = judgeAnswer(input);
+          const verdict = callTimeoutMs
+            ? await Promise.race([
+                call,
+                new Promise<never>((_, reject) => {
+                  timer = setTimeout(() => reject(new Error(`${label} 시간 초과 (${callTimeoutMs}ms)`)), callTimeoutMs);
+                }),
+              ])
+            : await call;
+          return verdict === "MATCH";
+        } catch (err) {
+          logger.warn({ err }, `${label} 실패 → 규칙 결과 그대로`);
+          return false;
+        } finally {
+          clearTimeout(timer);
+        }
+      };
+
+      // 1) 다시 보기: 모순, 또는 같은 종류의 다른 측면으로 본 것(저장 종류가 있는 모름)만
+      const recheck = Promise.all(
         result.features.map(async (f, i) => {
           const r = reported.features[i];
-          // 모순, 또는 같은 종류의 다른 측면으로 본 것(저장 종류가 있는 모름)만 다시 본다
-          if (!r || f.verdict === "MATCH" || (f.verdict === "UNKNOWN" && !f.storedKey)) return f;
+          if (!r || f.verdict === "MATCH" || (f.verdict === "UNKNOWN" && !f.storedKey)) return false;
           // 한쪽만 없음·부정 표현이면 AI에 다시 묻지 않는다("흠집 없음" ↔ "긁힘"을 같은 특징으로 볼 수 있다)
           const same = (x: { key: string; value: string }) =>
             x.key === f.storedKey && isNegated(x.value) === isNegated(r.value);
-          for (const s of stored.features.filter(same)) {
-            try {
-              const verdict = await judgeAnswer({
-                question: "분실물의 같은 특징을 가리키는지",
-                stored: s.value,
-                answer: r.value,
-              });
-              if (verdict === "MATCH") return { ...f, verdict: "MATCH" as const };
-            } catch (err) {
-              logger.warn({ err }, "특징 다시 보기 실패 → 모순 그대로");
-            }
-          }
-          return f;
+          const answers = await Promise.all(
+            stored.features
+              .filter(same)
+              .map((s) =>
+                saysMatch(
+                  { question: "분실물의 같은 특징을 가리키는지", stored: s.value, answer: r.value },
+                  "특징 다시 보기",
+                ),
+              ),
+          );
+          return answers.some(Boolean);
         }),
       );
-      // 특징 목록과 설명 규칙으로 못 맞힌 특징: 습득물 설명(비공개)에 같은 내용이 있는지 AI에 한 번 묻는다 (10/31 실사용 영상).
-      // 물건 이름만 같은 것은 맞힌 것으로 보지 않게 질문에 적는다. 많이 부르지 않게 앞의 세 개까지만
+      // 2) 설명 대조: 규칙이 모름으로 둔 특징. 물건 이름만 같은 것은 맞힌 것으로 보지 않게 질문에 적는다. 많이 부르지 않게 앞의 세 개까지만
       const description = stored.description ?? null;
       let asked = 0;
-      const withDescription = await Promise.all(
-        features.map(async (f, i) => {
+      const byDescription = Promise.all(
+        result.features.map((f, i) => {
           const r = reported.features[i];
-          if (!description || !r || f.verdict !== "UNKNOWN" || isNegated(r.value) || asked >= 3) return f;
+          if (!description || !r || f.verdict !== "UNKNOWN" || isNegated(r.value) || asked >= 3) return false;
           asked++;
-          try {
-            const verdict = await judgeAnswer({
+          return saysMatch(
+            {
               question:
                 "물건 설명에 이 특징(같은 부분의 같은 색, 같은 글자·브랜드, 같은 장식)이 실제로 적혀 있는지. 물건 종류 이름만 같으면 NO_MATCH",
               stored: description,
               answer: r.value,
-            });
-            if (verdict === "MATCH") return { ...f, verdict: "MATCH" as const, storedKey: DESCRIPTION_KEY };
-          } catch (err) {
-            logger.warn({ err }, "설명 대조 실패 → 모름 그대로");
-          }
-          return f;
+            },
+            "설명 대조",
+          );
         }),
       );
-      // 브랜드: 한글 읽기·제조사↔제품 라인은 규칙으로 못 가려 AI에 같은 브랜드인지 묻는다("키스미" ↔ "Heroine Make")
-      let brand = result.brand;
-      if (brand !== "MATCH" && reported.brand && stored.brand) {
-        try {
-          const verdict = await judgeAnswer({
-            question:
-              "같은 브랜드·제조사를 가리키는지 (한글 읽기와 영문 표기, 제조사와 그 회사의 제품 라인은 같은 것으로 본다)",
-            stored: description ? `${stored.brand} / 물건 설명: ${description}` : stored.brand,
-            answer: reported.brand,
-          });
-          if (verdict === "MATCH") brand = "MATCH";
-        } catch (err) {
-          logger.warn({ err }, "브랜드 다시 보기 실패 → 그대로");
-        }
-      }
-      return { ...result, features: withDescription, brand };
+      // 3) 브랜드
+      const brandCheck =
+        result.brand !== "MATCH" && reported.brand && stored.brand
+          ? saysMatch(
+              {
+                question:
+                  "같은 브랜드·제조사를 가리키는지 (한글 읽기와 영문 표기, 제조사와 그 회사의 제품 라인은 같은 것으로 본다)",
+                stored: description ? `${stored.brand} / 물건 설명: ${description}` : stored.brand,
+                answer: reported.brand,
+              },
+              "브랜드 다시 보기",
+            )
+          : Promise.resolve(false);
+
+      const [rechecked, described, sameBrand] = await Promise.all([recheck, byDescription, brandCheck]);
+      // 다시 보기에서 같은 대상이면 그 특징으로, 아니면 설명에 적혀 있을 때 설명 일치로 본다
+      const features = result.features.map((f, i) => {
+        if (rechecked[i]) return { ...f, verdict: "MATCH" as const };
+        if (described[i] && f.verdict === "UNKNOWN")
+          return { ...f, verdict: "MATCH" as const, storedKey: DESCRIPTION_KEY };
+        return f;
+      });
+      return { ...result, features, brand: sameBrand ? ("MATCH" as const) : result.brand };
     },
 
     judgeAnswer,

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetAiClient, setAiClient } from "../../src/ai";
 import { mockAiClient } from "../../src/ai/mock";
 import { createApp } from "../../src/app";
+import { env } from "../../src/config/env";
 import { similarShape } from "../../src/matching/quiz";
 import { alertNewCandidate } from "../../src/services/candidate-alerts";
 import { demoLogin, signupUser } from "../helpers/auth";
@@ -1011,5 +1012,55 @@ describe("10/31 실사용 영상: 진짜 주인이 색·브랜드 표기 차이�
     );
     const res = await claim(r, it1.id);
     expect(res.body.result).toBe("FAIL");
+  });
+});
+
+describe("특징 대조 시간 제한 (10/31 실사진 평가: 차례로 부르면 9초를 넘었다)", () => {
+  const withCompare = (compareFeatures: typeof mockAiClient.compareFeatures) =>
+    setAiClient({
+      ...mockAiClient,
+      extractLostReport: async (description) => ({
+        category: "EARPHONE",
+        color: null,
+        brand: null,
+        features: [],
+        description,
+        ...nextExtraction,
+      }),
+      compareFeatures,
+    });
+
+  it("대조가 바깥 한도를 넘으면 502 AI_UNAVAILABLE이고, 다시 부르지 않으며 기회도 쓰지 않는다", async () => {
+    const before = env.CLAIM_AI_TIMEOUT_MS;
+    env.CLAIM_AI_TIMEOUT_MS = 50;
+    let calls = 0;
+    withCompare(async (reported, stored) => {
+      calls++;
+      await new Promise((r) => setTimeout(r, 300));
+      return mockAiClient.compareFeatures(reported, stored);
+    });
+    try {
+      const it1 = await item();
+      const r = await newReport({ features: [{ key: "sticker", value: "곰돌이 스티커" }] });
+      const res = await claim(r, it1.id);
+      expect(res.status).toBe(502);
+      expect(res.body.error.code).toBe("AI_UNAVAILABLE");
+      expect(calls).toBe(1);
+      expect(await prisma.matchAttempt.count({ where: { foundItemId: it1.id } })).toBe(0);
+    } finally {
+      env.CLAIM_AI_TIMEOUT_MS = before;
+    }
+  });
+
+  it("안쪽 AI 호출 하나당 제한 시간을 대조에 넘긴다", async () => {
+    let seen: number | undefined;
+    withCompare(async (reported, stored, options) => {
+      seen = options?.callTimeoutMs;
+      return mockAiClient.compareFeatures(reported, stored);
+    });
+    const it1 = await item();
+    const r = await newReport({ features: [{ key: "sticker", value: "곰돌이 스티커" }] });
+    await claim(r, it1.id);
+    expect(seen).toBe(env.CLAIM_AI_CALL_TIMEOUT_MS);
   });
 });
