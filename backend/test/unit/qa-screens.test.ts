@@ -724,3 +724,18 @@ describe("그 자리에 둠에서 빠진 칸은 글로 알려 준다 (10/31 팀 
     expect(register).toContain('el.scrollIntoView({ block: "center"');
   });
 });
+
+describe("같은 와이파이·같은 기종도 기기마다 따로 센다 (10/31 검증 #2: 10분 5건 한도)", () => {
+  const api = read("frontend/found/api.js");
+
+  it("사진 분석 요청에 localStorage의 기기 id를 X-Device-Id로 보낸다", () => {
+    expect(api).toContain("localStorage.getItem(DEVICE_ID_KEY)");
+    expect(api).toContain('"X-Device-Id": id');
+    expect(api).toContain('headers: withDevice(token ? { "X-Captcha-Token": token } : {}),');
+  });
+
+  it("저장이 막힌 브라우저에서도 터지지 않는다(try/catch, 없으면 헤더를 빼고 보낸다)", () => {
+    expect(api).toMatch(/function deviceId\(\) \{\s+try \{/);
+    expect(api).toContain('return id ? { ...headers, "X-Device-Id": id } : headers;');
+  });
+});

@@ -341,6 +341,29 @@ describe("기준 8. 로그인과 역할 분리", () => {
       (await request(app).post(api("/admin/auth/login")).send({ email: EMAIL, password: "password123" })).status,
     ).toBe(401);
   });
+
+  it("같은 이메일로 10분에 10번 틀리면 맞는 비밀번호도 429, 다른 이메일은 그대로 (10/31: IP 한도를 올린 대신)", async () => {
+    await signupUser(app, EMAIL, "password123");
+    await signupUser(app, "friend@skuniv.ac.kr", "password123");
+    const login = (email: string, password: string) => request(app).post(api("/auth/login")).send({ email, password });
+    for (let i = 0; i < 10; i++) expect((await login(EMAIL, "wrongpass1")).status).toBe(401);
+    const locked = await login(EMAIL, "password123");
+    expect(locked.status).toBe(429);
+    expect(locked.body.error.code).toBe("RATE_LIMITED");
+    // 대소문자·공백만 바꿔도 같은 이메일로 센다
+    expect((await login(` ${EMAIL.toUpperCase()} `, "password123")).status).toBe(429);
+    // 같은 네트워크의 다른 사람은 막히지 않는다
+    expect((await login("friend@skuniv.ac.kr", "password123")).status).toBe(200);
+  });
+
+  it("성공한 로그인은 세지 않는다: 같은 IP에서 여러 명이 20번 넘게 로그인해도 막히지 않는다", async () => {
+    await signupUser(app, EMAIL, "password123");
+    for (let i = 0; i < 30; i++) {
+      expect((await request(app).post(api("/auth/login")).send({ email: EMAIL, password: "password123" })).status).toBe(
+        200,
+      );
+    }
+  });
 });
 
 describe("기준 9. 인증 미들웨어, 민감 정보, 운영 설정", () => {

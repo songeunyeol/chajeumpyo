@@ -11,6 +11,7 @@ import {
 import { type RequestHandler, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
+import { env } from "../config/env";
 import { AppError } from "../lib/errors";
 import { getAuth, requireMember } from "../middlewares/auth";
 import { CAPTCHA_ACTIONS, requireCaptcha } from "../middlewares/captcha";
@@ -20,6 +21,7 @@ import { errorResponse, registry } from "../openapi/registry";
 import {
   analyzeFoundItem,
   confirmFoundItem,
+  DEVICE_ID_HEADER,
   DRAFT_TTL_MINUTES,
   registerFoundItem,
   uploaderFingerprint,
@@ -192,7 +194,7 @@ export function createFoundItemsRouter() {
       const result: RegisterFoundItemResponse = await registerFoundItem({
         image: req.file.buffer,
         fields: res.locals.body,
-        fingerprint: uploaderFingerprint(req.ip ?? "", req.get("user-agent") ?? ""),
+        fingerprint: uploaderFingerprint(req.ip ?? "", req.get("user-agent") ?? "", req.get(DEVICE_ID_HEADER)),
       });
       res.status(201).json(result);
     },
@@ -210,7 +212,7 @@ export function createFoundItemsRouter() {
       const result: AnalyzeFoundItemResponse = await analyzeFoundItem({
         image: req.file.buffer,
         fields: res.locals.body,
-        fingerprint: uploaderFingerprint(req.ip ?? "", req.get("user-agent") ?? ""),
+        fingerprint: uploaderFingerprint(req.ip ?? "", req.get("user-agent") ?? "", req.get(DEVICE_ID_HEADER)),
       });
       res.status(201).json(result);
     },
@@ -220,7 +222,7 @@ export function createFoundItemsRouter() {
   // 확정은 설명 분석(AI)을 부를 수 있어 IP 기준으로도 막는다 (10/30 코드 평가)
   const confirmLimit = ipRateLimit({
     windowMinutes: 10,
-    limit: 30,
+    limit: env.IP_RATE_LIMIT_PER_10MIN,
     message: "등록 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
   router.post(

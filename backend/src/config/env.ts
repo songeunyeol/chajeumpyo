@@ -74,6 +74,13 @@ const Env = z.object({
   CLAIM_AI_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   CLAIM_AI_CALL_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
   /**
+   * 로그인·판정·답변·신고·등록 확정의 IP당 10분 한도. 학교 와이파이처럼 공인 IP 하나 뒤에 여러 명이 있어도
+   * 같이 막히지 않게 넉넉히 둔다. 남용은 계정·물건·이메일 단위 한도가 막는다 (10/31 검증 #2: 20이면 5번째 계정이 막혔다)
+   */
+  IP_RATE_LIMIT_PER_10MIN: z.coerce.number().int().positive().default(200),
+  /** 같은 이메일로 10분 안에 틀린 로그인 횟수 한도. 넘으면 맞는 비밀번호도 잠시 429 (IP 한도를 올린 대신 무차별 대입을 막는다) */
+  LOGIN_FAIL_LIMIT_PER_10MIN: z.coerce.number().int().positive().default(10),
+  /**
    * 앞단 프록시 신뢰 설정(express trust proxy). 숫자는 홉 수, true/false, 또는 IP·서브넷 목록.
    * Render는 프록시 한 겹이라 기본 1. 틀리면 req.ip가 프록시 IP가 돼 IP 기준 제한이 모두에게 같이 걸린다.
    */

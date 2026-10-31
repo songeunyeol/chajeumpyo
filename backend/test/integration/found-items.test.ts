@@ -36,8 +36,9 @@ function useExtraction(result: FoundItemExtraction | (() => Promise<FoundItemExt
   setAiClient({ ...mockAiClient, extractFoundItem: typeof result === "function" ? result : async () => result });
 }
 
-async function register(fields: Record<string, string | number>, image?: Buffer, ua = "test-agent") {
+async function register(fields: Record<string, string | number>, image?: Buffer, ua = "test-agent", deviceId?: string) {
   let req = request(app).post("/api/v1/found-items").set("User-Agent", ua);
+  if (deviceId) req = req.set("X-Device-Id", deviceId);
   for (const [k, v] of Object.entries({ ...finderConsentFields(), ...fields })) req = req.field(k, String(v));
   if (image) req = req.attach("image", image, "photo.jpg");
   return req;
@@ -390,6 +391,21 @@ describe("기준 9. 같은 기기·IP는 10분에 5건, 지문은 해시로만",
     expect(res.status).toBe(429);
     expect(res.body.error.code).toBe("RATE_LIMITED");
     expect((await register(handedOver(), img, "phone-B")).status).toBe(201);
+  });
+
+  it("같은 와이파이·같은 기종(같은 IP·User-Agent)이라도 기기 id가 다르면 따로 센다 (10/31 검증 #2)", async () => {
+    const img = await noisyJpeg();
+    const phoneA = "3f1c2b7a-0000-4000-8000-00000000000a";
+    const phoneB = "3f1c2b7a-0000-4000-8000-00000000000b";
+    for (let i = 0; i < 5; i++) expect((await register(handedOver(), img, "iPhone", phoneA)).status).toBe(201);
+    expect((await register(handedOver(), img, "iPhone", phoneA)).status).toBe(429);
+    expect((await register(handedOver(), img, "iPhone", phoneB)).status).toBe(201);
+  });
+
+  it("기기 id가 이상한 모양이면 무시하고 IP·User-Agent로만 센다", async () => {
+    const img = await noisyJpeg();
+    for (let i = 0; i < 5; i++) expect((await register(handedOver(), img, "iPhone", `bad id ${i}!`)).status).toBe(201);
+    expect((await register(handedOver(), img, "iPhone", "another bad!")).status).toBe(429);
   });
 
   it("지문은 64자리 해시, IP·기기 문자열은 저장하지 않는다", async () => {

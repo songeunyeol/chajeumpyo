@@ -177,7 +177,7 @@
 - `IN_PLACE`인데 `storagePlaceId`를 보내거나 `buildingId`가 없으면 `400 VALIDATION_ERROR`.
 - 주운 건물을 모르면(`building: null`) 매칭의 위치 점수는 "모름"(0.5)이고 후보 근거에 `SAME_BUILDING`이 붙지 않는다. 응답·후보·상세의 `building`은 `null`일 수 있다.
 - 사진은 JPG·PNG·WEBP·HEIC, 10MB 이하. 아니면 `400` / `413 IMAGE_TOO_LARGE`. 서버는 회전을 적용하고 위치(GPS)를 포함한 EXIF를 모두 지운 뒤 긴 변 1600px로 저장한다. 사진은 세 가지로 저장한다: 원본(관리자만), 공개본(판정 통과 후, 1024px, 개인정보 영역만 블러. 민감한데 영역을 모르면 전체 블러), 후보용 블러본(판정 전 후보 카드, 320px, 항상 강한 블러).
-- 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안)
+- 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안) 기기는 IP·User-Agent에 프론트가 보내는 `X-Device-Id`(localStorage에 둔 무작위 값, 영숫자·`-` 8~64자)를 더해 구분한다. 헤더가 없거나 모양이 이상하면 IP·User-Agent만 쓴다. 같은 와이파이·같은 기종 휴대폰이 한 기기로 묶이지 않게 하려는 것이다 (10/31).
 - AI 분석은 호출마다 제한 시간(기본 8초)이 있고 실패하면 한 번 재시도한다. AI 실패로 민감 여부를 모르면 공개본은 블러 처리한다.
 - 동의 필드: `consentVersion`, `consentExternalAi`(`"true"` 필수), `consentLocation`(`"true"`/`"false"`). 물건에 버전과 위치 동의 여부를 남긴다.
 - **고가품은 보관처에만** (QA B11, open-issues #32): AI가 고가품(`VALUABLE_CATEGORIES`, 지갑·카드·휴대폰·이어폰 등)으로 본 물건을 `IN_PLACE`로 보내면 `400 VALUABLE_HAND_OVER_REQUIRED` ("귀중품은 보관처(센터·경비실)에 맡겨 주세요.", `details[0].path = "storageType"`). 한 번에 등록은 AI 분석 뒤에야 종류를 알기 때문에, 분석 직후 **사진을 저장하기 전에** 거절한다(물건 행·사진 파일이 남지 않고 등록 횟수에도 세지 않는다). 같은 사진을 `HANDED_OVER`로 다시 보내면 된다. 이 거절은 요청 형식이 아니라 서버 AI 결과에 따라 갈리므로 `VALIDATION_ERROR`와 따로 둬서 화면이 "보관처 고르기"로 바로 이어지게 한다.
@@ -258,6 +258,7 @@
 { "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
 ```
 - 분실자(`USER`) 계정만. 틀린 비밀번호와 없는 이메일은 같은 `401 UNAUTHORIZED` 메시지로 응답한다.
+- 요청 제한: 같은 IP는 10분에 `IP_RATE_LIMIT_PER_10MIN`번(기본 200), 같은 이메일은 10분에 `LOGIN_FAIL_LIMIT_PER_10MIN`번(기본 10) 틀리면 맞는 비밀번호도 `429 RATE_LIMITED`. 성공한 로그인은 세지 않는다. 이메일은 앞뒤 공백·대소문자를 무시하고 센다. 관리자 로그인(`/admin/auth/login`)도 같다 (10/31).
 - 토큰 유효 기간은 7일(초안, open-issues #14). 로그아웃은 프론트가 토큰을 지운다. 만료되면 다시 로그인한다.
 
 #### `POST /auth/demo` · 공개
@@ -344,7 +345,7 @@
 ### 일치 판정
 
 #### `POST /lost-reports/:id/claims` · 회원
-- 계정·물건별 잠금과 별개로 같은 IP는 10분에 20번까지. 넘으면 `429 RATE_LIMITED`.
+- 계정·물건별 잠금과 별개로 한 계정은 10분에 30번, 같은 IP는 10분에 `IP_RATE_LIMIT_PER_10MIN`번(기본 200)까지. 넘으면 `429 RATE_LIMITED`. IP 한도를 넉넉히 둔 건 학교 와이파이처럼 공인 IP 하나 뒤의 여러 명이 같이 막히지 않게 하려는 것이다 (10/31).
 ```json
 // 요청
 { "foundItemId": "6a1f..." }
@@ -404,7 +405,7 @@
 - 체험 계정이 시드가 아닌 습득물에 시도하면 `403 FORBIDDEN`.
 
 #### `POST /claims/:attemptId/answer` · 회원
-- 같은 IP는 10분에 20번까지. 넘으면 `429 RATE_LIMITED`.
+- 한 계정은 10분에 30번, 같은 IP는 10분에 `IP_RATE_LIMIT_PER_10MIN`번(기본 200)까지. 넘으면 `429 RATE_LIMITED`.
 ```json
 // 요청
 { "answer": "곰돌이" }
