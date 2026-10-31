@@ -19,6 +19,8 @@ export const ERROR_STATUS = {
   /** 이미 보관을 끝냈거나 끝낼 수 없는 상태(확정 전, 시드) */
   NOT_CLOSABLE: 409,
   QR_EXPIRED: 410,
+  /** 관리자가 보관을 끝냈거나(잘못 등록·폐기) 보관 기한이 지난 물건. 확인·열람·답을 받지 않는다 (10/31 검증) */
+  ITEM_CLOSED: 410,
   IMAGE_TOO_LARGE: 413,
   NO_OBJECT_DETECTED: 422,
   RATE_LIMITED: 429,

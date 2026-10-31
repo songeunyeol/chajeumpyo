@@ -443,7 +443,7 @@
       candErr.textContent = LostApi.friendlyMessage(err);
       candErr.hidden = false;
       // 후보가 바뀌었거나(403) 이미 누가 가져갔으면(409) 목록을 다시 받는다
-      if (err.code === "FORBIDDEN" || err.code === "ALREADY_CLAIMED") loadCandidates();
+      if (err.code === "FORBIDDEN" || err.code === "ALREADY_CLAIMED" || err.code === "ITEM_CLOSED") loadCandidates();
     } finally {
       claiming = false;
       btn.style.opacity = "";

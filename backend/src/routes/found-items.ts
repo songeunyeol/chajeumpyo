@@ -151,6 +151,7 @@ registry.registerPath({
     401: errorResponse("UNAUTHORIZED"),
     403: errorResponse("FORBIDDEN: 통과하지 않음"),
     404: errorResponse("NOT_FOUND"),
+    410: errorResponse("ITEM_CLOSED: 관리자가 정리했거나 보관 기한이 지난 물건"),
   },
 });
 

@@ -35,7 +35,10 @@ registry.registerPath({
     400: errorResponse("VALIDATION_ERROR: 닫힌 신고 등"),
     403: errorResponse("FORBIDDEN: 후보가 아닌 물건"),
     404: errorResponse("NOT_FOUND: 없거나 남의 신고"),
-    409: errorResponse("MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만"),
+    409: errorResponse(
+      "MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만 · ALREADY_CLAIMED: 이미 수령된 물건",
+    ),
+    410: errorResponse("ITEM_CLOSED: 보던 물건을 관리자가 정리했거나 보관 기한이 지남"),
     429: errorResponse("RATE_LIMITED: 근거 부족 확인이 1시간에 3번을 넘음 (특징 없는 물건은 교무처 대면 확인 안내)"),
     502: errorResponse("AI_UNAVAILABLE"),
   },
@@ -53,7 +56,10 @@ registry.registerPath({
     200: { description: "답 판정", ...json(AnswerResponse) },
     400: errorResponse("VALIDATION_ERROR: 질문이 없는 시도, 보기 수가 질문 수와 다름"),
     404: errorResponse("NOT_FOUND"),
-    409: errorResponse("ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감"),
+    409: errorResponse(
+      "ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감 · ALREADY_CLAIMED: 이미 수령됨",
+    ),
+    410: errorResponse("ITEM_CLOSED: 질문을 받은 뒤 관리자가 정리했거나 보관 기한이 지남"),
   },
 });
 
