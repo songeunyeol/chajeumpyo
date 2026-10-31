@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Category, Color, ReportStatus, SubCategory } from "../enums";
+import { Category, Color, ReportStatus, StorageType, SubCategory } from "../enums";
 import { BuildingSummary } from "./buildings";
 
 /** 분실 설명 길이 (초안) */
@@ -125,6 +125,18 @@ export const LostReportListResponse = z.object({
       building: BuildingSummary.nullable(),
       candidateCount: z.number().int(),
       createdAt: z.iso.datetime(),
+      /**
+       * 이 신고로 확인을 통과한 물건의 수령 상태. 통과한 물건이 없으면 null.
+       * PASSED: 통과했고 아직 QR 없음(또는 만료) · QR_ISSUED: 쓸 수 있는 수령 QR이 있음 · COMPLETED: 수령 완료.
+       * 목록에서 QR 화면으로 바로 보내거나(보관처에 맡긴 물건) 수령 완료 카드를 누를 수 없게 하는 데 쓴다.
+       */
+      pickup: z
+        .object({
+          foundItemId: z.string(),
+          storageType: StorageType.nullable(),
+          status: z.enum(["PASSED", "QR_ISSUED", "COMPLETED"]),
+        })
+        .nullable(),
     }),
   ),
 });
