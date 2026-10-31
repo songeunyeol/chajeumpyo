@@ -36,6 +36,11 @@ export const ClaimResponse = z.discriminatedUnion("result", [
     questions: z.array(ClaimQuestion),
   }),
   z.object({ ...base, result: z.literal("FAIL"), ...failFields }),
+  /**
+   * 근거 부족: 맞힌 특징도 틀린 특징도 없다. 실패로 세지 않고(attemptsLeft 그대로) 특징을 더 적게 한다 (10/31).
+   * 계정·물건마다 1시간에 3번까지, 넘으면 429 RATE_LIMITED
+   */
+  z.object({ ...base, result: z.literal("NEED_MORE"), message: z.string(), ...failFields }),
 ]);
 export type ClaimResponse = z.infer<typeof ClaimResponse>;
 

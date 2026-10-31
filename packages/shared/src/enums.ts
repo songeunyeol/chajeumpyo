@@ -516,7 +516,8 @@ export type FoundStatus = z.infer<typeof FoundStatus>;
 export const ReportStatus = z.enum(["OPEN", "RESOLVED", "CLOSED"]);
 export type ReportStatus = z.infer<typeof ReportStatus>;
 
-export const MatchResult = z.enum(["PASS", "BORDERLINE", "FAIL"]);
+/** NEED_MORE: 근거 부족(맞힌 특징도 모순도 없음). 실패로 세지 않는다 (10/31) */
+export const MatchResult = z.enum(["PASS", "BORDERLINE", "FAIL", "NEED_MORE"]);
 export type MatchResult = z.infer<typeof MatchResult>;
 
 /** DEMO: 체험 계정의 수령. 시드 상태를 바꾸지 않고 "완료는 물건당 1건" 규칙에서도 빠진다. */

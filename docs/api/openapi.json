@@ -751,7 +751,8 @@
                             "enum": [
                               "PASS",
                               "BORDERLINE",
-                              "FAIL"
+                              "FAIL",
+                              "NEED_MORE"
                             ]
                           },
                           "answerCorrect": {
@@ -1590,7 +1591,8 @@
                             "enum": [
                               "PASS",
                               "BORDERLINE",
-                              "FAIL"
+                              "FAIL",
+                              "NEED_MORE"
                             ]
                           },
                           "answerCorrect": {
@@ -2768,7 +2770,8 @@
                             "enum": [
                               "PASS",
                               "BORDERLINE",
-                              "FAIL"
+                              "FAIL",
+                              "NEED_MORE"
                             ]
                           },
                           "answerCorrect": {
@@ -5529,7 +5532,7 @@
           }
         ],
         "summary": "내 물건인지 확인 (F-08)",
-        "description": "이 신고의 지금 후보(상위 3개)나, 이 신고에 보여 준 적 있고 지금도 후보 범위 안인 물건에만 시도할 수 있다. 통과: 특징 일치 1개 이상·모순 0 / 경계: 일치와 모순이 함께 있으면 확인 질문 / 실패: 일치 0. 설명이 그대로면 이전 결과를 reused=true로 돌려주고 횟수를 쓰지 않는다. 맞은 항목은 통과했을 때만 준다.",
+        "description": "이 신고의 지금 후보(상위 3개)나, 이 신고에 보여 준 적 있고 지금도 후보 범위 안인 물건에만 시도할 수 있다. 통과: 사진 특징 75% 이상 일치·모순 0 / 경계: 확인 질문(객관식) / 실패: 맞힌 것 없이 모순, 또는 질문 오답. 근거 부족(NEED_MORE): 맞힌 것도 모순도 없으면 횟수를 쓰지 않고 특징을 더 적게 한다. 계정·물건마다 1시간에 3번까지(넘으면 429). 설명이 그대로면 이전 결과를 reused=true로 돌려주고 횟수를 쓰지 않는다. 맞은 항목은 통과했을 때만 준다.",
         "parameters": [
           {
             "schema": {
@@ -5674,6 +5677,41 @@
                         "attemptId",
                         "reused",
                         "result",
+                        "attemptsLeft",
+                        "inPersonOnly"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "attemptId": {
+                          "type": "string"
+                        },
+                        "reused": {
+                          "type": "boolean"
+                        },
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "NEED_MORE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "attemptsLeft": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "inPersonOnly": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "attemptId",
+                        "reused",
+                        "result",
+                        "message",
                         "attemptsLeft",
                         "inPersonOnly"
                       ]
@@ -5898,6 +5936,77 @@
           },
           "409": {
             "description": "MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: 근거 부족 확인이 1시간에 3번을 넘음 (특징 없는 물건은 교무처 대면 확인 안내)",
             "content": {
               "application/json": {
                 "schema": {
