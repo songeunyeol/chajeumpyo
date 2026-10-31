@@ -230,13 +230,12 @@
     const timers = [];
     const later = (fn, ms) => timers.push(setTimeout(fn, ms));
     const showButtons = () => root.classList.add("is-in");
-    const showCopy = () => {
-      root.classList.add("is-said");
-      later(showButtons, reduce ? 0 : 380);
-    };
-    // 기다리기 싫은 사람은 화면을 한 번 누르면 바로 끝낸다
+    const showCopy = () => root.classList.add("is-said");
+    // 버튼은 글자 효과를 기다리지 않고 바로 들어온다(0.4초 안에 보임). 처음 온 사람이 누를 곳을 찾게 (검증 10/31: 2.2초 동안 투명했다)
+    requestAnimationFrame(showButtons);
+    // 기다리기 싫은 사람은 화면을 한 번 누르면 남은 글자 효과를 바로 끝낸다
     const skip = () => {
-      if (root.classList.contains("is-in")) return;
+      if (root.classList.contains("is-said")) return;
       timers.forEach(clearTimeout);
       typed.textContent = "찾음표";
       title.classList.add("is-done");
