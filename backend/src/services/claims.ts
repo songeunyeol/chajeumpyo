@@ -22,8 +22,8 @@ import { prisma } from "../lib/prisma";
 import { judgeAnswer } from "../matching/answer";
 import { FAILED_ATTEMPT, failedAttemptCounts, findClaimableCandidate } from "../matching/candidates";
 import { judge } from "../matching/judge";
-import { MAX_FAILED_ATTEMPTS, MAX_ITEM_FAILED_ATTEMPTS } from "../matching/policy";
-import { colorQuestionFor, isAskable, PRESET_DISTRACTORS, questionFor } from "../matching/questions";
+import { MAX_FAILED_ATTEMPTS, MAX_ITEM_FAILED_ATTEMPTS, NEED_MORE_LIMIT } from "../matching/policy";
+import { colorQuestionFor, isAskable, isMemorable, PRESET_DISTRACTORS, questionFor } from "../matching/questions";
 import {
   colorDistractors,
   makeQuestion,
@@ -99,6 +99,8 @@ async function isInPersonOnly(foundItemId: string, db: Prisma.TransactionClient 
   return item?.claimLockedAt != null;
 }
 
+const NEED_MORE_MESSAGE = "아직 근거가 부족해요. 주인만 알 만한 특징을 더 적어 주세요.";
+
 const IN_PERSON_MESSAGE =
   "확인 실패가 많아 이 물건은 온라인으로 확인할 수 없어요. 보관처에서 직접 본인 확인을 받아 주세요.";
 
@@ -139,6 +141,14 @@ async function lockItemIfExhausted(tx: Prisma.TransactionClient, foundItemId: st
 
 /** 저장된 시도를 응답 형태로. 답한 경계 시도는 답 결과로 돌려준다. */
 async function toResponse(a: Attempt, reused: boolean, db: Prisma.TransactionClient = prisma): Promise<ClaimResponse> {
+  if (a.result === "NEED_MORE")
+    return {
+      attemptId: a.id,
+      reused,
+      result: "NEED_MORE",
+      message: NEED_MORE_MESSAGE,
+      ...(await failFields(a.userId, a.foundItemId, db)),
+    };
   const passed = a.result === "PASS" || (a.result === "BORDERLINE" && a.answerCorrect === true);
   if (passed) {
     const fields = (a.matchedFields as { public?: string[] }).public ?? [];
@@ -200,6 +210,7 @@ async function previousQuestions(foundItemId: string): Promise<Map<string, QuizQ
 /**
  * 경계 판정의 객관식 질문 (F-09, 10/29 은열 의견: 서술형은 맞히기 어렵다).
  * 신고에 적지 않은 숨은 특징부터 묻고, 하나뿐이면 신고에 색을 적지 않았을 때 색을 함께 묻고, 그래도 모자라면 적었던 특징을 묻는다. 모두 맞혀야 통과.
+ * 흠집·무늬는 이 모두를 쓴 뒤에만 묻는다(주인도 잘 모른다, 10/31 기획 피드백).
  */
 async function buildQuiz(
   foundItemId: string,
@@ -211,27 +222,35 @@ async function buildQuiz(
   maxQuestions = QUIZ_QUESTIONS,
 ): Promise<QuizQuestion[]> {
   const mentioned = new Set(reportedKeys);
-  const candidates = [first, ...stored.filter((f) => f !== first && isAskable(f) && !mentioned.has(f.key))];
+  const rest = stored.filter((f) => f !== first && isAskable(f));
+  const unmentioned = rest.filter((f) => !mentioned.has(f.key));
+  // 그래도 모자라면 신고에 적었던 특징도 묻는다. 모순·부정으로 적은 특징을 보기에서 다시 고르게 (10/30: 모순이면 바로 실패 대신 객관식)
+  const again = rest.filter((f) => mentioned.has(f.key));
+  // 흠집·무늬는 주인도 잘 몰라서 잘 아는 특징(색 포함)을 다 쓴 뒤에만 묻는다 (10/31 기획 피드백)
+  const hard = [first, ...unmentioned, ...again].filter((f) => !isMemorable(f));
+  const order: (AiFeature | "color")[] = [
+    ...(isMemorable(first) ? [first] : []),
+    ...unmentioned.filter(isMemorable),
+    "color",
+    ...again.filter(isMemorable),
+    ...hard,
+  ];
   const before = await previousQuestions(foundItemId);
   const reuse = (key: string, text: string) => {
     const q = before.get(key);
     return q && q.text === text && q.options.length === QUIZ_OPTIONS ? reshuffle(q) : null;
   };
-  const quiz: QuizQuestion[] = [];
-  for (const f of candidates) {
-    if (quiz.length >= maxQuestions) break;
-    const q = reuse(f.key, questionFor(f, itemName)) ?? (await featureQuestion(f, itemName));
-    if (q) quiz.push(q);
-  }
   const storedColor = Color.safeParse(color.stored);
-  if (quiz.length < maxQuestions && !color.reported && storedColor.success && storedColor.data !== "OTHER") {
-    const label = COLOR_LABELS[storedColor.data];
-    const text = colorQuestionFor(itemName);
-    quiz.push(reuse("color", text) ?? makeQuestion(text, "color", label, colorDistractors(storedColor.data)));
-  }
-  // 그래도 모자라면 신고에 적었던 특징도 묻는다. 모순·부정으로 적은 특징을 보기에서 다시 고르게 (10/30: 모순이면 바로 실패 대신 객관식)
-  for (const f of stored.filter((s) => s !== first && isAskable(s) && mentioned.has(s.key))) {
+  const quiz: QuizQuestion[] = [];
+  for (const f of order) {
     if (quiz.length >= maxQuestions) break;
+    if (f === "color") {
+      if (color.reported || !storedColor.success || storedColor.data === "OTHER") continue;
+      const text = colorQuestionFor(itemName);
+      const label = COLOR_LABELS[storedColor.data];
+      quiz.push(reuse("color", text) ?? makeQuestion(text, "color", label, colorDistractors(storedColor.data)));
+      continue;
+    }
     const q = reuse(f.key, questionFor(f, itemName)) ?? (await featureQuestion(f, itemName));
     if (q) quiz.push(q);
   }
@@ -347,6 +366,22 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
         j = { ...j, result: "FAIL", questionFeature: null };
         quiz = [];
       }
+    }
+
+    // 맞힌 것도 모순도 없는 실패는 실패로 세지 않고 특징을 더 적게 한다 (10/31 기획 피드백: 주인이 특징을 더 적을수록 횟수만 줄었다).
+    // 틀린 특징(모순)이 있을 때만 기회를 쓴다. 아무 특징이나 넣어 보는 탐색은 계정·물건마다 시간당 횟수로 막는다.
+    if (j.result === "FAIL" && j.contradictions === 0) {
+      const since = new Date(Date.now() - NEED_MORE_LIMIT.windowMinutes * 60_000);
+      const recent = await tx.matchAttempt.count({
+        where: { userId: viewer.userId, foundItemId, result: "NEED_MORE", createdAt: { gte: since } },
+      });
+      if (recent >= NEED_MORE_LIMIT.count)
+        throw new AppError(
+          "RATE_LIMITED",
+          `특징이 부족한 확인은 ${NEED_MORE_LIMIT.windowMinutes / 60}시간에 ${NEED_MORE_LIMIT.count}번까지예요. 잠시 뒤 다시 시도해 주세요.`,
+        );
+      j = { ...j, result: "NEED_MORE", questionFeature: null };
+      quiz = [];
     }
 
     const attempt = await tx.matchAttempt.create({

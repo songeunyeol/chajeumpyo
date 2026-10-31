@@ -150,7 +150,7 @@
   const STATUS_ORDER = ["REVIEW", "REGISTERED", "REVEALED", "CLAIMED", "EXPIRED", "ANALYZING"];
 
   const STORAGE_LABELS = { IN_PLACE: "그 자리에 둠", HANDED_OVER: "보관처에 맡김" };
-  const MATCH_RESULT_LABELS = { PASS: "통과", BORDERLINE: "애매함", FAIL: "실패" };
+  const MATCH_RESULT_LABELS = { PASS: "통과", BORDERLINE: "애매함", FAIL: "실패", NEED_MORE: "근거 부족(기회 안 씀)" };
   const PICKUP_METHOD_LABELS = {
     CENTER_QR: "수령 QR",
     SELF_REPORT: "직접 찾음",
