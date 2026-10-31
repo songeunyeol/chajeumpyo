@@ -311,8 +311,9 @@
 #### `GET /lost-reports` · 회원
 내 신고 목록.
 ```json
-{ "reports": [ { "id": "r_...", "category": "EARPHONE", "status": "OPEN", "description": "...", "lostFrom": "...", "lostTo": "...", "building": { "id": 1, "name": "혜인관" }, "candidateCount": 2, "createdAt": "..." } ] }
+{ "reports": [ { "id": "r_...", "category": "EARPHONE", "status": "OPEN", "description": "...", "lostFrom": "...", "lostTo": "...", "building": { "id": 1, "name": "혜인관" }, "candidateCount": 2, "createdAt": "...", "pickup": { "foundItemId": "f_...", "storageType": "HANDED_OVER", "status": "QR_ISSUED" } } ] }
 ```
+- `pickup`: 이 신고로 확인을 통과한 물건(가장 최근)의 내 수령 상태. 통과한 물건이 없으면 `null`. `PASSED`(통과, 쓸 수 있는 QR 없음) · `QR_ISSUED`(만료 전 수령 QR 있음) · `COMPLETED`(수령 완료, 신고 RESOLVED). 화면은 보관처 물건이 아직 수령 전이면 카드를 눌러 QR 화면(`item-handover.html?id=…&qr=1`)을 바로 열고, 수령 완료 카드는 누를 수 없게 한다.
 
 #### `GET /lost-reports/:id/candidates` · 회원
 `{ "candidates": [...] }`. `POST` 응답의 `candidates`와 같은 형식. 새 습득물이 등록되면 늘어난다. 닫힌 신고는 빈 목록. 남의 신고면 `404`.

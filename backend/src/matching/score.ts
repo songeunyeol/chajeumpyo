@@ -1,4 +1,4 @@
-import { type Category, RELATED_CATEGORIES, relatedBySubCategory } from "@chajeumpyo/shared";
+import { type Category, RELATED_CATEGORIES, relatedBySubCategory, unrelatedBySubCategory } from "@chajeumpyo/shared";
 import { ATTR_WEIGHTS, CATEGORY_SCORE, PLACE_SCORE, SUB_CATEGORY_MISMATCH_SCORE, TIME_SCORE, WEIGHTS } from "./policy";
 
 export type ReportSide = {
@@ -35,9 +35,12 @@ export function categoryScore(
   }
   if (item.categoryAlt === reported) return CATEGORY_SCORE.alt;
   const related = RELATED_CATEGORIES[reported] ?? [];
-  if ((item.category && related.includes(item.category)) || (item.categoryAlt && related.includes(item.categoryAlt))) {
-    return CATEGORY_SCORE.related;
-  }
+  // 세부 종류는 1순위 종류의 것이라, 1순위로 묶일 때만 세부 종류끼리 관계없는 조합(이어폰 ↔ 마우스)을 뺀다
+  const byMain =
+    item.category !== null &&
+    related.includes(item.category) &&
+    !unrelatedBySubCategory(reported, reportedSub, item.category, item.subCategory ?? null);
+  if (byMain || (item.categoryAlt && related.includes(item.categoryAlt))) return CATEGORY_SCORE.related;
   if (relatedBySubCategory(reported, reportedSub, item.category ?? null, item.subCategory ?? null)) {
     return CATEGORY_SCORE.related;
   }

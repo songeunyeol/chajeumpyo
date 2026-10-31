@@ -9302,6 +9302,41 @@
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
+                          },
+                          "pickup": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "foundItemId": {
+                                "type": "string"
+                              },
+                              "storageType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "IN_PLACE",
+                                  "HANDED_OVER",
+                                  null
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "PASSED",
+                                  "QR_ISSUED",
+                                  "COMPLETED"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "foundItemId",
+                              "storageType",
+                              "status"
+                            ]
                           }
                         },
                         "required": [
@@ -9313,7 +9348,8 @@
                           "lostTo",
                           "building",
                           "candidateCount",
-                          "createdAt"
+                          "createdAt",
+                          "pickup"
                         ]
                       }
                     }

@@ -185,6 +185,8 @@
       });
     }
     showPassed();
+    // 내 신고 목록에서 "수령 QR 보기"로 왔으면 QR을 바로 띄운다(다시 받기: 이전 QR은 쓸 수 없게 된다)
+    if (new URLSearchParams(location.search).get("qr") === "1") qrBtn.click();
   }
 
   const demoPickupBox = document.getElementById("demoPickupBox");
