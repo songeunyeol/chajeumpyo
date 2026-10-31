@@ -180,10 +180,10 @@ describe("스토리텔링 화면 (QA 10/30 최종)", () => {
     expect(html).not.toContain("오늘 00:00부터");
   });
 
-  it("첫 화면: 문제 한 줄, 눈에 띄는 체험 안내, 가로로 밀고 들어오는 효과 없음", () => {
+  it("첫 화면: 문제 한 줄, 체험 배지 없음(심사용 계정으로 심사), 가로로 밀고 들어오는 효과 없음", () => {
     const html = read("frontend/index.html");
     expect(html).toContain("146건");
-    expect(html).toContain("심사위원 체험 2분");
+    expect(html).not.toContain("심사위원 체험 2분");
     expect(html).not.toMatch(/translateX\(-?115%\)/);
     expect(html).toContain("overflow-x: clip");
   });
@@ -468,10 +468,8 @@ describe("QA 10/31: 화면 문구·기본값", () => {
       expect(read(f)).toContain("3번 틀리면 다시 확인할 수 없고(기다려도 풀리지 않아요)");
   });
 
-  it("첫 화면 부제목은 제목 아래 줄에 놓인다", () => {
-    const index = read("frontend/index.html");
-    expect(index).toMatch(/\.title \{[^}]*flex-direction: column/);
-    expect(index).not.toContain("door-map");
+  it("첫 화면에 지도는 다시 넣지 않는다", () => {
+    expect(read("frontend/index.html")).not.toContain("door-map");
   });
 });
 
@@ -489,7 +487,7 @@ describe("QA 10/31: 그 자리에 둠은 자세한 위치 필수, 첫 화면 제
     expect(register).toContain("const LOC_DETAIL_MIN = 4;");
   });
 
-  it("첫 화면 제목과 부제목은 가운데 정렬", () => {
-    expect(read("frontend/index.html")).toMatch(/\.title \{[^}]*align-items: center; text-align: center;/);
+  it("첫 화면 제목과 부제목은 원래 배치(한 줄, 부제목은 제목 옆)", () => {
+    expect(read("frontend/index.html")).toMatch(/\.title \{[^}]*flex-direction: row;/);
   });
 });
