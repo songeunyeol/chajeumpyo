@@ -647,3 +647,88 @@ describe("알림 점 (QA 10/31: 안 읽은 알림이 있어도 점이 안 뜸)",
     expect(home).toContain('addEventListener("pageshow"');
   });
 });
+
+describe("확인 창과 뒤로 가기 (QA 10/31: 안드로이드 뒤로 가기로 화면이 넘어감)", () => {
+  it("확인 창이 있는 화면은 modal-back.js를 불러오고, 취소 버튼을 표시한다", () => {
+    for (const page of ["frontend/lost/candidates.html", "frontend/lost/home.html", "frontend/found/register.html"]) {
+      expect(read(page)).toContain('src="../modal-back.js"');
+    }
+    expect(read("frontend/lost/candidates.html")).toMatch(/id="cancelClaimBtn" data-modal-cancel/);
+    expect(read("frontend/lost/candidates.html")).toMatch(/id="cancelRefreshBtn" data-modal-cancel/);
+    expect(read("frontend/lost/home.html")).toMatch(/id="cancelDeleteBtn" data-modal-cancel/);
+    expect(read("frontend/sw.js")).toContain('"/modal-back.js"');
+  });
+
+  it("뒤로 가기는 창만 닫고(capture로 먼저 받음), 버튼으로 닫으면 쌓은 칸을 걷어낸다", () => {
+    const js = read("frontend/modal-back.js");
+    expect(js).toContain("history.pushState");
+    expect(js).toContain("history.back()");
+    expect(js).toMatch(/addEventListener\(\s*"popstate"[\s\S]*stopImmediatePropagation[\s\S]*true,\s*\)/);
+    // leave-guard 창은 스스로 history를 다룬다
+    expect(read("frontend/leave-guard.js")).toContain('backdrop.dataset.modalBack = "off"');
+    // 창을 닫고 바로 넘어가는 곳은 칸을 걷어낼 때까지 기다린다
+    expect(read("frontend/lost/candidates.html")).toContain("ModalBack.settled()");
+    expect(read("frontend/leave-guard.js")).toContain("ModalBack.settled()");
+  });
+});
+
+describe("후보 목록 (QA 10/31: 카드 없이 '비슷한 물건 3개'만 보임)", () => {
+  it("처음에는 숫자 대신 불러오는 중을 보이고, 마지막 요청의 응답만 그린다", () => {
+    const html = read("frontend/lost/candidates.html");
+    expect(html).not.toContain('<h1 id="candHeading">비슷한 물건 3개</h1>');
+    expect(html).toContain('id="candidateList" aria-busy="true"');
+    expect(html).toMatch(
+      /const seq = \+\+loadSeq;[\s\S]*if \(seq !== loadSeq\) return;\s*candidates = next;\s*renderCards/,
+    );
+  });
+});
+
+describe("수령 QR (QA 10/31: 교무처가 스캔해도 새로고침 전까지 QR이 남음)", () => {
+  it("QR을 띄운 동안 5초마다 수령 상태를 보고, 끝나면 마무리 카드로 바꾼다", () => {
+    const html = read("frontend/lost/item-handover.html");
+    expect(html).toContain("PICKUP_POLL_MS = 5000");
+    expect(html).toMatch(/status === "COMPLETED"[\s\S]*showPickedUp/);
+    // 화면이 가려지면 쉬고, 다시 보이면 바로 본다
+    expect(html).toContain("document.hidden");
+    expect(html).toContain('addEventListener("visibilitychange"');
+    expect(html).toContain('addEventListener("pageshow"');
+  });
+});
+
+describe("연결 끊김 안내 (QA 10/31: 오프라인이면 화면이 깨져 보임)", () => {
+  it("세 API 모듈이 안내 파일을 불러오고 요청 결과를 알린다", () => {
+    for (const path of ["frontend/lost/api.js", "frontend/found/api.js", "frontend/admin/admin.js"]) {
+      const src = read(path);
+      expect(src).toContain('s.src = "/offline-notice.js"');
+      expect(src).toContain('reportNet(false, method === "GET")');
+      expect(src).toContain('reportNet(true, method === "GET")');
+    }
+  });
+
+  it("안내는 해요체로 다시 시도를 주고, 오프라인에서도 쓰게 앱 껍데기에 캐시한다", () => {
+    const notice = read("frontend/offline-notice.js");
+    expect(notice).toContain("인터넷 연결을 확인해 주세요");
+    expect(notice).toContain("다시 시도");
+    expect(notice).toContain('addEventListener("online"');
+    // 올리는 중 화면은 자체 다시 시도 화면을 쓴다 (#163)
+    expect(notice).toContain('"/found/uploading.html"');
+    expect(read("frontend/sw.js")).toContain('"/offline-notice.js"');
+  });
+});
+
+describe("분실 신고 종류 (QA 10/31 영상)", () => {
+  it("종류는 비어 있는 채로 시작하고, 고르지 않으면 신고하지 않는다", () => {
+    const report = read("frontend/lost/report.html");
+    expect(report).not.toContain('categorySelect.value = "EARPHONE"');
+    expect(report).toContain('new Option("종류를 골라 주세요", "")');
+    expect(report).toContain("if (!categorySelect.value)");
+  });
+
+  it("화장품 이름을 적으면 기타 → 화장품으로 고른다", () => {
+    const api = read("frontend/lost/api.js");
+    for (const w of ["화장품", "아이라이너", "틴트", "마스카라", "쿠션", "핸드크림"])
+      expect(api).toContain(`["${w}", "ETC", "COSMETICS"]`);
+    // "아이라이너 펜슬"이 펜(필기구)보다 먼저 걸린다
+    expect(api.indexOf('["아이라이너"')).toBeLessThan(api.indexOf('["펜", "STATIONERY"]'));
+  });
+});

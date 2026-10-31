@@ -115,13 +115,46 @@ describe("연관 종류라도 세부 종류끼리 관계없으면 뺀다 (기획
     expect(categoryScore("BAG", clothing("SHOES"), "BACKPACK")).toBe(0);
   });
 
-  it("2순위 종류로 묶이면 세부 종류는 보지 않는다 (세부 종류는 1순위 종류의 것)", () => {
+  it("1순위 세부 종류가 신고와 관계없으면 2순위 종류로도 후보에 넣지 않는다 (QA 10/31)", () => {
+    const mouseWithEarphoneAlt = {
+      category: "CHARGER" as const,
+      categoryAlt: "EARPHONE" as const,
+      subCategory: "MOUSE",
+    };
+    expect(categoryScore("EARPHONE", mouseWithEarphoneAlt, "WIRELESS_EARBUDS")).toBe(0);
+    // 신고 세부 종류를 모르면 관계없다고 단정하지 않는다
+    expect(categoryScore("EARPHONE", mouseWithEarphoneAlt)).toBe(CATEGORY_SCORE.alt);
+    // 1순위가 관계있는 세부 종류(보조배터리)면 2순위 점수를 그대로 쓴다
     expect(
       categoryScore(
         "EARPHONE",
-        { category: "CHARGER", categoryAlt: "EARPHONE", subCategory: "MOUSE" },
+        { category: "CHARGER", categoryAlt: "EARPHONE", subCategory: "POWER_BANK" },
         "WIRELESS_EARBUDS",
       ),
     ).toBe(CATEGORY_SCORE.alt);
+    // 1순위가 연관 묶음 밖이면 지금처럼 2순위로 찾는다
+    expect(categoryScore("EARPHONE", { category: "STATIONERY", categoryAlt: "EARPHONE" }, "WIRELESS_EARBUDS")).toBe(
+      CATEGORY_SCORE.alt,
+    );
+  });
+  it("세부 종류를 아는 기타 신고(화장품)는 종류를 아는 다른 물건을 1·2순위 어디로도 넣지 않는다 (10/31 시연 영상)", () => {
+    const mouse = { category: "CHARGER" as const, categoryAlt: null, subCategory: "MOUSE" };
+    expect(categoryScore("ETC", mouse, "COSMETICS")).toBe(0);
+    expect(categoryScore("ETC", { category: "UMBRELLA", categoryAlt: null }, "COSMETICS")).toBe(0);
+    // 2순위가 기타가 아니면 2순위로도 넣지 않는다 (아이라이너가 필기구로 잡힌 경우의 반대 방향)
+    expect(
+      categoryScore("ETC", { category: "CHARGER", categoryAlt: "STATIONERY", subCategory: "MOUSE" }, "COSMETICS"),
+    ).toBe(0);
+    // 기타로 본 물건은 그대로 찾는다
+    expect(categoryScore("ETC", { category: "ETC", categoryAlt: null, subCategory: "COSMETICS" }, "COSMETICS")).toBe(
+      CATEGORY_SCORE.exact,
+    );
+    expect(categoryScore("ETC", { category: "ETC", categoryAlt: null, subCategory: null }, "COSMETICS")).toBe(
+      CATEGORY_SCORE.exact,
+    );
+    // AI가 2순위로 기타를 붙인 물건(필기구로 본 아이라이너)은 찾는다
+    expect(categoryScore("ETC", { category: "STATIONERY", categoryAlt: "ETC" }, "COSMETICS")).toBe(CATEGORY_SCORE.alt);
+    // 세부 종류를 모르는 기타 신고는 지금처럼 모든 종류를 본다
+    expect(categoryScore("ETC", mouse)).toBe(CATEGORY_SCORE.etc);
   });
 });

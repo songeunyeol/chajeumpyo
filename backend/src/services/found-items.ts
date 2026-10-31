@@ -558,8 +558,9 @@ export async function confirmFoundItem(id: string, body: ConfirmFoundItemBody): 
         foundAt,
         expiresAt: new Date(foundAt.getTime() + env.FOUND_ITEM_RETENTION_DAYS * 86_400_000),
         confirmTokenHash: null,
-        // 습득자가 종류를 고쳤으면 AI가 본 종류는 다른 후보(categoryAlt)로 남긴다
-        ...(fix ? { category, subCategory, categoryAlt: draft.category } : {}),
+        // 습득자가 실물을 보고 종류를 고쳤으면 AI가 본 종류(1·2순위)는 버린다. 남기면 원래 종류 신고에
+        // 엉뚱한 후보·알림이 간다 (QA 10/31: 이어폰 신고자에게 "가방이 새로 등록됐어요")
+        ...(fix ? { category, subCategory, categoryAlt: null } : {}),
         ...(byNote ? { category, subCategory } : {}),
       },
     });

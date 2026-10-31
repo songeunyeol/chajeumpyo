@@ -189,22 +189,65 @@
     if (new URLSearchParams(location.search).get("qr") === "1") qrBtn.click();
   }
 
+  /** 수령이 끝났다: QR과 수령 전 안내를 숨기고 마무리 카드를 보여 준다 */
+  function showPickedUp(note) {
+    clearInterval(qrTimer);
+    stopPickupWatch();
+    qrWrap.hidden = true;
+    expireNote.hidden = true;
+    document.getElementById("beforePickupNote").hidden = true;
+    document.getElementById("pickupNotice").hidden = true;
+    document.getElementById("qrDock").hidden = true;
+    document.getElementById("pickedUpNote").textContent = note;
+    document.getElementById("pickedUpBox").hidden = false;
+    mode = "home";
+  }
+
+  // QR을 띄운 동안 교무처가 스캔했는지 5초마다 본다(GET /lost-reports의 pickup). 화면이 가려지면 쉬고,
+  // 다시 보이면 바로 한 번 본다. 수령이 끝나면 새로고침 없이 QR을 "찾았어요"로 바꾼다 (QA 10/31)
+  const PICKUP_POLL_MS = 5000;
+  let pickupWatch = null;
+  let pickupChecking = false;
+  async function checkPickedUp() {
+    if (pickupChecking || document.hidden || qrWrap.hidden) return;
+    pickupChecking = true;
+    try {
+      const itemId = LostApi.store.get(LostApi.KEYS.foundItemId);
+      const reports = await LostApi.reports();
+      const mine = reports.find((r) => r.pickup && r.pickup.foundItemId === itemId);
+      if (mine?.pickup.status === "COMPLETED") {
+        showPickedUp(`수령이 끝났어요 (${LostApi.formatKst(new Date().toISOString())}). 신고도 끝난 신고로 옮겼어요.`);
+      }
+    } catch (_) {
+      // 잠깐 끊겨도 다음 차례에 다시 본다
+    } finally {
+      pickupChecking = false;
+    }
+  }
+  function startPickupWatch() {
+    stopPickupWatch();
+    pickupWatch = setInterval(checkPickedUp, PICKUP_POLL_MS);
+  }
+  function stopPickupWatch() {
+    clearInterval(pickupWatch);
+    pickupWatch = null;
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && pickupWatch) checkPickedUp();
+  });
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted && pickupWatch) checkPickedUp();
+  });
+
   const demoPickupBox = document.getElementById("demoPickupBox");
   const demoPickupBtn = document.getElementById("demoPickupBtn");
   demoPickupBtn.addEventListener("click", async () => {
     demoPickupBtn.disabled = true;
     try {
       const done = await LostApi.demoPickup();
-      clearInterval(qrTimer);
-      qrWrap.hidden = true;
-      expireNote.hidden = true;
-      document.getElementById("beforePickupNote").hidden = true;
-      document.getElementById("pickupNotice").hidden = true;
-      document.getElementById("qrDock").hidden = true;
-      document.getElementById("pickedUpNote").textContent =
-        `수령이 끝났어요 (${LostApi.formatKst(done.completedAt)}). 신고도 끝난 신고로 옮겼어요. 실제 물건은 수령 즉시 사진이 지워지지만, 체험용 물건은 다른 분도 체험할 수 있게 사진을 남겨 둬요.`;
-      document.getElementById("pickedUpBox").hidden = false;
-      mode = "home";
+      showPickedUp(
+        `수령이 끝났어요 (${LostApi.formatKst(done.completedAt)}). 신고도 끝난 신고로 옮겼어요. 실제 물건은 수령 즉시 사진이 지워지지만, 체험용 물건은 다른 분도 체험할 수 있게 사진을 남겨 둬요.`,
+      );
     } catch (err) {
       demoPickupBtn.disabled = false;
       fail(err);
@@ -227,6 +270,8 @@
     tick();
     clearInterval(qrTimer);
     qrTimer = setInterval(tick, 30_000);
+    // 체험 QR은 "교무처 스캔 대신하기"로 끝내므로 지켜보지 않는다
+    if (r.method !== "DEMO") startPickupWatch();
     mode = "again";
     qrBtn.textContent = "QR 다시 받기";
   }

@@ -5,7 +5,10 @@ import { isAskable, isMemorable } from "./questions";
 export type Judgment = {
   result: MatchResult;
   matches: number;
+  /** 특징끼리 틀린 개수. 실패(기회 차감)는 이것이 있을 때만 */
   contradictions: number;
+  /** 색·브랜드가 다른 개수. 바로 통과만 막고, 이것만으로는 실패시키지 않는다 (10/31 실사용 영상) */
+  softContradictions: number;
   /** BORDERLINE일 때 질문할 습득물 특징 */
   questionFeature: AiFeature | null;
 };
@@ -20,6 +23,9 @@ export type Judgment = {
  *   흠집·무늬는 주인도 잘 몰라서, 다른 특징으로 물을 수 없을 때만 고른다 (10/31 기획 피드백).
  *   찍기 남용은 claims.ts가 막는다(맞힌 특징 없는 찍기는 계정·물건마다 한 번, 틀리면 실패로 센다).
  * - 맞힌 것도 모순도 없어서 실패가 나오면 claims.ts가 실패 대신 근거 부족(NEED_MORE)으로 바꾼다 (10/31).
+ * - 색·브랜드가 다른 것은 바로 통과만 막고 실패로 세지 않는다 (10/31 실사용 영상: 연보라를 "분홍", 제품 라인
+ *   "Heroine Make"를 제조사 "키스미"로 말한 진짜 주인이 모순 판정으로 잠겼다). 실패는 특징이 틀렸을 때만이다.
+ * - 습득물 설명에서 맞힌 특징(storedKey "description")은 맞힌 개수에는 들지만 바로 통과 비율에는 들지 않는다.
  * - 물어볼 특징이 없으면(남은 특징이 습득자 설명에서 나온 것뿐 등) 맞힌 것만 있고 모순이 없을 때 통과, 아니면 실패.
  * - 습득물에 특징이 하나도 없으면 아무도 통과할 수 없다 (open-issues #17, 미결)
  */
@@ -33,20 +39,18 @@ export function judge(
     comparison.features.filter((f) => f.verdict === "MATCH").map((f) => f.storedKey ?? f.reportedKey),
   );
   const matches = matchedKeys.size;
-  const contradictions =
-    comparison.features.filter((f) => f.verdict === "CONTRADICT").length +
-    (comparison.color === "CONTRADICT" ? 1 : 0) +
-    (comparison.brand === "CONTRADICT" ? 1 : 0);
+  const contradictions = comparison.features.filter((f) => f.verdict === "CONTRADICT").length;
+  const softContradictions = (comparison.color === "CONTRADICT" ? 1 : 0) + (comparison.brand === "CONTRADICT" ? 1 : 0);
 
   const storedKeys = new Set(storedFeatures.map((f) => f.key));
   const matchedStored = [...matchedKeys].filter((k) => storedKeys.has(k as AiFeature["key"])).length;
   const ratio = storedKeys.size > 0 ? matchedStored / storedKeys.size : 0;
-  if (contradictions === 0 && matches > 0 && ratio >= PASS_MATCH_RATIO) {
-    return { result: "PASS", matches, contradictions, questionFeature: null };
+  if (contradictions === 0 && softContradictions === 0 && matches > 0 && ratio >= PASS_MATCH_RATIO) {
+    return { result: "PASS", matches, contradictions, softContradictions, questionFeature: null };
   }
 
   if (matches === 0 && contradictions > 0) {
-    return { result: "FAIL", matches, contradictions, questionFeature: null };
+    return { result: "FAIL", matches, contradictions, softContradictions, questionFeature: null };
   }
 
   const mentioned = new Set(reportedKeys);
@@ -57,10 +61,14 @@ export function judge(
     list.find((f) => contradicted.has(f.key)) ??
     list.find((f) => !matchedKeys.has(f.key));
   // 흠집·무늬는 주인도 잘 모른다: 잘 아는 특징에서 먼저 고르고, 없을 때만 묻는다 (10/31 기획 피드백)
-  const questionFeature = pick(askable.filter(isMemorable)) ?? pick(askable.filter((f) => !isMemorable(f))) ?? null;
+  let questionFeature = pick(askable.filter(isMemorable)) ?? pick(askable.filter((f) => !isMemorable(f))) ?? null;
+  // 특징은 다 맞혔는데 색·브랜드만 달랐으면 바로 통과 대신 객관식으로 한 번 더 본다(색 질문이 함께 나간다)
+  if (!questionFeature && matches > 0 && contradictions === 0 && softContradictions > 0)
+    questionFeature = askable.find(isMemorable) ?? askable[0] ?? null;
   if (!questionFeature) {
+    // 물어볼 것이 없으면 특징으로만 정한다. 색·브랜드 차이만으로 실패시키지 않는다
     const result = matches > 0 && contradictions === 0 ? "PASS" : "FAIL";
-    return { result, matches, contradictions, questionFeature: null };
+    return { result, matches, contradictions, softContradictions, questionFeature: null };
   }
-  return { result: "BORDERLINE", matches, contradictions, questionFeature };
+  return { result: "BORDERLINE", matches, contradictions, softContradictions, questionFeature };
 }

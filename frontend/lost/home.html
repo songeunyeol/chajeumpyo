@@ -80,7 +80,7 @@
       <p>지우면 목록과 후보, 알림에서 사라지고 되돌릴 수 없어요. 확인 기회는 지워도 돌아오지 않아요.</p>
       <p class="note danger" id="deleteErr" style="margin:-8px 0 12px" hidden></p>
       <div class="modal-actions">
-        <button type="button" class="btn gray" id="cancelDeleteBtn">취소</button>
+        <button type="button" class="btn gray" id="cancelDeleteBtn" data-modal-cancel>취소</button>
         <button type="button" class="btn danger" id="confirmDeleteBtn">지우기</button>
       </div>
     </div>
@@ -88,6 +88,7 @@
 </main>
 <script src="../naver-map.js"></script>
 <script src="api.js"></script>
+<script src="../modal-back.js"></script>
 <script>
   // 로그인하지 않았으면 로그인 화면으로 (아래 API 호출은 authed일 때만)
   const authed = LostApi.requireLogin();
