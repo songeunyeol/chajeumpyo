@@ -172,6 +172,20 @@
    * 서버로 보내기 전에 사람이 종류 선택칸에서 고칠 수 있다.
    */
   const CATEGORY_WORDS = [
+    // 화장품(기타 → 화장품). "아이라이너 펜슬"이 필통·펜보다 먼저 걸리게 맨 앞에 둔다 (QA 10/31 영상)
+    ["화장품", "ETC", "COSMETICS"],
+    ["아이라이너", "ETC", "COSMETICS"],
+    ["립스틱", "ETC", "COSMETICS"],
+    ["립글로스", "ETC", "COSMETICS"],
+    ["립밤", "ETC", "COSMETICS"],
+    ["틴트", "ETC", "COSMETICS"],
+    ["마스카라", "ETC", "COSMETICS"],
+    ["파운데이션", "ETC", "COSMETICS"],
+    ["쿠션", "ETC", "COSMETICS"],
+    ["핸드크림", "ETC", "COSMETICS"],
+    ["향수", "ETC", "COSMETICS"],
+    ["거울", "ETC", "COSMETICS"],
+    ["인형", "ETC", "DOLL_KEYRING"],
     ["이어폰", "EARPHONE"],
     ["에어팟", "EARPHONE"],
     ["버즈", "EARPHONE"],
@@ -203,10 +217,16 @@
     ["지갑", "WALLET"],
     ["가방", "BAG"],
     ["백팩", "BAG"],
+    ["에코백", "BAG"],
+    ["크로스백", "BAG"],
     ["파우치", "BAG"],
     ["모자", "HAT"],
     ["패딩", "CLOTHING"],
     ["후드", "CLOTHING"],
+    ["자켓", "CLOTHING"],
+    ["재킷", "CLOTHING"],
+    ["가디건", "CLOTHING"],
+    ["코트", "CLOTHING"],
     ["옷", "CLOTHING"],
     ["목도리", "CLOTHING"],
     ["교재", "BOOK"],
@@ -217,13 +237,19 @@
     ["시계", "ACCESSORY"],
     ["반지", "ACCESSORY"],
     ["목걸이", "ACCESSORY"],
+    ["귀걸이", "ACCESSORY"],
+    ["팔찌", "ACCESSORY"],
+    ["머리끈", "ACCESSORY"],
     ["현금", "CASH"],
     ["우산", "UMBRELLA"],
     ["텀블러", "TUMBLER"],
     ["물병", "TUMBLER"],
+    ["보틀", "TUMBLER"],
     ["열쇠", "KEY"],
     ["키링", "KEY"],
     ["필통", "STATIONERY"],
+    ["샤프", "STATIONERY"],
+    ["연필", "STATIONERY"],
     ["펜", "STATIONERY"],
   ];
   const guessCategory = (text) => {
@@ -232,10 +258,15 @@
     return CATEGORY_WORDS.find(([w]) => t.includes(w))?.[1] || null;
   };
 
-  /** 물건 이름에 세부 종류 이름("마우스", "보조배터리")이 들어 있으면 그 세부 종류. 그 큰 종류 안에서만 찾는다 */
+  /**
+   * 물건 이름에 세부 종류 이름("마우스", "보조배터리")이 들어 있으면 그 세부 종류. 그 큰 종류 안에서만 찾는다.
+   * 낱말 목록에 세부 종류가 붙은 낱말(예: "아이라이너" → 화장품)이 먼저다
+   */
   const guessSubCategory = (category, text) => {
     const t = String(text || "").replace(/\s+/g, "");
     if (!t) return null;
+    const word = CATEGORY_WORDS.find(([w, c, s]) => s && c === category && t.includes(w));
+    if (word) return word[2];
     return (
       (SUB_CATEGORIES[category] || []).find((sub) =>
         SUB_CATEGORY_LABELS[sub].split("·").some((w) => w && t.includes(w.replace(/\s+/g, ""))),
@@ -497,6 +528,19 @@
   const onLog = (fn) => listeners.push(fn);
 
   // ── 요청 ─────────────────────────────────────────────────
+  // 연결 끊김 안내(/offline-notice.js). 그 파일이 늦게 받아져도 놓치지 않게, 그 전의 알림은 배열에 쌓아 둔다
+  function reportNet(ok, isGet) {
+    if (!window.OfflineNotice) window.OfflineNotice = [];
+    const n = window.OfflineNotice;
+    if (Array.isArray(n)) n.push([ok, isGet]);
+    else n.report(ok, isGet);
+  }
+  if (!document.querySelector('script[src="/offline-notice.js"]')) {
+    const s = document.createElement("script");
+    s.src = "/offline-notice.js";
+    document.head.appendChild(s);
+  }
+
   /**
    * @param {string} path /api/v1 뒤 경로
    * @param {{ method?: string, body?: unknown, auth?: boolean, captcha?: string }} [opts] captcha: 캡차 action 이름
@@ -520,9 +564,11 @@
         body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
       });
     } catch (_) {
+      reportNet(false, method === "GET");
       log({ method, path, status: 0, ms: Date.now() - started, body: "연결 실패", request: mask(opts.body) });
       throw new ApiError(0, { error: { code: "NETWORK", message: ERROR_MESSAGES.NETWORK } });
     }
+    reportNet(true, method === "GET");
     // 204(본문 없음)도 본문을 끝까지 읽어 연결을 정리한다. JSON이 아니면 null
     const text = await res.text().catch(() => "");
     let body = null;

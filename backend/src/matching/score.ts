@@ -33,13 +33,21 @@ export function categoryScore(
     const bothKnown = reportedSub && item.subCategory;
     return bothKnown && reportedSub !== item.subCategory ? SUB_CATEGORY_MISMATCH_SCORE : CATEGORY_SCORE.exact;
   }
+  // 무엇인지 아는 기타 신고(화장품·약·인형 키링)는 기타로 본 물건(1·2순위)과 세부 종류 묶음만 찾는다.
+  // 종류를 아는 다른 물건(마우스 등)이 "기타는 모든 종류와 묶인다"로 끼어들던 문제 (10/31 시연 영상: 화장품 신고 ↔ 마우스).
+  // 세부 종류를 모르는 기타 신고는 지금처럼 모든 종류를 본다
+  if (reported === "ETC" && reportedSub) {
+    if (item.categoryAlt === "ETC") return CATEGORY_SCORE.alt;
+    return relatedBySubCategory(reported, reportedSub, item.category ?? null, item.subCategory ?? null)
+      ? CATEGORY_SCORE.related
+      : 0;
+  }
+  // 1순위 세부 종류가 신고와 관계없으면(이어폰 신고 ↔ 마우스) 2순위 종류로도 후보에 넣지 않는다.
+  // 세부 종류까지 정해진 1순위가 더 확실한 정보라 2순위가 이를 뒤집지 않게 한다 (QA 10/31)
+  if (unrelatedBySubCategory(reported, reportedSub, item.category, item.subCategory ?? null)) return 0;
   if (item.categoryAlt === reported) return CATEGORY_SCORE.alt;
   const related = RELATED_CATEGORIES[reported] ?? [];
-  // 세부 종류는 1순위 종류의 것이라, 1순위로 묶일 때만 세부 종류끼리 관계없는 조합(이어폰 ↔ 마우스)을 뺀다
-  const byMain =
-    item.category !== null &&
-    related.includes(item.category) &&
-    !unrelatedBySubCategory(reported, reportedSub, item.category, item.subCategory ?? null);
+  const byMain = item.category !== null && related.includes(item.category);
   if (byMain || (item.categoryAlt && related.includes(item.categoryAlt))) return CATEGORY_SCORE.related;
   if (relatedBySubCategory(reported, reportedSub, item.category ?? null, item.subCategory ?? null)) {
     return CATEGORY_SCORE.related;

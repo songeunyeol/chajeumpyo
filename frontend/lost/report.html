@@ -114,6 +114,9 @@
 
   // 종류: 물건 이름을 적으면 미리 고른다. 사람이 직접 고르면 그 뒤로는 바꾸지 않는다
   const categorySelect = document.getElementById("lostCategorySelect");
+  // 처음에는 아무것도 고르지 않은 상태로 둔다. 전에는 "무선 이어폰"이 미리 골라져 있어 그대로 신고되곤 했다 (QA 10/31 영상)
+  categorySelect.required = true;
+  categorySelect.add(new Option("종류를 골라 주세요", ""));
   // 세부 종류가 있는 큰 종류는 묶음으로 보여 준다 (예: 기타 전자기기 → 마우스, 키보드). 값은 "큰종류:세부종류"
   for (const c of LostApi.CATEGORIES) {
     const subs = LostApi.SUB_CATEGORIES[c];
@@ -127,7 +130,7 @@
     for (const sub of subs) group.append(new Option(LostApi.SUB_CATEGORY_LABELS[sub], `${c}:${sub}`));
     categorySelect.append(group);
   }
-  categorySelect.value = "EARPHONE";
+  categorySelect.value = "";
   /** 물건 이름으로 고를 값: 세부 종류까지 알면 "큰종류:세부종류", 아니면 큰 종류 */
   const guessOption = (text) => {
     const c = LostApi.guessCategory(text);
@@ -260,6 +263,12 @@
   const reportErr = document.getElementById("reportErr");
   submitBtn.addEventListener("click", () => {
     reportErr.hidden = true;
+    if (!categorySelect.value) {
+      reportErr.textContent = "물건 종류를 골라 주세요. 물건 이름을 적으면 미리 골라 줘요.";
+      reportErr.hidden = false;
+      categorySelect.focus();
+      return;
+    }
     // 서버는 큰 종류만 받는다. 세부 종류는 설명(물건 이름)에서 AI가 다시 읽으므로, 이름을 비우면 세부 종류 이름을 넣는다
     const [category, sub] = categorySelect.value.split(":");
     const itemName = itemInput.value.trim() || (sub ? LostApi.SUB_CATEGORY_LABELS[sub] : LostApi.CATEGORY_LABELS[category]);
