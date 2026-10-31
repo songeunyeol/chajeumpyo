@@ -29,6 +29,7 @@ import {
   colorQuestionFor,
   isGenericFeature,
   isMemorable,
+  isObviousForCategory,
   isPositionOnly,
   isQuizable,
   isThumbnailVisible,
@@ -263,14 +264,17 @@ async function buildQuiz(
   passBlocked = false,
   /** 신고 설명이 이미 맞힌 저장 특징 종류. 다시 묻지 않는다 (10/31 검증 1: 텀블러 "베이지색 뚜껑"을 적자마자 또 물었다) */
   matched: ReadonlySet<string> = new Set(),
+  /** 습득물 종류. 종류만 알아도 맞히는 제품 이름·브랜드("아이패드", "Apple")는 묻지 않는다 (11/1 사칭 평가) */
+  category: string | null = null,
 ): Promise<QuizQuestion[]> {
   const mentioned = new Set(reportedKeys);
-  // 찍기(맞힌 특징 0)에서는 흐린 썸네일로도 알 수 있는 것(본체 색, 모양, 큰 부분 색, 무늬)을 묻지 않는다 (10/31 사칭 평가:
-  // 썸네일을 본 사칭이 핸드크림 뚜껑 색·키링 "강아지 모양"으로 통과). 맞힌 특징이 있는 주인은 지금처럼 묻는다
   // 안쪽 작은 글자·재질·구조처럼 묻기 어렵거나 종류만으로 아는 특징도 묻지 않는다 (10/31 검증 2)
   // 맞힌 특징은 다시 묻지 않는다. 흠집처럼 누구나 말할 수 있는 특징은 맞혀도 아는 증거가 아니라서 위치를 물을 수 있게 남긴다
+  // 정답이 그 종류의 대표 제품 이름인 글자 질문("아이패드 (iPad)")도 묻지 않는다 (11/1 사칭 평가)
   const allowed = (f: AiFeature) =>
-    isQuizable(f) && !(matched.has(f.key) && !isGenericFeature(f)) && !(guess && isThumbnailVisible(f));
+    isQuizable(f) &&
+    !(matched.has(f.key) && !isGenericFeature(f)) &&
+    !(f.key === "text" && isObviousForCategory(f.value, category));
   const head = first && allowed(first) ? first : null;
   const rest = stored.filter((f) => f !== first && allowed(f));
   const unmentioned = rest.filter((f) => !mentioned.has(f.key));
@@ -283,7 +287,7 @@ async function buildQuiz(
   const demote = (guess || passBlocked) && head !== null && !isMemorable(head);
   const firstEasy = head && !demote ? [head] : [];
   const firstHard = head && demote ? [head] : [];
-  const order: (AiFeature | "color" | "brand")[] = [
+  const base: (AiFeature | "color" | "brand")[] = [
     ...firstEasy,
     ...unmentioned.filter(isMemorable),
     "color",
@@ -293,6 +297,10 @@ async function buildQuiz(
     ...unmentioned.filter((f) => !isMemorable(f)),
     ...again.filter((f) => !isMemorable(f)),
   ];
+  // 찍기(맞힌 특징 0)에서는 흐린 썸네일로 짐작할 수 있는 것(본체 색, 모양, 큰 부분 색, 무늬)을 맨 뒤로 미룬다 (10/31 사칭 평가:
+  // 썸네일을 본 사칭이 핸드크림 뚜껑 색·키링 "강아지 모양"으로 통과). 빼지는 않는다: 질문이 모자라면 쓴다 (11/1 주인 평가)
+  const visible = (f: AiFeature | "color" | "brand") => f === "color" || (f !== "brand" && isThumbnailVisible(f));
+  const order = guess ? [...base.filter((f) => !visible(f)), ...base.filter(visible)] : base;
   const before = await previousQuestions(foundItemId);
   const reuse = (key: string, text: string) => {
     const q = before.get(key);
@@ -327,14 +335,14 @@ async function buildQuiz(
   for (const f of order) {
     if (quiz.length >= maxQuestions) break;
     if (f === "color") {
-      if (guess || color.matched || !storedColor.success || storedColor.data === "OTHER") continue;
+      if (color.matched || !storedColor.success || storedColor.data === "OTHER") continue;
       const text = colorQuestionFor(itemName);
       const label = COLOR_LABELS[storedColor.data];
       push(reuse("color", text) ?? makeQuestion(text, "color", label, colorDistractors(storedColor.data)));
       continue;
     }
     if (f === "brand") {
-      if (brand.matched || !knownBrand(brand.stored)) continue;
+      if (brand.matched || !knownBrand(brand.stored) || isObviousForCategory(brand.stored, category)) continue;
       const text = brandQuestionFor(itemName);
       const q =
         reuse("brand", text) ?? (await featureQuestion({ key: "brand", value: brand.stored }, itemName, context, text));
@@ -485,13 +493,10 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
       .map((f) => f.storedKey as string),
   );
   const itemName = item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null;
-  // 흠집·사용감처럼 누구나 말할 수 있는 특징만 맞혔으면 근거가 없는 것과 같다: 찍기처럼 질문을 늘리고 썸네일로 보이는 것은 묻지 않는다
-  // (10/31 사칭 평가: "스크래치 조금"을 적은 사칭이 흰색 에어팟 브랜드 질문 하나로 통과). 설명에서 맞힌 부분 색·브랜드는 근거로 센다
-  const evidence =
-    ratioFeatures.some((f) => matchedKeys.has(f.key) && !isGenericFeature(f)) ||
-    storedFeatures.some((f) => matchedKeys.has(f.key) && !isGenericFeature(f)) ||
-    comparison.features.some((f) => f.verdict === "MATCH" && f.storedKey === DESCRIPTION_KEY);
-  const guessMode = j.matches === 0 || !evidence;
+  // 찍기(질문 3개, 썸네일로 보이는 것은 뒤로)는 맞힌 특징이 하나도 없을 때만. 흠집처럼 흔한 특징만 맞혔으면 바로 통과는 막되
+  // (judge passBlocked) 보통 객관식(2개)으로 본다. 흔한 특징만 맞힌 설명까지 찍기로 보내니 특징이 적은 물건의 주인이
+  // 근거 부족에 갇혔다 (11/1 주인 평가 68→42/79)
+  const guessMode = j.matches === 0;
   // 보기 만들기(AI)도 트랜잭션 밖에서 한다
   let quiz =
     j.result === "BORDERLINE"
@@ -513,6 +518,7 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
           guessMode,
           j.passBlocked,
           matchedKeys,
+          item.category,
         )
       : [];
   // 바로 통과를 막았는데 더 물을 것이 없고, 흔하지 않은 사진 특징을 맞혔으면 통과(주인이 특징을 이미 말했다). 흔한 특징뿐이면 아래에서 근거 부족

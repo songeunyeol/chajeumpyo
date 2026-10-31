@@ -11,8 +11,12 @@ export const QUIZ_QUESTIONS = 2;
  * 진짜 주인은 사진을 떠올려 답할 수 있지만, 찍는 사람은 질문이 늘수록 급격히 어려워진다.
  */
 export const QUIZ_QUESTIONS_NO_EVIDENCE = 3;
-/** 찍기에서 서로 다른 질문이 이보다 적으면 내지 않고 특징을 더 적게 한다(근거 부족). 둘이면 찍어서 맞힐 확률 1/16 (10/31 사칭 평가) */
-export const MIN_GUESS_QUESTIONS = 2;
+/**
+ * 찍기에서 서로 다른 질문이 이보다 적으면 내지 않고 특징을 더 적게 한다(근거 부족).
+ * 2로 두니 특징이 하나뿐인 물건(필통·노트·귀걸이)의 주인이 근거 부족에 갇혀 1로 낮췄다 (11/1 주인 평가 68→42/79).
+ * 찍기는 계정·물건마다 한 번뿐이고, 썸네일로 보이는 특징은 맨 뒤라 질문 하나짜리는 작은 부분을 묻는다.
+ */
+export const MIN_GUESS_QUESTIONS = 1;
 
 /** 모든 질문을 찍어서 맞힐 확률. 질문이 없으면 1 */
 export function guessProbability(quiz: QuizQuestion[]): number {

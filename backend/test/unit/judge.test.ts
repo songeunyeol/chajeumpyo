@@ -4,6 +4,7 @@ import { judge } from "../../src/matching/judge";
 import {
   isGenericFeature,
   isInnerText,
+  isObviousForCategory,
   isPositionOnly,
   isQuizable,
   isThumbnailVisible,
@@ -34,6 +35,13 @@ describe("특징 분류 (10/31 사칭 평가·검증 1·2)", () => {
     expect(isThumbnailVisible(f("pattern", "레이스 문양"))).toBe(true);
     expect(isThumbnailVisible(f("sticker", "곰돌이 스티커"))).toBe(false);
     expect(isThumbnailVisible(f("case", "VOVA 로고 케이스"))).toBe(false);
+  });
+  it("종류만 알아도 맞히는 제품 이름·브랜드 (11/1 사칭 평가: 태블릿 → 아이패드)", () => {
+    expect(isObviousForCategory("아이패드 (iPad)", "TABLET")).toBe(true);
+    expect(isObviousForCategory("Apple", "EARPHONE")).toBe(true);
+    expect(isObviousForCategory("Heroine Make", "ETC")).toBe(false);
+    expect(isObviousForCategory("락앤락", "TUMBLER")).toBe(false);
+    expect(isObviousForCategory("Sony", "EARPHONE")).toBe(false);
   });
   it("위치만 다른 보기", () => {
     expect(isPositionOnly(["상단 지퍼 포켓", "하단 지퍼 포켓", "측면 지퍼 포켓", "중앙 지퍼 포켓"])).toBe(true);

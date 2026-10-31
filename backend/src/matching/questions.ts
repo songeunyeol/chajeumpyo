@@ -39,8 +39,9 @@ const THUMBNAIL_WORDS =
 const READABLE_DETAIL = /[A-Za-z0-9]/;
 
 /**
- * 찍기 객관식(맞힌 특징 0)에서 빼는 특징 (10/31 사칭 평가: 흐린 썸네일을 본 사칭이 핸드크림 뚜껑 색·키링 "강아지 모양"으로 통과).
- * 스티커·키링·글자·각인·안에 든 물건처럼 작은 부분은 남기고, 케이스·기타 특징이 색·모양만 말하거나 무늬이면 뺀다.
+ * 흐린 썸네일로 짐작할 수 있는 특징 (10/31 사칭 평가: 썸네일을 본 사칭이 핸드크림 뚜껑 색·키링 "강아지 모양"으로 통과).
+ * 찍기 객관식(맞힌 특징 0)에서는 이것을 빼지 않고 뒤로 미룬다: 스티커·키링·글자·각인처럼 작은 부분을 먼저 묻고,
+ * 질문 수가 모자랄 때만 쓴다. 다 빼면 특징이 적은 물건(필통·노트·파우치)의 주인이 근거 부족에 갇힌다 (11/1 주인 평가 68→42/79).
  */
 export function isThumbnailVisible(feature: AiFeature): boolean {
   if (feature.key === "pattern") return true;
@@ -114,6 +115,28 @@ const INNER_TEXT =
 export function isInnerText(feature: AiFeature): boolean {
   if (feature.key !== "text" && feature.key !== "other") return false;
   return INNER_TEXT.test(feature.value);
+}
+
+/**
+ * 종류만 알아도 맞히는 제품 이름·브랜드 (11/1 사칭 평가: 검정 태블릿 사칭이 "아이패드 (iPad)" 글자·"Apple" 브랜드 질문을 찍어서 통과).
+ * 이 낱말이 정답인 글자·브랜드 질문은 내지 않는다. 대조(주인이 적은 "에어팟"이 맞는지)에는 그대로 쓴다.
+ */
+const OBVIOUS_PRODUCT_WORDS: Partial<Record<string, string[]>> = {
+  PHONE: ["iphone", "아이폰", "galaxy", "갤럭시", "apple", "애플", "samsung", "삼성"],
+  EARPHONE: ["airpods", "airpod", "에어팟", "galaxybuds", "버즈", "apple", "애플"],
+  SMARTWATCH: ["applewatch", "애플워치", "galaxywatch", "갤럭시워치", "apple", "애플"],
+  TABLET: ["ipad", "아이패드", "galaxytab", "갤럭시탭", "apple", "애플"],
+  LAPTOP: ["macbook", "맥북", "apple", "애플"],
+};
+
+const compact = (t: string) => t.toLowerCase().replace(/[^a-z0-9가-힣]/g, "");
+
+/** 정답(글자·브랜드 값)이 그 종류의 대표 제품 이름·브랜드라 종류만 알아도 맞힐 수 있는지 */
+export function isObviousForCategory(value: string | null | undefined, category: string | null | undefined): boolean {
+  const words = category ? OBVIOUS_PRODUCT_WORDS[category] : undefined;
+  if (!words || !value) return false;
+  const v = compact(value);
+  return words.some((w) => v.includes(w));
 }
 
 /** 질문으로 내도 되는 특징: 질문 문구가 있고, 작은 안쪽 글자·재질·구조 같은 종류만으로 알 수 있는 것이 아닌 것 */

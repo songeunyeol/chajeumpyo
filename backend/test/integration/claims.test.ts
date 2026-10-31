@@ -1112,7 +1112,7 @@ describe("10/31 사칭 평가: 흔한 특징만 맞거나 특징이 적으면 �
     return (a.matchedFields as { quiz: { featureKey: string; text: string; options: string[] }[] }).quiz ?? [];
   };
 
-  it('사칭 "흰색 무선 이어폰, 스크래치 조금, 케이스 있음"은 객관식으로 가고, 흠집보다 브랜드를 먼저 묻는다', async () => {
+  it('사칭 "흰색 무선 이어폰, 스크래치 조금, 케이스 있음"은 객관식으로 가고, 종류만 알아도 맞히는 "Apple" 브랜드는 묻지 않는다', async () => {
     useComparison([{ reportedKey: "scratch", storedKey: "scratch", verdict: "MATCH" }]);
     const it1 = await item(AIRPODS);
     const r = await newReport(
@@ -1123,9 +1123,9 @@ describe("10/31 사칭 평가: 흔한 특징만 맞거나 특징이 적으면 �
     const res = await claim(r, it1.id);
     expect(res.body.result).toBe("BORDERLINE");
     const quiz = await quizOfAttempt(res.body.attemptId);
-    expect(quiz[0]?.featureKey).toBe("brand");
-    expect(quiz[0]?.text).toContain("브랜드");
-    // 이미 맞힌 색은 다시 묻지 않고, 흠집은 많아야 하나
+    expect(quiz.length).toBeGreaterThan(0);
+    // 에어팟의 "Apple"은 종류만 알아도 맞힌다 (11/1 사칭 평가). 이미 맞힌 색도 다시 묻지 않고, 흠집은 많아야 하나
+    expect(quiz.filter((q) => q.featureKey === "brand")).toHaveLength(0);
     expect(quiz.filter((q) => q.featureKey === "color")).toHaveLength(0);
     expect(quiz.filter((q) => q.featureKey === "scratch").length).toBeLessThanOrEqual(1);
   });
@@ -1198,7 +1198,7 @@ describe("10/31 사칭 평가: 찍기 객관식은 서로 다른 질문으로, �
     } else expect(res.body.result).toBe("NEED_MORE");
   });
 
-  it("찍기에서는 본체 색·뚜껑 색·모양·무늬를 묻지 않는다 (핸드크림 뚜껑 색, 키링 강아지 모양)", async () => {
+  it("찍기에서는 본체 색·뚜껑 색·모양·무늬를 작은 특징 뒤로 미룬다 (핸드크림 뚜껑 색, 키링 강아지 모양)", async () => {
     const it1 = await item({
       color: "BLUE",
       brand: null,
@@ -1214,16 +1214,22 @@ describe("10/31 사칭 평가: 찍기 객관식은 서로 다른 질문으로, �
     const res = await claim(r, it1.id);
     expect(res.body.result).toBe("BORDERLINE");
     const keys = (await quizOfAttempt(res.body.attemptId)).map((q) => q.featureKey);
-    expect(keys).not.toContain("color");
-    expect(keys).not.toContain("case");
-    expect(keys).not.toContain("pattern");
-    expect(keys).not.toContain("other");
-    expect(keys).toEqual(expect.arrayContaining(["sticker", "keyring"]));
+    // 작은 특징(스티커·키링)을 먼저 묻고, 질문 수가 모자랄 때만 썸네일로 보이는 것을 쓴다 (11/1: 빼면 주인이 근거 부족에 갇혔다)
+    expect(keys.slice(0, 2).sort()).toEqual(["keyring", "sticker"]);
+    expect(keys.length).toBeLessThanOrEqual(3);
   });
 
-  it("서로 다른 질문을 두 개 못 만들면 찍기를 내지 않고 근거 부족(기회 그대로)", async () => {
+  it("작은 특징이 없으면 썸네일로 보이는 특징·색으로라도 묻는다(근거 부족에 가두지 않는다)", async () => {
     const it1 = await item({ color: "BLUE", brand: null, features: [feature("other", "강아지 모양")] });
     const r = await newReport({ features: [] }, token, "파란 이어폰 잃어버렸어요");
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    expect((await quizOfAttempt(res.body.attemptId)).length).toBeGreaterThan(0);
+  });
+
+  it("물을 특징도 색도 없으면 찍기를 내지 않고 근거 부족(기회 그대로)", async () => {
+    const it1 = await item({ color: null, brand: null, features: [feature("other", "가죽 질감")] });
+    const r = await newReport({ features: [] }, token, "이어폰 잃어버렸어요");
     expect((await claim(r, it1.id)).body).toMatchObject({ result: "NEED_MORE", attemptsLeft: 3 });
   });
 
@@ -1301,9 +1307,10 @@ describe("10/31 검증 1·2: 글자 조각·안쪽 글자·재질은 믿거나 �
     const r = await newReport({ features: [] }, token, "검은 안경 잃어버렸어요");
     const res = await claim(r, glasses.id);
     if (res.body.result === "BORDERLINE") {
-      const texts = (await quizOfAttempt(res.body.attemptId)).map((q) => q.text).join(" ");
-      expect(texts).not.toMatch(/글자/);
-      expect(texts).not.toMatch(/다른 특징/);
+      // 글자("made in korea")·재질("가죽 질감") 질문은 없고, 스티커처럼 바깥에 보이는 것만 묻는다
+      const keys = (await quizOfAttempt(res.body.attemptId)).map((q) => q.featureKey);
+      expect(keys).not.toContain("text");
+      expect(keys).not.toContain("other");
     } else expect(res.body.result).toBe("NEED_MORE");
   });
 });
