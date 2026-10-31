@@ -11,7 +11,7 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" id="back" href="items.html">←</a><h2>습득물</h2></header>
+  <header class="bar"><a class="back" id="back" href="items">←</a><h2>습득물</h2></header>
   <h1 id="title">불러오는 중…</h1>
   <div class="chips" id="chips" style="margin:0 0 16px"></div>
   <p class="note danger" id="loadError" role="alert" hidden></p>
@@ -129,7 +129,7 @@
   // 목록에서 왔으면 그 목록(필터·쪽)으로 돌아간다
   try {
     const ref = document.referrer ? new URL(document.referrer) : null;
-    if (ref && ref.origin === location.origin && ref.pathname.endsWith("/items.html")) $("back").href = `items.html${ref.search}`;
+    if (ref && ref.origin === location.origin && ref.pathname.endsWith("/items")) $("back").href = `items${ref.search}`;
   } catch (_) {}
 
   /** 보관 중이라 속성을 고칠 수 있는 상태 */

@@ -20,10 +20,30 @@ describe("정적 화면", () => {
     expect(home.headers["cache-control"]).toBe("no-cache");
     expect(home.headers["content-security-policy"]).toContain("challenges.cloudflare.com");
 
-    const consent = await request(app).get("/found/consent.html");
+    const consent = await request(app).get("/found/consent");
     expect(consent.status).toBe(200);
+    expect(consent.headers["content-type"]).toContain("text/html");
     const api = await request(app).get("/found/api.js");
     expect(api.status).toBe(200);
+  });
+
+  it("옛 .html 주소는 쿼리를 그대로 붙여 .html 없는 주소로 넘긴다", async () => {
+    const page = await request(app).get("/lost/item.html?id=abc&qr=1");
+    expect(page.status).toBe(302);
+    expect(page.headers.location).toBe("/lost/item?id=abc&qr=1");
+    expect((await request(app).get("/index.html")).headers.location).toBe("/");
+    expect((await request(app).get("/found/consent.html")).headers.location).toBe("/found/consent");
+    expect((await request(app).get("/lost/item?id=abc")).status).toBe(200);
+    // 없는 화면은 넘기지 않고 404
+    expect((await request(app).get("/no-such-page.html")).status).toBe(404);
+    expect((await request(app).get("/../package.html")).status).toBe(404);
+  });
+
+  it(".html 주소를 넘길 때 다른 사이트 주소를 만들지 않는다", async () => {
+    for (const path of ["//evil.example/x.html", "/\\evil.example/x.html", "///evil.example/index.html"]) {
+      const res = await request(app).get(path);
+      if (res.status === 302) expect(res.headers.location).toMatch(/^\/(?![/\\])/);
+    }
   });
 
   it("개발용 파일과 메모는 내려주지 않는다", async () => {

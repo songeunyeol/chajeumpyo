@@ -11,7 +11,7 @@
 </head>
 <body>
 <form class="screen" id="form" novalidate>
-  <header class="bar"><a class="back" href="../index.html">←</a></header>
+  <header class="bar"><a class="back" href="../">←</a></header>
   <h1>관리자 로그인</h1>
   <p class="lead">보관처 관리자 계정으로 들어가요.</p>
   <label class="field"><span>이메일</span><input type="email" id="email" placeholder="아이디@skuniv.ac.kr" autocomplete="username" required></label>
@@ -25,9 +25,9 @@
 <script src="admin.js"></script>
 <script>
   const params = new URLSearchParams(location.search);
-  // 같은 폴더의 화면으로만 돌아간다
+  // 같은 폴더의 화면으로만 돌아간다 (옛 주소의 xxx.html도 받는다. 서버가 .html 없는 주소로 넘긴다)
   const nextRaw = params.get("next") || "";
-  const next = /^[a-z-]+\.html(\?.*)?$/.test(nextRaw) && !nextRaw.startsWith("login.html") ? nextRaw : "home.html";
+  const next = /^[a-z-]+(\.html)?(\?.*)?$/.test(nextRaw) && !nextRaw.startsWith("login") ? nextRaw : "home";
   if (AdminApi.auth.get() && params.get("stay") !== "1") location.replace(next);
 
   const form = document.getElementById("form");

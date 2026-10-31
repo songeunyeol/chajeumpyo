@@ -12,7 +12,7 @@
 <body>
 <main class="screen">
   <header class="bar">
-    <a class="brand-mark" href="../index.html" aria-label="찾음표 메인">
+    <a class="brand-mark" href="../" aria-label="찾음표 메인">
       <svg viewBox="0 0 320 168" aria-hidden="true">
         <path fill="#1e5b3d" d="M40 12H280a16 16 0 0 1 16 16v30a28 28 0 0 0 0 52v30a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16v-30a28 28 0 0 0 0-52V28a16 16 0 0 1 16-16z"/>
         <g fill="#f3efe6">
@@ -30,7 +30,7 @@
     </a>
     <span style="flex:1"></span>
     <div class="bar-actions">
-      <a class="icon-btn" href="alerts.html" aria-label="알림">
+      <a class="icon-btn" href="alerts" aria-label="알림">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -54,7 +54,7 @@
         <p id="settingsEmail"></p>
         <p id="settingsPhone" hidden></p>
       </div>
-      <a class="btn danger" id="logoutBtn" href="login.html">로그아웃</a>
+      <a class="btn danger" id="logoutBtn" href="login">로그아웃</a>
     </div>
   </header>
 
@@ -69,7 +69,7 @@
   <div id="closedList" style="display:flex;flex-direction:column;gap:10px"></div>
 
   <div class="dock">
-    <a class="btn" href="report.html">분실 신고하기</a>
+    <a class="btn" href="report">분실 신고하기</a>
   </div>
 
   <!-- 신고 지우기 확인 카드 -->
@@ -247,7 +247,7 @@
       closeDelete();
       renderHomeLists(reports);
     } catch (err) {
-      if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+      if (err.code === "UNAUTHORIZED") return location.replace("login");
       // 이미 지워진 신고면 목록에서만 뺀다
       if (err.code === "NOT_FOUND") {
         reports = reports.filter((r) => r.id !== id);
@@ -291,7 +291,7 @@
       const chips = [["진행 중", "glow-green"], qr ? ["수령 QR 받음", ""] : [`후보 ${rep.candidateCount}개`, ""]];
       const a = reportCard(rep, "a", "glow-green", chips);
       // 수령 QR을 받아 둔 신고는 후보를 거치지 않고 QR 화면을 바로 연다
-      a.href = qr || "candidates.html";
+      a.href = qr || "candidates";
       a.addEventListener("click", () => LostApi.store.set(LostApi.KEYS.reportId, rep.id));
       activeListEl.appendChild(withTrash(a, rep));
     }
@@ -322,7 +322,7 @@
     const p = rep.pickup;
     if (!p || p.status === "COMPLETED" || p.storageType !== "HANDED_OVER") return null;
     if (rep.status === "OPEN" && p.status !== "QR_ISSUED") return null; // 진행 중이면 QR을 받은 뒤에만 바로 간다
-    return `item-handover.html?id=${encodeURIComponent(p.foundItemId)}&qr=1`;
+    return `item-handover?id=${encodeURIComponent(p.foundItemId)}&qr=1`;
   }
 
   paintHomeMap([]);
@@ -333,7 +333,7 @@
       renderHomeLists(all);
     })
     .catch((err) => {
-      if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+      if (err.code === "UNAUTHORIZED") return location.replace("login");
       activeHeading.textContent = "진행 중";
       closedHeading.textContent = "끝난 신고";
       activeListEl.replaceChildren(emptyCard(LostApi.friendlyMessage(err)));

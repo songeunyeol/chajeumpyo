@@ -25,7 +25,7 @@
 <body>
 <main class="screen">
   <header class="bar" style="justify-content:space-between">
-    <a class="back" href="photo.html">←</a>
+    <a class="back" href="photo">←</a>
     <button type="button" class="loc-chip" id="locPermToggle">위치 확인 중</button>
   </header>
   <h1>어디에 두었나요</h1>
@@ -182,17 +182,17 @@
   // 분석 결과 (uploading.html이 저장). 없으면 사진부터
   const draft = FoundApi.store.get("foundDraft");
   if (!draft) {
-    let back = "photo.html?need=photo"; // 사진 화면이 "사진을 먼저 올려 주세요"를 띄운다
+    let back = "photo?need=photo"; // 사진 화면이 "사진을 먼저 올려 주세요"를 띄운다
     try {
-      if (sessionStorage.getItem("foundConsent") !== "granted") back = "consent.html";
+      if (sessionStorage.getItem("foundConsent") !== "granted") back = "consent";
     } catch (_) {}
     window.location.replace(back);
   }
   window.addEventListener("pageshow", () => {
     if (FoundApi.store.get("foundDraft")) return;
-    let back = "photo.html";
+    let back = "photo";
     try {
-      if (sessionStorage.getItem("foundConsent") !== "granted") back = "consent.html";
+      if (sessionStorage.getItem("foundConsent") !== "granted") back = "consent";
     } catch (_) {}
     window.location.replace(back);
   });
@@ -207,7 +207,7 @@
       title: "습득물 등록을 그만할까요?",
       message: "지금까지 올린 내용은 지워져요. 그래도 나갈까요?",
       leaveLabel: "그만하기",
-      leaveTo: "photo.html",
+      leaveTo: "photo",
       onLeave: () => {
         for (const k of ["foundDraft", "foundPhoto", "photoBuilding"]) sessionStorage.removeItem(k);
       },
@@ -624,7 +624,7 @@
         result = FoundApi.store.get("foundResult");
       } else if (err.status === 404) {
         alert(err.message);
-        window.location.href = "photo.html";
+        window.location.href = "photo";
         return;
       } else {
         alert(err.details.length ? err.details.map((d) => d.message).join("\n") : err.message);
@@ -633,7 +633,7 @@
     }
 
     FoundApi.store.set("foundResult", result);
-    const donePage = mode === "handover" ? "done-handover.html" : "done-inplace.html";
+    const donePage = mode === "handover" ? "done-handover" : "done-inplace";
     try {
       sessionStorage.setItem("foundConfirmedId", draft.id);
       sessionStorage.setItem("foundDonePage", donePage);

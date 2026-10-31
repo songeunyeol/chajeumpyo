@@ -11,7 +11,7 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="home.html">←</a><h2>후보</h2></header>
+  <header class="bar"><a class="back" href="home">←</a><h2>후보</h2></header>
   <!-- 처음에는 "불러오는 중"만 보인다. 예전엔 "비슷한 물건 3개"가 박혀 있어 카드 없이 숫자만 먼저 보였다 (QA 10/31) -->
   <h1 id="candHeading">후보를 불러오고 있어요</h1>
   <p class="lead">확인 전에는 사진이 모자이크로 가려져요.<br>일치하는 이유만 먼저 공개돼요.</p>
@@ -76,7 +76,7 @@
   const candHeading = document.getElementById("candHeading");
   const candErr = document.getElementById("candErr");
   const reportId = LostApi.store.get(LostApi.KEYS.reportId);
-  if (authed && !reportId) location.replace("home.html");
+  if (authed && !reportId) location.replace("home");
 
   // 새로고침 횟수는 화면 쪽 약속이다 (서버는 횟수를 세지 않고, 부를 때마다 후보를 다시 고른다)
   let refreshLeft = 5;
@@ -277,7 +277,7 @@
           LostApi.store.set(LostApi.KEYS.foundItemId, c.foundItemId);
           try {
             const d = await LostApi.detail();
-            location.href = d.storageType === "HANDED_OVER" ? "item-handover.html" : "item.html";
+            location.href = d.storageType === "HANDED_OVER" ? "item-handover" : "item";
           } catch (err) {
             candErr.textContent = LostApi.friendlyMessage(err);
             candErr.hidden = false;
@@ -292,7 +292,7 @@
       } else {
         chips.appendChild(el("span", "chip danger", "대면 확인만"));
         const link = el("a", "btn white", "찾는 방법 보기");
-        link.href = "counter.html";
+        link.href = "counter";
         link.style.marginTop = "12px";
         article.append(chips, link);
       }
@@ -456,11 +456,11 @@
     if (window.ModalBack) await window.ModalBack.settled();
     if (screen === "pass") {
       const d = await LostApi.detail();
-      location.href = d.storageType === "HANDED_OVER" ? "item-handover.html" : "item.html";
-    } else if (screen === "question") location.href = "question.html";
-    else if (screen === "fail") location.href = "fail.html";
-    else if (screen === "lock") location.href = "lock.html";
-    else if (screen === "counter") location.href = "counter.html";
+      location.href = d.storageType === "HANDED_OVER" ? "item-handover" : "item";
+    } else if (screen === "question") location.href = "question";
+    else if (screen === "fail") location.href = "fail";
+    else if (screen === "lock") location.href = "lock";
+    else if (screen === "counter") location.href = "counter";
   }
 
   // 가장 마지막 요청의 응답만 그린다. 새로고침과 다시 불러오기가 겹치면 늦게 온 옛 응답이 목록을 덮어썼다 (QA 10/31)
@@ -479,7 +479,7 @@
       next = await LostApi.candidates(reportId);
     } catch (err) {
       if (seq !== loadSeq) return;
-      if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+      if (err.code === "UNAUTHORIZED") return location.replace("login");
       candErr.textContent = LostApi.friendlyMessage(err);
       candErr.hidden = false;
       next = [];

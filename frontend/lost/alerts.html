@@ -12,7 +12,7 @@
 <body>
 <main class="screen">
   <header class="bar">
-    <a class="back" href="home.html" aria-label="홈으로 돌아가기">←</a>
+    <a class="back" href="home" aria-label="홈으로 돌아가기">←</a>
     <h2>알림</h2>
   </header>
   <!-- 제목은 위 막대 한 곳만. 시안 카드는 두지 않는다(QA 10/29) -->
@@ -30,7 +30,7 @@
   function card(n) {
     const a = document.createElement("a");
     a.className = "card";
-    a.href = n.lostReportId ? "candidates.html" : "#";
+    a.href = n.lostReportId ? "candidates" : "#";
     const h3 = document.createElement("h3");
     h3.textContent = TITLES[n.type] || "알림";
     if (!n.readAt) {
@@ -49,7 +49,7 @@
       if (!n.readAt) await LostApi.readNotification(n.id).catch(() => {});
       if (n.lostReportId) {
         LostApi.store.set(LostApi.KEYS.reportId, n.lostReportId);
-        location.href = "candidates.html";
+        location.href = "candidates";
       }
     });
     return a;
@@ -70,7 +70,7 @@
         }
       })
       .catch((err) => {
-        if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+        if (err.code === "UNAUTHORIZED") return location.replace("login");
         const box = document.createElement("div");
         box.className = "card";
         box.textContent = LostApi.friendlyMessage(err);

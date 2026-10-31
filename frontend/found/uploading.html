@@ -77,9 +77,9 @@
   // 동의 없으면 첫 화면, 분석이 끝났으면 등록, 사진이 없으면 사진. 앞으로·뒤로 가기로 단계를 건너뛰지 않는다.
   function stepGuard() {
     try {
-      if (sessionStorage.getItem("foundConsent") !== "granted") return "consent.html";
-      if (sessionStorage.getItem("foundDraft")) return "register.html";
-      if (!sessionStorage.getItem("foundPhoto")) return "photo.html";
+      if (sessionStorage.getItem("foundConsent") !== "granted") return "consent";
+      if (sessionStorage.getItem("foundDraft")) return "register";
+      if (!sessionStorage.getItem("foundPhoto")) return "photo";
     } catch (_) {}
     return null;
   }
@@ -91,7 +91,7 @@
       title: "습득물 등록을 그만할까요?",
       message: "지금까지 올린 내용은 지워져요. 그래도 나갈까요?",
       leaveLabel: "그만하기",
-      leaveTo: "photo.html",
+      leaveTo: "photo",
       onLeave: () => {
         for (const k of ["foundDraft", "foundPhoto", "photoBuilding"]) sessionStorage.removeItem(k);
       },
@@ -172,7 +172,7 @@
     if (!new URLSearchParams(window.location.search).has("preview")) {
       // 올리는 중 화면은 history에 남기지 않는다. 등록 화면에서 뒤로 가면 다시 분석하지 않고 사진 화면으로 간다
       // "그만할까요?" 창이 열려 있으면 고를 때까지 기다린다. 계속하기면 넘어가고, 그만하기면 창이 사진 화면으로 보낸다
-      const goNext = () => (leaveGuard ? leaveGuard.proceed("register.html") : window.location.replace("register.html"));
+      const goNext = () => (leaveGuard ? leaveGuard.proceed("register") : window.location.replace("register"));
       if (leaveGuard?.isOpen()) leaveGuard.afterStay(goNext);
       else goNext();
     } else {
@@ -210,8 +210,8 @@
     dock.className = "dock";
     dock.innerHTML =
       err.code === "CAPTCHA_FAILED"
-        ? '<a class="btn" href="photo.html">다시 시도</a>'
-        : '<a class="btn" href="photo.html">사진 다시 고르기</a>';
+        ? '<a class="btn" href="photo">다시 시도</a>'
+        : '<a class="btn" href="photo">사진 다시 고르기</a>';
     document.querySelector("main.screen").appendChild(dock);
   });
 </script>

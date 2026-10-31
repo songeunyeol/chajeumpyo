@@ -11,12 +11,12 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="candidates.html">←</a><h2>확인</h2></header>
+  <header class="bar"><a class="back" href="candidates">←</a><h2>확인</h2></header>
   <h1>특징이 맞지 않았어요</h1>
   <p class="lead" id="failLead">2번 남았어요.</p>
   <p class="note">종류·색만으로는 확인할 수 없어요. 뚜껑·케이스 색, 브랜드(한글로 적어도 돼요), 스티커, 키링처럼 <b>내 물건만의 특징</b>을 설명에 더 적고 다시 확인해 주세요. 맞은 것도 틀린 것도 없으면 기회가 줄지 않아요.</p>
   <div class="dock near">
-    <a class="btn" id="retryBtn" href="question.html">설명 보완하고 다시 확인</a>
+    <a class="btn" id="retryBtn" href="question">설명 보완하고 다시 확인</a>
   </div>
 </main>
 <script src="api.js"></script>
@@ -27,7 +27,7 @@
   if (claim && typeof claim.attemptsLeft === "number") {
     document.getElementById("failLead").textContent = `확인 기회가 ${claim.attemptsLeft}번 남았어요.`;
   }
-  document.getElementById("retryBtn").href = "candidates.html";
+  document.getElementById("retryBtn").href = "candidates";
 </script>
 </body>
 </html>

@@ -11,7 +11,7 @@
 </head>
 <body>
 <main class="screen" style="overflow:hidden">
-  <header class="bar"><a class="back" href="candidates.html">←</a><h2 id="barTitle">확인 결과</h2></header>
+  <header class="bar"><a class="back" href="candidates">←</a><h2 id="barTitle">확인 결과</h2></header>
   <p class="note" id="pageStatus">확인하고 있어요.</p>
 
   <div class="pass-to-item-viewport" id="passToItemViewport" hidden>
@@ -56,7 +56,7 @@
       <!-- 오류만 보여 준다. "10분 뒤 닫혀요" 안내는 뜻이 헷갈려 뺐다 (QA 10/29). 화면을 다시 열면 새 사진 링크를 받는다 -->
       <p class="note" id="expireNote" style="margin-top:8px" hidden></p>
       <div class="dock" style="padding-top:14px">
-        <a class="btn" id="selfPickupBtn" href="home.html">확인했어요</a>
+        <a class="btn" id="selfPickupBtn" href="home">확인했어요</a>
       </div>
     </section>
   </div>
@@ -84,7 +84,7 @@
   const viewportBox = document.getElementById("passToItemViewport");
   let opened = false;
 
-  if (isFromClosed && backLink) backLink.href = "home.html";
+  if (isFromClosed && backLink) backLink.href = "home";
 
   function showError(err) {
     if (opened) {
@@ -97,7 +97,7 @@
     }
     passIntro.hidden = true;
     viewportBox.hidden = true;
-    if (backLink) backLink.href = "home.html";
+    if (backLink) backLink.href = "home";
     pageStatus.hidden = false;
     pageStatus.classList.add("danger");
     pageStatus.textContent = LostApi.itemBlockedMessage(err);
@@ -121,11 +121,11 @@
     try {
       d = await LostApi.detail();
     } catch (err) {
-      if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+      if (err.code === "UNAUTHORIZED") return location.replace("login");
       return showError(err);
     }
     // 보관처에 맡긴 물건이면 그 화면으로
-    if (d.storageType === "HANDED_OVER") return location.replace("item-handover.html");
+    if (d.storageType === "HANDED_OVER") return location.replace("item-handover");
 
     document.getElementById("itemTitle").textContent = LostApi.itemLabel(d.category, d.subCategory);
     const place = [LostApi.buildingName(d.building, "건물 모름"), LostApi.floorLabel(d.floor)].filter(Boolean).join(" ");
@@ -151,11 +151,11 @@
   // "확인했어요": POST /found-items/:id/self-pickup (가져갔다고 기록) → 홈
   selfPickupBtn.addEventListener("click", async (e) => {
     e.preventDefault();
-    if (selfPickupBtn.dataset.done) return location.assign("home.html");
+    if (selfPickupBtn.dataset.done) return location.assign("home");
     selfPickupBtn.style.opacity = "0.6";
     try {
       await LostApi.selfPickup();
-      location.assign("home.html");
+      location.assign("home");
     } catch (err) {
       selfPickupBtn.style.opacity = "";
       showError(err);
