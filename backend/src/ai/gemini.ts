@@ -334,8 +334,11 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
     async compareFeatures(reported, stored, options) {
       const result = compareByRules(reported, stored);
       const callTimeoutMs = options?.callTimeoutMs;
-      /** AI가 MATCH라고 했을 때만 true. 실패·시간 초과·다른 답은 false */
-      const saysMatch = async (input: { question: string; stored: string; answer: string }, label: string) => {
+      /** AI가 MATCH라고 했을 때만 true, 다르다고 답하면 false. 실패·시간 초과는 null(모름) */
+      const saysMatch = async (
+        input: { question: string; stored: string; answer: string },
+        label: string,
+      ): Promise<boolean | null> => {
         let timer: NodeJS.Timeout | undefined;
         try {
           const call = retryTransient(() => judgeAnswer(input));
@@ -350,7 +353,7 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
           return verdict === "MATCH";
         } catch (err) {
           logger.warn({ err }, `${label} 실패 → 규칙 결과 그대로`);
-          return false;
+          return null;
         } finally {
           clearTimeout(timer);
         }
@@ -408,7 +411,7 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
               },
               "브랜드 다시 보기",
             )
-          : Promise.resolve(false);
+          : Promise.resolve(null);
 
       const [rechecked, described, sameBrand] = await Promise.all([recheck, byDescription, brandCheck]);
       // 다시 보기에서 같은 대상이면 그 특징으로, 아니면 설명에 적혀 있을 때 설명 일치로 본다
@@ -418,7 +421,16 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
           return { ...f, verdict: "MATCH" as const, storedKey: DESCRIPTION_KEY };
         return f;
       });
-      return { ...result, features, brand: sameBrand ? ("MATCH" as const) : result.brand };
+      return {
+        ...result,
+        features,
+        brand: sameBrand === true ? ("MATCH" as const) : result.brand,
+        ...(sameBrand === true
+          ? { brandCheck: "SAME" as const }
+          : sameBrand === false
+            ? { brandCheck: "DIFFERENT" as const }
+            : {}),
+      };
     },
 
     judgeAnswer,

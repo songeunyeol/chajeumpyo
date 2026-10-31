@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { judgeAnswer } from "../../src/matching/answer";
 import { compareBrand, compareByRules, compareColor } from "../../src/matching/compare";
+
+describe('로고·상표 형식 낱말만 겹치면 일치가 아니다 (10/31 검증 1: MK 지갑에 "나이키 로고")', () => {
+  const mk = {
+    color: "PINK_MAGENTA",
+    brand: "MICHAEL KORS",
+    features: [{ key: "pattern" as const, value: "MK 로고 모노그램 무늬" }],
+  };
+  it('"나이키 로고" ↔ "MK 로고 모노그램 무늬"는 일치가 아니다', () => {
+    for (const key of ["pattern", "other", "text"] as const) {
+      const r = compareByRules({ color: null, brand: null, features: [{ key, value: "나이키 로고" }] }, mk);
+      expect(r.features[0]?.verdict).not.toBe("MATCH");
+    }
+  });
+  it('"MK 로고"는 그대로 일치', () => {
+    const r = compareByRules({ color: null, brand: null, features: [{ key: "pattern", value: "MK 로고" }] }, mk);
+    expect(r.features[0]?.verdict).toBe("MATCH");
+  });
+});
+
 import { dropMaskTraces, isMaskTrace } from "../../src/matching/text";
 
 const stored = { color: "WHITE", brand: "Apple", features: [{ key: "sticker" as const, value: "곰돌이 스티커" }] };
