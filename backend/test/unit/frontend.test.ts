@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { env } from "../../src/config/env";
 import { createFrontendRouter } from "../../src/routes/frontend";
 
 // 배포에서 붙는 정적 화면 라우터만 따로 확인한다 (createApp은 production에서만 붙인다)
@@ -30,6 +31,22 @@ describe("정적 화면", () => {
     expect((await request(app).get("/_tester.html")).status).toBe(404);
     expect((await request(app).get("/found/README.md")).status).toBe(404);
     expect((await request(app).get(`/found/${encodeURIComponent("단계.md")}`)).status).toBe(404);
+  });
+
+  it("화면 목록·간편 로그인 시안은 운영(production)에서만 막는다 (검증 10/31)", async () => {
+    const pages = ["/lost/board.html", "/found/board.html", "/lost/consent-social.html"];
+    for (const page of pages) expect((await request(app).get(page)).status).toBe(200);
+    const original = env.NODE_ENV;
+    (env as { NODE_ENV: string }).NODE_ENV = "production";
+    try {
+      for (const page of pages) expect((await request(app).get(page)).status).toBe(404);
+      expect((await request(app).get("/LOST/Board.html")).status).toBe(404);
+      // 서비스 소개와 사용자 화면은 그대로
+      expect((await request(app).get("/guide.html")).status).toBe(200);
+      expect((await request(app).get("/lost/login.html")).status).toBe(200);
+    } finally {
+      (env as { NODE_ENV: string }).NODE_ENV = original;
+    }
   });
 
   it("디자인 확인 화면(팔레트·한눈에)은 내려주지 않는다", async () => {
