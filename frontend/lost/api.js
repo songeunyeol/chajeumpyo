@@ -158,7 +158,7 @@
     SAME_CATEGORY: "같은 종류",
     RELATED_CATEGORY: "연관 종류",
     SAME_BUILDING: "같은 건물",
-    FOUND_SOON_AFTER: "잃어버린 뒤 2시간 안에 습득",
+    FOUND_SOON_AFTER: "잃어버린 시간 근처에 주웠어요",
   };
 
   /** 신고 상태 (ReportStatus) */
