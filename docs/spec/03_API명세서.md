@@ -46,6 +46,7 @@
 | 409 | `NOT_IN_PERSON_ITEM` | 대면 확인으로 넘어간 보관 중 물건이 아니라 대면 확인 수령을 할 수 없음 |
 | 410 | `QR_EXPIRED` | 수령 QR 만료 |
 | 413 | `IMAGE_TOO_LARGE` | 사진 용량 초과 |
+| 413 | `PAYLOAD_TOO_LARGE` | JSON 본문이 100kb를 넘음 |
 | 422 | `NO_OBJECT_DETECTED` | 사진에서 물건을 찾지 못함 |
 | 429 | `RATE_LIMITED` | 등록·요청 과다 |
 | 500 | `INTERNAL_ERROR` | 서버 오류 |

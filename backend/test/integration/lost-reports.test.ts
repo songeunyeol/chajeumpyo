@@ -92,6 +92,12 @@ describe("기준 2. 입력 검증과 권한", () => {
     expect((await post(report({ lostTo: new Date(Date.now() + 3600_000).toISOString() }))).status).toBe(400);
   });
 
+  it("100kb를 넘는 JSON 본문은 500이 아니라 413 PAYLOAD_TOO_LARGE (10/31 퍼징)", async () => {
+    const res = await post(report({ description: "가".repeat(120_000) }));
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe("PAYLOAD_TOO_LARGE");
+  });
+
   it("0년처럼 말이 안 되는 시작 시각은 AI를 부르기 전에 400 (10/31 퍼징)", async () => {
     let aiCalls = 0;
     useExtraction(async (description) => {
