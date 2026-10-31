@@ -16,6 +16,28 @@ export function ipRateLimit(options: { windowMinutes: number; limit: number; mes
 }
 
 /**
+ * 같은 이메일로 틀린 요청만 센다(응답이 400 이상일 때). 로그인 무차별 대입을 IP와 상관없이 막는다.
+ * 본문 파싱(express.json) 뒤에 둔다. 이메일이 없으면 빈 키 하나로 센다.
+ */
+export function emailFailRateLimit(options: { windowMinutes: number; limit: number; message: string }) {
+  const body: ErrorResponse = { error: { code: "RATE_LIMITED", message: options.message } };
+  return rateLimit({
+    windowMs: options.windowMinutes * 60_000,
+    limit: options.limit,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    keyGenerator: (req) => {
+      const email = (req.body as { email?: unknown } | undefined)?.email;
+      return `email:${typeof email === "string" ? email.trim().toLowerCase() : ""}`;
+    },
+    handler: (_req, res) => {
+      res.status(429).json(body);
+    },
+  });
+}
+
+/**
  * 로그인한 계정 기준 요청 제한. requireMember() 뒤에 둔다.
  * IP를 바꿔 가며 같은 계정으로 몰아치는 요청(예: 조건을 바꿔 후보 훑기, AI 비용 남용)을 막는다.
  */

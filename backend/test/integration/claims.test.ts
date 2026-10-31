@@ -7,6 +7,7 @@ import { mockAiClient } from "../../src/ai/mock";
 import { createApp } from "../../src/app";
 import { env } from "../../src/config/env";
 import { similarShape } from "../../src/matching/quiz";
+import { CLAIM_ACCOUNT_LIMIT } from "../../src/routes/claims";
 import { alertNewCandidate } from "../../src/services/candidate-alerts";
 import { demoLogin, signupUser } from "../helpers/auth";
 import { prisma, resetDb } from "../helpers/db";
@@ -521,16 +522,47 @@ describe("기준 10. 동시 요청과 체험 계정", () => {
   });
 });
 
-describe("IP 요청 제한 (계정을 바꿔 가며 몰아치기 방지, 위협 모델 T2)", () => {
-  it("판정 요청과 답변 요청은 같은 IP에서 10분에 20번까지, 21번째는 429", async () => {
-    const missing = "00000000-0000-0000-0000-000000000000";
-    for (let i = 0; i < 20; i++) expect((await claim(missing, missing)).status).not.toBe(429);
+describe("요청 제한: 한 계정은 계정 한도, 한 네트워크(IP)는 넉넉한 한도 (위협 모델 T2, 10/31 검증 #2)", () => {
+  const missing = "00000000-0000-0000-0000-000000000000";
+
+  it("한 계정은 판정·답변 요청이 10분에 30번까지, 31번째는 429", async () => {
+    for (let i = 0; i < CLAIM_ACCOUNT_LIMIT; i++) expect((await claim(missing, missing)).status).not.toBe(429);
     const over = await claim(missing, missing);
     expect(over.status).toBe(429);
     expect(over.body.error.code).toBe("RATE_LIMITED");
 
-    for (let i = 0; i < 20; i++) expect((await answer(missing, "곰돌이")).status).not.toBe(429);
+    for (let i = 0; i < CLAIM_ACCOUNT_LIMIT; i++) expect((await answer(missing, "곰돌이")).status).not.toBe(429);
     expect((await answer(missing, "곰돌이")).status).toBe(429);
+  });
+
+  it("같은 와이파이(IP)의 5명은 서로 막지 않는다: 한 명이 계정 한도에 닿아도 다른 4명은 그대로", async () => {
+    const others = [];
+    for (let i = 1; i <= 4; i++) others.push((await signupUser(app, `wifi${i}@skuniv.ac.kr`)).accessToken);
+    for (let i = 0; i < CLAIM_ACCOUNT_LIMIT; i++) await claim(missing, missing);
+    expect((await claim(missing, missing)).status).toBe(429);
+    for (const t of others) {
+      for (let i = 0; i < 20; i++) expect((await claim(missing, missing, t)).status).not.toBe(429);
+    }
+  });
+
+  it("IP 한도(IP_RATE_LIMIT_PER_10MIN)를 넘으면 계정을 바꿔도 429", async () => {
+    const before = env.IP_RATE_LIMIT_PER_10MIN;
+    env.IP_RATE_LIMIT_PER_10MIN = 40;
+    try {
+      app = createApp();
+      const tokens = [];
+      for (let i = 1; i <= 3; i++) tokens.push((await signupUser(app, `ip${i}@skuniv.ac.kr`)).accessToken);
+      let sent = 0;
+      for (const t of tokens) {
+        for (let i = 0; i < 13 && sent < 40; i++, sent++)
+          expect((await claim(missing, missing, t)).status).not.toBe(429);
+      }
+      for (; sent < 40; sent++) expect((await claim(missing, missing, tokens[2])).status).not.toBe(429);
+      const extra = (await signupUser(app, "ip4@skuniv.ac.kr")).accessToken;
+      expect((await claim(missing, missing, extra)).status).toBe(429);
+    } finally {
+      env.IP_RATE_LIMIT_PER_10MIN = before;
+    }
   });
 });
 

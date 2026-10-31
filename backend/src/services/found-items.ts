@@ -89,8 +89,18 @@ export function isLogoSafe(category: Category | null | undefined, sub: string | 
   return rule === "all" || (!!sub && rule.includes(sub));
 }
 
-export function uploaderFingerprint(ip: string, userAgent: string): string {
-  return hmac(`uploader:${ip}:${userAgent}`);
+/**
+ * 프론트가 처음 열 때 만들어 localStorage에 두는 기기 id 헤더. 같은 와이파이에서 같은 기종 휴대폰도
+ * IP+User-Agent가 같아 한 기기로 묶이던 것을 나눈다 (10/31 검증 #2). 없거나 모양이 이상하면 IP+UA만 쓴다.
+ * 남이 바꿔 보낼 수 있는 값이라 남용 방지는 여전히 캡차(분석)와 IP 한도(확정)가 맡는다.
+ */
+export const DEVICE_ID_HEADER = "x-device-id";
+const DEVICE_ID = /^[A-Za-z0-9-]{8,64}$/;
+
+/** 같은 기기 판단용 지문. 원문(IP·기기 문자열)은 저장하지 않고 해시만 남긴다 */
+export function uploaderFingerprint(ip: string, userAgent: string, deviceId?: string): string {
+  const device = deviceId && DEVICE_ID.test(deviceId) ? `:${deviceId}` : "";
+  return hmac(`uploader:${ip}:${userAgent}${device}`);
 }
 
 type Analysis = { extraction: FoundItemExtraction; embedding: number[] };

@@ -92,6 +92,31 @@ describe("기준 2. 입력 검증과 권한", () => {
     expect((await post(report({ lostTo: new Date(Date.now() + 3600_000).toISOString() }))).status).toBe(400);
   });
 
+  it("100kb를 넘는 JSON 본문은 500이 아니라 413 PAYLOAD_TOO_LARGE (10/31 퍼징)", async () => {
+    const res = await post(report({ description: "가".repeat(120_000) }));
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe("PAYLOAD_TOO_LARGE");
+  });
+
+  it("0년처럼 말이 안 되는 시작 시각은 AI를 부르기 전에 400 (10/31 퍼징)", async () => {
+    let aiCalls = 0;
+    useExtraction(async (description) => {
+      aiCalls++;
+      return { category: "EARPHONE", color: null, brand: null, features: [], description };
+    });
+    const year0 = await post(report({ lostFrom: "0000-01-01T00:00:00Z" }));
+    expect(year0.status).toBe(400);
+    expect(year0.body.error.code).toBe("VALIDATION_ERROR");
+    expect((await post(report({ lostFrom: new Date(Date.now() - 400 * 24 * 3600_000).toISOString() }))).status).toBe(
+      400,
+    );
+    expect(aiCalls).toBe(0);
+    // 30일 전(신고 화면의 "일주일 이전"이 보내는 가장 이른 값)은 그대로 받는다
+    expect((await post(report({ lostFrom: new Date(Date.now() - 30 * 24 * 3600_000).toISOString() }))).status).toBe(
+      201,
+    );
+  });
+
   it("없는 건물, 너무 짧은 설명, 없는 종류는 400", async () => {
     expect((await post(report({ buildingId: 9999 }))).status).toBe(400);
     expect((await post(report({ description: "폰" }))).status).toBe(400);

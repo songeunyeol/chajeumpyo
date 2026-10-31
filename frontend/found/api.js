@@ -2,7 +2,7 @@
 // API 주소: 개발 주소에서만 ?api=... 로 한 번 주면 기억한다. 없으면
 // - 개발(정적 서버 5500 포트): 이 페이지를 연 호스트의 4000 포트(휴대폰에서 PC IP로 열어도 맞게)
 // - 배포: 백엔드가 화면도 같이 내려주므로 같은 주소의 /api/v1
-(function () {
+(() => {
   // ?api= 주소 바꾸기는 개발(포트가 붙은 주소, localhost, 사설 IP)에서만 받는다. 배포 주소에서는 무시한다
   const devHost =
     location.port !== "" || /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
@@ -109,8 +109,17 @@
   };
   /** packages/shared/src/enums.ts의 VALUABLE_CATEGORIES. 등록 화면이 보관처를 추천한다 (10/30 정책 변경, QA B11) */
   const VALUABLE_CATEGORIES = [
-    "WALLET", "ID_CARD", "DRIVER_LICENSE", "PAYMENT_CARD", "PHONE", "EARPHONE",
-    "SMARTWATCH", "TABLET", "LAPTOP", "ACCESSORY", "CASH",
+    "WALLET",
+    "ID_CARD",
+    "DRIVER_LICENSE",
+    "PAYMENT_CARD",
+    "PHONE",
+    "EARPHONE",
+    "SMARTWATCH",
+    "TABLET",
+    "LAPTOP",
+    "ACCESSORY",
+    "CASH",
   ];
 
   /** 화면 이름: 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름 (shared itemLabel) */
@@ -154,7 +163,9 @@
     } catch (_) {
       reportNet(false, method === "GET");
       log({ method, path, status: 0, ms: Date.now() - started, body: "연결 실패" });
-      throw new ApiError(0, { error: { code: "NETWORK", message: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." } });
+      throw new ApiError(0, {
+        error: { code: "NETWORK", message: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." },
+      });
     }
     reportNet(true, method === "GET");
     const body = await res.json().catch(() => null);
@@ -162,6 +173,28 @@
     if (!res.ok) throw new ApiError(res.status, body);
     return body;
   }
+
+  // 같은 와이파이·같은 기종 휴대폰이 한 기기로 묶이지 않게(10분 5건 한도), 처음 열 때 만든 기기 id를 보낸다 (10/31)
+  // 저장이 막힌 브라우저면 보내지 않고, 서버는 IP·브라우저 정보로만 센다
+  const DEVICE_ID_KEY = "deviceId";
+  function deviceId() {
+    try {
+      let id = localStorage.getItem(DEVICE_ID_KEY);
+      if (!id || !/^[A-Za-z0-9-]{8,64}$/.test(id)) {
+        id = crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+        localStorage.setItem(DEVICE_ID_KEY, id);
+      }
+      return id;
+    } catch (_) {
+      return null;
+    }
+  }
+  const withDevice = (headers) => {
+    const id = deviceId();
+    return id ? { ...headers, "X-Device-Id": id } : headers;
+  };
 
   const store = {
     get(key) {
@@ -334,7 +367,7 @@
       return call("/found-items/analyze", {
         method: "POST",
         // 토큰이 없거나 만료됐으면 헤더 없이 보내고, 서버의 CAPTCHA_FAILED를 화면이 안내한다
-        headers: token ? { "X-Captcha-Token": token } : {},
+        headers: withDevice(token ? { "X-Captcha-Token": token } : {}),
         body: form,
       });
     },

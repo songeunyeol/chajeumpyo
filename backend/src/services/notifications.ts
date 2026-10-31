@@ -1,3 +1,4 @@
+import { type Category, itemLabel, subCategoryWithin } from "@chajeumpyo/shared";
 import type { Prisma } from "../generated/prisma/client";
 import { withJosa } from "../lib/josa";
 import { prisma } from "../lib/prisma";
@@ -33,6 +34,14 @@ export async function notifyUsers(
 ) {
   if (userIds.length === 0) return;
   await db.notification.createMany({ data: userIds.map((userId) => ({ userId, ...data })) });
+}
+
+/**
+ * 알림에 쓰는 물건 이름. 세부 종류가 있으면 그 이름("화장품", "인형 키링"), 없으면 큰 종류 이름.
+ * 큰 종류만 쓰면 화장품이 "기타가 새로 등록됐어요"처럼 보였다 (검증 10/31). 세부 종류는 공개 정보다
+ */
+export function notificationItemLabel(item: { category: Category; subCategory?: string | null }): string {
+  return itemLabel(item.category, subCategoryWithin(item.category, item.subCategory ?? null));
 }
 
 /** 새 후보 알림 문구: "혜인관에서 무선 이어폰이 새로 등록됐어요." */

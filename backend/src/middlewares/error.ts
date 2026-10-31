@@ -19,6 +19,12 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(400).json(body);
     return;
   }
+  // express.json()의 본문 크기 한도 초과 (10/31 퍼징: 500으로 나가던 것)
+  if (err?.type === "entity.too.large") {
+    const body: ErrorResponse = { error: { code: "PAYLOAD_TOO_LARGE", message: "보낸 내용이 너무 커요." } };
+    res.status(413).json(body);
+    return;
+  }
   logger.error({ err }, "unhandled error");
   const body: ErrorResponse = { error: { code: "INTERNAL_ERROR", message: "서버 오류가 발생했어요." } };
   res.status(500).json(body);

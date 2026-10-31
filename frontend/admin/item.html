@@ -194,7 +194,13 @@
       img.hidden = true;
       img.removeAttribute("src");
       A.show($("noPhoto"), true);
-      $("noPhoto").textContent = ["CLAIMED", "EXPIRED"].includes(item.status) ? "수령·기한 만료로 사진을 지웠어요" : "사진이 없어요";
+      $("noPhoto").textContent = item.closedAt
+        ? "보관을 끝내며 사진을 지웠어요"
+        : item.status === "CLAIMED"
+          ? "수령이 끝나 사진을 지웠어요"
+          : item.status === "EXPIRED"
+            ? "보관 기한이 지나 사진을 지웠어요"
+            : "사진이 없어요";
     }
     $("photoTabs").replaceChildren(
       ...(kinds.length > 1
@@ -225,8 +231,9 @@
   function render() {
     document.title = `${A.itemTitle(item)} · 찾음표`;
     $("title").textContent = A.itemTitle(item);
-    const chips = [A.statusChip(item.status)];
-    if (item.claimLockedAt) chips.push(el("span", { class: "chip danger", text: "대면 확인만" }));
+    const chips = [A.statusChip(item.status, item)];
+    // 대면 확인 표시는 아직 보관 중인 물건에만 (수령·보관 종료 뒤에는 뗀다)
+    if (item.claimLockedAt && EDITABLE.includes(item.status)) chips.push(el("span", { class: "chip danger", text: "대면 확인만" }));
     if (item.isSeed) chips.push(el("span", { class: "chip warn", text: "시연용" }));
     const label = A.itemLabel(item.category, item.subCategory);
     if (label && label !== item.title) chips.push(el("span", { class: "chip", style: "background:var(--white);color:var(--ink)", text: label }));
@@ -234,7 +241,7 @@
 
     setPhoto();
     A.show($("lockBanner"), !!item.claimLockedAt && EDITABLE.includes(item.status));
-    $("kvStatus").textContent = A.STATUS[item.status]?.label || item.status;
+    $("kvStatus").textContent = A.statusText(item);
     $("kvPlace").textContent = A.placeText(item);
     $("kvDetail").textContent = item.locationDetail || "적지 않음";
     $("kvNote").textContent = item.finderNote || "적지 않음";
@@ -244,7 +251,12 @@
         ? item.storagePlace?.name || "보관처에 맡김"
         : A.STORAGE_LABELS.IN_PLACE;
     $("kvFound").textContent = A.formatTime(item.foundAt);
-    $("kvExpires").textContent = item.expiresAt ? A.formatTime(item.expiresAt, false) : "없음";
+    // 보관을 끝낸 물건은 기한이 끝낸 날로 바뀌어 있어 헷갈리므로 "보관 종료"로 적는다
+    $("kvExpires").textContent = item.closedAt
+      ? "보관 종료"
+      : item.expiresAt
+        ? A.formatTime(item.expiresAt, false)
+        : "없음";
     $("kvSensitive").textContent = item.isSensitive ? "있음 (공개본은 가림)" : "없음";
 
     const closed = !!item.closedAt;

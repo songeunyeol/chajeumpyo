@@ -1,5 +1,4 @@
 import {
-  CATEGORY_LABELS,
   type Category,
   type FoundItemDetailResponse,
   type Role,
@@ -11,7 +10,7 @@ import { AppError } from "../lib/errors";
 import { withJosa } from "../lib/josa";
 import { prisma } from "../lib/prisma";
 import { storage } from "../storage";
-import { adminsInChargeOf, notifyUsers } from "./notifications";
+import { adminsInChargeOf, notificationItemLabel, notifyUsers } from "./notifications";
 
 /** 고가품은 앱 확인을 통과해도 보관처에서 대면으로 돌려준다 (QA W3, 위협 모델 T11) */
 export const VALUABLE_PICKUP_NOTICE =
@@ -82,7 +81,7 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
         select: { userId: true },
       });
       if (others.length > 0) {
-        const label = CATEGORY_LABELS[item.category as Category];
+        const label = notificationItemLabel({ category: item.category as Category, subCategory: item.subCategory });
         await notifyUsers(
           await adminsInChargeOf(item.storagePlaceId, tx),
           {

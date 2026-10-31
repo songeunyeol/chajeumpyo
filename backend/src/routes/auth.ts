@@ -10,10 +10,11 @@ import {
   SignupRequest,
 } from "@chajeumpyo/shared";
 import { Router } from "express";
+import { env } from "../config/env";
 import { getAuth, requireMember } from "../middlewares/auth";
 import { CAPTCHA_ACTIONS, requireCaptcha } from "../middlewares/captcha";
 import { requireDemoEnabled } from "../middlewares/demo";
-import { ipRateLimit } from "../middlewares/rate-limit";
+import { emailFailRateLimit, ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import * as auth from "../services/auth";
@@ -46,7 +47,11 @@ registry.registerPath({
   description:
     "가장 최근에 받은 코드만, 한 번만 확인할 수 있다. 5번 틀리면 코드를 버린다. 성공하면 10분짜리 가입용 토큰.",
   request: { body: json(EmailVerifyRequest) },
-  responses: { 200: { description: "확인됨", ...json(EmailVerifyResponse) }, 400: errorResponse("INVALID_CODE") },
+  responses: {
+    200: { description: "확인됨", ...json(EmailVerifyResponse) },
+    400: errorResponse("INVALID_CODE"),
+    429: errorResponse("RATE_LIMITED"),
+  },
 });
 registry.registerPath({
   method: "post",
@@ -69,7 +74,11 @@ registry.registerPath({
   tags: ["인증"],
   summary: "분실자 로그인 (F-04)",
   request: { body: json(LoginRequest) },
-  responses: { 200: { description: "로그인됨", ...json(AuthResponse) }, 401: errorResponse("UNAUTHORIZED") },
+  responses: {
+    200: { description: "로그인됨", ...json(AuthResponse) },
+    401: errorResponse("UNAUTHORIZED"),
+    429: errorResponse("RATE_LIMITED"),
+  },
 });
 registry.registerPath({
   method: "post",
@@ -99,30 +108,42 @@ registry.registerPath({
   tags: ["관리자"],
   summary: "관리자 로그인 (F-14)",
   request: { body: json(LoginRequest) },
-  responses: { 200: { description: "로그인됨", ...json(AdminAuthResponse) }, 401: errorResponse("UNAUTHORIZED") },
+  responses: {
+    200: { description: "로그인됨", ...json(AdminAuthResponse) },
+    401: errorResponse("UNAUTHORIZED"),
+    429: errorResponse("RATE_LIMITED"),
+  },
 });
 
 export function createAuthRouter() {
   const router = Router();
+  // 가입·인증 코드도 한 와이파이의 여러 명이 같이 막히지 않게 IP 한도를 넉넉히 둔다 (10/31 검증: 10이면 11번째 사람부터 막혔다).
+  // 같은 이메일로 메일 폭탄을 보내는 건 서비스의 이메일별 한도(1분 1번, 하루 10번)와 하루 전체 상한이 막는다
   const codeLimit = ipRateLimit({
     windowMinutes: 10,
-    limit: 10,
+    limit: env.SIGNUP_IP_LIMIT_PER_10MIN,
     message: "인증 코드 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
   const codeDailyLimit = ipRateLimit({
     windowMinutes: 24 * 60,
-    limit: 50,
+    limit: env.EMAIL_CODE_IP_LIMIT_PER_DAY,
     message: "오늘 이 네트워크에서 받을 수 있는 인증 코드를 모두 받았어요. 내일 다시 시도해 주세요.",
   });
   const signupLimit = ipRateLimit({
     windowMinutes: 10,
-    limit: 10,
+    limit: env.SIGNUP_IP_LIMIT_PER_10MIN,
     message: "가입 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
+  // 학교 와이파이 하나에 여러 명이 있어도 같이 막히지 않게 IP 한도는 넉넉히, 무차별 대입은 이메일별 실패 한도로 막는다 (10/31)
   const loginLimit = ipRateLimit({
     windowMinutes: 10,
-    limit: 20,
+    limit: env.IP_RATE_LIMIT_PER_10MIN,
     message: "로그인 시도가 너무 많아요. 잠시 후 다시 시도해 주세요.",
+  });
+  const loginFailLimit = emailFailRateLimit({
+    windowMinutes: 10,
+    limit: env.LOGIN_FAIL_LIMIT_PER_10MIN,
+    message: "이 계정으로 로그인을 너무 많이 틀렸어요. 10분 뒤에 다시 시도해 주세요.",
   });
   const demoLimit = ipRateLimit({
     windowMinutes: 10,
@@ -155,7 +176,7 @@ export function createAuthRouter() {
     res.status(201).json(result);
   });
 
-  router.post("/auth/login", loginLimit, validate("body", LoginRequest), async (_req, res) => {
+  router.post("/auth/login", loginLimit, loginFailLimit, validate("body", LoginRequest), async (_req, res) => {
     const body: LoginRequest = res.locals.body;
     const result: AuthResponse = await auth.login(body.email, body.password);
     res.json(result);
@@ -179,7 +200,7 @@ export function createAuthRouter() {
     res.json(result);
   });
 
-  router.post("/admin/auth/login", loginLimit, validate("body", LoginRequest), async (_req, res) => {
+  router.post("/admin/auth/login", loginLimit, loginFailLimit, validate("body", LoginRequest), async (_req, res) => {
     const body: LoginRequest = res.locals.body;
     const result: AdminAuthResponse = await auth.adminLogin(body.email, body.password);
     res.json(result);
