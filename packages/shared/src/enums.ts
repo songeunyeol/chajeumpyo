@@ -456,6 +456,9 @@ const NEIGHBOR_COLORS: [Color, Color][] = [
   ["YELLOW", "BROWN"],
   ["ORANGE_CORAL", "PINK_MAGENTA"],
   ["BLUE_TEAL", "BLACK"],
+  // 흰색·베이지·아이보리·크림은 사진에서 흰색·노랑·갈색 어느 쪽으로도 잡힌다 (10/31 검증 1: 텀블러 뚜껑)
+  ["WHITE", "YELLOW"],
+  ["WHITE", "BROWN"],
 ];
 
 /** 두 색이 이웃 색인지 (같은 색은 false) */
