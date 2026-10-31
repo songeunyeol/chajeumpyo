@@ -237,6 +237,40 @@ export function relatedBySubCategory(
   );
 }
 
+/**
+ * 연관 종류라도 세부 종류끼리 관계없으면 후보에서 뺀다. [종류 A, 종류 B, B의 세부 종류 중 A와 관계있는 것만]. 서로 대칭이다.
+ * 무선 이어폰 신고에 마우스가 후보로 뜨던 문제 (기획 피드백 10/31). 이어폰과 충전기를 묶은 건 이어폰 케이스가
+ * 충전기로 분류되는 경우 때문이라, 충전기 중 케이블·보조배터리만 남긴다.
+ * 양쪽 세부 종류가 다 정해졌을 때만 뺀다. 세부 종류가 없는 종류(휴대폰·스마트워치·모자)는 그 자체로 정해진 것으로 본다.
+ */
+const RELATED_SUB_ONLY: [Category, Category, readonly SubCategory[]][] = [
+  ["EARPHONE", "CHARGER", ["CABLE_CHARGER", "POWER_BANK"]],
+  ["PHONE", "CHARGER", ["CABLE_CHARGER", "POWER_BANK"]],
+  ["SMARTWATCH", "CHARGER", ["CABLE_CHARGER", "POWER_BANK"]],
+  ["BAG", "CLOTHING", ["OUTER", "TOP", "BOTTOM", "SCARF_GLOVES"]],
+  ["HAT", "CLOTHING", ["OUTER", "TOP", "BOTTOM", "SCARF_GLOVES"]],
+];
+
+/** 세부 종류가 정해졌는지. 세부 종류가 없는 종류는 종류만으로 정해진 것으로 본다 */
+function subKnown(category: Category, sub: string | null): boolean {
+  return sub !== null || SUB_CATEGORIES[category] === undefined;
+}
+
+/** 연관 종류지만 세부 종류끼리 관계없어 후보에서 뺄 조합인지 (RELATED_SUB_ONLY) */
+export function unrelatedBySubCategory(
+  reported: Category,
+  reportedSub: string | null,
+  item: Category | null,
+  itemSub: string | null,
+): boolean {
+  if (!item || !subKnown(reported, reportedSub) || !subKnown(item, itemSub)) return false;
+  return RELATED_SUB_ONLY.some(
+    ([a, b, allowed]) =>
+      (reported === a && item === b && !(allowed as readonly string[]).includes(itemSub as string)) ||
+      (reported === b && item === a && !(allowed as readonly string[]).includes(reportedSub as string)),
+  );
+}
+
 /** 후보 검색에서 세부 종류 묶음으로 더 볼 종류·세부 종류 (신고 세부 종류를 모르면 세부 종류가 필요한 쪽은 넣지 않는다) */
 export function relatedSubCategoryTargets(
   reported: Category,
@@ -482,7 +516,8 @@ export type FoundStatus = z.infer<typeof FoundStatus>;
 export const ReportStatus = z.enum(["OPEN", "RESOLVED", "CLOSED"]);
 export type ReportStatus = z.infer<typeof ReportStatus>;
 
-export const MatchResult = z.enum(["PASS", "BORDERLINE", "FAIL"]);
+/** NEED_MORE: 근거 부족(맞힌 특징도 모순도 없음). 실패로 세지 않는다 (10/31) */
+export const MatchResult = z.enum(["PASS", "BORDERLINE", "FAIL", "NEED_MORE"]);
 export type MatchResult = z.infer<typeof MatchResult>;
 
 /** DEMO: 체험 계정의 수령. 시드 상태를 바꾸지 않고 "완료는 물건당 1건" 규칙에서도 빠진다. */

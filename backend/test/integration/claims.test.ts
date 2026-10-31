@@ -251,10 +251,10 @@ describe("기준 4. 경계 판정은 신고에 적지 않은 특징으로 질문
     expect(res.body.result).toBe("FAIL");
   });
 
-  it("특징이 없는 습득물은 아무도 통과할 수 없다 (open-issues #17 현재 기준)", async () => {
+  it("특징이 없는 습득물은 아무도 통과할 수 없다: 기회는 안 쓰고 근거 부족 (open-issues #17, 10/31)", async () => {
     const it1 = await item({ features: [] });
     const r = await newReport({ color: "WHITE", brand: "Apple", features: [feature("sticker", "곰돌이 스티커")] });
-    expect((await claim(r, it1.id)).body.result).toBe("FAIL");
+    expect((await claim(r, it1.id)).body).toMatchObject({ result: "NEED_MORE", attemptsLeft: 3 });
   });
 });
 
@@ -632,7 +632,8 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect((await choose(a1.body.attemptId, wrong)).body.result).toBe("FAIL");
     const r2 = await newReport({ features: [] }, token, "하얀 무선 이어폰이에요 찾고 있어요");
     const a2 = await claim(r2, it1.id);
-    expect(a2.body.result).toBe("FAIL");
+    // 근거가 없을 뿐 틀린 게 아니라 기회는 그대로 (10/31 기획 피드백)
+    expect(a2.body).toMatchObject({ result: "NEED_MORE", attemptsLeft: 2 });
     // 특징을 적으면 다시 확인할 수 있다
     const r3 = await newReport({ features: ALL_RIGHT }, token, "곰돌이 스티커 붙은 에어팟");
     expect((await claim(r3, it1.id)).body.result).toBe("PASS");
@@ -658,7 +659,7 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
       ).body.result,
     ).toBe("FAIL");
     const r3 = await newReport({ features: [] }, token, "흰 이어폰 케이스예요");
-    expect((await claim(r3, it1.id)).body.result).toBe("FAIL");
+    expect((await claim(r3, it1.id)).body.result).toBe("NEED_MORE");
   });
 
   it("더 새 시도가 있으면 옛 질문에는 답할 수 없다 (옛 시도를 모아 하나씩 답하는 우회 막기)", async () => {
@@ -856,5 +857,70 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect(b.body.result).toBe("BORDERLINE");
     expect(b.body.questions[0].options).toHaveLength(4);
     expect(b.body.questions[0].options).toContain("고양이 키링");
+  });
+});
+
+describe("근거 부족은 기회를 쓰지 않는다 (10/31 기획 피드백: 특징을 더 적을수록 횟수만 줄었다)", () => {
+  /** 찍기 객관식을 한 번 써서(틀림) 다음부터 맞힌 것 없는 확인이 근거 부족으로 가게 한다 */
+  async function useGuess(foundItemId: string) {
+    const r = await newReport({ features: [] }, token, "흰색 에어팟을 잃어버렸어요");
+    const a = await claim(r, foundItemId);
+    expect(a.body.result).toBe("BORDERLINE");
+    const right = await correctChoices(a.body.attemptId);
+    expect(
+      (
+        await choose(
+          a.body.attemptId,
+          right.map((x) => (x + 1) % 4),
+        )
+      ).body.result,
+    ).toBe("FAIL");
+  }
+
+  it("맞힌 것도 모순도 없으면 NEED_MORE, 남은 횟수는 그대로", async () => {
+    const it1 = await item();
+    await useGuess(it1.id);
+    const r = await newReport({ features: [feature("case", "투명 케이스")] }, token, "투명 케이스 씌운 에어팟");
+    const res = await claim(r, it1.id);
+    expect(res.body).toMatchObject({ result: "NEED_MORE", attemptsLeft: 2, inPersonOnly: false });
+    expect(res.body.message).toMatch(/특징을 더 적어/);
+    // 모순이 있으면 지금처럼 실패로 센다
+    const bad = await newReport({ features: [feature("sticker", "토끼 스티커")] }, token, "토끼 스티커 붙은 에어팟");
+    expect((await claim(bad, it1.id)).body).toMatchObject({ result: "FAIL", attemptsLeft: 1 });
+  });
+
+  it("근거 부족은 계정·물건마다 시간당 3번까지, 넘으면 429", async () => {
+    const it1 = await item();
+    await useGuess(it1.id);
+    for (let i = 0; i < 3; i++) {
+      const r = await newReport({ features: [] }, token, `흰색 이어폰 ${i}번째 설명이에요`);
+      expect((await claim(r, it1.id)).body.result).toBe("NEED_MORE");
+    }
+    const r = await newReport({ features: [] }, token, "흰색 이어폰 네 번째 설명이에요");
+    const res = await claim(r, it1.id);
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe("RATE_LIMITED");
+    expect(res.body.error.message).not.toMatch(/교무처/);
+  });
+
+  it("특징이 없는 물건은 한도에 닿으면 교무처 대면 확인으로 안내한다", async () => {
+    const it1 = await item({ features: [] });
+    for (let i = 0; i < 3; i++) {
+      const r = await newReport({ features: [feature("sticker", `스티커 ${i}`)] }, token, `스티커 붙은 에어팟 ${i}`);
+      expect((await claim(r, it1.id)).body).toMatchObject({ result: "NEED_MORE", attemptsLeft: 3 });
+    }
+    const r = await newReport({ features: [feature("sticker", "곰돌이")] }, token, "곰돌이 스티커 에어팟");
+    const res = await claim(r, it1.id);
+    expect(res.status).toBe(429);
+    expect(res.body.error.message).toMatch(/교무처/);
+  });
+
+  it("질문은 흠집·무늬보다 잘 아는 특징을 먼저 묻는다", async () => {
+    const it1 = await item();
+    // 맞힌 스티커 하나(1/3) → 객관식. 남은 흠집·키링 중 키링을 먼저 묻는다
+    const r = await newReport({ features: [feature("sticker", "곰돌이 스티커")] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    expect(res.body.questions[0].text).toMatch(/키링/);
   });
 });

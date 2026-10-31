@@ -25,7 +25,8 @@ registry.registerPath({
   summary: "내 물건인지 확인 (F-08)",
   description: [
     "이 신고의 지금 후보(상위 3개)나, 이 신고에 보여 준 적 있고 지금도 후보 범위 안인 물건에만 시도할 수 있다.",
-    "통과: 특징 일치 1개 이상·모순 0 / 경계: 일치와 모순이 함께 있으면 확인 질문 / 실패: 일치 0.",
+    "통과: 사진 특징 75% 이상 일치·모순 0 / 경계: 확인 질문(객관식) / 실패: 맞힌 것 없이 모순, 또는 질문 오답.",
+    "근거 부족(NEED_MORE): 맞힌 것도 모순도 없으면 횟수를 쓰지 않고 특징을 더 적게 한다. 계정·물건마다 1시간에 3번까지(넘으면 429).",
     "설명이 그대로면 이전 결과를 reused=true로 돌려주고 횟수를 쓰지 않는다. 맞은 항목은 통과했을 때만 준다.",
   ].join(" "),
   request: { params: LostReportIdParams, body: json(ClaimRequest) },
@@ -35,6 +36,7 @@ registry.registerPath({
     403: errorResponse("FORBIDDEN: 후보가 아닌 물건"),
     404: errorResponse("NOT_FOUND: 없거나 남의 신고"),
     409: errorResponse("MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만"),
+    429: errorResponse("RATE_LIMITED: 근거 부족 확인이 1시간에 3번을 넘음 (특징 없는 물건은 교무처 대면 확인 안내)"),
     502: errorResponse("AI_UNAVAILABLE"),
   },
 });

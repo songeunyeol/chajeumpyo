@@ -627,9 +627,9 @@
   // ── 판정 결과 → 다음 화면 ──────────────────────────────────
   /**
    * 판정·답변 응답이나 오류를 받아 다음 화면 이름을 정한다.
-   *   pass(통과) · question(확인 질문) · fail(실패, 남은 횟수 있음) · lock(이 계정 3번 다 씀) · counter(대면 확인만)
+   *   pass(통과) · question(확인 질문) · more(근거 부족, 기회 그대로) · fail(실패, 남은 횟수 있음) · lock(이 계정 3번 다 씀) · counter(대면 확인만)
    * @param {object | ApiError} resOrErr ClaimResponse / AnswerResponse / ApiError
-   * @returns {"pass"|"question"|"fail"|"lock"|"counter"|null} 판정과 관계없는 오류면 null
+   * @returns {"pass"|"question"|"more"|"fail"|"lock"|"counter"|null} 판정과 관계없는 오류면 null
    */
   function claimScreen(resOrErr) {
     if (resOrErr instanceof ApiError) {
@@ -640,6 +640,8 @@
     const r = resOrErr || {};
     if (r.result === "PASS") return "pass";
     if (r.result === "BORDERLINE") return "question";
+    // 근거 부족: 기회를 쓰지 않았다. 후보 화면에서 특징을 더 적게 한다 (10/31)
+    if (r.result === "NEED_MORE") return "more";
     if (r.result === "FAIL") {
       if (r.inPersonOnly) return "counter";
       return r.attemptsLeft > 0 ? "fail" : "lock";
@@ -898,6 +900,7 @@
     // ── 일치 판정 ──
     /**
      * POST /lost-reports/:id/claims → PASS { matchedFields, foundItemId } | BORDERLINE { question, questions[{ text, options }] } | FAIL { attemptsLeft, inPersonOnly }
+     *   | NEED_MORE { message, attemptsLeft, inPersonOnly } (근거 부족, 기회를 쓰지 않음)
      * 다음 화면은 claimScreen(응답 또는 오류). 오류: 409 MATCH_LOCKED, 409 IN_PERSON_REQUIRED, 403, 429, 502
      */
     async claim(reportId, foundItemId) {

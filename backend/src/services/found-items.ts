@@ -321,7 +321,7 @@ export async function registerFoundItem(input: {
 
 /**
  * POST /found-items/analyze: 두 단계 등록의 1단계. 사진만 먼저 받아 분석하고 확정 전(ANALYZING)으로 저장한다.
- * 확정 전에는 후보·알림·관리자 등록 처리에 나오지 않고, 기한(DRAFT_TTL_MINUTES)이 지나면 정기 작업이 사진까지 지운다.
+ * 확정 전에는 후보·알림·관리자 등록 처리에 나오지 않고, 기한(DRAFT_TTL_MINUTES)이 지나면 정기 작업이 사진과 행까지 지운다(data-purge.ts deleteAbandonedDrafts).
  */
 export async function analyzeFoundItem(input: {
   image: Buffer;
