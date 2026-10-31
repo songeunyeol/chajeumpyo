@@ -9,8 +9,8 @@
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
 </head>
-<body style="overscroll-behavior-y:none">
-<main class="screen" id="loginScreen" style="touch-action:none;user-select:none">
+<body>
+<main class="screen" id="loginScreen">
   <header class="bar"><a class="back" href="../index.html">←</a></header>
   <h1>잃어버렸어요</h1>
   <p class="lead">서경대 학교 메일로 로그인해요.</p>
@@ -54,10 +54,9 @@
 
 
   <div class="dock">
-    <button type="button" class="btn" id="loginBtn" style="position:relative;z-index:2;width:100%;cursor:pointer">로그인</button>
-    <div class="signup-reveal" id="signupReveal">
-      <a class="btn gray" href="signup.html">회원가입</a>
-    </div>
+    <button type="button" class="btn" id="loginBtn" style="width:100%;cursor:pointer">로그인</button>
+    <!-- 처음 온 사람이 바로 찾게 로그인 버튼 바로 아래 늘 보인다 (10/31 기획 피드백: 끌어 올려야 보여서 못 찾음) -->
+    <a class="btn gray" id="signupLink" href="signup.html">처음이에요 · 회원가입</a>
   </div>
 </main>
 <script src="api.js"></script>
@@ -66,7 +65,6 @@
   // 이미 로그인했으면 홈으로
   if (LostApi.isLoggedIn()) location.replace("home.html");
 
-  const loginScreen = document.getElementById("loginScreen");
   const emailInput = document.getElementById("loginEmailId");
   const loginErrEl = document.getElementById("loginErr");
   const schoolEmail = SchoolEmail.bindSchoolEmail(emailInput, document.getElementById("loginEmail"), (message) => {
@@ -77,37 +75,14 @@
   const pwInput = document.getElementById("loginPw");
   const loginErr = document.getElementById("loginErr");
   const loginBtn = document.getElementById("loginBtn");
-  const signupReveal = document.getElementById("signupReveal");
-
-  const DRAG_RANGE = 84;
-  let currentProgress = 0;
-
-  function setProgress(p, dragging = false) {
-    currentProgress = Math.max(0, Math.min(1, p));
-    signupReveal.classList.toggle("is-dragging", dragging);
-    signupReveal.style.setProperty("--reveal-p", currentProgress.toFixed(3));
-    signupReveal.classList.toggle("is-open", currentProgress >= 0.99 && !dragging);
-  }
-
-  function openSignup() {
-    setProgress(1, false);
-  }
-
-  function closeSignup() {
-    setProgress(0, false);
-  }
-
-
-  // 1. 잘못된 양식으로 로그인 버튼을 눌렀을 때: 로그인 버튼이 올라가며 뒤에 있던 회원가입 버튼 노출
-  loginBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
+  // 잘못된 양식이면 안내만 띄운다. 회원가입 버튼은 늘 아래에 보인다
+  loginBtn.addEventListener("click", () => {
     const validEmail = schoolEmail.valid();
     const validPw = pwInput.value.length >= 8;
 
     if (!validEmail || !validPw) {
       loginErr.textContent = schoolEmail.error() || "서경대 메일 아이디와 8자 이상 비밀번호를 확인해 주세요.";
       loginErr.hidden = false;
-      openSignup();
       if (!validEmail) {
         emailInput.classList.add("is-invalid");
       } else {
@@ -128,7 +103,6 @@
         loginErr.textContent =
           err.code === "UNAUTHORIZED" ? "이메일 또는 비밀번호가 맞지 않아요." : LostApi.friendlyMessage(err);
         loginErr.hidden = false;
-        if (err.code === "UNAUTHORIZED") openSignup();
       })
       .finally(() => {
         loginBtn.disabled = false;
@@ -143,66 +117,6 @@
     pwInput.classList.remove("is-invalid");
     loginErr.hidden = true;
   });
-
-  // 2. 마우스/터치 드래그에 실시간 반응 + 빈 화면 클릭 시 노출
-  let dragStartY = null;
-  let dragStartProgress = 0;
-  let movedDistance = 0;
-
-  loginScreen.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("input, .social a, .sublinks a, .back, #loginBtn, #signupReveal")) return;
-    dragStartY = e.clientY;
-    dragStartProgress = currentProgress;
-    movedDistance = 0;
-    try { loginScreen.setPointerCapture(e.pointerId); } catch (_) {}
-  });
-
-  loginScreen.addEventListener("pointermove", (e) => {
-    if (dragStartY === null) return;
-    const dy = dragStartY - e.clientY;
-    movedDistance = Math.max(movedDistance, Math.abs(dy));
-    if (movedDistance > 4) {
-      setProgress(dragStartProgress + dy / DRAG_RANGE, true);
-    }
-  });
-
-  function finishDrag(e) {
-    if (dragStartY === null) return;
-    const dy = dragStartY - e.clientY;
-    dragStartY = null;
-
-    if (movedDistance <= 5) {
-      openSignup();
-      return;
-    }
-
-    if (dy > 14) {
-      openSignup();
-    } else if (dy < -14) {
-      closeSignup();
-    } else if (currentProgress >= 0.5) {
-      openSignup();
-    } else {
-      closeSignup();
-    }
-  }
-
-  loginScreen.addEventListener("pointerup", finishDrag);
-  loginScreen.addEventListener("pointercancel", () => {
-    if (dragStartY === null) return;
-    dragStartY = null;
-    if (currentProgress >= 0.5) openSignup();
-    else closeSignup();
-  });
-
-  // 3. 마우스 휠 스크롤 다운 시 노출 / 스크롤 업 시 다시 숨김
-  window.addEventListener("wheel", (e) => {
-    if (e.deltaY > 6) {
-      openSignup();
-    } else if (e.deltaY < -6) {
-      closeSignup();
-    }
-  }, { passive: true });
 </script>
 </body>
 </html>
