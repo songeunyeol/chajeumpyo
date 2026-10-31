@@ -58,6 +58,7 @@
           <option value="" selected>층 모름</option>
         </select>
       </div>
+      <p class="note danger" id="buildingErr" role="alert" style="margin:6px 0 0" hidden></p>
       <div class="map-box" id="registerMap" aria-label="고른 건물 지도" hidden></div>
     </div>
 
@@ -119,12 +120,30 @@
   // 그 자리에 둠의 위치 세부 설명 검증 (서버 LOCATION_DETAIL_MIN과 같은 값)
   const LOC_DETAIL_MIN = 4;
   const locDetailErr = document.getElementById("locDetailErr");
-  function showLocDetailErr(text) {
+  function showLocDetailErr(text, focus = true) {
     locDetailErr.textContent = text;
     locDetailErr.hidden = false;
     locationDetail.setAttribute("aria-invalid", "true");
     locationDetail.style.boxShadow = "inset 0 0 0 2px var(--danger)";
-    locationDetail.focus();
+    if (focus) focusField(locationDetail);
+  }
+  // 빈 칸을 화면 가운데로 가져와 보여 준다. 빨간 테두리만으로는 화면 밖이라 눌러도 반응이 없는 것처럼 보였다 (10/31 팀 테스트)
+  function focusField(el) {
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.focus({ preventScroll: true });
+  }
+  const buildingErr = document.getElementById("buildingErr");
+  function showBuildingErr() {
+    buildingErr.textContent = "그 자리에 두면 주운 건물을 골라 주세요. 주인이 이 건물로 찾아가요.";
+    buildingErr.hidden = false;
+    foundBuildingSelect.setAttribute("aria-invalid", "true");
+    foundBuildingSelect.style.boxShadow = "inset 0 0 0 2px var(--danger)";
+  }
+  function clearBuildingErr() {
+    buildingErr.hidden = true;
+    buildingErr.textContent = "";
+    foundBuildingSelect.removeAttribute("aria-invalid");
+    foundBuildingSelect.style.boxShadow = "";
   }
   function clearLocDetailErr() {
     locDetailErr.hidden = true;
@@ -290,7 +309,10 @@
     document.getElementById("locDetailReq").hidden = mode !== "inplace";
     document.getElementById("locDetailOpt").hidden = mode === "inplace";
     document.getElementById("locDetailHint").hidden = mode !== "inplace";
-    if (mode !== "inplace") clearLocDetailErr();
+    if (mode !== "inplace") {
+      clearLocDetailErr();
+      clearBuildingErr();
+    }
 
     if (locating) {
       locPermToggle.textContent = "위치 확인 중";
@@ -379,7 +401,7 @@
   });
 
   foundBuildingSelect.addEventListener("change", () => {
-    foundBuildingSelect.style.boxShadow = "";
+    if (foundBuildingSelect.value) clearBuildingErr();
     paintRegisterMap();
   });
 
@@ -558,19 +580,24 @@
 
   submitBtn.addEventListener("click", async () => {
     if (submitting || !draft) return;
-    // 그 자리에 두면 건물이 필요하고, 맡기면 모를 때 비워도 된다
-    if (mode === "inplace" && !foundBuildingSelect.value) {
-      foundBuildingSelect.style.boxShadow = "inset 0 0 0 2px var(--danger)";
-      foundBuildingSelect.focus();
-      return;
-    }
-    if (mode === "inplace" && locationDetail.value.trim().length < LOC_DETAIL_MIN) {
-      showLocDetailErr(
-        locationDetail.value.trim()
-          ? `조금 더 자세히 적어 주세요 (${LOC_DETAIL_MIN}자 이상).`
-          : "그 자리에 두면 어디에 뒀는지 적어 주세요. 주인이 이 설명을 보고 찾아가요.",
-      );
-      return;
+    // 그 자리에 두면 건물과 위치 세부 설명이 필요하고, 맡기면 모를 때 비워도 된다.
+    // 빠진 칸은 한 번에 모두 글로 알려 주고, 첫 칸으로 화면을 옮긴다
+    if (mode === "inplace") {
+      const noBuilding = !foundBuildingSelect.value;
+      const shortDetail = locationDetail.value.trim().length < LOC_DETAIL_MIN;
+      if (noBuilding) showBuildingErr();
+      if (shortDetail) {
+        showLocDetailErr(
+          locationDetail.value.trim()
+            ? `조금 더 자세히 적어 주세요 (${LOC_DETAIL_MIN}자 이상).`
+            : "그 자리에 두면 어디에 뒀는지 적어 주세요. 주인이 이 설명을 보고 찾아가요.",
+          false,
+        );
+      }
+      if (noBuilding || shortDetail) {
+        focusField(noBuilding ? foundBuildingSelect : locationDetail);
+        return;
+      }
     }
     const buildingId = foundBuildingSelect.value ? Number(foundBuildingSelect.value) : undefined;
     const body = {
