@@ -62,6 +62,13 @@ const GENERIC_WORDS = new Set(
     "scratch",
     "case",
     "keyring",
+    // 글자·무늬의 형식만 나타내는 말 (10/31: "Canmake Tokyo 문구"가 저장 "Heroine Make 문구"와 "문구"만 겹쳐 일치로 나왔다)
+    "문구",
+    "글씨",
+    "문자",
+    "문양",
+    "프린팅",
+    "인쇄",
   ].map(compact),
 );
 
@@ -236,6 +243,14 @@ const BRAND_ALIASES: Record<string, string> = {
   로지텍: "logitech",
   레노버: "lenovo",
   에이수스: "asus",
+  // 10/31 실사용 영상: 주인은 "키스미"로 아는데 저장 브랜드는 제품 라인 "Heroine Make"였다
+  키스미: "kissme",
+  히로인메이크: "heroinemake",
+  캔메이크: "canmake",
+  케이트: "kate",
+  이니스프리: "innisfree",
+  롬앤: "romand",
+  클리오: "clio",
 };
 const BRAND_NAMES = [...new Set(Object.values(BRAND_ALIASES))];
 /** "삼성 갤럭시북"·"Samsung Galaxy"처럼 모델명이 붙어도 브랜드만 꺼낸다 */
@@ -255,14 +270,61 @@ function brandInitials(b: string): string | null {
   return words.length >= 2 ? words.map((w) => w[0]).join("") : null;
 }
 
-export function compareBrand(reported: string | null, stored: string | null): FeatureVerdict {
+const HANGUL = /[가-힣]/;
+const LATIN = /[a-z]/i;
+
+/**
+ * 브랜드 대조. context는 습득물 설명(비공개)으로, 제조사·한글 읽기가 거기에만 적힌 경우를 잡는다
+ * (10/31 실사용 영상: 저장 "Heroine Make", 설명 "키스미 히로인메이크 아이라이너", 주인 "키스미" → 모순으로 잠겼다).
+ * 한글과 영문처럼 표기가 다르면 규칙으로는 같은지 알 수 없어 모순 대신 확인 불가로 둔다(AI가 다시 본다).
+ */
+export function compareBrand(
+  reported: string | null,
+  stored: string | null,
+  context: string | null = null,
+): FeatureVerdict {
   if (!reported || !stored) return "UNKNOWN";
   if (brandKey(reported) === brandKey(stored) || looselyContains(reported, stored)) return "MATCH";
   // 줄임말 (실제 사진 35장 평가 10/30: 저장 "MICHAEL KORS" ↔ 신고 "MK"가 모순으로 나왔다)
   const r = compact(reported);
   const st = compact(stored);
   if (r.length >= 2 && (brandInitials(stored) === r || brandInitials(reported) === st)) return "MATCH";
+  if (context && r.length >= 2) {
+    const c = compact(context);
+    if (c.includes(r) || c.includes(brandKey(reported))) return "MATCH";
+  }
+  const crossScript =
+    (HANGUL.test(reported) && !LATIN.test(reported) && LATIN.test(stored) && !HANGUL.test(stored)) ||
+    (LATIN.test(reported) && !HANGUL.test(reported) && HANGUL.test(stored) && !LATIN.test(stored));
+  if (crossScript) return "UNKNOWN";
   return "CONTRADICT";
+}
+
+/** 저장 설명에 낱말이 있는지. 끝 글자 하나(임·함·이)를 뗀 꼴도 본다("갈색뚜껑임" ↔ "갈색 뚜껑이") */
+function inText(textCompact: string, word: string): boolean {
+  if (word.length < 2) return false;
+  if (textCompact.includes(word)) return true;
+  return word.length >= 3 && textCompact.includes(word.slice(0, -1));
+}
+
+/**
+ * 신고 특징이 습득물 설명(비공개)에 실제로 적혀 있는지.
+ * 물건 이름 한 낱말("아이라이너")만 겹친 것은 근거로 보지 않는다: 서로 다른 내용 낱말 두 개 이상이 겹치거나,
+ * 색·위치와 붙어 쓴 낱말("갈색뚜껑")이 겹쳐야 한다. "흠집 없음"처럼 부정으로 말한 특징은 설명으로 맞히지 않는다.
+ */
+export function descriptionSupports(value: string, description: string | null | undefined): boolean {
+  if (!description || isNegated(value)) return false;
+  const text = compact(description);
+  const hits = new Set<string>();
+  let compound = false;
+  for (const raw of value.toLowerCase().split(/\s+/)) {
+    const chunk = stripParticle(compact(raw));
+    if (!chunk || GENERIC_WORDS.has(chunk) || !inText(text, chunk)) continue;
+    hits.add(SYNONYMS[chunk] ?? chunk);
+    if ([...WEAK_WORDS].some((w) => chunk.startsWith(w) && chunk.length > w.length + 1)) compound = true;
+  }
+  const strong = [...hits].some((w) => !WEAK_WORDS.has(w));
+  return strong && (hits.size >= 2 || compound);
 }
 
 /**
@@ -271,7 +333,11 @@ export function compareBrand(reported: string | null, stored: string | null): Fe
  * 똑같은 문장을 적어도 실패했다 (10/29 운영, 안경 "양쪽 프레임 끝 두 개의 점 장식"). 같은 종류를 먼저 본다.
  * 모순은 같은 종류의 저장 특징이 있는데 내용이 다를 때만이다.
  */
-function compareFeature(reported: AiFeature, stored: AiFeature[]): FeatureComparison["features"][number] {
+function compareFeature(
+  reported: AiFeature,
+  stored: AiFeature[],
+  description: string | null = null,
+): FeatureComparison["features"][number] {
   if (!hasSpecificValue(reported)) return { reportedKey: reported.key, verdict: "UNKNOWN", storedKey: null };
   // 일반 낱말을 뺀 내용 낱말이 저장 값에 들어 있으면 일치.
   // 2글자 이상은 저장 값 안에 들어 있으면, 1글자("별", "점")는 저장 값에 같은 낱말이 있을 때만.
@@ -287,6 +353,9 @@ function compareFeature(reported: AiFeature, stored: AiFeature[]): FeatureCompar
   const sameKey = stored.filter((s) => s.key === reported.key);
   const hit = sameKey.find(matches) ?? stored.find(matches);
   if (hit) return { reportedKey: reported.key, verdict: "MATCH", storedKey: hit.key };
+  // 특징 목록에는 없지만 습득물 설명에 적힌 것("갈색 뚜껑"). storedKey "description"은 바로 통과 비율에 넣지 않는다
+  if (descriptionSupports(reported.value, description))
+    return { reportedKey: reported.key, verdict: "MATCH", storedKey: DESCRIPTION_KEY };
   // 여러 측면이 있는 종류는 같은 측면을 말한 저장 특징과만 견준다
   const rivals = MULTI_ASPECT_KEYS.has(reported.key)
     ? sameKey.filter((s) => sameAspect(reported.value, s.value))
@@ -296,10 +365,14 @@ function compareFeature(reported: AiFeature, stored: AiFeature[]): FeatureCompar
   return { reportedKey: reported.key, verdict: "CONTRADICT", storedKey: rivals[0]?.key ?? null };
 }
 
+/** 습득물 설명에서 맞힌 특징의 storedKey. 저장 특징 종류가 아니라서 바로 통과 비율에는 들어가지 않는다 */
+export const DESCRIPTION_KEY = "description";
+
 export function compareByRules(reported: ComparableAttributes, stored: ComparableAttributes): FeatureComparison {
+  const description = stored.description ?? null;
   return {
-    features: reported.features.map((f) => compareFeature(f, stored.features)),
+    features: reported.features.map((f) => compareFeature(f, stored.features, description)),
     color: compareColor(reported.color, stored.color),
-    brand: compareBrand(reported.brand, stored.brand),
+    brand: compareBrand(reported.brand, stored.brand, description),
   };
 }

@@ -21,6 +21,7 @@ import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
 import { judgeAnswer } from "../matching/answer";
 import { FAILED_ATTEMPT, failedAttemptCounts, findClaimableCandidate } from "../matching/candidates";
+import { DESCRIPTION_KEY } from "../matching/compare";
 import { judge } from "../matching/judge";
 import { MAX_FAILED_ATTEMPTS, MAX_ITEM_FAILED_ATTEMPTS, NEED_MORE_LIMIT } from "../matching/policy";
 import { colorQuestionFor, isAskable, isMemorable, PRESET_DISTRACTORS, questionFor } from "../matching/questions";
@@ -167,23 +168,38 @@ async function toResponse(a: Attempt, reused: boolean, db: Prisma.TransactionCli
  * 특징 질문 하나. AI가 다듬은 정답이 저장 값과 낱말이 하나도 안 겹치면 저장 값을 그대로 쓴다.
  * 오답은 정답과 같은 형식·구체성으로만 고르고(정답이 티 나지 않게), 못 채우면 null (이 질문은 내지 않는다).
  */
-async function featureQuestion(feature: AiFeature, itemName: string | null): Promise<QuizQuestion | null> {
+async function featureQuestion(
+  feature: AiFeature,
+  itemName: string | null,
+  context: string | null = null,
+): Promise<QuizQuestion | null> {
   // AI 오답이 같은 형식으로 3개 안 모이면 한 번 더 만든다 (온도가 있어 매번 다르게 나온다)
-  return (await featureQuestionOnce(feature, itemName)) ?? featureQuestionOnce(feature, itemName);
+  return (await featureQuestionOnce(feature, itemName, context)) ?? featureQuestionOnce(feature, itemName, context);
 }
 
-async function featureQuestionOnce(feature: AiFeature, itemName: string | null): Promise<QuizQuestion | null> {
+/**
+ * 글자·각인 질문은 주인이 아는 이름으로 보기를 쓴다: 제조사와 한글 읽기를 함께 (10/31 실사용 영상: 정답 "Heroine Make"를
+ * "키스미"로 아는 주인이 영문 보기 넷 중에서 고르지 못했다). 그래서 이 종류만 습득물 브랜드·설명을 AI에 함께 준다.
+ */
+const NAME_KEYS = new Set(["text", "engraving"]);
+
+async function featureQuestionOnce(
+  feature: AiFeature,
+  itemName: string | null,
+  context: string | null,
+): Promise<QuizQuestion | null> {
   const text = questionFor(feature, itemName);
+  const named = NAME_KEYS.has(feature.key);
   let correct = feature.value;
   let fromAi: string[] = [];
   try {
     const out = await withTimeout(
-      ai.quizOptions({ question: text, stored: feature.value }),
+      ai.quizOptions({ question: text, stored: feature.value, context: named ? context : null }),
       env.AI_TIMEOUT_MS,
       "보기 만들기",
     );
     const shared = words(out.correct).some((w) => w.length >= 2 && looselyContains(feature.value, w));
-    if (shared && out.correct.trim().length <= 30) correct = out.correct.trim();
+    if (shared && out.correct.trim().length <= (named ? 40 : 30)) correct = out.correct.trim();
     fromAi = out.distractors;
   } catch (err) {
     logger.warn({ err }, "확인 질문 보기 만들기 실패 → 준비된 보기");
@@ -212,16 +228,18 @@ async function previousQuestions(foundItemId: string): Promise<Map<string, QuizQ
 /**
  * 경계 판정의 객관식 질문 (F-09, 10/29 은열 의견: 서술형은 맞히기 어렵다).
  * 신고에 적지 않은 숨은 특징부터 묻고, 하나뿐이면 신고에 색을 적지 않았을 때 색을 함께 묻고, 그래도 모자라면 적었던 특징을 묻는다. 모두 맞혀야 통과.
- * 흠집·무늬는 이 모두를 쓴 뒤에만 묻는다(주인도 잘 모른다, 10/31 기획 피드백).
+ * 흠집·무늬는 이 모두를 쓴 뒤에만, 한 번에 하나까지만 묻는다(주인도 잘 모른다, 10/31 기획 피드백·실사용 영상).
+ * 색은 신고에 안 적었거나 적은 색이 저장 색과 다를 때 묻는다: 연보라를 "분홍"이라 적은 주인도 보기에서 고를 수 있게.
  */
 async function buildQuiz(
   foundItemId: string,
   first: AiFeature,
   stored: AiFeature[],
   reportedKeys: string[],
-  color: { stored: string | null; reported: string | null },
+  color: { stored: string | null; reported: string | null; matched: boolean },
   itemName: string | null,
   maxQuestions = QUIZ_QUESTIONS,
+  context: string | null = null,
 ): Promise<QuizQuestion[]> {
   const mentioned = new Set(reportedKeys);
   const rest = stored.filter((f) => f !== first && isAskable(f));
@@ -230,8 +248,15 @@ async function buildQuiz(
   const again = rest.filter((f) => mentioned.has(f.key));
   // 흠집·무늬는 주인도 잘 몰라서 같은 묶음 안에서 잘 아는 특징을 먼저 묻는다 (10/31 기획 피드백).
   // 색은 흐린 사진에도 보여 맞히기 쉬우므로 예전처럼 적지 않은 특징 뒤에 둔다
-  const easyFirst = (fs: AiFeature[]) => [...fs.filter(isMemorable), ...fs.filter((f) => !isMemorable(f))];
-  const order: (AiFeature | "color")[] = [...easyFirst([first, ...unmentioned]), "color", ...easyFirst(again)];
+  // 첫 질문은 판정이 고른 특징(잘 아는 특징이 먼저, 모순된 특징을 다시 묻는 경우 포함)
+  const order: (AiFeature | "color")[] = [
+    first,
+    ...unmentioned.filter(isMemorable),
+    "color",
+    ...again.filter(isMemorable),
+    ...unmentioned.filter((f) => !isMemorable(f)),
+    ...again.filter((f) => !isMemorable(f)),
+  ];
   const before = await previousQuestions(foundItemId);
   const reuse = (key: string, text: string) => {
     const q = before.get(key);
@@ -239,17 +264,23 @@ async function buildQuiz(
   };
   const storedColor = Color.safeParse(color.stored);
   const quiz: QuizQuestion[] = [];
+  let hard = 0;
   for (const f of order) {
     if (quiz.length >= maxQuestions) break;
     if (f === "color") {
-      if (color.reported || !storedColor.success || storedColor.data === "OTHER") continue;
+      if (color.matched || !storedColor.success || storedColor.data === "OTHER") continue;
       const text = colorQuestionFor(itemName);
       const label = COLOR_LABELS[storedColor.data];
       quiz.push(reuse("color", text) ?? makeQuestion(text, "color", label, colorDistractors(storedColor.data)));
       continue;
     }
-    const q = reuse(f.key, questionFor(f, itemName)) ?? (await featureQuestion(f, itemName));
-    if (q) quiz.push(q);
+    // 흠집·무늬는 한 번에 하나까지만
+    if (!isMemorable(f) && hard >= 1) continue;
+    const q = reuse(f.key, questionFor(f, itemName)) ?? (await featureQuestion(f, itemName, context));
+    if (q) {
+      quiz.push(q);
+      if (!isMemorable(f)) hard++;
+    }
   }
   return quiz;
 }
@@ -289,7 +320,12 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
       withTimeout(
         ai.compareFeatures(
           { color: extracted.color ?? null, brand: extracted.brand ?? null, features: reportedFeatures },
-          { color: item.detail?.color ?? null, brand: item.detail?.brand ?? null, features: storedFeatures },
+          {
+            color: item.detail?.color ?? null,
+            brand: item.detail?.brand ?? null,
+            features: storedFeatures,
+            description: item.detail?.description ?? null,
+          },
         ),
         env.AI_TIMEOUT_MS,
         "특징 대조",
@@ -319,10 +355,15 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
         j.questionFeature,
         askableFeatures,
         mentionedKeys,
-        { stored: item.detail?.color ?? null, reported: extracted.color ?? null },
+        {
+          stored: item.detail?.color ?? null,
+          reported: extracted.color ?? null,
+          matched: comparison.color === "MATCH",
+        },
         itemName,
         // 맞힌 특징이 없으면 찍기만으로 통과하기 어렵게 질문을 늘린다
         j.matches === 0 ? QUIZ_QUESTIONS_NO_EVIDENCE : QUIZ_QUESTIONS,
+        [item.detail?.brand, item.detail?.description].filter(Boolean).join(" / ") || null,
       )
     : [];
   // 질문을 하나도 못 만들면 온라인으로는 확인할 수 없다
@@ -331,7 +372,10 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   }
   const isGuess = j.result === "BORDERLINE" && j.matches === 0;
   const publicFields = [
-    ...comparison.features.filter((f) => f.verdict === "MATCH").map((f) => `feature:${f.storedKey ?? f.reportedKey}`),
+    // 설명에서 맞힌 특징은 신고 쪽 종류로 보여 준다(화면은 신고 특징 값으로 이유를 쓴다)
+    ...comparison.features
+      .filter((f) => f.verdict === "MATCH")
+      .map((f) => `feature:${f.storedKey === DESCRIPTION_KEY ? f.reportedKey : (f.storedKey ?? f.reportedKey)}`),
     ...(comparison.color === "MATCH" ? ["color"] : []),
     ...(comparison.brand === "MATCH" ? ["brand"] : []),
     ...(candidate.score.place === 1 ? ["place"] : []),
@@ -396,6 +440,7 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
           comparison,
           matches: j.matches,
           contradictions: j.contradictions,
+          softContradictions: j.softContradictions,
           public: [...new Set(publicFields)],
           quiz,
         },

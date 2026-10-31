@@ -924,3 +924,92 @@ describe("근거 부족은 기회를 쓰지 않는다 (10/31 기획 피드백: �
     expect(res.body.questions[0].text).toMatch(/키링/);
   });
 });
+
+describe("10/31 실사용 영상: 진짜 주인이 색·브랜드 표기 차이로 잠기지 않는다", () => {
+  const EYELINER = {
+    category: "ETC" as const,
+    color: "PURPLE",
+    brand: "Heroine Make",
+    features: [
+      { key: "pattern" as const, value: "레이스 문양 프린팅" },
+      { key: "text" as const, value: "Heroine Make 문구" },
+    ],
+    description: "보라색 몸통에 갈색 뚜껑이 있는 키스미 히로인메이크 아이라이너(화장품)입니다.",
+  };
+
+  async function etcReport(extraction: Partial<LostReportExtraction>, description: string) {
+    nextExtraction = { category: "ETC", ...extraction };
+    const res = await request(app)
+      .post("/api/v1/lost-reports")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        category: "ETC",
+        lostFrom: hoursAgo(3).toISOString(),
+        lostTo: hoursAgo(2).toISOString(),
+        buildingId: A,
+        description,
+      });
+    expect(res.status).toBe(201);
+    return res.body.id as string;
+  }
+  const quizKeys = async (attemptId: string) => {
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: attemptId } });
+    return ((a.matchedFields as { quiz: { featureKey: string }[] }).quiz ?? []).map((q) => q.featureKey);
+  };
+
+  it("분홍(연보라)·키스미·갈색 뚜껑: 실패 없이 객관식, 무늬 대신 글자·색을 묻는다", async () => {
+    // 실제 AI처럼 글자 질문의 오답을 같은 꼴로 만들어 준다(mock은 오답을 만들지 않는다)
+    setAiClient({
+      ...mockAiClient,
+      extractLostReport: async (description) => ({
+        category: "ETC",
+        color: null,
+        brand: null,
+        features: [],
+        description,
+        ...nextExtraction,
+      }),
+      quizOptions: async ({ stored }) => ({
+        correct: stored,
+        distractors: ["Kate Tokyo 문구", "Clio Pro 문구", "Etude Play 문구"],
+      }),
+    });
+    const it1 = await item(EYELINER);
+    const r = await etcReport(
+      { color: "PINK_MAGENTA", brand: "키스미", features: [{ key: "case", value: "갈색 뚜껑" }] },
+      "화장품. 아이라이너. 분홍색. 키스미, 갈색 뚜껑",
+    );
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const keys = await quizKeys(res.body.attemptId);
+    expect(keys).toEqual(["text", "color"]);
+    // 맞힌 게 있어 찍기(3문제)가 아니라 보통 객관식이다
+    expect(keys.length).toBeLessThanOrEqual(2);
+  });
+
+  it("색만 이웃 색으로 적어도(분홍 ↔ 보라) 실패하지 않는다", async () => {
+    const it1 = await item(EYELINER);
+    const r = await etcReport({ color: "PINK_MAGENTA", features: [] }, "화장품. 아이라이너. 분홍색");
+    const res = await claim(r, it1.id);
+    expect(res.body.result).not.toBe("FAIL");
+  });
+
+  it("다른 표기의 브랜드만 다르면 실패로 세지 않는다", async () => {
+    const it1 = await item(EYELINER);
+    const r = await etcReport({ brand: "캔메이크", features: [] }, "화장품. 캔메이크 아이라이너");
+    const res = await claim(r, it1.id);
+    expect(res.body.result).not.toBe("FAIL");
+    const fails = await prisma.matchAttempt.count({ where: { foundItemId: it1.id, result: "FAIL" } });
+    expect(fails).toBe(0);
+  });
+
+  it("사칭: 글자를 틀리게 적으면 그대로 실패", async () => {
+    const it1 = await item(EYELINER);
+    const r = await etcReport(
+      { features: [{ key: "text", value: "Canmake Tokyo 문구" }] },
+      "화장품. Canmake Tokyo 문구가 적힌 아이라이너",
+    );
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("FAIL");
+  });
+});

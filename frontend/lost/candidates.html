@@ -417,7 +417,7 @@
       // 같은 설명으로 이미 확인한 물건이면 서버가 이전 결과를 그대로 준다(기회는 안 씀). 실패 화면 대신 설명을 보완하게 한다
       if (r.result === "FAIL" && r.reused && r.attemptsLeft > 0) {
         await openClaimModal(c, btn);
-        claimDescNote.textContent = "이 설명으로는 맞지 않았어요. 추가 설명에 특징을 더 적어 주세요. 기회는 그대로예요.";
+        claimDescNote.textContent = "같은 설명으로 이미 확인했어요. 추가 설명에 주인만 알 만한 특징을 더 적어 주세요. 기회는 그대로예요.";
         claimDescNote.hidden = false;
         return;
       }
