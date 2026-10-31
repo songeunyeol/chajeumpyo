@@ -167,7 +167,12 @@ const uploadImage: RequestHandler = (req, res, next) => {
       );
       return;
     }
-    next(err);
+    // multipart 자체가 깨진 요청(busboy "Malformed part header" 등)은 서버 오류가 아니라 잘못된 요청이다
+    if (err) {
+      next(new AppError("VALIDATION_ERROR", "사진 업로드 형식이 올바르지 않아요."));
+      return;
+    }
+    next();
   });
 };
 

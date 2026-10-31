@@ -177,6 +177,18 @@ describe("기준 4. 사진 형식과 용량", () => {
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("multipart 자체가 깨진 요청은 500이 아니라 400 (10/31 퍼징)", async () => {
+    const boundary = "xBOUNDARYx";
+    // 콜론 없는 part 헤더 줄 → busboy "Malformed part header"
+    const body = Buffer.from(`--${boundary}\r\nContent-Disposition form-data\r\n\r\nx\r\n--${boundary}--\r\n`);
+    const res = await request(app)
+      .post("/api/v1/found-items")
+      .set("Content-Type", `multipart/form-data; boundary=${boundary}`)
+      .send(body);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
   it("10MB를 넘으면 413 IMAGE_TOO_LARGE", async () => {
     const res = await register(handedOver(), Buffer.alloc(10 * 1024 * 1024 + 1));
     expect(res.status).toBe(413);
