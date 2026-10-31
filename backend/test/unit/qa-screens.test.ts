@@ -254,7 +254,6 @@ describe("학교 메일 칸 (@skuniv.ac.kr 고정)", () => {
   });
 });
 
-
 describe("AI가 한 일 (교수 평가 10/30: 분실자 화면에 AI가 보이지 않음)", () => {
   it("후보 화면에는 'AI가 한 일' 상자를 두지 않고, 통과 화면에도 AI 한 줄이 없다 (10/31 은열)", () => {
     for (const page of ["frontend/lost/item.html", "frontend/lost/item-handover.html"]) {
