@@ -562,3 +562,33 @@ describe("설명 글씨 대비·회원가입 바로 보이기 (10/31 기획 피�
     expect(login).not.toContain("touch-action:none");
   });
 });
+
+describe("QA 10/31 뒤로 가기", () => {
+  it("등록 완료 화면에서 뒤로 가면 첫 화면으로 간다", () => {
+    for (const page of ["frontend/found/done-inplace.html", "frontend/found/done-handover.html"]) {
+      const html = read(page);
+      expect(html).toContain('history.pushState({ doneGuard: true }, "")');
+      expect(html).toContain('addEventListener("popstate", () => location.replace("/"))');
+    }
+    // 끝난 초안으로 등록 화면에 돌아오면 완료 화면이 아니라 첫 화면으로 보낸다
+    const register = read("frontend/found/register.html");
+    expect(register).not.toContain('location.replace(sessionStorage.getItem("foundDonePage")');
+  });
+
+  it("분실 신고 폼은 제출하면 history에서 빠진다 (후보에서 뒤로 가면 빈 폼이 아니다)", () => {
+    const report = read("frontend/lost/report.html");
+    expect(report).toContain('leaveGuard.proceed("uploading.html")');
+    expect(report).not.toContain('location.href = "uploading.html"');
+    const guard = read("frontend/leave-guard.js");
+    expect(guard).toContain("proceed(url)");
+    expect(guard).toContain("history.back()");
+  });
+
+  it("확인 창은 처음 설명을 불러오기 전에는 신고를 고치지 않는다", () => {
+    const html = read("frontend/lost/candidates.html");
+    expect(html).toContain('setConfirmBusy(true, "설명 불러오는 중…")');
+    // 불러오지 못했으면 빈 설명으로 덮어쓰지 않는다
+    expect(html).not.toContain('splitDesc(savedDesc ?? "")');
+    expect(html).not.toMatch(/catch \(_\) \{\s*savedDesc = "";/);
+  });
+});
