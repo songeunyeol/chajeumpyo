@@ -767,6 +767,24 @@ h1 {
   box-shadow: inset 0 0 0 2px var(--danger);
   outline: none;
 }
+.signup-reveal {
+  --reveal-p: 0;
+  position: relative;
+  z-index: 1;
+  height: 52px;
+  opacity: var(--reveal-p);
+  margin-top: calc((1 - var(--reveal-p)) * -62px);
+  pointer-events: none;
+  transition: opacity 240ms var(--ease), margin-top 300ms var(--ease);
+  will-change: opacity, margin-top;
+}
+.signup-reveal.is-dragging {
+  transition: none;
+}
+.signup-reveal.is-open {
+  --reveal-p: 1;
+  pointer-events: auto;
+}
 .sublinks {
   margin: 4px 0 0;
   text-align: center;

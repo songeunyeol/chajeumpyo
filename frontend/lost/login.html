@@ -8,9 +8,25 @@
 <link rel="stylesheet" href="../palette.css">
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><script src="/pwa.js" defer></script>
+<style>
+  /* 들어올 때 제목 → 입력칸 → 로그인 버튼 순서로 아래에서 올라온다 (10/31 은열) */
+  @media (prefers-reduced-motion: no-preference) {
+    #loginScreen > h1, #loginScreen > .lead, #loginScreen > .field, #loginScreen > .dock {
+      animation: rise-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    #loginScreen > .lead { animation-delay: 70ms; }
+    #loginScreen > .field:nth-of-type(1) { animation-delay: 160ms; }
+    #loginScreen > .field:nth-of-type(2) { animation-delay: 240ms; }
+    #loginScreen > .dock { animation-delay: 340ms; }
+  }
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(28px); }
+    to { opacity: 1; transform: none; }
+  }
+</style>
 </head>
-<body>
-<main class="screen" id="loginScreen">
+<body style="overscroll-behavior-y:none">
+<main class="screen" id="loginScreen" style="touch-action:none;user-select:none">
   <header class="bar"><a class="back" href="../index.html">←</a></header>
   <h1>잃어버렸어요</h1>
   <p class="lead">서경대 학교 메일로 로그인해요.</p>
@@ -30,33 +46,11 @@
   </label>
   <p class="note danger" id="loginErr" hidden style="margin-top:-6px;margin-bottom:4px">서경대 메일 아이디와 8자 이상 비밀번호를 확인해 주세요.</p>
 
-  <p class="or">또는</p>
-  <div class="social" aria-label="간편 로그인">
-    <a class="google" href="consent-social.html" aria-label="Google로 계속" title="Google로 계속">
-      <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true">
-        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
-        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12 24 12c3.1 0 5.8 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/>
-        <path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.6-5.2l-6.3-5.3C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
-        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.2-3.5 5.7-6.6 7.1l6.3 5.3C37.4 38.4 44 34 44 24c0-1.3-.1-2.7-.4-3.5z"/>
-      </svg>
-    </a>
-    <a class="kakao" href="consent-social.html" aria-label="카카오로 계속" title="카카오로 계속">
-      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="#191919" d="M12 4C6.92 4 2.8 7.23 2.8 11.22c0 2.55 1.69 4.8 4.24 6.08-.14.51-.9 3.28-.93 3.5 0 0-.02.16.08.22.1.06.22.02.22.02.29-.04 3.37-2.21 3.9-2.58.55.08 1.11.12 1.69.12 5.08 0 9.2-3.23 9.2-7.36S17.08 4 12 4z"/>
-      </svg>
-    </a>
-    <a class="naver" href="consent-social.html" aria-label="네이버로 계속" title="네이버로 계속">
-      <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="#ffffff" d="M16.27 12.85 7.37 0H0v24h7.73V11.15L16.63 24H24V0h-7.73v12.85z"/>
-      </svg>
-    </a>
-  </div>
-
-
   <div class="dock">
-    <button type="button" class="btn" id="loginBtn" style="width:100%;cursor:pointer">로그인</button>
-    <!-- 처음 온 사람이 바로 찾게 로그인 버튼 바로 아래 늘 보인다 (10/31 기획 피드백: 끌어 올려야 보여서 못 찾음) -->
-    <a class="btn gray" id="signupLink" href="signup.html">처음이에요 · 회원가입</a>
+    <button type="button" class="btn" id="loginBtn" style="position:relative;z-index:2;width:100%;cursor:pointer">로그인</button>
+    <div class="signup-reveal" id="signupReveal">
+      <a class="btn gray" href="signup.html">회원가입</a>
+    </div>
   </div>
 </main>
 <script src="api.js"></script>
@@ -65,6 +59,7 @@
   // 이미 로그인했으면 홈으로
   if (LostApi.isLoggedIn()) location.replace("home.html");
 
+  const loginScreen = document.getElementById("loginScreen");
   const emailInput = document.getElementById("loginEmailId");
   const loginErrEl = document.getElementById("loginErr");
   const schoolEmail = SchoolEmail.bindSchoolEmail(emailInput, document.getElementById("loginEmail"), (message) => {
@@ -75,14 +70,37 @@
   const pwInput = document.getElementById("loginPw");
   const loginErr = document.getElementById("loginErr");
   const loginBtn = document.getElementById("loginBtn");
-  // 잘못된 양식이면 안내만 띄운다. 회원가입 버튼은 늘 아래에 보인다
-  loginBtn.addEventListener("click", () => {
+  const signupReveal = document.getElementById("signupReveal");
+
+  const DRAG_RANGE = 84;
+  let currentProgress = 0;
+
+  function setProgress(p, dragging = false) {
+    currentProgress = Math.max(0, Math.min(1, p));
+    signupReveal.classList.toggle("is-dragging", dragging);
+    signupReveal.style.setProperty("--reveal-p", currentProgress.toFixed(3));
+    signupReveal.classList.toggle("is-open", currentProgress >= 0.99 && !dragging);
+  }
+
+  function openSignup() {
+    setProgress(1, false);
+  }
+
+  function closeSignup() {
+    setProgress(0, false);
+  }
+
+
+  // 1. 잘못된 양식으로 로그인 버튼을 눌렀을 때: 로그인 버튼이 올라가며 뒤에 있던 회원가입 버튼 노출
+  loginBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
     const validEmail = schoolEmail.valid();
     const validPw = pwInput.value.length >= 8;
 
     if (!validEmail || !validPw) {
       loginErr.textContent = schoolEmail.error() || "서경대 메일 아이디와 8자 이상 비밀번호를 확인해 주세요.";
       loginErr.hidden = false;
+      openSignup();
       if (!validEmail) {
         emailInput.classList.add("is-invalid");
       } else {
@@ -103,6 +121,7 @@
         loginErr.textContent =
           err.code === "UNAUTHORIZED" ? "이메일 또는 비밀번호가 맞지 않아요." : LostApi.friendlyMessage(err);
         loginErr.hidden = false;
+        if (err.code === "UNAUTHORIZED") openSignup();
       })
       .finally(() => {
         loginBtn.disabled = false;
@@ -117,6 +136,66 @@
     pwInput.classList.remove("is-invalid");
     loginErr.hidden = true;
   });
+
+  // 2. 마우스/터치 드래그에 실시간 반응 + 빈 화면 클릭 시 노출
+  let dragStartY = null;
+  let dragStartProgress = 0;
+  let movedDistance = 0;
+
+  loginScreen.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("input, .sublinks a, .back, #loginBtn, #signupReveal")) return;
+    dragStartY = e.clientY;
+    dragStartProgress = currentProgress;
+    movedDistance = 0;
+    try { loginScreen.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  loginScreen.addEventListener("pointermove", (e) => {
+    if (dragStartY === null) return;
+    const dy = dragStartY - e.clientY;
+    movedDistance = Math.max(movedDistance, Math.abs(dy));
+    if (movedDistance > 4) {
+      setProgress(dragStartProgress + dy / DRAG_RANGE, true);
+    }
+  });
+
+  function finishDrag(e) {
+    if (dragStartY === null) return;
+    const dy = dragStartY - e.clientY;
+    dragStartY = null;
+
+    if (movedDistance <= 5) {
+      openSignup();
+      return;
+    }
+
+    if (dy > 14) {
+      openSignup();
+    } else if (dy < -14) {
+      closeSignup();
+    } else if (currentProgress >= 0.5) {
+      openSignup();
+    } else {
+      closeSignup();
+    }
+  }
+
+  loginScreen.addEventListener("pointerup", finishDrag);
+  loginScreen.addEventListener("pointercancel", () => {
+    if (dragStartY === null) return;
+    dragStartY = null;
+    if (currentProgress >= 0.5) openSignup();
+    else closeSignup();
+  });
+
+  // 3. 마우스 휠 스크롤 다운 시 노출 / 스크롤 업 시 다시 숨김
+  window.addEventListener("wheel", (e) => {
+    if (e.deltaY > 6) {
+      openSignup();
+    } else if (e.deltaY < -6) {
+      closeSignup();
+    }
+  }, { passive: true });
 </script>
 </body>
 </html>

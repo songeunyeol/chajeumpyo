@@ -556,11 +556,12 @@ describe("설명 글씨 대비·회원가입 바로 보이기 (10/31 기획 피�
     expect(read("frontend/index.html")).not.toContain("#9a948c");
   });
 
-  it("로그인 화면에 회원가입이 끌어 올리지 않아도 늘 보인다", () => {
+  it("로그인 화면: 회원가입은 끌어 올리거나 로그인이 막히면 나오는 원래 효과, 간편 로그인은 없다 (10/31 은열)", () => {
     const login = read("frontend/lost/login.html");
-    expect(login).toContain('id="signupLink" href="signup.html"');
-    expect(login).not.toContain("signup-reveal");
-    expect(login).not.toContain("touch-action:none");
+    expect(login).toContain('class="signup-reveal" id="signupReveal"');
+    expect(read("frontend/palette.css")).toContain(".signup-reveal.is-open");
+    expect(login).not.toContain('class="social"');
+    expect(login).not.toContain("consent-social.html");
   });
 });
 
