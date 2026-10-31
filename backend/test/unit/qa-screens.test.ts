@@ -503,8 +503,11 @@ describe("QA 10/31: 그 자리에 둠은 자세한 위치 필수, 첫 화면 제
     expect(register).toContain("const LOC_DETAIL_MIN = 4;");
   });
 
-  it("첫 화면 제목과 부제목은 원래 배치(한 줄, 부제목은 제목 옆)", () => {
-    expect(read("frontend/index.html")).toMatch(/\.title \{[^}]*flex-direction: row;/);
+  it("첫 화면 부제목은 제목 아래, 화면을 누르면 첫 효과를 건너뛴다 (10/31 은열)", () => {
+    const html = read("frontend/index.html");
+    expect(html).toMatch(/\.title \{[^}]*flex-direction: column;/);
+    expect(html).toContain('addEventListener("pointerdown", skip, { once: true })');
+    expect(html).toContain(".js.is-skip .lead");
   });
 });
 

@@ -33,10 +33,9 @@
     grid-template-rows: 25svh 1fr 25svh;
     padding: 0 clamp(16px, 5vw, 24px);
   }
-  .title { display: flex; flex-direction: row; align-items: flex-end; gap: clamp(8px, 2vw, 14px); padding-top: clamp(16px, 3svh, 28px); }
+  .title { display: flex; flex-direction: column; justify-content: flex-end; gap: clamp(6px, 1.2svh, 10px); padding-top: clamp(16px, 3svh, 28px); }
   .lead {
     margin: 0 0 clamp(4px, 1svh, 8px);
-    flex: 1;
     min-width: 0;
     font-size: clamp(12px, min(3.4vw, 2.1svh), 16px);
     font-weight: 500;
@@ -45,7 +44,7 @@
     color: #6b655d;
   }
   .js .lead { opacity: 0; }
-  .js.is-said .lead { animation: lead-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .js.is-said .lead { animation: lead-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   h1 {
     margin: 0;
     font-size: clamp(40px, min(13.5vw, 8.5svh), 76px);
@@ -131,14 +130,17 @@
     .js.is-in .door-find { animation: in-left 820ms var(--ease-rubber) both; pointer-events: auto; }
     .js.is-in .door-lost { animation: in-right 820ms var(--ease-rubber) 120ms both; pointer-events: auto; }
   }
+  /* 화면을 누르면 첫 효과를 건너뛴다: 남은 효과만 짧게 끝낸다 */
+  .js.is-skip .lead { animation-duration: 240ms; }
+  .js.is-skip .door-find, .js.is-skip .door-lost { animation-duration: 320ms; animation-delay: 0ms; }
   @media (prefers-reduced-motion: reduce) {
     .bob { animation: none; }
     .js .lead { opacity: 1; }
   }
   @keyframes blink { 50% { opacity: 0; } }
   @keyframes lead-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: none; }
+    from { opacity: 0; transform: translateY(6px); filter: blur(4px); }
+    to { opacity: 1; transform: none; filter: none; }
   }
   @keyframes bob {
     0%, 100% { transform: translateY(5px); }
@@ -221,11 +223,24 @@
     const typed = document.getElementById("typed");
     const title = document.querySelector(".title");
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const showButtons = () => document.documentElement.classList.add("is-in");
+    const root = document.documentElement;
+    const timers = [];
+    const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+    const showButtons = () => root.classList.add("is-in");
     const showCopy = () => {
-      document.documentElement.classList.add("is-said");
-      setTimeout(showButtons, reduce ? 0 : 380);
+      root.classList.add("is-said");
+      later(showButtons, reduce ? 0 : 380);
     };
+    // 기다리기 싫은 사람은 화면을 한 번 누르면 바로 끝낸다
+    const skip = () => {
+      if (root.classList.contains("is-in")) return;
+      timers.forEach(clearTimeout);
+      typed.textContent = "찾음표";
+      title.classList.add("is-done");
+      root.classList.add("is-skip", "is-said", "is-in");
+    };
+    addEventListener("pointerdown", skip, { once: true });
+    addEventListener("keydown", skip, { once: true });
     if (reduce) {
       typed.textContent = "찾음표";
       title.classList.add("is-done");
@@ -235,13 +250,13 @@
       const tick = () => {
         typed.textContent = steps[i];
         i += 1;
-        if (i < steps.length) setTimeout(tick, 120);
+        if (i < steps.length) later(tick, 120);
         else {
           title.classList.add("is-done");
-          setTimeout(showCopy, 180);
+          later(showCopy, 180);
         }
       };
-      setTimeout(tick, 280);
+      later(tick, 280);
     }
 
     const card = document.getElementById("card");
