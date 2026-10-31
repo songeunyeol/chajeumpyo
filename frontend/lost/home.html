@@ -104,14 +104,25 @@
   })();
   document.getElementById("logoutBtn").addEventListener("click", () => LostApi.logout());
 
-  // 알림 점: 안 읽은 알림이 있을 때만
+  // 알림 점: 안 읽은 알림이 있을 때만. palette.css가 .is-on일 때만 점을 보여 준다 (QA 10/31: 점이 안 뜸)
   const bellDot = document.querySelector(".bell-dot");
-  bellDot.style.display = "none";
-  if (authed) LostApi.notifications()
-    .then((r) => {
-      if (r.unreadCount > 0) bellDot.style.display = "";
-    })
-    .catch(() => {});
+  const bellLink = bellDot.closest("a");
+  function refreshBell() {
+    if (!authed) return;
+    LostApi.notifications()
+      .then((r) => {
+        const unread = r.unreadCount > 0;
+        bellDot.classList.toggle("is-on", unread);
+        bellDot.classList.toggle("is-red", unread);
+        bellLink.setAttribute("aria-label", unread ? `알림, 안 읽은 알림 ${r.unreadCount}개` : "알림");
+      })
+      .catch(() => {});
+  }
+  refreshBell();
+  // 알림을 읽고 뒤로 돌아오면(bfcache) 점을 다시 맞춘다
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) refreshBell();
+  });
 
 
 
