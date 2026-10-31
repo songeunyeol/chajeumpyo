@@ -46,7 +46,11 @@ registry.registerPath({
   description:
     "가장 최근에 받은 코드만, 한 번만 확인할 수 있다. 5번 틀리면 코드를 버린다. 성공하면 10분짜리 가입용 토큰.",
   request: { body: json(EmailVerifyRequest) },
-  responses: { 200: { description: "확인됨", ...json(EmailVerifyResponse) }, 400: errorResponse("INVALID_CODE") },
+  responses: {
+    200: { description: "확인됨", ...json(EmailVerifyResponse) },
+    400: errorResponse("INVALID_CODE"),
+    429: errorResponse("RATE_LIMITED"),
+  },
 });
 registry.registerPath({
   method: "post",
@@ -69,7 +73,11 @@ registry.registerPath({
   tags: ["인증"],
   summary: "분실자 로그인 (F-04)",
   request: { body: json(LoginRequest) },
-  responses: { 200: { description: "로그인됨", ...json(AuthResponse) }, 401: errorResponse("UNAUTHORIZED") },
+  responses: {
+    200: { description: "로그인됨", ...json(AuthResponse) },
+    401: errorResponse("UNAUTHORIZED"),
+    429: errorResponse("RATE_LIMITED"),
+  },
 });
 registry.registerPath({
   method: "post",
@@ -99,7 +107,11 @@ registry.registerPath({
   tags: ["관리자"],
   summary: "관리자 로그인 (F-14)",
   request: { body: json(LoginRequest) },
-  responses: { 200: { description: "로그인됨", ...json(AdminAuthResponse) }, 401: errorResponse("UNAUTHORIZED") },
+  responses: {
+    200: { description: "로그인됨", ...json(AdminAuthResponse) },
+    401: errorResponse("UNAUTHORIZED"),
+    429: errorResponse("RATE_LIMITED"),
+  },
 });
 
 export function createAuthRouter() {

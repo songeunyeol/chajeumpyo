@@ -54,6 +54,7 @@ registry.registerPath({
     400: errorResponse("VALIDATION_ERROR: 질문이 없는 시도, 보기 수가 질문 수와 다름"),
     404: errorResponse("NOT_FOUND"),
     409: errorResponse("ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감"),
+    429: errorResponse("RATE_LIMITED"),
   },
 });
 

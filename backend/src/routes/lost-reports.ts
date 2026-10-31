@@ -29,6 +29,7 @@ registry.registerPath({
     201: { description: "신고됨", ...json(LostReportWithCandidates) },
     400: errorResponse("VALIDATION_ERROR"),
     401: errorResponse("UNAUTHORIZED"),
+    429: errorResponse("RATE_LIMITED"),
     502: errorResponse("AI_UNAVAILABLE: 저장하지 않음"),
   },
 });
@@ -65,6 +66,7 @@ registry.registerPath({
     200: { description: "수정됨", ...json(LostReportWithCandidates) },
     400: errorResponse("VALIDATION_ERROR"),
     404: errorResponse("NOT_FOUND"),
+    429: errorResponse("RATE_LIMITED"),
     502: errorResponse("AI_UNAVAILABLE: 수정하지 않음"),
   },
 });

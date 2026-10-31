@@ -97,6 +97,7 @@ registry.registerPath({
     400: errorResponse("VALIDATION_ERROR"),
     404: errorResponse("NOT_FOUND: 없거나, 토큰이 틀리거나, 확정 시간이 지남"),
     409: errorResponse("ALREADY_CONFIRMED"),
+    429: errorResponse("RATE_LIMITED"),
   },
 });
 

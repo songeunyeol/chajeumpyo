@@ -52,6 +52,15 @@
 | 500 | `INTERNAL_ERROR` | 서버 오류 |
 | 502 | `AI_UNAVAILABLE` | AI 호출 실패로 저장하지 못함 (분실 신고 추출 실패 등). 습득물 등록은 실패해도 `201 REVIEW`로 응답한다 |
 
+**모든 경로에 공통으로 생길 수 있는 응답** (경로별 표에는 따로 적지 않는다. `docs/api/openapi.json`에는 자동으로 들어간다, 10/31 API 퍼징)
+
+- 로그인이 필요한 경로: `401 UNAUTHORIZED`. 관리자 경로(`/admin/*`)는 관리자 계정이 아니면 `403 FORBIDDEN`
+- 경로 값(UUID 등)·쿼리·본문을 받는 경로: 형식이 틀리면 `400 VALIDATION_ERROR`
+- JSON 본문은 100kb까지. 넘으면 `413 PAYLOAD_TOO_LARGE`
+- 요청 제한이 걸린 경로(인증 코드·인증 확인·로그인·관리자 로그인, 분실 신고 작성·수정, 일치 확인·답 제출, 습득물 등록·확정): `429 RATE_LIMITED`
+- 모든 경로: `500 INTERNAL_ERROR`
+- 인증 경로(`/auth/email/code`, `/auth/email/verify`, `/auth/login`, `/admin/auth/login`)의 `email`은 학교 메일(`ALLOWED_EMAIL_DOMAINS`, 지금은 `skuniv.ac.kr`)만 받는다
+
 ---
 
 ## 2. 엔드포인트 목록
