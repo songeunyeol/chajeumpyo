@@ -24,9 +24,21 @@ import { FAILED_ATTEMPT, failedAttemptCounts, findClaimableCandidate } from "../
 import { DESCRIPTION_KEY } from "../matching/compare";
 import { judge } from "../matching/judge";
 import { MAX_FAILED_ATTEMPTS, MAX_ITEM_FAILED_ATTEMPTS, NEED_MORE_LIMIT } from "../matching/policy";
-import { colorQuestionFor, isAskable, isMemorable, PRESET_DISTRACTORS, questionFor } from "../matching/questions";
+import {
+  brandQuestionFor,
+  colorQuestionFor,
+  isGenericFeature,
+  isMemorable,
+  isPositionOnly,
+  isQuizable,
+  isThumbnailVisible,
+  isUntrustedFragment,
+  PRESET_DISTRACTORS,
+  questionFor,
+} from "../matching/questions";
 import {
   colorDistractors,
+  MIN_GUESS_QUESTIONS,
   makeQuestion,
   QUIZ_OPTIONS,
   QUIZ_QUESTIONS,
@@ -169,26 +181,29 @@ async function toResponse(a: Attempt, reused: boolean, db: Prisma.TransactionCli
  * 오답은 정답과 같은 형식·구체성으로만 고르고(정답이 티 나지 않게), 못 채우면 null (이 질문은 내지 않는다).
  */
 async function featureQuestion(
-  feature: AiFeature,
+  feature: QuizSource,
   itemName: string | null,
   context: string | null = null,
+  text: string = questionFor(feature as AiFeature, itemName),
 ): Promise<QuizQuestion | null> {
   // AI 오답이 같은 형식으로 3개 안 모이면 한 번 더 만든다 (온도가 있어 매번 다르게 나온다)
-  return (await featureQuestionOnce(feature, itemName, context)) ?? featureQuestionOnce(feature, itemName, context);
+  return (await featureQuestionOnce(feature, context, text)) ?? featureQuestionOnce(feature, context, text);
 }
+
+/** 보기를 만들 대상: 습득물 특징, 또는 특징이 적은 물건에서 대신 묻는 브랜드(key "brand") */
+type QuizSource = { key: string; value: string };
 
 /**
  * 글자·각인 질문은 주인이 아는 이름으로 보기를 쓴다: 제조사와 한글 읽기를 함께 (10/31 실사용 영상: 정답 "Heroine Make"를
  * "키스미"로 아는 주인이 영문 보기 넷 중에서 고르지 못했다). 그래서 이 종류만 습득물 브랜드·설명을 AI에 함께 준다.
  */
-const NAME_KEYS = new Set(["text", "engraving"]);
+const NAME_KEYS = new Set(["text", "engraving", "brand"]);
 
 async function featureQuestionOnce(
-  feature: AiFeature,
-  itemName: string | null,
+  feature: QuizSource,
   context: string | null,
+  text: string,
 ): Promise<QuizQuestion | null> {
-  const text = questionFor(feature, itemName);
   const named = NAME_KEYS.has(feature.key);
   let correct = feature.value;
   let fromAi: string[] = [];
@@ -230,30 +245,51 @@ async function previousQuestions(foundItemId: string): Promise<Map<string, QuizQ
  * 신고에 적지 않은 숨은 특징부터 묻고, 하나뿐이면 신고에 색을 적지 않았을 때 색을 함께 묻고, 그래도 모자라면 적었던 특징을 묻는다. 모두 맞혀야 통과.
  * 흠집·무늬는 이 모두를 쓴 뒤에만, 한 번에 하나까지만 묻는다(주인도 잘 모른다, 10/31 기획 피드백·실사용 영상).
  * 색은 신고에 안 적었거나 적은 색이 저장 색과 다를 때 묻는다: 연보라를 "분홍"이라 적은 주인도 보기에서 고를 수 있게.
+ * 브랜드는 신고에 맞게 적지 않았을 때, 잘 아는 특징·색 다음, 흠집·무늬 앞에 묻는다. 특징이 흠집 하나뿐인 물건(흰색 에어팟)도
+ * 흠집 위치 대신 주인이 아는 것을 먼저 묻게 (10/31 사칭 평가). first가 null이면(바로 통과를 막았는데 잘 아는 특징이 없음) 색·브랜드부터.
  */
 async function buildQuiz(
   foundItemId: string,
-  first: AiFeature,
+  first: AiFeature | null,
   stored: AiFeature[],
   reportedKeys: string[],
   color: { stored: string | null; reported: string | null; matched: boolean },
   itemName: string | null,
   maxQuestions = QUIZ_QUESTIONS,
   context: string | null = null,
+  brand: { stored: string | null; matched: boolean } = { stored: null, matched: false },
+  guess = false,
+  /** 바로 통과를 막은 시도: 판정이 고른 흠집·무늬보다 주인이 아는 특징·색·브랜드를 먼저 묻는다 */
+  passBlocked = false,
+  /** 신고 설명이 이미 맞힌 저장 특징 종류. 다시 묻지 않는다 (10/31 검증 1: 텀블러 "베이지색 뚜껑"을 적자마자 또 물었다) */
+  matched: ReadonlySet<string> = new Set(),
 ): Promise<QuizQuestion[]> {
   const mentioned = new Set(reportedKeys);
-  const rest = stored.filter((f) => f !== first && isAskable(f));
+  // 찍기(맞힌 특징 0)에서는 흐린 썸네일로도 알 수 있는 것(본체 색, 모양, 큰 부분 색, 무늬)을 묻지 않는다 (10/31 사칭 평가:
+  // 썸네일을 본 사칭이 핸드크림 뚜껑 색·키링 "강아지 모양"으로 통과). 맞힌 특징이 있는 주인은 지금처럼 묻는다
+  // 안쪽 작은 글자·재질·구조처럼 묻기 어렵거나 종류만으로 아는 특징도 묻지 않는다 (10/31 검증 2)
+  // 맞힌 특징은 다시 묻지 않는다. 흠집처럼 누구나 말할 수 있는 특징은 맞혀도 아는 증거가 아니라서 위치를 물을 수 있게 남긴다
+  const allowed = (f: AiFeature) =>
+    isQuizable(f) && !(matched.has(f.key) && !isGenericFeature(f)) && !(guess && isThumbnailVisible(f));
+  const head = first && allowed(first) ? first : null;
+  const rest = stored.filter((f) => f !== first && allowed(f));
   const unmentioned = rest.filter((f) => !mentioned.has(f.key));
   // 그래도 모자라면 신고에 적었던 특징도 묻는다. 모순·부정으로 적은 특징을 보기에서 다시 고르게 (10/30: 모순이면 바로 실패 대신 객관식)
   const again = rest.filter((f) => mentioned.has(f.key));
   // 흠집·무늬는 주인도 잘 몰라서 같은 묶음 안에서 잘 아는 특징을 먼저 묻는다 (10/31 기획 피드백).
   // 색은 흐린 사진에도 보여 맞히기 쉬우므로 예전처럼 적지 않은 특징 뒤에 둔다
-  // 첫 질문은 판정이 고른 특징(잘 아는 특징이 먼저, 모순된 특징을 다시 묻는 경우 포함)
-  const order: (AiFeature | "color")[] = [
-    first,
+  // 첫 질문은 판정이 고른 특징(잘 아는 특징이 먼저, 모순된 특징을 다시 묻는 경우 포함).
+  // 찍기나 바로 통과를 막은 시도에서 그것이 흠집·무늬면 잘 아는 특징·색·브랜드 뒤로 보낸다
+  const demote = (guess || passBlocked) && head !== null && !isMemorable(head);
+  const firstEasy = head && !demote ? [head] : [];
+  const firstHard = head && demote ? [head] : [];
+  const order: (AiFeature | "color" | "brand")[] = [
+    ...firstEasy,
     ...unmentioned.filter(isMemorable),
     "color",
     ...again.filter(isMemorable),
+    "brand",
+    ...firstHard,
     ...unmentioned.filter((f) => !isMemorable(f)),
     ...again.filter((f) => !isMemorable(f)),
   ];
@@ -264,25 +300,88 @@ async function buildQuiz(
   };
   const storedColor = Color.safeParse(color.stored);
   const quiz: QuizQuestion[] = [];
+  // 같은 질문을 두 번 내지 않는다 (10/31 사칭 평가: 슈나우저 키링에 "눈에 띄는 다른 특징은?"이 같은 보기로 세 번 나왔다).
+  // 질문 문구는 특징 종류로 정해지므로 종류마다 하나, 같은 보기 묶음도 하나. 모자라면 반복하지 않고 적게 낸다
+  const seen = new Set<string>();
+  // 정답이 같은 질문도 하나로 본다: 글자 질문과 브랜드 질문의 정답이 둘 다 "아트릭스 (atrix)"면 사실상 한 문제다 (10/31 사칭 평가)
+  const answers: string[] = [];
+  const latinWords = (t: string) => (t.toLowerCase().match(/[a-z0-9&]{3,}/g) ?? []).filter((w) => !/^\d+$/.test(w));
+  const sameAnswer = (a: string, b: string) =>
+    a.trim() === b.trim() || latinWords(a).some((w) => latinWords(b).includes(w));
+  const push = (q: QuizQuestion) => {
+    const options = [...q.options].sort().join("|");
+    const correct = q.options[q.answer] ?? "";
+    if (seen.has(q.text) || seen.has(options) || answers.some((a) => sameAnswer(a, correct))) return;
+    seen.add(q.text);
+    seen.add(options);
+    answers.push(correct);
+    quiz.push(q);
+  };
+  // 위치만 다른 보기(상단/하단/측면)는 주인도 헷갈려 뒤로 미루고, 질문이 모자랄 때만 쓴다 (10/31 검증 2)
+  const deferred: QuizQuestion[] = [];
+  const offer = (q: QuizQuestion) => {
+    if (isPositionOnly(q.options)) deferred.push(q);
+    else push(q);
+  };
   let hard = 0;
   for (const f of order) {
     if (quiz.length >= maxQuestions) break;
     if (f === "color") {
-      if (color.matched || !storedColor.success || storedColor.data === "OTHER") continue;
+      if (guess || color.matched || !storedColor.success || storedColor.data === "OTHER") continue;
       const text = colorQuestionFor(itemName);
       const label = COLOR_LABELS[storedColor.data];
-      quiz.push(reuse("color", text) ?? makeQuestion(text, "color", label, colorDistractors(storedColor.data)));
+      push(reuse("color", text) ?? makeQuestion(text, "color", label, colorDistractors(storedColor.data)));
+      continue;
+    }
+    if (f === "brand") {
+      if (brand.matched || !knownBrand(brand.stored)) continue;
+      const text = brandQuestionFor(itemName);
+      const q =
+        reuse("brand", text) ?? (await featureQuestion({ key: "brand", value: brand.stored }, itemName, context, text));
+      if (q) offer(q);
       continue;
     }
     // 흠집·무늬는 한 번에 하나까지만
     if (!isMemorable(f) && hard >= 1) continue;
-    const q = reuse(f.key, questionFor(f, itemName)) ?? (await featureQuestion(f, itemName, context));
+    const text = questionFor(f, itemName);
+    if (seen.has(text)) continue;
+    const q = reuse(f.key, text) ?? (await featureQuestion(f, itemName, context));
     if (q) {
-      quiz.push(q);
-      if (!isMemorable(f)) hard++;
+      const n = quiz.length;
+      offer(q);
+      if (quiz.length > n && !isMemorable(f)) hard++;
     }
   }
+  const needed = guess ? MIN_GUESS_QUESTIONS : 1;
+  for (const q of deferred) if (quiz.length < Math.min(needed, maxQuestions)) push(q);
   return quiz;
+}
+
+/** 사진에서 제대로 읽은 브랜드인지: 세 글자 이상이고 습득물 설명에도 적혀 있다 (글자 조각 "is" 같은 것은 아니다) */
+function trustedBrandRead(brand: string | null, description: string | null): boolean {
+  if (!knownBrand(brand)) return false;
+  const compactText = (t: string) => t.toLowerCase().replace(/[^a-z0-9가-힣]/g, "");
+  const b = compactText(brand);
+  return b.length >= 3 && !!description && compactText(description).includes(b);
+}
+
+/** 신고에 브랜드 이름을 실제로 적었는지 */
+function namedBrand(brand: string | null): boolean {
+  return !!brand && brand.trim().length >= 2 && !/^(없음|모름|브랜드|상표|로고|모르겠)/.test(brand.trim());
+}
+
+/** AI가 브랜드를 못 읽었을 때 남기는 값은 질문하지 않는다 */
+function knownBrand(brand: string | null): brand is string {
+  return !!brand && !/^(없음|모름|알 수 없음|unknown|none|n\/a)$/i.test(brand.trim());
+}
+
+/** 보관이 끝난 물건(관리자 정리·기한 만료)·수령된 물건이면 그 오류. 아직 보관 중이면 null */
+const ITEM_CLOSED_MESSAGE = "보관이 끝난 물건이에요. 교무처에 문의해 주세요.";
+function closedItemError(item: { status: string; closedAt: Date | null; expiresAt: Date | null }): AppError | null {
+  if (item.status === "CLAIMED") return new AppError("ALREADY_CLAIMED", "이미 주인이 찾아간 물건이에요.");
+  const expired = item.expiresAt !== null && item.expiresAt <= new Date();
+  if (item.closedAt || item.status === "EXPIRED" || expired) return new AppError("ITEM_CLOSED", ITEM_CLOSED_MESSAGE);
+  return null;
 }
 
 /**
@@ -301,11 +400,28 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
 
   // 이 신고의 후보로 보이는(보여 준 적 있는) 물건에만 시도할 수 있다 (open-issues #20)
   const candidate = await findClaimableCandidate(report, viewer.role, foundItemId);
-  if (!candidate) throw new AppError("FORBIDDEN", "이 신고의 후보가 아닌 물건이에요.");
+  if (!candidate) {
+    // 보던 물건을 관리자가 정리했거나 기한이 지났으면 "볼 수 없어요" 대신 그렇다고 알린다 (10/31 검증). 보여 준 적 없는 물건은 그대로 403
+    const seen = await prisma.candidateExposure.findUnique({
+      where: { lostReportId_foundItemId: { lostReportId: report.id, foundItemId } },
+      select: { foundItemId: true },
+    });
+    const closed = seen
+      ? await prisma.foundItem.findUnique({
+          where: { id: foundItemId },
+          select: { status: true, closedAt: true, expiresAt: true },
+        })
+      : null;
+    const err = closed && closedItemError(closed);
+    if (err) throw err;
+    throw new AppError("FORBIDDEN", "이 신고의 후보가 아닌 물건이에요.");
+  }
 
   const item = await prisma.foundItem.findUniqueOrThrow({ where: { id: foundItemId }, include: { detail: true } });
-  // 예전에 저장된 가린 자리 특징도 빼고 견준다
-  const storedFeatures = dropMaskTraces(Features.parse(item.detail?.features));
+  // 예전에 저장된 가린 자리 특징도 빼고 견준다. 글자 인식 조각("is")은 믿을 수 없어 대조·질문 어디에도 쓰지 않는다 (10/31 검증 1)
+  const storedFeatures = dropMaskTraces(Features.parse(item.detail?.features)).filter(
+    (f) => !isUntrustedFragment(f, item.detail?.description),
+  );
   const extracted = LostReportExtraction.partial().catch({}).parse(report.extractedAttributes);
   const reportedFeatures = extracted.features ?? [];
 
@@ -341,33 +457,76 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
     .map((f) => f.reportedKey);
   // 질문으로 낼 수 있는 특징: 습득자 설명에서 나온 것 중 이름이 섞일 수 있는 것은 뺀다
   const fromFinder = finderFeatureIds(item.detail?.features);
-  const askableFeatures = storedFeatures.filter((f) => !fromFinder.has(`${f.key}|${f.value.trim()}`));
+  // 안쪽 작은 글자("made in korea")·재질·구조("가죽 질감")는 질문으로 내지 않는다 (10/31 검증 2)
+  const askableFeatures = storedFeatures.filter((f) => !fromFinder.has(`${f.key}|${f.value.trim()}`) && isQuizable(f));
   // 바로 통과 비율은 사진에서 나온 특징 기준으로 센다. 주인은 습득자가 덧붙인 설명을 알 수 없다 (10/31 QA).
   // 사진 특징이 하나도 없으면(사진 분석 실패 후 설명으로 등록) 설명 특징으로 센다
   const allFinder = allFinderFeatureIds(item.detail?.features);
   const photoFeatures = storedFeatures.filter((f) => !allFinder.has(`${f.key}|${f.value.trim()}`));
-  let j = judge(comparison, askableFeatures, mentionedKeys, photoFeatures.length > 0 ? photoFeatures : storedFeatures);
+  // 바로 통과 비율도 물을 수 있는 특징으로 센다: 안쪽 작은 글자·재질처럼 주인이 적기 어려운 특징이 비율을 깎지 않게
+  const ratioFeatures = (photoFeatures.length > 0 ? photoFeatures : storedFeatures).filter(isQuizable);
+  // 브랜드가 확실히 다르면(믿을 만한 저장 브랜드 + 다른 브랜드 이름 + AI도 관계없다고 함) 틀린 특징으로 센다 (10/31 검증 1:
+  // MK 지갑에 "나이키 로고"라고 적은 사칭이 객관식을 받았다). 주인 통과율을 재기 전까지 설정으로 끈다. 그 밖의 브랜드 차이는 통과만 막는다
+  if (
+    env.CLAIM_BRAND_HARD_CONTRADICTION &&
+    comparison.brand === "CONTRADICT" &&
+    comparison.brandCheck === "DIFFERENT" &&
+    trustedBrandRead(item.detail?.brand ?? null, item.detail?.description ?? null) &&
+    namedBrand(extracted.brand ?? null)
+  )
+    comparison = {
+      ...comparison,
+      features: [...comparison.features, { reportedKey: "brand", storedKey: "brand", verdict: "CONTRADICT" }],
+    };
+  let j = judge(comparison, askableFeatures, mentionedKeys, ratioFeatures);
+  const matchedKeys = new Set(
+    comparison.features
+      .filter((f) => f.verdict === "MATCH" && f.storedKey && f.storedKey !== DESCRIPTION_KEY)
+      .map((f) => f.storedKey as string),
+  );
   const itemName = item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null;
+  // 흠집·사용감처럼 누구나 말할 수 있는 특징만 맞혔으면 근거가 없는 것과 같다: 찍기처럼 질문을 늘리고 썸네일로 보이는 것은 묻지 않는다
+  // (10/31 사칭 평가: "스크래치 조금"을 적은 사칭이 흰색 에어팟 브랜드 질문 하나로 통과). 설명에서 맞힌 부분 색·브랜드는 근거로 센다
+  const evidence =
+    ratioFeatures.some((f) => matchedKeys.has(f.key) && !isGenericFeature(f)) ||
+    storedFeatures.some((f) => matchedKeys.has(f.key) && !isGenericFeature(f)) ||
+    comparison.features.some((f) => f.verdict === "MATCH" && f.storedKey === DESCRIPTION_KEY);
+  const guessMode = j.matches === 0 || !evidence;
   // 보기 만들기(AI)도 트랜잭션 밖에서 한다
-  let quiz = j.questionFeature
-    ? await buildQuiz(
-        foundItemId,
-        j.questionFeature,
-        askableFeatures,
-        mentionedKeys,
-        {
-          stored: item.detail?.color ?? null,
-          reported: extracted.color ?? null,
-          matched: comparison.color === "MATCH",
-        },
-        itemName,
-        // 맞힌 특징이 없으면 찍기만으로 통과하기 어렵게 질문을 늘린다
-        j.matches === 0 ? QUIZ_QUESTIONS_NO_EVIDENCE : QUIZ_QUESTIONS,
-        [item.detail?.brand, item.detail?.description].filter(Boolean).join(" / ") || null,
-      )
-    : [];
-  // 질문을 하나도 못 만들면 온라인으로는 확인할 수 없다
-  if (j.result === "BORDERLINE" && quiz.length === 0) {
+  let quiz =
+    j.result === "BORDERLINE"
+      ? await buildQuiz(
+          foundItemId,
+          j.questionFeature,
+          askableFeatures,
+          mentionedKeys,
+          {
+            stored: item.detail?.color ?? null,
+            reported: extracted.color ?? null,
+            matched: comparison.color === "MATCH",
+          },
+          itemName,
+          // 맞힌 특징이 없으면 찍기만으로 통과하기 어렵게 질문을 늘린다
+          guessMode ? QUIZ_QUESTIONS_NO_EVIDENCE : QUIZ_QUESTIONS,
+          [item.detail?.brand, item.detail?.description].filter(Boolean).join(" / ") || null,
+          { stored: item.detail?.brand ?? null, matched: comparison.brand === "MATCH" },
+          guessMode,
+          j.passBlocked,
+          matchedKeys,
+        )
+      : [];
+  // 바로 통과를 막았는데 더 물을 것이 없고, 흔하지 않은 사진 특징을 맞혔으면 통과(주인이 특징을 이미 말했다). 흔한 특징뿐이면 아래에서 근거 부족
+  if (
+    j.result === "BORDERLINE" &&
+    j.passBlocked &&
+    quiz.length === 0 &&
+    ratioFeatures.some((f) => matchedKeys.has(f.key) && !isGenericFeature(f))
+  ) {
+    j = { ...j, result: "PASS", questionFeature: null };
+  }
+  // 질문을 하나도 못 만들면 온라인으로는 확인할 수 없다. 찍기는 서로 다른 질문이 MIN_GUESS_QUESTIONS개 안 되면 내지 않는다
+  // (같은 질문을 되풀이하지 않으니 질문 하나짜리 찍기는 1/4로 통과된다). 모순이 없으니 아래에서 근거 부족으로 바뀌어 기회를 쓰지 않는다
+  if (j.result === "BORDERLINE" && (quiz.length === 0 || (guessMode && quiz.length < MIN_GUESS_QUESTIONS))) {
     j = { ...j, result: "FAIL", questionFeature: null };
   }
   const isGuess = j.result === "BORDERLINE" && j.matches === 0;
@@ -416,11 +575,12 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
       const recent = await tx.matchAttempt.count({
         where: { userId: viewer.userId, foundItemId, result: "NEED_MORE", createdAt: { gte: since } },
       });
-      // 특징이 하나도 없는 물건은 더 적어도 온라인으로 통과할 수 없어 대면 확인으로 안내한다 (open-issues #17)
+      // 물을 수 있는 특징이 하나도 없는 물건(특징 없음, 또는 재질·안쪽 글자뿐)은 더 적어도 온라인으로 확인하기 어려워
+      // 대면 확인으로 안내한다 (open-issues #17, 10/31 검증 2: 가죽 질감·지퍼 포켓뿐인 카드지갑)
       if (recent >= NEED_MORE_LIMIT.count)
         throw new AppError(
           "RATE_LIMITED",
-          storedFeatures.length === 0
+          askableFeatures.length === 0
             ? NO_FEATURE_IN_PERSON_MESSAGE
             : `특징이 부족한 확인은 ${NEED_MORE_LIMIT.windowMinutes / 60}시간에 ${NEED_MORE_LIMIT.count}번까지예요. 잠시 뒤 다시 시도해 주세요.`,
         );
@@ -445,8 +605,9 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
           quiz,
         },
         result: j.result,
-        question: j.questionFeature ? questionFor(j.questionFeature, itemName) : null,
-        questionFeatureKey: j.questionFeature?.key ?? null,
+        // 바로 통과를 막고 색·브랜드만 묻는 시도는 첫 객관식 질문을 대표 질문으로 남긴다
+        question: quiz[0]?.text ?? (j.questionFeature ? questionFor(j.questionFeature, itemName) : null),
+        questionFeatureKey: quiz[0]?.featureKey ?? j.questionFeature?.key ?? null,
       },
     });
     if (j.result === "FAIL") await lockItemIfExhausted(tx, foundItemId);
@@ -495,6 +656,9 @@ export async function answer(viewer: Viewer, attemptId: string, body: AnswerRequ
   if (attempt.answerCorrect !== null) throw new AppError("ALREADY_ANSWERED", "이미 답한 질문이에요.");
   // 답 판정(AI)을 부르기 전에 막는다
   if (attempt.foundItem.claimLockedAt) throw new AppError("IN_PERSON_REQUIRED", IN_PERSON_MESSAGE);
+  // 질문을 받은 뒤 물건이 정리·수령됐으면 답을 받지 않는다: 틀린 답이 끝난 물건에 실패로 쌓이거나, 사진을 지운 물건이 통과되지 않게 (10/31 검증)
+  const closedBefore = closedItemError(attempt.foundItem);
+  if (closedBefore) throw closedBefore;
 
   const stored = Features.parse(attempt.foundItem.detail?.features).find((f) => f.key === attempt.questionFeatureKey);
   const quiz = quizOf(attempt.matchedFields);
@@ -518,6 +682,13 @@ export async function answer(viewer: Viewer, attemptId: string, body: AnswerRequ
     // 판정과 같은 줄에 선다. 기다리는 사이 다른 계정의 실패로 잠겼을 수 있어 다시 확인한다.
     await lockItem(tx, attempt.foundItemId);
     if (await isInPersonOnly(attempt.foundItemId, tx)) throw new AppError("IN_PERSON_REQUIRED", IN_PERSON_MESSAGE);
+    // 기다리는 사이 관리자가 정리했거나 수령됐을 수 있어 잠근 뒤 다시 본다
+    const now = await tx.foundItem.findUniqueOrThrow({
+      where: { id: attempt.foundItemId },
+      select: { status: true, closedAt: true, expiresAt: true },
+    });
+    const closedNow = closedItemError(now);
+    if (closedNow) throw closedNow;
     // 이 계정의 실패가 이미 한도면 남아 있던 시도로도 답할 수 없다
     const failures =
       (await failedAttemptCounts(viewer.userId, [attempt.foundItemId], tx)).get(attempt.foundItemId) ?? 0;

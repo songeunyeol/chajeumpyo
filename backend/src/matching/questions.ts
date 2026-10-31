@@ -1,4 +1,5 @@
 import type { AiFeature } from "@chajeumpyo/shared";
+import { GENERIC_FEATURE_KEYS, GENERIC_FEATURE_WORDS } from "./policy";
 
 /**
  * 확인 질문 문구 (F-09). 한두 단어로 답할 수 있는 특징만 고른다.
@@ -31,6 +32,104 @@ export function isMemorable(feature: AiFeature): boolean {
   return !HARD_TO_REMEMBER.has(feature.key);
 }
 
+/** 흐린 썸네일로도 짐작할 수 있는 큰 특징: 몸통·뚜껑 같은 큰 부분의 색, 전체 모양, 무늬 */
+const THUMBNAIL_WORDS =
+  /색|빨간|빨강|파란|파랑|노란|노랑|초록|검정|검은|까만|흰|하얀|회색|갈색|분홍|보라|하늘|베이지|남색|투명|은색|금색|모양|형태|실루엣|생김새/;
+/** 이름·글자처럼 썸네일로는 읽을 수 없는 값 (영문·숫자가 섞이면 글자를 가리킨다) */
+const READABLE_DETAIL = /[A-Za-z0-9]/;
+
+/**
+ * 찍기 객관식(맞힌 특징 0)에서 빼는 특징 (10/31 사칭 평가: 흐린 썸네일을 본 사칭이 핸드크림 뚜껑 색·키링 "강아지 모양"으로 통과).
+ * 스티커·키링·글자·각인·안에 든 물건처럼 작은 부분은 남기고, 케이스·기타 특징이 색·모양만 말하거나 무늬이면 뺀다.
+ */
+export function isThumbnailVisible(feature: AiFeature): boolean {
+  if (feature.key === "pattern") return true;
+  if (feature.key !== "case" && feature.key !== "other") return false;
+  return THUMBNAIL_WORDS.test(feature.value) && !READABLE_DETAIL.test(feature.value);
+}
+
+/**
+ * 재질·구조만 말하는 특징("가죽 질감", "지퍼 포켓 위치"). 지갑이면 가죽, 필통이면 지퍼처럼 종류만 알아도 말할 수 있다 (10/31 검증 2).
+ * 색·글자·숫자가 섞이면 구체적인 특징으로 본다.
+ */
+const STRUCTURE_WORDS =
+  /질감|재질|소재|가죽|패브릭|플라스틱|금속|지퍼|포켓|수납|카드\s*칸|버클|클립|버튼|박음질|스티치/;
+const SPECIFIC_DETAIL =
+  /[A-Za-z0-9]|색|빨간|파란|노란|검정|검은|까만|흰|하얀|회색|갈색|분홍|보라|하늘|베이지|남색|은색|금색/;
+
+function isStructureOnly(feature: AiFeature): boolean {
+  return STRUCTURE_WORDS.test(feature.value) && !SPECIFIC_DETAIL.test(feature.value);
+}
+
+/** 흠집·무늬·사용감처럼 그 물건을 보지 않은 사람도 말할 수 있는 특징. 이것만 맞으면 바로 통과하지 않는다 (10/31 사칭 평가) */
+export function isGenericFeature(feature: AiFeature): boolean {
+  return GENERIC_FEATURE_KEYS.has(feature.key) || GENERIC_FEATURE_WORDS.test(feature.value) || isStructureOnly(feature);
+}
+
+/** 사진 글자 인식에서 흔히 나오는 조각 (10/31: 락앤락 텀블러 로고를 "is"로 읽었다) */
+const STOP_FRAGMENTS = new Set([
+  "is",
+  "in",
+  "on",
+  "as",
+  "at",
+  "of",
+  "to",
+  "by",
+  "an",
+  "a",
+  "it",
+  "be",
+  "or",
+  "the",
+  "and",
+  "for",
+]);
+
+/**
+ * 믿을 수 없는 글자 조각 (10/31 검증 1·실사진 평가: "is 로고 글자"와 대조해 "locknlock 글씨"라고 적은 진짜 주인이 실패).
+ * 영어 기능어 조각은 늘, 3글자 이하는 습득물 설명에 없을 때만 버린다(설명에도 있으면 "KGB" 이니셜처럼 진짜 글자일 수 있다).
+ * 버린 특징은 대조·질문·바로 통과 비율 어디에도 쓰지 않는다.
+ */
+export function isUntrustedFragment(feature: AiFeature, description: string | null | undefined): boolean {
+  if (feature.key !== "text") return false;
+  // 읽은 글자는 영문·숫자 덩어리로 본다("하단 is 로고 문구" → is). 한글로만 된 값(아이패드 글자)은 그대로 둔다
+  const latin = feature.value.match(/[A-Za-z0-9&]+/g) ?? [];
+  if (latin.length === 0) return false;
+  if (latin.every((p) => STOP_FRAGMENTS.has(p.toLowerCase()))) return true;
+  const letters = latin.join("");
+  if (letters.length > 3) return false;
+  // 점으로 나눈 이니셜("J.H")은 사진 조각이 아니라 각인·이니셜로 본다
+  if (/\b[A-Za-z](?:\.[A-Za-z])+\.?/.test(feature.value)) return false;
+  return !(description ?? "").toLowerCase().includes(letters.toLowerCase());
+}
+
+/**
+ * 묻기 어려운 작은 글자 (10/31 검증 2: 안경다리 안쪽 "kkeulle made in korea"). 바깥에 크게 보이는 글자·로고만 묻는다.
+ * 대조에는 쓰지만 질문과 바로 통과 비율에서는 뺀다.
+ */
+const INNER_TEXT =
+  /made\s*in|제조|원산지|모델|사이즈|size|\b[a-z]{1,3}-?\d{2,}\b|\d+\s*(?:mm|cm|ml|g)\b|다리\s*안|라벨|택\b|tag/i;
+
+export function isInnerText(feature: AiFeature): boolean {
+  if (feature.key !== "text" && feature.key !== "other") return false;
+  return INNER_TEXT.test(feature.value);
+}
+
+/** 질문으로 내도 되는 특징: 질문 문구가 있고, 작은 안쪽 글자·재질·구조 같은 종류만으로 알 수 있는 것이 아닌 것 */
+export function isQuizable(feature: AiFeature): boolean {
+  return isAskable(feature) && !isInnerText(feature) && !isStructureOnly(feature);
+}
+
+/** 위치만 다른 보기(상단/하단/중앙/측면). 주인도 헷갈려 뒤로 미룬다 (10/31 검증 2) */
+const POSITION_WORDS =
+  /상단|하단|중앙|측면|왼쪽|오른쪽|위쪽|아래쪽|앞면|뒷면|옆면|윗면|밑면|가운데|모서리|안쪽|바깥쪽|위|아래|앞|뒤|옆|쪽|좌측|우측/g;
+
+export function isPositionOnly(options: string[]): boolean {
+  const stripped = options.map((o) => o.replace(POSITION_WORDS, "").replace(/\s+/g, "").trim());
+  return stripped.every((s) => s === stripped[0]);
+}
+
 /** itemName: 물건 이름(예: "안경·선글라스"). 가운뎃점 앞만 쓴다("이 안경에 ..."). 없으면 "이 물건" */
 export function questionFor(feature: AiFeature, itemName?: string | null): string {
   const tail = TEMPLATES[feature.key];
@@ -51,6 +150,18 @@ export const PRESET_DISTRACTORS: Record<string, string[]> = {
   scratch: ["왼쪽 위 모서리", "오른쪽 아래 모서리", "뒷면 가운데", "옆면 버튼 근처", "앞면 위쪽"],
   contents: ["교통카드 한 장", "현금과 영수증", "학생증과 카드 두 장", "립밤과 이어폰", "열쇠 하나"],
   pattern: ["체크 무늬", "줄무늬", "꽃무늬 장식", "금속 로고 장식", "작은 별 무늬"],
+  brand: [
+    "Samsung",
+    "Sony",
+    "Xiaomi",
+    "Nike",
+    "Adidas",
+    "삼성 (Samsung)",
+    "애플 (Apple)",
+    "소니 (Sony)",
+    "샤오미 (Xiaomi)",
+    "나이키 (Nike)",
+  ],
   other: [
     "이름 라벨이 붙어 있음",
     "모서리가 찌그러짐",
@@ -59,6 +170,11 @@ export const PRESET_DISTRACTORS: Record<string, string[]> = {
     "끈이 달려 있음",
   ],
 };
+
+/** 브랜드 질문 문구. 특징이 적은 물건의 객관식에서 흠집 대신 묻는다 (10/31 사칭 평가) */
+export function brandQuestionFor(itemName?: string | null): string {
+  return `이 ${itemName?.split("·")[0]?.trim() || "물건"}의 브랜드는 무엇인가요?`;
+}
 
 /** 색 질문 문구 */
 export function colorQuestionFor(itemName?: string | null): string {

@@ -1,6 +1,6 @@
 import type { AiFeature, FeatureComparison, MatchResult } from "@chajeumpyo/shared";
-import { PASS_MATCH_RATIO } from "./policy";
-import { isAskable, isMemorable } from "./questions";
+import { MIN_FEATURES_FOR_INSTANT_PASS, PASS_MATCH_RATIO } from "./policy";
+import { isAskable, isGenericFeature, isMemorable } from "./questions";
 
 export type Judgment = {
   result: MatchResult;
@@ -9,8 +9,10 @@ export type Judgment = {
   contradictions: number;
   /** 색·브랜드가 다른 개수. 바로 통과만 막고, 이것만으로는 실패시키지 않는다 (10/31 실사용 영상) */
   softContradictions: number;
-  /** BORDERLINE일 때 질문할 습득물 특징 */
+  /** BORDERLINE일 때 질문할 습득물 특징. 바로 통과를 막았는데 물을 특징이 없으면 null(색·브랜드만 묻는다) */
   questionFeature: AiFeature | null;
+  /** 비율은 넘었지만 특징이 적거나 흔한 특징만 맞아 바로 통과 대신 객관식으로 보낸 경우 (10/31 사칭 평가) */
+  passBlocked: boolean;
 };
 
 /**
@@ -28,6 +30,9 @@ export type Judgment = {
  * - 습득물 설명에서 맞힌 특징(storedKey "description")은 맞힌 개수에는 들지만 바로 통과 비율에는 들지 않는다.
  * - 물어볼 특징이 없으면(남은 특징이 습득자 설명에서 나온 것뿐 등) 맞힌 것만 있고 모순이 없을 때 통과, 아니면 실패.
  * - 습득물에 특징이 하나도 없으면 아무도 통과할 수 없다 (open-issues #17, 미결)
+ * - 바로 통과는 사진 특징이 MIN_FEATURES_FOR_INSTANT_PASS(2) 이상이고, 흠집·무늬처럼 누구나 말할 수 있는 특징 말고
+ *   다른 특징을 하나 이상 맞혔을 때만 (10/31 사칭 평가: 흠집 하나뿐인 에어팟을 "스크래치 조금"으로 바로 통과).
+ *   그렇지 않으면 객관식으로 보낸다. 질문은 흠집 위치보다 잘 아는 특징·색·브랜드를 먼저 묻는다(claims.ts buildQuiz).
  */
 export function judge(
   comparison: FeatureComparison,
@@ -45,12 +50,16 @@ export function judge(
   const storedKeys = new Set(storedFeatures.map((f) => f.key));
   const matchedStored = [...matchedKeys].filter((k) => storedKeys.has(k as AiFeature["key"])).length;
   const ratio = storedKeys.size > 0 ? matchedStored / storedKeys.size : 0;
+  let passBlocked = false;
   if (contradictions === 0 && softContradictions === 0 && matches > 0 && ratio >= PASS_MATCH_RATIO) {
-    return { result: "PASS", matches, contradictions, softContradictions, questionFeature: null };
+    const specific = storedFeatures.some((f) => matchedKeys.has(f.key) && !isGenericFeature(f));
+    if (storedFeatures.length >= MIN_FEATURES_FOR_INSTANT_PASS && specific)
+      return { result: "PASS", matches, contradictions, softContradictions, questionFeature: null, passBlocked };
+    passBlocked = true;
   }
 
   if (matches === 0 && contradictions > 0) {
-    return { result: "FAIL", matches, contradictions, softContradictions, questionFeature: null };
+    return { result: "FAIL", matches, contradictions, softContradictions, questionFeature: null, passBlocked };
   }
 
   const mentioned = new Set(reportedKeys);
@@ -62,13 +71,18 @@ export function judge(
     list.find((f) => !matchedKeys.has(f.key));
   // 흠집·무늬는 주인도 잘 모른다: 잘 아는 특징에서 먼저 고르고, 없을 때만 묻는다 (10/31 기획 피드백)
   let questionFeature = pick(askable.filter(isMemorable)) ?? pick(askable.filter((f) => !isMemorable(f))) ?? null;
+  // 바로 통과를 막았으면 맞힌 특징이라도 잘 아는 것을 다시 묻는다. 흠집뿐이면 특징 대신 색·브랜드를 묻는다(questionFeature null)
+  if (passBlocked && (!questionFeature || !isMemorable(questionFeature)))
+    questionFeature = askable.find(isMemorable) ?? null;
   // 특징은 다 맞혔는데 색·브랜드만 달랐으면 바로 통과 대신 객관식으로 한 번 더 본다(색 질문이 함께 나간다)
   if (!questionFeature && matches > 0 && contradictions === 0 && softContradictions > 0)
     questionFeature = askable.find(isMemorable) ?? askable[0] ?? null;
+  if (passBlocked)
+    return { result: "BORDERLINE", matches, contradictions, softContradictions, questionFeature, passBlocked };
   if (!questionFeature) {
     // 물어볼 것이 없으면 특징으로만 정한다. 색·브랜드 차이만으로 실패시키지 않는다
     const result = matches > 0 && contradictions === 0 ? "PASS" : "FAIL";
-    return { result, matches, contradictions, softContradictions, questionFeature: null };
+    return { result, matches, contradictions, softContradictions, questionFeature: null, passBlocked };
   }
-  return { result: "BORDERLINE", matches, contradictions, softContradictions, questionFeature };
+  return { result: "BORDERLINE", matches, contradictions, softContradictions, questionFeature, passBlocked };
 }

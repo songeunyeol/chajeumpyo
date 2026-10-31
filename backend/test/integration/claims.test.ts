@@ -236,13 +236,31 @@ describe("기준 4. 경계 판정은 신고에 적지 않은 특징으로 질문
     expect(res.body.question).not.toContain("고양이");
   });
 
-  it("적지 않은 특징이 없고 일치가 있으면 모순된 특징을 객관식으로 다시 묻는다 (10/29 평가)", async () => {
+  it("적지 않은 특징이 없고 일치가 있으면 객관식으로 다시 확인한다 (10/29 평가). 위치만 다른 흠집 보기는 다른 질문이 없을 때만 (10/31 검증 2)", async () => {
     const it1 = await item({ features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "오른쪽 아래 긁힘")] });
     const r = await newReport({ features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "왼쪽 위 긁힘")] });
     const res = await claim(r, it1.id);
     expect(res.body.result).toBe("BORDERLINE");
-    expect(res.body.question).toMatch(/흠집은 어느 쪽에 있나요/);
-    expect(res.body.questions[0].options).toContain("오른쪽 아래 긁힘");
+    // 이미 맞힌 스티커는 다시 묻지 않고, 색·브랜드를 먼저 묻는다
+    const texts = res.body.questions.map((q: { text: string }) => q.text).join(" ");
+    expect(texts).not.toMatch(/스티커/);
+    expect(texts).not.toMatch(/흠집은 어느 쪽에 있나요/);
+
+    // 다른 질문을 만들 수 없으면(색·브랜드 없음) 그때 흠집 위치를 묻는다
+    const it2 = await item({
+      color: null,
+      brand: null,
+      features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "오른쪽 아래 긁힘")],
+    });
+    const r2 = await newReport(
+      { features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "왼쪽 위 긁힘")] },
+      token,
+      "곰돌이 스티커, 왼쪽 위 긁힘",
+    );
+    const res2 = await claim(r2, it2.id);
+    expect(res2.body.result).toBe("BORDERLINE");
+    expect(res2.body.question).toMatch(/흠집은 어느 쪽에 있나요/);
+    expect(res2.body.questions[0].options).toContain("오른쪽 아래 긁힘");
   });
 
   it("적지 않은 특징이 없고 일치도 없이 모순만 있으면 바로 실패 (10/31 B안)", async () => {
@@ -400,17 +418,17 @@ describe("후보가 바뀌어도 보여 준 물건에는 판정할 수 있다 (�
     expect(await prisma.candidateExposure.count({ where: { lostReportId: r, foundItemId: hidden.id } })).toBe(0);
   });
 
-  it("보여 준 적 있어도 지금 범위를 벗어나면(수령됨·기한 지남) 403", async () => {
+  it("보여 준 적 있어도 지금 범위를 벗어나면 확인할 수 없다: 수령됨 409, 기한 지남 410 (10/31 검증: 403 대신 이유를 알린다)", async () => {
     const gone = await fartherItem();
     const expired = await fartherItem();
     const r = await newReport({ features: [feature("sticker", "곰돌이 스티커")] });
     expect(await candidateIds(r)).toEqual(expect.arrayContaining([gone.id, expired.id]));
     await prisma.foundItem.update({ where: { id: gone.id }, data: { status: "CLAIMED" } });
     await prisma.foundItem.update({ where: { id: expired.id }, data: { expiresAt: hoursAgo(0.1) } });
-    for (const id of [gone.id, expired.id]) {
-      const res = await claim(r, id);
-      expect(res.status).toBe(403);
-    }
+    expect((await claim(r, gone.id)).body.error.code).toBe("ALREADY_CLAIMED");
+    const res = await claim(r, expired.id);
+    expect(res.status).toBe(410);
+    expect(res.body.error.code).toBe("ITEM_CLOSED");
   });
 });
 
@@ -1062,5 +1080,387 @@ describe("특징 대조 시간 제한 (10/31 실사진 평가: 차례로 부르�
     const r = await newReport({ features: [{ key: "sticker", value: "곰돌이 스티커" }] });
     await claim(r, it1.id);
     expect(seen).toBe(env.CLAIM_AI_CALL_TIMEOUT_MS);
+  });
+});
+
+describe("10/31 사칭 평가: 흔한 특징만 맞거나 특징이 적으면 바로 통과하지 않는다", () => {
+  // 실제 Gemini 평가에서 사칭이 바로 통과한 물건: 사진 특징이 흠집 하나뿐인 흰색 에어팟
+  const AIRPODS = {
+    color: "WHITE",
+    brand: "Apple",
+    features: [{ key: "scratch" as const, value: "표면 미세한 흠집" }],
+    description: "흰색 에어팟 프로 무선 이어폰 충전 케이스",
+  };
+  type Verdict = "MATCH" | "CONTRADICT" | "UNKNOWN";
+  /** 대조 결과를 테스트가 정한다(실제 AI처럼 "스크래치 조금" ↔ "표면 미세한 흠집"을 맞다고 본다) */
+  function useComparison(features: { reportedKey: string; storedKey: string | null; verdict: Verdict }[]) {
+    setAiClient({
+      ...mockAiClient,
+      extractLostReport: async (description) => ({
+        category: "EARPHONE",
+        color: null,
+        brand: null,
+        features: [],
+        description,
+        ...nextExtraction,
+      }),
+      compareFeatures: async () => ({ color: "MATCH", brand: "UNKNOWN", features }) as never,
+    });
+  }
+  const quizOfAttempt = async (attemptId: string) => {
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: attemptId } });
+    return (a.matchedFields as { quiz: { featureKey: string; text: string; options: string[] }[] }).quiz ?? [];
+  };
+
+  it('사칭 "흰색 무선 이어폰, 스크래치 조금, 케이스 있음"은 객관식으로 가고, 흠집보다 브랜드를 먼저 묻는다', async () => {
+    useComparison([{ reportedKey: "scratch", storedKey: "scratch", verdict: "MATCH" }]);
+    const it1 = await item(AIRPODS);
+    const r = await newReport(
+      { color: "WHITE", features: [feature("scratch", "스크래치 조금"), feature("case", "케이스 있음")] },
+      token,
+      "흰색 무선 이어폰이에요. 스크래치가 조금 있고 케이스가 있어요.",
+    );
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const quiz = await quizOfAttempt(res.body.attemptId);
+    expect(quiz[0]?.featureKey).toBe("brand");
+    expect(quiz[0]?.text).toContain("브랜드");
+    // 이미 맞힌 색은 다시 묻지 않고, 흠집은 많아야 하나
+    expect(quiz.filter((q) => q.featureKey === "color")).toHaveLength(0);
+    expect(quiz.filter((q) => q.featureKey === "scratch").length).toBeLessThanOrEqual(1);
+  });
+
+  it("같은 물건의 진짜 주인은 객관식을 맞혀 통과한다", async () => {
+    useComparison([{ reportedKey: "scratch", storedKey: "scratch", verdict: "MATCH" }]);
+    const it1 = await item(AIRPODS);
+    const r = await newReport(
+      { color: "WHITE", features: [feature("scratch", "케이스 앞쪽에 콕 찍힌 자국")] },
+      token,
+      "흰색 에어팟 프로예요. 케이스 앞쪽에 콕 찍힌 자국이 있어요.",
+    );
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const pass = await choose(res.body.attemptId, await correctChoices(res.body.attemptId));
+    expect(pass.body.result).toBe("PASS");
+  });
+
+  it("흠집·무늬처럼 누구나 말할 수 있는 특징만 맞으면 특징이 둘이어도 바로 통과하지 않는다", async () => {
+    useComparison([
+      { reportedKey: "scratch", storedKey: "scratch", verdict: "MATCH" },
+      { reportedKey: "pattern", storedKey: "pattern", verdict: "MATCH" },
+    ]);
+    const it1 = await item({
+      ...AIRPODS,
+      features: [feature("scratch", "모서리 긁힘"), feature("pattern", "체크 무늬")],
+    });
+    const r = await newReport({ color: "WHITE" }, token, "흰색 이어폰, 긁힘 있고 체크 무늬예요");
+    expect((await claim(r, it1.id)).body.result).toBe("BORDERLINE");
+  });
+
+  it("특징이 많은 물건은 구체적인 특징을 맞힌 주인이 지금처럼 바로 통과한다", async () => {
+    useComparison([
+      { reportedKey: "sticker", storedKey: "sticker", verdict: "MATCH" },
+      { reportedKey: "keyring", storedKey: "keyring", verdict: "MATCH" },
+      { reportedKey: "scratch", storedKey: "scratch", verdict: "MATCH" },
+    ]);
+    const it1 = await item();
+    const r = await newReport({ color: "WHITE", features: ALL_RIGHT });
+    expect((await claim(r, it1.id)).body.result).toBe("PASS");
+  });
+});
+
+describe("10/31 사칭 평가: 찍기 객관식은 서로 다른 질문으로, 흐린 썸네일로 알 수 있는 것은 묻지 않는다", () => {
+  const quizOfAttempt = async (attemptId: string) => {
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: attemptId } });
+    return (a.matchedFields as { quiz: { featureKey: string; text: string; options: string[] }[] }).quiz ?? [];
+  };
+
+  it("같은 종류의 특징이 여러 개여도 같은 질문을 되풀이하지 않는다 (슈나우저 키링)", async () => {
+    const it1 = await item({
+      category: "ETC",
+      color: "GRAY",
+      brand: null,
+      features: [
+        feature("other", "회색 털 질감"),
+        feature("other", "검정 코"),
+        feature("other", "빨간 리본 장식"),
+        feature("keyring", "은색 고리"),
+      ],
+    });
+    const r = await newReport({ features: [] }, token, "인형 키링 잃어버렸어요");
+    const res = await claim(r, it1.id);
+    if (res.body.result === "BORDERLINE") {
+      const quiz = await quizOfAttempt(res.body.attemptId);
+      const texts = quiz.map((q) => q.text);
+      expect(new Set(texts).size).toBe(texts.length);
+      const sets = quiz.map((q) => [...q.options].sort().join("|"));
+      expect(new Set(sets).size).toBe(sets.length);
+    } else expect(res.body.result).toBe("NEED_MORE");
+  });
+
+  it("찍기에서는 본체 색·뚜껑 색·모양·무늬를 묻지 않는다 (핸드크림 뚜껑 색, 키링 강아지 모양)", async () => {
+    const it1 = await item({
+      color: "BLUE",
+      brand: null,
+      features: [
+        feature("case", "흰색 뚜껑"),
+        feature("other", "강아지 모양"),
+        feature("pattern", "물결 무늬"),
+        feature("sticker", "곰돌이 스티커"),
+        feature("keyring", "고양이 키링"),
+      ],
+    });
+    const r = await newReport({ features: [] }, token, "파란 이어폰 잃어버렸어요");
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const keys = (await quizOfAttempt(res.body.attemptId)).map((q) => q.featureKey);
+    expect(keys).not.toContain("color");
+    expect(keys).not.toContain("case");
+    expect(keys).not.toContain("pattern");
+    expect(keys).not.toContain("other");
+    expect(keys).toEqual(expect.arrayContaining(["sticker", "keyring"]));
+  });
+
+  it("서로 다른 질문을 두 개 못 만들면 찍기를 내지 않고 근거 부족(기회 그대로)", async () => {
+    const it1 = await item({ color: "BLUE", brand: null, features: [feature("other", "강아지 모양")] });
+    const r = await newReport({ features: [] }, token, "파란 이어폰 잃어버렸어요");
+    expect((await claim(r, it1.id)).body).toMatchObject({ result: "NEED_MORE", attemptsLeft: 3 });
+  });
+
+  it("맞힌 특징이 있는 주인에게는 지금처럼 뚜껑 색 같은 큰 특징도 묻는다", async () => {
+    const it1 = await item({
+      color: "BLUE",
+      brand: null,
+      features: [feature("sticker", "곰돌이 스티커"), feature("case", "흰색 뚜껑"), feature("keyring", "고양이 키링")],
+    });
+    const r = await newReport({ features: [feature("sticker", "곰돌이 스티커")] }, token, "곰돌이 스티커 붙은 이어폰");
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const keys = (await quizOfAttempt(res.body.attemptId)).map((q) => q.featureKey);
+    expect(keys.length).toBeLessThanOrEqual(2);
+    expect(keys).toEqual(expect.arrayContaining(["case"]));
+  });
+});
+
+describe("10/31 검증 1·2: 글자 조각·안쪽 글자·재질은 믿거나 묻지 않고, 맞힌 특징은 다시 묻지 않는다", () => {
+  const quizOfAttempt = async (attemptId: string) => {
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: attemptId } });
+    return (a.matchedFields as { quiz: { featureKey: string; text: string; options: string[] }[] }).quiz ?? [];
+  };
+  // 락앤락 로고를 "is"로 읽은 텀블러
+  const TUMBLER = {
+    color: "GRAY_SILVER",
+    brand: null,
+    features: [feature("text", "is 로고 글자"), feature("case", "베이지색 뚜껑"), feature("sticker", "고양이 스티커")],
+    description: "진회색 보온 텀블러, 베이지색 뚜껑",
+  };
+
+  it('텀블러: "locknlock 글씨"를 적은 주인은 "is" 조각 때문에 실패하지 않고, 질문에 그 조각이 나오지 않는다', async () => {
+    const it1 = await item(TUMBLER);
+    const r = await newReport(
+      { color: "GRAY_SILVER", features: [feature("text", "locknlock 글씨"), feature("case", "하얀 윗부분")] },
+      token,
+      "어두운 회색 보온병인데 locknlock 글씨가 있고 윗부분이 하얘요",
+    );
+    const res = await claim(r, it1.id);
+    expect(res.body.result).not.toBe("FAIL");
+    expect(JSON.stringify(res.body)).not.toMatch(/\bis\b/);
+  });
+
+  it("텀블러: 적어서 맞힌 뚜껑 색은 다시 묻지 않는다", async () => {
+    const it1 = await item(TUMBLER);
+    const r = await newReport(
+      { color: "GRAY_SILVER", features: [feature("case", "베이지색 뚜껑")] },
+      token,
+      "회색 텀블러, 베이지색 뚜껑",
+    );
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const keys = (await quizOfAttempt(res.body.attemptId)).map((q) => q.featureKey);
+    expect(keys).not.toContain("case");
+  });
+
+  it("흰색 ↔ 베이지 뚜껑은 모순으로 세지 않는다", async () => {
+    const it1 = await item(TUMBLER);
+    const r = await newReport({ features: [feature("case", "흰색 뚜껑")] }, token, "회색 텀블러에 흰 뚜껑");
+    const res = await claim(r, it1.id);
+    expect(res.body.result).not.toBe("FAIL");
+    expect(await prisma.matchAttempt.count({ where: { foundItemId: it1.id, result: "FAIL" } })).toBe(0);
+  });
+
+  it('안경다리 안쪽 "made in korea" 글자와 지갑의 가죽 질감·지퍼 포켓 위치는 질문으로 내지 않는다', async () => {
+    const glasses = await item({
+      color: "BLACK",
+      brand: null,
+      features: [
+        feature("text", "kkeulle made in korea"),
+        feature("other", "가죽 질감"),
+        feature("sticker", "별 스티커"),
+      ],
+    });
+    const r = await newReport({ features: [] }, token, "검은 안경 잃어버렸어요");
+    const res = await claim(r, glasses.id);
+    if (res.body.result === "BORDERLINE") {
+      const texts = (await quizOfAttempt(res.body.attemptId)).map((q) => q.text).join(" ");
+      expect(texts).not.toMatch(/글자/);
+      expect(texts).not.toMatch(/다른 특징/);
+    } else expect(res.body.result).toBe("NEED_MORE");
+  });
+});
+
+describe("10/31 검증: 보관이 끝난 물건은 확인·답·열람을 받지 않고 ITEM_CLOSED로 알린다", () => {
+  const closeItem = (id: string) =>
+    prisma.foundItem.update({
+      where: { id },
+      data: { status: "EXPIRED", closedAt: new Date(), closedReason: "MISREGISTERED" },
+    });
+
+  it("보던 물건을 관리자가 정리하면 확인 요청은 410 ITEM_CLOSED", async () => {
+    const it1 = await item();
+    const r = await newReport({ features: [] });
+    await closeItem(it1.id);
+    const res = await claim(r, it1.id);
+    expect(res.status).toBe(410);
+    expect(res.body.error.code).toBe("ITEM_CLOSED");
+    expect(res.body.error.message).toContain("교무처");
+  });
+
+  it("보여 준 적 없는 물건은 그대로 403", async () => {
+    const it1 = await item();
+    await closeItem(it1.id);
+    const r = await newReport({ features: [] });
+    expect((await claim(r, it1.id)).status).toBe(403);
+  });
+
+  it("질문을 받은 뒤 정리된 물건은 답을 받지 않는다: 실패도 통과도 남지 않는다", async () => {
+    const it1 = await item();
+    const r = await newReport({ features: [] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const right = await correctChoices(res.body.attemptId);
+    await closeItem(it1.id);
+    const ans = await choose(res.body.attemptId, right);
+    expect(ans.status).toBe(410);
+    expect(ans.body.error.code).toBe("ITEM_CLOSED");
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
+    expect(a.answerCorrect).toBeNull();
+  });
+
+  it("수령된 물건에 답하면 409 ALREADY_CLAIMED", async () => {
+    const it1 = await item();
+    const r = await newReport({ features: [] });
+    const res = await claim(r, it1.id);
+    await prisma.foundItem.update({ where: { id: it1.id }, data: { status: "CLAIMED" } });
+    const ans = await choose(res.body.attemptId, await correctChoices(res.body.attemptId));
+    expect(ans.status).toBe(409);
+    expect(ans.body.error.code).toBe("ALREADY_CLAIMED");
+  });
+
+  it("통과한 뒤 정리된 물건의 상세는 410 ITEM_CLOSED", async () => {
+    const it1 = await item();
+    const r = await newReport({ features: ALL_RIGHT.slice(0, 2) });
+    const res = await claim(r, it1.id);
+    if (res.body.result === "BORDERLINE") await choose(res.body.attemptId, await correctChoices(res.body.attemptId));
+    await closeItem(it1.id);
+    const detail = await request(app)
+      .get(`/api/v1/found-items/${it1.id}/detail`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(detail.status).toBe(410);
+    expect(detail.body.error.code).toBe("ITEM_CLOSED");
+  });
+});
+
+describe("10/31 사칭 평가: 정답이 같은 질문(글자 ↔ 브랜드)은 한 번만 낸다", () => {
+  it('글자 "atrix"와 브랜드 "atrix"를 둘 다 묻지 않는다', async () => {
+    const it1 = await item({
+      brand: "atrix",
+      features: [feature("text", "atrix 글자"), feature("sticker", "곰돌이 스티커"), feature("keyring", "고양이 키링")],
+    });
+    const r = await newReport({ features: [] }, token, "흰 이어폰 잃어버렸어요");
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
+    const quiz = (a.matchedFields as { quiz: { featureKey: string; options: string[]; answer: number }[] }).quiz;
+    const withAtrix = quiz.filter((q) => /atrix/i.test(q.options[q.answer] ?? ""));
+    expect(withAtrix.length).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("#18 2부: 브랜드가 확실히 다르면 틀린 특징으로 센다 (설정 CLAIM_BRAND_HARD_CONTRADICTION)", () => {
+  const MK = {
+    category: "EARPHONE" as const,
+    color: "PINK_MAGENTA",
+    brand: "MICHAEL KORS",
+    features: [feature("pattern", "MK 로고 모노그램 무늬"), feature("other", "금색 링 장식")],
+    description: "분홍색 MICHAEL KORS 반지갑, MK 로고 모노그램",
+  };
+  function useBrandDifferent() {
+    setAiClient({
+      ...mockAiClient,
+      extractLostReport: async (description) => ({
+        category: "EARPHONE",
+        color: null,
+        brand: null,
+        features: [],
+        description,
+        ...nextExtraction,
+      }),
+      compareFeatures: async () =>
+        ({ color: "CONTRADICT", brand: "CONTRADICT", brandCheck: "DIFFERENT", features: [] }) as never,
+    });
+  }
+  it("켜면: 나이키라고 적은 사칭은 바로 실패", async () => {
+    const before = env.CLAIM_BRAND_HARD_CONTRADICTION;
+    env.CLAIM_BRAND_HARD_CONTRADICTION = true;
+    try {
+      useBrandDifferent();
+      const it1 = await item(MK);
+      const r = await newReport(
+        { color: "BLUE_TEAL", brand: "나이키" },
+        token,
+        "파란색 나일론 지갑이에요. 나이키 로고가 있어요.",
+      );
+      expect((await claim(r, it1.id)).body.result).toBe("FAIL");
+    } finally {
+      env.CLAIM_BRAND_HARD_CONTRADICTION = before;
+    }
+  });
+  it("끄면(기본): 브랜드 차이만으로는 실패하지 않는다", async () => {
+    expect(env.CLAIM_BRAND_HARD_CONTRADICTION).toBe(false);
+    useBrandDifferent();
+    const it1 = await item(MK);
+    const r = await newReport(
+      { color: "BLUE_TEAL", brand: "나이키" },
+      token,
+      "파란색 나일론 지갑이에요. 나이키 로고가 있어요.",
+    );
+    expect((await claim(r, it1.id)).body.result).not.toBe("FAIL");
+  });
+  it("켜도: AI가 같은 브랜드로 보면(키스미 ↔ Heroine Make) 실패가 아니다", async () => {
+    const before = env.CLAIM_BRAND_HARD_CONTRADICTION;
+    env.CLAIM_BRAND_HARD_CONTRADICTION = true;
+    try {
+      setAiClient({
+        ...mockAiClient,
+        extractLostReport: async (description) => ({
+          category: "EARPHONE",
+          color: null,
+          brand: null,
+          features: [],
+          description,
+          ...nextExtraction,
+        }),
+        compareFeatures: async () => ({ color: "UNKNOWN", brand: "MATCH", brandCheck: "SAME", features: [] }) as never,
+      });
+      const it1 = await item({
+        ...MK,
+        brand: "Heroine Make",
+        description: "키스미 히로인메이크 Heroine Make 아이라이너",
+      });
+      const r = await newReport({ brand: "키스미" }, token, "키스미 아이라이너");
+      expect((await claim(r, it1.id)).body.result).not.toBe("FAIL");
+    } finally {
+      env.CLAIM_BRAND_HARD_CONTRADICTION = before;
+    }
   });
 });

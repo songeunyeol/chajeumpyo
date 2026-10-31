@@ -11,6 +11,8 @@ export const QUIZ_QUESTIONS = 2;
  * 진짜 주인은 사진을 떠올려 답할 수 있지만, 찍는 사람은 질문이 늘수록 급격히 어려워진다.
  */
 export const QUIZ_QUESTIONS_NO_EVIDENCE = 3;
+/** 찍기에서 서로 다른 질문이 이보다 적으면 내지 않고 특징을 더 적게 한다(근거 부족). 둘이면 찍어서 맞힐 확률 1/16 (10/31 사칭 평가) */
+export const MIN_GUESS_QUESTIONS = 2;
 
 /** 모든 질문을 찍어서 맞힐 확률. 질문이 없으면 1 */
 export function guessProbability(quiz: QuizQuestion[]): number {

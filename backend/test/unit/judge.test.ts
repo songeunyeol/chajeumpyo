@@ -1,6 +1,45 @@
 import type { AiFeature, FeatureComparison } from "@chajeumpyo/shared";
 import { describe, expect, it } from "vitest";
 import { judge } from "../../src/matching/judge";
+import {
+  isGenericFeature,
+  isInnerText,
+  isPositionOnly,
+  isQuizable,
+  isThumbnailVisible,
+  isUntrustedFragment,
+} from "../../src/matching/questions";
+
+describe("특징 분류 (10/31 사칭 평가·검증 1·2)", () => {
+  const f = (key: AiFeature["key"], value: string) => ({ key, value }) as AiFeature;
+  it("글자 조각: 영어 기능어는 늘, 3글자 이하는 설명에 없을 때만 믿지 않는다", () => {
+    expect(isUntrustedFragment(f("text", "is 로고 글자"), "진회색 텀블러")).toBe(true);
+    expect(isUntrustedFragment(f("text", "in"), null)).toBe(true);
+    expect(isUntrustedFragment(f("text", "KGB 이니셜 자수"), "뒷면에 KGB 이니셜 자수")).toBe(false);
+    expect(isUntrustedFragment(f("text", "KGB 이니셜 자수"), "초록 필통")).toBe(true);
+    expect(isUntrustedFragment(f("text", "Heroine Make 문구"), null)).toBe(false);
+    expect(isUntrustedFragment(f("sticker", "is"), null)).toBe(false);
+  });
+  it("안쪽 작은 글자와 재질·구조는 묻지 않는다", () => {
+    expect(isInnerText(f("text", "kkeulle made in korea"))).toBe(true);
+    expect(isInnerText(f("text", "안쪽에 J.H 각인"))).toBe(false);
+    expect(isQuizable(f("other", "가죽 질감"))).toBe(false);
+    expect(isQuizable(f("other", "지퍼 포켓 위치"))).toBe(false);
+    expect(isQuizable(f("other", "빨간 리본 장식"))).toBe(true);
+    expect(isGenericFeature(f("other", "가죽 질감"))).toBe(true);
+  });
+  it("썸네일로 보이는 것: 큰 부분 색·모양·무늬", () => {
+    expect(isThumbnailVisible(f("case", "흰색 뚜껑"))).toBe(true);
+    expect(isThumbnailVisible(f("other", "강아지 모양"))).toBe(true);
+    expect(isThumbnailVisible(f("pattern", "레이스 문양"))).toBe(true);
+    expect(isThumbnailVisible(f("sticker", "곰돌이 스티커"))).toBe(false);
+    expect(isThumbnailVisible(f("case", "VOVA 로고 케이스"))).toBe(false);
+  });
+  it("위치만 다른 보기", () => {
+    expect(isPositionOnly(["상단 지퍼 포켓", "하단 지퍼 포켓", "측면 지퍼 포켓", "중앙 지퍼 포켓"])).toBe(true);
+    expect(isPositionOnly(["곰돌이 스티커", "토끼 스티커", "별 스티커", "하트 스티커"])).toBe(false);
+  });
+});
 
 const stored: AiFeature[] = [
   { key: "sticker", value: "곰돌이 스티커" },
@@ -53,5 +92,37 @@ describe("판정 규칙 (10/31 B안)", () => {
   });
   it("맞힌 것도 모순도 없으면 객관식(찍기)", () => {
     expect(run(cmp(null, null))).toBe("BORDERLINE");
+  });
+});
+
+describe('바로 통과 조건 (10/31 사칭 평가: 흠집 하나뿐인 에어팟을 "스크래치 조금"으로 바로 통과)', () => {
+  const match = (...keys: string[]) =>
+    ({
+      color: "MATCH",
+      brand: "UNKNOWN",
+      features: keys.map((k) => ({ reportedKey: k, storedKey: k, verdict: "MATCH" })),
+    }) as FeatureComparison;
+  it("사진 특징이 흠집 하나뿐이면 맞혀도 객관식, 잘 아는 특징이 없으면 색·브랜드로 묻는다(questionFeature null)", () => {
+    const only: AiFeature[] = [{ key: "scratch", value: "표면 미세한 흠집" }];
+    const j = judge(match("scratch"), only, ["scratch"], only);
+    expect(j.result).toBe("BORDERLINE");
+    expect(j.passBlocked).toBe(true);
+    expect(j.questionFeature).toBeNull();
+  });
+  it("특징이 하나뿐이면 구체적인 특징이어도 바로 통과하지 않고 그 특징을 다시 묻는다", () => {
+    const only: AiFeature[] = [{ key: "sticker", value: "곰돌이 스티커" }];
+    const j = judge(match("sticker"), only, ["sticker"], only);
+    expect(j.result).toBe("BORDERLINE");
+    expect(j.questionFeature?.key).toBe("sticker");
+  });
+  it("값이 사용 흔적이면 다른 종류로 저장돼도 흔한 특징으로 본다", () => {
+    const two: AiFeature[] = [
+      { key: "scratch", value: "뒷면 긁힘" },
+      { key: "other", value: "모서리 까짐" },
+    ];
+    expect(judge(match("scratch", "other"), two, ["scratch", "other"], two).result).toBe("BORDERLINE");
+  });
+  it("구체적인 특징을 하나 이상 맞히고 특징이 둘 이상이면 지금처럼 바로 통과", () => {
+    expect(judge(match("sticker", "scratch"), stored, ["sticker", "scratch"], stored).result).toBe("PASS");
   });
 });
