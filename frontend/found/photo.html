@@ -54,8 +54,8 @@
   <h1>물건 사진을 올려 주세요</h1>
   <p class="lead">물건이 잘 보이게 찍어 주세요.</p>
 
-  <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
-  <input type="file" id="albumInput" accept="image/*" hidden>
+  <input type="file" id="cameraInput" accept="image/*,.heic,.heif" capture="environment" hidden>
+  <input type="file" id="albumInput" accept="image/*,.heic,.heif" hidden>
 
   <div class="upload-box is-picker" id="uploadBox" aria-label="분실물 사진">
     <div class="upload-empty">
@@ -134,6 +134,7 @@
 </main>
 <script src="api.js"></script>
 <script src="captcha.js"></script>
+<script src="heic.js"></script>
 <script>
   // 동의 화면을 거치지 않았으면 동의부터 (주소로 바로 들어오거나 앞으로 가기로 온 경우)
   function guardPhoto() {
@@ -164,7 +165,8 @@
   let photoReady = false;
 
   function setUploadedFile(file) {
-    if (!file.type.startsWith("image/")) {
+    // HEIC는 안드로이드·PC에서 형식이 비어 오기도 해서 확장자로도 받는다
+    if (!file.type.startsWith("image/") && !FoundHeic.looksHeic(file)) {
       resetToUploadBox();
       showCaptchaNote("사진 파일만 올릴 수 있어요.");
       return;
@@ -201,7 +203,15 @@
       }
       updateNext();
     };
-    img.onerror = () => {
+    img.onerror = async () => {
+      // 브라우저가 못 읽은 HEIC(크롬·안드로이드·PC)는 JPEG로 바꿔 다시 처음부터 넣는다
+      if (await FoundHeic.isHeic(file)) {
+        showCaptchaNote("아이폰 사진(HEIC)을 바꾸고 있어요. 잠시만요.");
+        try {
+          setUploadedFile(await FoundHeic.toJpeg(file));
+          return;
+        } catch (_) {}
+      }
       resetToUploadBox();
       showCaptchaNote("사진을 읽지 못했어요. 다른 사진으로 다시 골라 주세요.");
     };

@@ -31,6 +31,7 @@ const SHELL = [
   "/icons/apple-touch-icon.png",
   "/found/api.js",
   "/found/captcha.js",
+  "/found/heic.js",
   "/found/consent.html",
   "/found/photo.html",
   "/found/uploading.html",
