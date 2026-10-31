@@ -7,6 +7,7 @@ import {
   type HotspotResponse,
   type ReportHotspot,
 } from "@chajeumpyo/shared";
+import { demoEnabled } from "../config/env";
 import { AppError } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
@@ -313,7 +314,8 @@ export async function hotspots(query: HotspotQuery, now = new Date()): Promise<H
     WHERE u.role <> 'DEMO' AND r.deleted_at IS NULL AND r.created_at >= ${start} AND r.created_at < ${end}`;
 
   const real = all.filter((r) => !r.isSeed);
-  const isSeedData = real.length === 0 && all.length > 0;
+  // 실제 데이터가 없을 때 시드로 보여 주는 건 체험·시연이 켜져 있을 때만
+  const isSeedData = demoEnabled && real.length === 0 && all.length > 0;
   return computeHotspots(range, isSeedData ? all : real, reports, real, isSeedData);
 }
 

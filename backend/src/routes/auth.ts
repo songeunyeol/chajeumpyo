@@ -12,6 +12,7 @@ import {
 import { Router } from "express";
 import { getAuth, requireMember } from "../middlewares/auth";
 import { CAPTCHA_ACTIONS, requireCaptcha } from "../middlewares/captcha";
+import { requireDemoEnabled } from "../middlewares/demo";
 import { ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
@@ -162,6 +163,7 @@ export function createAuthRouter() {
 
   router.post(
     "/auth/demo",
+    requireDemoEnabled,
     demoLimit,
     requireCaptcha(CAPTCHA_ACTIONS.demoLogin),
     validate("body", DemoLoginRequest),

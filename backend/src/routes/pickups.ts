@@ -9,6 +9,7 @@ import {
 } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { getAuth, requireAdmin, requireMember } from "../middlewares/auth";
+import { requireDemoEnabled } from "../middlewares/demo";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import { adminAlertSafely, alertPickupScheduled } from "../services/admin-alerts";
@@ -130,6 +131,7 @@ export function createPickupsRouter() {
 
   router.post(
     "/found-items/:id/demo-pickup",
+    requireDemoEnabled,
     requireMember(),
     validate("params", FoundItemIdParams),
     async (_req, res) => {

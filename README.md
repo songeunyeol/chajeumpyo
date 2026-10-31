@@ -3,7 +3,7 @@
 > 사진 한 장으로 등록하고, 주인만 아는 특징으로 찾아가는 서경대 캠퍼스 분실물 서비스
 
 - **운영 중인 서비스**: https://chajeumpyo.onrender.com
-- **바로 체험하기**: [체험 안내](https://chajeumpyo.onrender.com/guide.html). 가입 없이 체험 계정과 시연용 물건 14개로 습득자·분실자·관리자 흐름을 모두 써 볼 수 있습니다.
+- **써 보기**: [서비스 소개](https://chajeumpyo.onrender.com/guide.html). 주운 사람 등록은 가입 없이 바로 할 수 있고, 분실자·관리자 흐름은 **심사용 계정(제출 양식에 기재)**으로 확인합니다.
 - **공모전**: 소웨X전컴 2026 공모전, 주제 "불편이 문제가 되기 전에 AI 기반 캠퍼스 문제 탐지·예측·해결 서비스"
   - 주제를 "분실물 하나가 더 큰 문제(개인정보 노출·사칭·주인을 못 찾음·기록 없음)가 되기 전에"로 풀었습니다.
   - **탐지**: 공개 전에 사진 속 신분증·얼굴을 서버에서 찾아 가리고, 귀중품을 알아봐 보관처를 추천하고, 주인이 아닌 사람(사칭)을 특징 대조로 걸러 냅니다.
@@ -130,11 +130,11 @@ flowchart LR
 ├── backend/              # Express API 서버
 │   ├── prisma/           # DB 스키마, 마이그레이션, 시드 데이터(건물·보관처)
 │   ├── models/           # 서버 안 가리기용 ONNX 모델
-│   ├── scripts/          # 관리자 만들기, 체험 시드, 평가 스크립트(eval:*)
+│   ├── scripts/          # 관리자·계정 만들기, 체험 시드(현재 꺼짐), 평가 스크립트(eval:*)
 │   ├── src/              # routes → services → repositories, ai/, matching/, privacy/
 │   └── test/             # 단위·통합 테스트 (Vitest, 실제 PostgreSQL)
 ├── packages/shared/      # 화면·서버가 함께 쓰는 zod 스키마와 타입 (API 계약)
-├── frontend/             # 화면 (습득자 found/, 분실자 lost/, 관리자 admin/, 체험 안내 guide.html)
+├── frontend/             # 화면 (습득자 found/, 분실자 lost/, 관리자 admin/, 서비스 소개 guide.html)
 ├── docs/                 # 결과보고서, 설계·보안·평가 문서, docs/api/openapi.json
 │   └── spec/             # 기능명세서, ERD, API명세서
 └── qa/                   # QA 통과 기준
@@ -150,7 +150,7 @@ npm install                    # 워크스페이스 전체 설치 + Prisma 클�
 npm run db:up                  # PostgreSQL + pgvector (docker compose)
 npm run db:deploy -w backend   # 마이그레이션 적용
 npm run db:seed -w backend     # 건물·보관처
-npm run seed:demo -w backend   # 체험용 시드 물건 (선택)
+npm run seed:demo -w backend   # 체험용 시드 물건 (선택, DEMO_MODE=on일 때만 보임)
 npm run dev                    # http://localhost:4000 (화면과 API를 함께 제공)
 ```
 
@@ -184,7 +184,7 @@ npm run dev                    # http://localhost:4000 (화면과 API를 함께 
 - PR마다 GitHub Actions가 두 가지를 검사합니다. 둘 다 통과해야 머지합니다.
   - **키 유출 검사**: Gitleaks
   - **타입·린트·테스트**
-- 운영 배포 뒤에는 습득자·분실자·체험·관리자 흐름을 브라우저로 끝까지 눌러 보는 점검을 돌렸습니다.
+- 운영 배포 뒤에는 습득자·분실자·관리자 흐름을 브라우저로 끝까지 눌러 보는 점검을 돌렸습니다.
 
 ## 개인정보 원칙
 
@@ -194,7 +194,7 @@ npm run dev                    # http://localhost:4000 (화면과 API를 함께 
 - **공개 사진**: 후보에는 흐린 사진만 보여 줍니다. 주인 확인을 통과해야 민감 영역을 흐린 사진이 열립니다. 카드류는 공개 사진 전체를 흐립니다.
 - **위치**: 건물 단위로만 저장합니다. 사진의 위치 정보(EXIF)는 지웁니다. 층과 자세한 위치는 확인을 통과한 사람에게만 보입니다. 습득자 물건 설명은 공개하지 않고, 전화번호·학번 같은 숫자는 저장 전에 지웁니다.
 - **숨은 특징**: 서버에서만 비교하고 화면으로 보내지 않습니다.
-- **보관 기간**: 수령되면 사진과 비공개 정보를 바로 지웁니다. 수령되지 않은 물건은 30일 뒤 지웁니다. 분실 신고와 일반 계정의 삭제 정책은 운영 전에 정합니다(지금은 체험 계정만 24시간 뒤 지웁니다).
+- **보관 기간**: 수령되면 사진과 비공개 정보를 바로 지웁니다. 수령되지 않은 물건은 30일 뒤 지웁니다. 분실 신고와 일반 계정의 삭제 정책은 운영 전에 정합니다(체험 계정은 24시간 뒤 지웁니다. 체험 모드는 10/31부터 꺼져 있습니다).
 - **키**: 서버 환경변수에만 둡니다.
 
 자세한 내용은 [결과보고서 3.11](docs/결과보고서.md)과 [위협 모델](docs/security/THREAT-MODEL.md)에 있습니다.

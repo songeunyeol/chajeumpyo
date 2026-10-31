@@ -19,8 +19,7 @@
   <p class="note danger" id="error" role="alert" hidden></p>
   <div class="dock">
     <button type="submit" class="btn" id="submit" style="width:100%;cursor:pointer">로그인</button>
-    <button type="button" class="btn white" id="demoBtn" style="width:100%;cursor:pointer">시연으로 둘러보기</button>
-    <p class="note" style="text-align:center;margin-top:0">관리자 계정은 담당자가 따로 만들어 드려요. 시연에서 물건·수령 화면은 예시 데이터이고, 분실 다발(먼저 손볼 곳)은 서버가 실제 통계 코드로 계산해요.</p>
+    <p class="note" style="text-align:center;margin-top:0">관리자 계정은 담당자가 따로 만들어 드려요.</p>
   </div>
 </form>
 <script src="admin.js"></script>
@@ -37,11 +36,6 @@
   const error = document.getElementById("error");
   const submit = document.getElementById("submit");
   let busy = false;
-
-  document.getElementById("demoBtn").addEventListener("click", () => {
-    AdminApi.startDemo();
-    location.replace(next);
-  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
