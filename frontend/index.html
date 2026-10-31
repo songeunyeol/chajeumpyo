@@ -14,21 +14,6 @@
     --white: #ffffff;
   }
   * { box-sizing: border-box; }
-  .guide-link {
-    position: fixed;
-    top: max(12px, env(safe-area-inset-top));
-    right: clamp(16px, 5vw, 24px);
-    z-index: 2;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: var(--green);
-    color: var(--white);
-    font-size: 13px;
-    font-weight: 650;
-    text-decoration: none;
-    box-shadow: 0 2px 8px rgba(20, 56, 40, 0.18);
-  }
-  .guide-link:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
   html, body { margin: 0; height: 100%; }
   body { overflow-x: clip; }
   body {
@@ -220,7 +205,6 @@
         잃어버린 사람
       </a>
     </nav>
-    <a class="guide-link" href="guide.html">심사위원 체험 2분 →</a>
   </main>
   <script>
     document.documentElement.classList.add("js");

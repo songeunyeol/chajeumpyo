@@ -12,6 +12,7 @@ import {
 } from "@chajeumpyo/shared";
 import { Router } from "express";
 import { getAuth, requireAdmin } from "../middlewares/auth";
+import { requireDemoEnabled } from "../middlewares/demo";
 import { ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
@@ -198,10 +199,16 @@ export function createAdminRouter() {
     limit: 60,
     message: "요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
-  router.get("/demo/admin/stats/hotspots", demoLimit, validate("query", HotspotQuery), (_req, res) => {
-    const result: HotspotResponse = demoHotspots(res.locals.query);
-    res.json(result);
-  });
+  router.get(
+    "/demo/admin/stats/hotspots",
+    requireDemoEnabled,
+    demoLimit,
+    validate("query", HotspotQuery),
+    (_req, res) => {
+      const result: HotspotResponse = demoHotspots(res.locals.query);
+      res.json(result);
+    },
+  );
 
   return router;
 }
