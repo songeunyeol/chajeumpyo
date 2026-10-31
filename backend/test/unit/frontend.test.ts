@@ -34,6 +34,9 @@ describe("정적 화면", () => {
     expect((await request(app).get("/index.html")).headers.location).toBe("/");
     expect((await request(app).get("/found/consent.html")).headers.location).toBe("/found/consent");
     expect((await request(app).get("/lost/item?id=abc")).status).toBe(200);
+    // 없는 화면은 넘기지 않고 404
+    expect((await request(app).get("/no-such-page.html")).status).toBe(404);
+    expect((await request(app).get("/../package.html")).status).toBe(404);
   });
 
   it(".html 주소를 넘길 때 다른 사이트 주소를 만들지 않는다", async () => {
