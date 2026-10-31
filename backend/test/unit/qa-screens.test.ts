@@ -499,8 +499,10 @@ describe("QA 10/31: 그 자리에 둠은 자세한 위치 필수, 첫 화면 제
       "주인이 바로 찾을 수 있게 어디에 뒀는지 정확히 적어 주세요 (예: 3층 302호 뒤쪽 창가 책상 위)",
     );
     expect(register).toContain('id="locDetailErr" role="alert"');
-    expect(register).toMatch(/mode === "inplace" && locationDetail\.value\.trim\(\)\.length < LOC_DETAIL_MIN/);
-    expect(register).toContain("locationDetail.focus()");
+    expect(register).toMatch(
+      /if \(mode === "inplace"\) \{[\s\S]*?locationDetail\.value\.trim\(\)\.length < LOC_DETAIL_MIN/,
+    );
+    expect(register).toContain("focusField(locationDetail)");
     expect(register).toContain("const LOC_DETAIL_MIN = 4;");
   });
 
@@ -731,5 +733,20 @@ describe("분실 신고 종류 (QA 10/31 영상)", () => {
       expect(api).toContain(`["${w}", "ETC", "COSMETICS"]`);
     // "아이라이너 펜슬"이 펜(필기구)보다 먼저 걸린다
     expect(api.indexOf('["아이라이너"')).toBeLessThan(api.indexOf('["펜", "STATIONERY"]'));
+  });
+});
+
+describe("그 자리에 둠에서 빠진 칸은 글로 알려 준다 (10/31 팀 테스트: 건물을 안 고르면 눌러도 반응이 없어 보였다)", () => {
+  const register = read("frontend/found/register.html");
+
+  it("건물을 안 골랐으면 빨간 테두리만이 아니라 안내 문구를 보여 준다", () => {
+    expect(register).toContain('id="buildingErr" role="alert"');
+    expect(register).toContain("그 자리에 두면 주운 건물을 골라 주세요.");
+    expect(register).toContain("if (noBuilding) showBuildingErr();");
+  });
+
+  it("빠진 칸을 한 번에 알리고 첫 칸을 화면 가운데로 옮긴다", () => {
+    expect(register).toContain("focusField(noBuilding ? foundBuildingSelect : locationDetail);");
+    expect(register).toContain('el.scrollIntoView({ block: "center"');
   });
 });
