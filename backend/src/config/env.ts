@@ -87,6 +87,14 @@ const Env = z.object({
   SIGNUP_IP_LIMIT_PER_10MIN: z.coerce.number().int().positive().default(60),
   EMAIL_CODE_IP_LIMIT_PER_DAY: z.coerce.number().int().positive().default(300),
   /**
+   * 브랜드가 확실히 다르면(믿을 만한 저장 브랜드 + 다른 브랜드 이름 + AI도 관계없다고 함) 틀린 특징으로 센다 (10/31 검증 1, #18 2부).
+   * 진짜 주인 통과율을 실제 Gemini로 재기 전까지 기본은 끈다. 켜려면 "true"
+   */
+  CLAIM_BRAND_HARD_CONTRADICTION: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  /**
    * 앞단 프록시 신뢰 설정(express trust proxy). 숫자는 홉 수, true/false, 또는 IP·서브넷 목록.
    * Render는 프록시 한 겹이라 기본 1. 틀리면 req.ip가 프록시 IP가 돼 IP 기준 제한이 모두에게 같이 걸린다.
    */
