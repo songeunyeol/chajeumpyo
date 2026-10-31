@@ -15,31 +15,31 @@
   .captcha-area .captcha-label { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--ink); }
   .captcha-area #captchaBox { display: flex; justify-content: center; min-height: 65px; }
   .btn[aria-disabled="true"] { opacity: .45; }
-  /* 사진 올리기 버튼 하나 → 누르면 좌우로 갈라져 사진 찍기 · 앨범 중 고른다 (10/31 은열) */
-  .upload-box.is-picker { cursor: default; }
-  .upload-box.is-picker:hover { border-color: #c8bfb0; }
-  .pick { --split: cubic-bezier(0.34, 1.45, 0.64, 1); position: relative; display: grid; place-items: center; width: 100%; height: 132px; }
+  /* 사진 올리기 버튼 하나 → 누르면 좌우로 갈라져 사진 찍기 · 앨범 중 고른다. 흰 상자 없이 버튼만 (10/31 은열) */
+  .upload-box.is-picker { cursor: default; background: transparent; border-color: transparent; }
+  .upload-box.is-picker:hover { border-color: transparent; }
+  .pick { --split: cubic-bezier(0.34, 1.45, 0.64, 1); --pick-line: #8db8a1; position: relative; display: grid; place-items: center; width: 100%; height: 160px; }
   .pick > button { grid-area: 1 / 1; border: 0; background: none; padding: 0; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .pick-main, .pick-opt { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-  .pick-main .pick-face {
-    display: flex; align-items: center; gap: 6px; height: 72px; padding: 0 22px; border-radius: 999px;
-    background: var(--green); color: var(--white); box-shadow: 0 6px 16px rgba(20, 56, 40, 0.22);
+  .pick .pick-face {
+    background: var(--white); color: var(--green);
+    border: 2px dashed var(--pick-line); border-radius: 26px;
+    transition: transform 120ms var(--ease), border-color 160ms var(--ease);
   }
-  .pick-main .pick-face i { width: 1.5px; height: 22px; border-radius: 1px; background: currentColor; opacity: 0.45; transform: rotate(18deg); }
-  .pick-opt .pick-face {
-    display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%;
-    background: var(--green); color: var(--white); box-shadow: 0 6px 16px rgba(20, 56, 40, 0.22);
-  }
-  .pick-face svg { width: 28px; height: 28px; }
+  .pick-main .pick-face { display: flex; align-items: center; gap: 10px; height: 100px; padding: 0 30px; }
+  .pick-main .pick-face i { width: 2px; height: 28px; border-radius: 1px; background: currentColor; opacity: 0.35; transform: rotate(18deg); }
+  .pick-opt .pick-face { display: grid; place-items: center; width: 108px; height: 108px; }
+  .pick-face svg { width: 34px; height: 34px; }
   .pick b { font-size: 15px; font-weight: 650; color: var(--ink); }
   .pick-main { transition: opacity 180ms var(--ease), transform 260ms var(--ease); }
   .pick-opt { opacity: 0; pointer-events: none; transform: translateX(var(--from)) scale(0.7); transition: opacity 200ms var(--ease), transform 460ms var(--split); }
-  .pick-camera { --from: -24px; --to: -72px; }
-  .pick-album { --from: 24px; --to: 72px; }
+  .pick-camera { --from: -30px; --to: -74px; }
+  .pick-album { --from: 30px; --to: 74px; }
   .pick.is-open .pick-main { opacity: 0; pointer-events: none; transform: scale(0.85); }
   .pick.is-open .pick-opt { opacity: 1; pointer-events: auto; transform: translateX(var(--to)); }
   .pick.is-open .pick-album { transition-delay: 30ms; }
-  .pick button:active .pick-face { transform: scale(0.95); }
+  @media (hover: hover) { .pick button:hover .pick-face { border-color: var(--green); } }
+  .pick button:active .pick-face { transform: scale(0.96); }
   .pick button:focus-visible .pick-face { outline: 3px solid var(--green); outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) {
     .pick-main, .pick-opt { transition: none; }
