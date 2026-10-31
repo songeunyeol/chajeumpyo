@@ -44,6 +44,7 @@
                   "ALREADY_CONFIRMED",
                   "NOT_CLOSABLE",
                   "QR_EXPIRED",
+                  "ITEM_CLOSED",
                   "IMAGE_TOO_LARGE",
                   "PAYLOAD_TOO_LARGE",
                   "NO_OBJECT_DETECTED",
@@ -4735,6 +4736,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5275,6 +5277,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5945,6 +5948,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6693,6 +6697,7 @@
                             "QR_EXPIRED",
                             "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -7265,6 +7270,7 @@
                             "QR_EXPIRED",
                             "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -7418,6 +7424,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8637,6 +8644,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -9716,6 +9724,7 @@
                             "QR_EXPIRED",
                             "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -10422,6 +10431,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -11787,6 +11797,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -12501,6 +12512,9 @@
                         "qrToken": {
                           "type": "string"
                         },
+                        "shortCode": {
+                          "type": "string"
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -12516,6 +12530,7 @@
                         "method",
                         "pickupId",
                         "qrToken",
+                        "shortCode",
                         "status",
                         "expiresAt"
                       ]
@@ -12535,6 +12550,9 @@
                         "qrToken": {
                           "type": "string"
                         },
+                        "shortCode": {
+                          "type": "string"
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -12550,6 +12568,7 @@
                         "method",
                         "pickupId",
                         "qrToken",
+                        "shortCode",
                         "status",
                         "expiresAt"
                       ]
@@ -13299,7 +13318,7 @@
           }
         ],
         "summary": "수령 QR 스캔 (F-11, F-14)",
-        "description": "자기 보관처 물건만. 원본 사진 링크와 마스킹된 이메일을 준다.",
+        "description": "자기 보관처 물건만. 원본 사진 링크와 마스킹된 이메일을 준다. qrToken에는 QR 안의 긴 토큰(pk_…)이나 학생 화면의 8자리 코드(ABCD-EFGH)를 넣는다. 8자리 코드는 관리자별로 10분에 20번까지 틀릴 수 있다.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -13551,7 +13570,7 @@
             }
           },
           "404": {
-            "description": "NOT_FOUND: 없는 QR",
+            "description": "NOT_FOUND: 없는 QR·코드",
             "content": {
               "application/json": {
                 "schema": {
@@ -13775,6 +13794,79 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: 8자리 코드를 너무 많이 틀림",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
                 }
               }
             }

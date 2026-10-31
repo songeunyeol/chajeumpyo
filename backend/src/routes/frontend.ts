@@ -48,7 +48,7 @@ const designCheckPages = new Set(["팔레트.html", "한눈에.html"]);
  * 화면 목록(board)·간편 로그인 시안처럼 개발할 때만 보는 화면. 링크는 없지만 주소로 열리면 미완성 흔적으로 보여
  * 운영(production)에서는 내려주지 않는다 (검증 10/31). 개발 서버에서는 그대로 연다
  */
-const devOnlyPages = new Set(["/lost/board.html", "/found/board.html", "/lost/consent-social.html"]);
+const devOnlyPages = new Set(["/lost/board", "/found/board", "/lost/consent-social"]);
 
 /** 개발용 파일(_tester.html 같은 _로 시작하는 파일), 작업 메모(.md), 디자인 확인 화면은 배포에서 내려주지 않는다 */
 function isHidden(path: string) {
@@ -57,7 +57,13 @@ function isHidden(path: string) {
     decoded = decodeURIComponent(path);
   } catch {}
   const name = basename(decoded);
-  if (env.NODE_ENV === "production" && devOnlyPages.has(decoded.normalize("NFC").toLowerCase())) return true;
+  // .html이 있든 없든(/lost/board, /lost/board.html) 같은 화면으로 본다
+  const page = decoded
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/\.html$/, "")
+    .replace(/\/+$/, "");
+  if (env.NODE_ENV === "production" && devOnlyPages.has(page)) return true;
   return name.startsWith("_") || extname(name).toLowerCase() === ".md" || designCheckPages.has(name.normalize("NFC"));
 }
 

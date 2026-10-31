@@ -60,16 +60,20 @@ describe("정적 화면", () => {
   });
 
   it("화면 목록·간편 로그인 시안은 운영(production)에서만 막는다 (검증 10/31)", async () => {
-    const pages = ["/lost/board.html", "/found/board.html", "/lost/consent-social.html"];
+    const pages = ["/lost/board", "/found/board", "/lost/consent-social"];
     for (const page of pages) expect((await request(app).get(page)).status).toBe(200);
     const original = env.NODE_ENV;
     (env as { NODE_ENV: string }).NODE_ENV = "production";
     try {
-      for (const page of pages) expect((await request(app).get(page)).status).toBe(404);
+      // .html 없는 주소도, 옛 .html 주소도 막는다
+      for (const page of pages) {
+        expect((await request(app).get(page)).status).toBe(404);
+        expect((await request(app).get(`${page}.html`)).status).toBe(404);
+      }
       expect((await request(app).get("/LOST/Board.html")).status).toBe(404);
       // 서비스 소개와 사용자 화면은 그대로
-      expect((await request(app).get("/guide.html")).status).toBe(200);
-      expect((await request(app).get("/lost/login.html")).status).toBe(200);
+      expect((await request(app).get("/guide")).status).toBe(200);
+      expect((await request(app).get("/lost/login")).status).toBe(200);
     } finally {
       (env as { NODE_ENV: string }).NODE_ENV = original;
     }
