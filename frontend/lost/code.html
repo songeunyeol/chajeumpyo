@@ -39,6 +39,7 @@
   </div>
 </main>
 <script src="api.js"></script>
+<script>/* api.js를 못 받았으면(오프라인·캐시 없음) 빈 화면 대신 연결 안내를 띄운다 (검증 10/31) */if(!window.LostApi){document.body.replaceChildren();const m=document.createElement("main");m.className="screen";m.setAttribute("role","alert");m.innerHTML='<h1>인터넷 연결을 확인해 주세요</h1><p class="lead">연결되면 다시 시도해 주세요.</p>';const b=document.createElement("button");b.type="button";b.className="btn";b.textContent="다시 시도";b.addEventListener("click",()=>location.reload());m.append(b);document.body.append(m);addEventListener("online",()=>location.reload());}</script>
 <script src="../leave-guard.js"></script>
 <script>
   // 가입 단계 중 뒤로 가기는 한 번 묻는다 (QA 10/29). 보낸 코드는 유효 시간 안이면 돌아와서 그대로 쓸 수 있다

@@ -9,7 +9,7 @@
  *
  * 배포 때 SHELL 파일이 바뀌면 VERSION을 올린다. 그러면 새 캐시를 받고 옛 캐시는 지운다.
  */
-const VERSION = "v65";
+const VERSION = "v66";
 const CACHE = `chajeumpyo-shell-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -38,9 +38,37 @@ const SHELL = [
   "/found/photo.html",
   "/found/uploading.html",
   "/found/register.html",
-  "/found/board.html",
   "/found/done-handover.html",
   "/found/done-inplace.html",
+  // 잃어버린 사람·관리자 화면도 껍데기(화면·스크립트)만 둔다. 없으면 오프라인에서 화면만 뜨고 스크립트가 없어
+  // 인터넷 연결 안내조차 못 띄웠다 (검증 10/31). 개발용 화면(board, consent-social)은 넣지 않는다.
+  "/vendor/qrcode.min.js",
+  "/lost/api.js",
+  "/lost/school-email.js",
+  "/lost/login.html",
+  "/lost/signup.html",
+  "/lost/code.html",
+  "/lost/consent-mail.html",
+  "/lost/home.html",
+  "/lost/me.html",
+  "/lost/alerts.html",
+  "/lost/report.html",
+  "/lost/uploading.html",
+  "/lost/candidates.html",
+  "/lost/question.html",
+  "/lost/counter.html",
+  "/lost/fail.html",
+  "/lost/lock.html",
+  "/lost/item.html",
+  "/lost/item-handover.html",
+  "/admin/admin.js",
+  "/admin/login.html",
+  "/admin/home.html",
+  "/admin/items.html",
+  "/admin/item.html",
+  "/admin/alerts.html",
+  "/admin/stats.html",
+  "/admin/scan.html",
 ];
 const SHELL_SET = new Set(SHELL);
 

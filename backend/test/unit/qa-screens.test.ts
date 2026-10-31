@@ -739,3 +739,66 @@ describe("같은 와이파이·같은 기종도 기기마다 따로 센다 (10/3
     expect(api).toContain('return id ? { ...headers, "X-Device-Id": id } : headers;');
   });
 });
+
+describe("검증 10/31 묶음: 숨김·관리자 상태·첫 화면·귀중품 문구·오프라인", () => {
+  it("hidden을 단 요소는 어떤 display 규칙보다 먼저 숨긴다 (수령 뒤 'QR 다시 받기'가 보였다)", () => {
+    expect(read("frontend/palette.css")).toContain("[hidden] { display: none !important; }");
+  });
+
+  it("관리자: 보관을 끝낸 물건은 '보관 종료 (이유)'로 보이고, 끝난 물건에는 '대면 확인만'을 붙이지 않는다", () => {
+    const admin = read("frontend/admin/admin.js");
+    expect(admin).toContain("function statusText(item)");
+    expect(admin).toContain("보관 종료 (");
+    const item = read("frontend/admin/item.html");
+    expect(item).toContain("A.statusChip(item.status, item)");
+    expect(item).toContain("item.claimLockedAt && EDITABLE.includes(item.status)");
+    expect(item).toContain("보관을 끝내며 사진을 지웠어요");
+    expect(item).not.toContain("수령·기한 만료로 사진을 지웠어요");
+    expect(read("frontend/admin/items.html")).toContain("AdminApi.statusChip(item.status, item)");
+  });
+
+  it("첫 화면 버튼은 글자 효과를 기다리지 않고 바로 들어온다", () => {
+    const home = read("frontend/index.html");
+    expect(home).toContain("requestAnimationFrame(showButtons);");
+    expect(home).not.toContain("later(showButtons");
+  });
+
+  it("귀중품 창은 거리를 재지 않았으면 '가까워요'라고 하지 않는다", () => {
+    const reg = read("frontend/found/register.html");
+    expect(reg).toMatch(/귀중품은 \$\{name\}에 맡겨 주세요/);
+    expect(reg).toContain("const measured = near.m !== null && handoverSelect.options.length > 1;");
+  });
+
+  it("오프라인: 잃어버린 사람·관리자 화면과 스크립트도 껍데기 캐시에 두고, 개발용 화면은 넣지 않는다", () => {
+    const sw = read("frontend/sw.js");
+    for (const f of [
+      "/lost/api.js",
+      "/lost/home.html",
+      "/lost/candidates.html",
+      "/lost/item-handover.html",
+      "/admin/admin.js",
+      "/vendor/qrcode.min.js",
+    ]) {
+      expect(sw).toContain(`"${f}"`);
+    }
+    for (const f of ["/found/board.html", "/lost/board.html", "/lost/consent-social.html"]) {
+      expect(sw).not.toContain(`"${f}"`);
+    }
+    // 목록의 파일이 실제로 있다 (하나라도 없으면 설치가 통째로 실패한다)
+    const shell = sw.match(/const SHELL = \[([\s\S]*?)\];/)?.[1] ?? "";
+    const urls = [...shell.matchAll(/^\s*"([^"]+)",?$/gm)].map((m) => m[1]);
+    expect(urls.length).toBeGreaterThan(40);
+    for (const url of urls) {
+      const file = url === "/" ? "frontend/index.html" : `frontend${url}`;
+      expect(() => read(file), url).not.toThrow();
+    }
+  });
+
+  it("오프라인: api.js를 못 받은 잃어버린 사람 화면은 빈 화면 대신 연결 안내를 띄운다", () => {
+    for (const page of ["home", "report", "login", "alerts", "me", "item"]) {
+      const html = read(`frontend/lost/${page}.html`);
+      expect(html, page).toContain("if(!window.LostApi){");
+      expect(html, page).toContain("인터넷 연결을 확인해 주세요");
+    }
+  });
+});
