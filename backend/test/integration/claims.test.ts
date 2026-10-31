@@ -1425,8 +1425,9 @@ describe("#18 2부: 브랜드가 확실히 다르면 틀린 특징으로 센다 
       env.CLAIM_BRAND_HARD_CONTRADICTION = before;
     }
   });
-  it("끄면(기본): 브랜드 차이만으로는 실패하지 않는다", async () => {
-    expect(env.CLAIM_BRAND_HARD_CONTRADICTION).toBe(false);
+  it("끄면: 브랜드 차이만으로는 실패하지 않는다", async () => {
+    const before = env.CLAIM_BRAND_HARD_CONTRADICTION;
+    env.CLAIM_BRAND_HARD_CONTRADICTION = false;
     useBrandDifferent();
     const it1 = await item(MK);
     const r = await newReport(
@@ -1434,7 +1435,11 @@ describe("#18 2부: 브랜드가 확실히 다르면 틀린 특징으로 센다 
       token,
       "파란색 나일론 지갑이에요. 나이키 로고가 있어요.",
     );
-    expect((await claim(r, it1.id)).body.result).not.toBe("FAIL");
+    try {
+      expect((await claim(r, it1.id)).body.result).not.toBe("FAIL");
+    } finally {
+      env.CLAIM_BRAND_HARD_CONTRADICTION = before;
+    }
   });
   it("켜도: AI가 같은 브랜드로 보면(키스미 ↔ Heroine Make) 실패가 아니다", async () => {
     const before = env.CLAIM_BRAND_HARD_CONTRADICTION;

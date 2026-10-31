@@ -75,11 +75,11 @@ const Env = z.object({
   CLAIM_AI_CALL_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
   /**
    * 브랜드가 확실히 다르면(믿을 만한 저장 브랜드 + 다른 브랜드 이름 + AI도 관계없다고 함) 틀린 특징으로 센다 (10/31 검증 1, #18 2부).
-   * 진짜 주인 통과율을 실제 Gemini로 재기 전까지 기본은 끈다. 켜려면 "true"
+   * 10/31 실제 Gemini 평가에서 켜도 진짜 주인 통과율이 낮아지지 않아(79건 중 39 → 42) 기본으로 켠다. 끄려면 "false"
    */
   CLAIM_BRAND_HARD_CONTRADICTION: z
     .enum(["true", "false"])
-    .default("false")
+    .default("true")
     .transform((v) => v === "true"),
   /**
    * 앞단 프록시 신뢰 설정(express trust proxy). 숫자는 홉 수, true/false, 또는 IP·서브넷 목록.
