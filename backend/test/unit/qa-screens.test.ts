@@ -254,43 +254,18 @@ describe("학교 메일 칸 (@skuniv.ac.kr 고정)", () => {
   });
 });
 
-function lostApiFns(): {
-  passExplanation: (claim: unknown, aiRead: unknown, itemId?: string) => string;
-} {
-  const api = read("frontend/lost/api.js");
-  const helpers = api.slice(api.indexOf("const passExplanation"), api.indexOf("/** 화면 이름"));
-  const body = `const COLOR_LABELS = { WHITE: "흰색" };
-const itemLabel = (category) => ({ EARPHONE: "무선 이어폰", KEY: "열쇠" })[category] || "";
-${helpers}
-return { passExplanation };`;
-  return new Function(body)() as ReturnType<typeof lostApiFns>;
-}
 
 describe("AI가 한 일 (교수 평가 10/30: 분실자 화면에 AI가 보이지 않음)", () => {
-  it("후보 화면에는 'AI가 한 일' 상자를 두지 않는다 (통과 화면 한 줄만 남긴다)", () => {
+  it("후보 화면에는 'AI가 한 일' 상자를 두지 않고, 통과 화면에도 AI 한 줄이 없다 (10/31 은열)", () => {
+    for (const page of ["frontend/lost/item.html", "frontend/lost/item-handover.html"]) {
+      expect(read(page)).not.toContain('id="passAiLine"');
+      expect(read(page)).not.toContain("🤖");
+    }
+    expect(read("frontend/lost/api.js")).not.toContain("passExplanation");
     const html = read("frontend/lost/candidates.html");
     expect(html).not.toContain('id="aiReadBox"');
     expect(html).not.toContain("AI가 한 일");
     expect(read("frontend/lost/api.js")).not.toContain("aiReadSummary");
-  });
-
-  it("통과 화면은 신고자 표현으로 무엇이 맞았는지 말하고, 다른 물건의 판정이면 아무것도 말하지 않는다", () => {
-    const { passExplanation } = lostApiFns();
-    const aiRead = {
-      category: "KEY",
-      subCategory: null,
-      color: null,
-      brand: null,
-      features: [{ key: "keyring", value: "냥이 열쇠고리" }],
-    };
-    const claim = { result: "PASS", matchedFields: ["feature:keyring"], foundItemId: "a" };
-    expect(passExplanation(claim, aiRead, "a")).toContain("냥이 열쇠고리");
-    expect(passExplanation(claim, aiRead, "b")).toBe("");
-    expect(passExplanation({ result: "PASS", foundItemId: "a" }, aiRead, "a")).toContain("확인 질문");
-    expect(passExplanation({ result: "FAIL" }, aiRead, "a")).toBe("");
-    for (const page of ["frontend/lost/item.html", "frontend/lost/item-handover.html"]) {
-      expect(read(page)).toContain('id="passAiLine"');
-    }
   });
 
   it("신고 건물 목록이 늦게 와도 고른 건물을 지우지 않는다", () => {

@@ -274,29 +274,6 @@
     );
   };
 
-  /**
-   * 확인 통과 화면의 "AI가 한 일" 한 줄. 신고자 본인이 적은 표현만 쓴다(숨은 특징 원문은 쓰지 않는다).
-   * claim: 마지막 판정 응답(KEYS.claim), aiRead: KEYS.aiRead, itemId: 지금 보는 물건(다른 물건의 판정이면 안 보인다). 근거가 없으면 "".
-   */
-  const passExplanation = (claim, aiRead, itemId) => {
-    if (!claim || claim.result !== "PASS") return "";
-    if (itemId && claim.foundItemId && claim.foundItemId !== itemId) return "";
-    const fields = claim.matchedFields;
-    if (!Array.isArray(fields)) return "AI가 만든 확인 질문을 모두 맞혔어요.";
-    const said = [];
-    for (const f of fields) {
-      if (f === "color" && aiRead?.color && COLOR_LABELS[aiRead.color]) said.push(COLOR_LABELS[aiRead.color]);
-      else if (f === "brand" && aiRead?.brand) said.push(aiRead.brand);
-      else if (f.startsWith("feature:")) {
-        const key = f.slice("feature:".length);
-        const hit = (aiRead?.features || []).find((x) => x.key === key);
-        if (hit) said.push(hit.value);
-      }
-    }
-    if (!said.length) return "AI가 설명과 등록된 특징을 비교해 같은 물건으로 봤어요.";
-    return `AI가 설명의 '${said.join("', '")}'을(를) 등록된 특징과 같은 뜻으로 봤어요.`;
-  };
-
   /** 화면 이름: 세부 종류가 있으면 그 이름, 없으면 큰 종류 이름 (shared itemLabel) */
   const itemLabel = (category, sub) => (sub && SUB_CATEGORY_LABELS[sub]) || CATEGORY_LABELS[category] || "";
 
@@ -753,7 +730,6 @@
     SUB_CATEGORY_LABELS,
     SUB_CATEGORIES,
     COLOR_LABELS,
-    passExplanation,
     REASON_LABELS,
     REPORT_STATUS_LABELS,
     STORAGE_TYPE_LABELS,
