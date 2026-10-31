@@ -156,6 +156,7 @@ export async function listLostReports(viewer: Viewer): Promise<LostReportListRes
     orderBy: { createdAt: "desc" },
   });
   const counts = await Promise.all(reports.map((r) => findCandidates(r, viewer.role).then((c) => c.length)));
+  const pickups = await pickupStates(viewer.userId, reports);
   return {
     reports: reports.map((r, i) => ({
       id: r.id,
@@ -167,8 +168,53 @@ export async function listLostReports(viewer: Viewer): Promise<LostReportListRes
       building: r.building,
       candidateCount: counts[i] ?? 0,
       createdAt: r.createdAt.toISOString(),
+      pickup: pickups.get(r.id) ?? null,
     })),
   };
+}
+
+type PickupState = LostReportListResponse["reports"][number]["pickup"];
+
+/**
+ * 신고마다 확인을 통과한 물건 하나(가장 최근)와 그 물건의 내 수령 상태.
+ * 수령 완료는 신고가 RESOLVED이거나 내 수령 기록이 COMPLETED일 때, QR은 만료 전 ISSUED만 센다.
+ */
+async function pickupStates(
+  userId: string,
+  reports: { id: string; status: string }[],
+): Promise<Map<string, NonNullable<PickupState>>> {
+  const out = new Map<string, NonNullable<PickupState>>();
+  if (reports.length === 0) return out;
+  const passed = await prisma.matchAttempt.findMany({
+    where: {
+      userId,
+      lostReportId: { in: reports.map((r) => r.id) },
+      OR: [{ result: "PASS" }, { answerCorrect: true }],
+    },
+    orderBy: { createdAt: "desc" },
+    select: { lostReportId: true, foundItemId: true, foundItem: { select: { storageType: true } } },
+  });
+  const latest = new Map<string, (typeof passed)[number]>();
+  for (const a of passed) if (!latest.has(a.lostReportId)) latest.set(a.lostReportId, a);
+  if (latest.size === 0) return out;
+  const itemIds = [...new Set([...latest.values()].map((a) => a.foundItemId))];
+  const now = new Date();
+  const mine = await prisma.pickup.findMany({
+    where: { userId, foundItemId: { in: itemIds }, status: { in: ["ISSUED", "COMPLETED"] } },
+    select: { foundItemId: true, status: true, qrExpiresAt: true },
+  });
+  const resolvedIds = new Set(reports.filter((r) => r.status === "RESOLVED").map((r) => r.id));
+  for (const [reportId, a] of latest) {
+    const own = mine.filter((p) => p.foundItemId === a.foundItemId);
+    const status =
+      resolvedIds.has(reportId) || own.some((p) => p.status === "COMPLETED")
+        ? "COMPLETED"
+        : own.some((p) => p.status === "ISSUED" && p.qrExpiresAt && p.qrExpiresAt > now)
+          ? "QR_ISSUED"
+          : "PASSED";
+    out.set(reportId, { foundItemId: a.foundItemId, storageType: a.foundItem.storageType, status });
+  }
+  return out;
 }
 
 /** GET /lost-reports/:id/candidates */
