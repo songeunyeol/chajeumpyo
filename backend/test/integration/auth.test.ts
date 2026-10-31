@@ -122,9 +122,22 @@ describe("기준 3. 재발송 대기·하루 상한, 가입 여부를 드러내�
     expect(sentMails).toHaveLength(0);
   });
 
-  it("같은 IP는 10분에 10번까지 (다른 이메일이어도)", async () => {
-    for (let i = 0; i < 10; i++) await sendCode(`s${i}@skuniv.ac.kr`).expect(204);
-    expect((await sendCode("s10@skuniv.ac.kr")).status).toBe(429);
+  it("같은 IP(학교 와이파이)에서 여러 명이 받아도 막히지 않고, 10분에 60번을 넘으면 429 (10/31 검증: 10이면 11번째 사람부터 막혔다)", async () => {
+    for (let i = 0; i < 60; i++) await sendCode(`s${i}@skuniv.ac.kr`).expect(204);
+    expect((await sendCode("s60@skuniv.ac.kr")).status).toBe(429);
+  });
+
+  it("본선 현장처럼 한 와이파이에서 12명이 연달아 가입해도 막히지 않는다", async () => {
+    for (let i = 0; i < 12; i++) await signupUser(app, `crowd${i}@skuniv.ac.kr`);
+    expect(await prisma.user.count({ where: { email: { startsWith: "crowd" } } })).toBe(12);
+  });
+
+  it("같은 이메일은 IP 한도와 상관없이 1분에 한 번만 받는다 (메일 폭탄 방지)", async () => {
+    await sendCode(EMAIL).expect(204);
+    const again = await sendCode(EMAIL);
+    expect(again.status).toBe(429);
+    expect(again.body.error.message).toContain("1분에 한 번");
+    expect(sentMails).toHaveLength(1);
   });
 });
 
@@ -284,8 +297,8 @@ describe("기준 7. 가입용 토큰은 한 번만, 위조·만료 토큰 거부
     expect(res.body.error.code).toBe("INVALID_CODE");
   });
 
-  it("가입 요청은 같은 IP에서 10분에 10번까지", async () => {
-    for (let i = 0; i < 10; i++) {
+  it("가입 요청은 같은 IP에서 10분에 60번까지 (학교 와이파이 하나로 여러 명이 가입해도 막히지 않게, 10/31)", async () => {
+    for (let i = 0; i < 60; i++) {
       await request(app)
         .post(api("/auth/signup"))
         .send({ verificationToken: "x", password: "password123", consent: memberConsent() });

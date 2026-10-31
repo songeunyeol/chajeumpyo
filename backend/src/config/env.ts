@@ -81,6 +81,12 @@ const Env = z.object({
   /** 같은 이메일로 10분 안에 틀린 로그인 횟수 한도. 넘으면 맞는 비밀번호도 잠시 429 (IP 한도를 올린 대신 무차별 대입을 막는다) */
   LOGIN_FAIL_LIMIT_PER_10MIN: z.coerce.number().int().positive().default(10),
   /**
+   * 회원가입·인증 코드 요청의 IP당 한도. 본선 현장처럼 한 와이파이에서 여러 명이 가입해도 막히지 않게 올린다 (10/31 검증).
+   * 메일 남용은 이메일별 한도(1분 1번·하루 10번)와 하루 전체 발송 상한(MAIL_DAILY_LIMIT)이 막는다
+   */
+  SIGNUP_IP_LIMIT_PER_10MIN: z.coerce.number().int().positive().default(60),
+  EMAIL_CODE_IP_LIMIT_PER_DAY: z.coerce.number().int().positive().default(300),
+  /**
    * 앞단 프록시 신뢰 설정(express trust proxy). 숫자는 홉 수, true/false, 또는 IP·서브넷 목록.
    * Render는 프록시 한 겹이라 기본 1. 틀리면 req.ip가 프록시 IP가 돼 IP 기준 제한이 모두에게 같이 걸린다.
    */

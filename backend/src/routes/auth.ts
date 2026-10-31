@@ -117,19 +117,21 @@ registry.registerPath({
 
 export function createAuthRouter() {
   const router = Router();
+  // 가입·인증 코드도 한 와이파이의 여러 명이 같이 막히지 않게 IP 한도를 넉넉히 둔다 (10/31 검증: 10이면 11번째 사람부터 막혔다).
+  // 같은 이메일로 메일 폭탄을 보내는 건 서비스의 이메일별 한도(1분 1번, 하루 10번)와 하루 전체 상한이 막는다
   const codeLimit = ipRateLimit({
     windowMinutes: 10,
-    limit: 10,
+    limit: env.SIGNUP_IP_LIMIT_PER_10MIN,
     message: "인증 코드 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
   const codeDailyLimit = ipRateLimit({
     windowMinutes: 24 * 60,
-    limit: 50,
+    limit: env.EMAIL_CODE_IP_LIMIT_PER_DAY,
     message: "오늘 이 네트워크에서 받을 수 있는 인증 코드를 모두 받았어요. 내일 다시 시도해 주세요.",
   });
   const signupLimit = ipRateLimit({
     windowMinutes: 10,
-    limit: 10,
+    limit: env.SIGNUP_IP_LIMIT_PER_10MIN,
     message: "가입 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
   // 학교 와이파이 하나에 여러 명이 있어도 같이 막히지 않게 IP 한도는 넉넉히, 무차별 대입은 이메일별 실패 한도로 막는다 (10/31)

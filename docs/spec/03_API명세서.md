@@ -226,7 +226,7 @@
 - 이메일은 앞뒤 공백을 지우고 소문자로 바꿔 처리한다.
 - 학교 도메인이 아니면 `400 INVALID_EMAIL_DOMAIN`. 도메인은 소문자로 바꾼 뒤 `@` 뒤 전체가 정확히 같아야 한다.
 - **이미 가입된 이메일도 `204`**. 가입 여부를 드러내지 않기 위해 코드 대신 로그인 안내 메일을 보낸다.
-- 같은 이메일은 1분에 한 번·하루 10번, 같은 IP는 10분에 10번·하루 50번, 서비스 전체 하루 상한(`MAIL_DAILY_LIMIT`). 넘으면 `429 RATE_LIMITED`.
+- 같은 이메일은 1분에 한 번·하루 10번, 같은 IP는 10분에 60번(`SIGNUP_IP_LIMIT_PER_10MIN`)·하루 300번(`EMAIL_CODE_IP_LIMIT_PER_DAY`), 서비스 전체 하루 상한(`MAIL_DAILY_LIMIT`). 학교 와이파이 하나로 여러 명이 가입해도 같이 막히지 않게 IP 한도는 넉넉히 둔다(10/31). 넘으면 `429 RATE_LIMITED`.
 - 코드는 6자리 숫자, 5분 유효, 한 번만 확인할 수 있다. 새 코드를 받으면 이전 코드는 무효. 5번 틀리면 코드를 버리고 다시 받아야 한다.
 
 #### `POST /auth/email/verify` · 공개
@@ -248,7 +248,7 @@
 { "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
 ```
 - 비밀번호는 8~64자. (초안)
-- 같은 IP에서 10분에 10번까지. 넘으면 `429 RATE_LIMITED`.
+- 같은 IP에서 10분에 60번까지(`SIGNUP_IP_LIMIT_PER_10MIN`). 넘으면 `429 RATE_LIMITED`.
 
 #### `POST /auth/login` · 공개
 ```json
