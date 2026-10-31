@@ -85,8 +85,9 @@
   }
   const redirectTo = isPreview ? null : stepGuard();
   if (redirectTo) location.replace(redirectTo);
-  else if (!isPreview) {
-    LeaveGuard.install({
+  let leaveGuard = null;
+  if (!redirectTo && !isPreview) {
+    leaveGuard = LeaveGuard.install({
       title: "습득물 등록을 그만할까요?",
       message: "지금까지 올린 내용은 지워져요. 그래도 나갈까요?",
       leaveLabel: "그만하기",
@@ -170,7 +171,10 @@
     // 5. 완료 즉시 다음 페이지(register.html)로 자동 이동
     if (!new URLSearchParams(window.location.search).has("preview")) {
       // 올리는 중 화면은 history에 남기지 않는다. 등록 화면에서 뒤로 가면 다시 분석하지 않고 사진 화면으로 간다
-      window.location.replace("register.html");
+      // "그만할까요?" 창이 열려 있으면 고를 때까지 기다린다. 계속하기면 넘어가고, 그만하기면 창이 사진 화면으로 보낸다
+      const goNext = () => (leaveGuard ? leaveGuard.proceed("register.html") : window.location.replace("register.html"));
+      if (leaveGuard?.isOpen()) leaveGuard.afterStay(goNext);
+      else goNext();
     } else {
       // 다른 화면 안 미리보기(iframe)에서는 빈 화면으로 멈추지 않도록 잠시 후 다시 재생
       await wait(1200);
@@ -193,6 +197,8 @@
         };
       })
     : Promise.reject(new FoundApi.ApiError(400, { error: { message: "사진을 먼저 골라 주세요." } }));
+  // 애니메이션이 끝나기 전에 실패하면 잠시 처리기가 없어 unhandledrejection이 남는다. 실패 안내는 아래 runUploadFlow의 catch가 한다
+  uploadTask.catch(() => {});
 
   runUploadFlow(uploadTask).catch((err) => {
     statusEl.textContent = "FAILED";

@@ -1,6 +1,7 @@
 // 단계가 이어지는 화면(습득물 등록, 회원가입)에서 뒤로 가기를 한 번 막고 확인 창을 띄운다 (QA 10/29).
 // 같은 화면을 history에 하나 더 쌓아 두고(pushState), 브라우저 뒤로 가기(popstate)나 화면 위 ← 를 누르면 창을 연다.
 // "나가기"를 고르면 onLeave를 부르고 leaveTo로 옮긴다(history에 남기지 않게 replace). 창은 누르기 전에는 숨긴다.
+// install은 { isOpen, afterStay(fn) }를 돌려준다. 창이 열린 동안 화면이 스스로 다음으로 넘어가지 않게 미룰 때 쓴다 (QA 10/31).
 (function () {
   function install({ title, message, leaveTo, leaveLabel = "나가기", stayLabel = "계속하기", onLeave }) {
     const backdrop = document.createElement("div");
@@ -38,6 +39,7 @@
       backdrop.classList.remove("is-open");
       backdrop.hidden = true;
     };
+    let staying = [];
 
     // 같은 주소를 하나 더 쌓아 둔다. 뒤로 가면 그 칸으로 돌아온 뒤 바로 다시 쌓아서 화면을 나가지 않는다.
     history.pushState({ leaveGuard: true }, "");
@@ -62,6 +64,9 @@
     );
     stay.addEventListener("click", () => {
       close();
+      const run = staying;
+      staying = [];
+      for (const fn of run) fn();
     });
     leave.addEventListener("click", () => {
       close();
@@ -88,6 +93,9 @@
           setTimeout(() => location.replace(url), 400);
         } else location.replace(url);
       },
+      isOpen: () => !backdrop.hidden,
+      /** "계속하기"로 창을 닫으면 fn을 부른다. "나가기"를 고르면 부르지 않는다 */
+      afterStay: (fn) => staying.push(fn),
     };
   }
 
