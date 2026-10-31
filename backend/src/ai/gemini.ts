@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import {
   CATEGORY_LABELS,
   Category,
@@ -148,6 +149,32 @@ const QUIZ_RESPONSE_SCHEMA = {
   },
   required: ["correct", "distractors"],
 } as const;
+
+/** 잠깐 몰리거나(429) 서버가 잠시 안 될 때(5xx)·연결이 끊겼을 때만 다시 부를 만하다 */
+const TRANSIENT =
+  /\b(?:429|500|502|503|504)\b|RESOURCE_EXHAUSTED|UNAVAILABLE|ECONNRESET|ETIMEDOUT|fetch failed|socket hang up/i;
+
+export function isTransientError(err: unknown): boolean {
+  const e = err as { status?: unknown; code?: unknown; message?: unknown } | null;
+  return TRANSIENT.test(`${e?.status ?? ""} ${e?.code ?? ""} ${e?.message ?? String(err)}`);
+}
+
+/**
+ * 일시적인 오류면 0.5~1초 쉬고 한 번만 다시 부른다 (10/31: #172 이후 대조 안 AI 호출을 다시 부르지 않아,
+ * Gemini 429 한 번에 다시 보기가 빠져 진짜 주인의 모순이 그대로 남았다). 전체 기다림은 부르는 쪽의 제한 시간이 막는다.
+ */
+export async function retryTransient<T>(
+  f: () => Promise<T>,
+  delayMs = 500 + Math.floor(Math.random() * 500),
+): Promise<T> {
+  try {
+    return await f();
+  } catch (err) {
+    if (!isTransientError(err)) throw err;
+    await sleep(delayMs);
+    return f();
+  }
+}
 
 /** 태그를 닫거나 새로 여는 걸 막기 위해 꺾쇠를 지운다 */
 const asData = (text: string) => text.replace(/[<>]/g, "");
@@ -311,7 +338,7 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
       const saysMatch = async (input: { question: string; stored: string; answer: string }, label: string) => {
         let timer: NodeJS.Timeout | undefined;
         try {
-          const call = judgeAnswer(input);
+          const call = retryTransient(() => judgeAnswer(input));
           const verdict = callTimeoutMs
             ? await Promise.race([
                 call,

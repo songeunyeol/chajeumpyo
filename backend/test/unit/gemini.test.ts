@@ -1,7 +1,13 @@
 // Gemini 어댑터: 실제 API 대신 SDK 호출을 가짜로 바꿔 끼워, 우리 쪽 변환·검증·대체 모델 동작만 확인한다.
 import { ThinkingLevel } from "@google/genai";
 import { describe, expect, it } from "vitest";
-import { boxesToRegions, correctMisreadObject, createGeminiClient, type GeminiModels } from "../../src/ai/gemini";
+import {
+  boxesToRegions,
+  correctMisreadObject,
+  createGeminiClient,
+  type GeminiModels,
+  retryTransient,
+} from "../../src/ai/gemini";
 import { EMBEDDING_DIM } from "../../src/ai/types";
 import { compareByRules } from "../../src/matching/compare";
 
@@ -351,5 +357,49 @@ describe("생각 정도 (속도)", () => {
     const { models, calls } = fakeModels({ lite: GOOD });
     await createGeminiClient(models, CONFIG).extractFoundItem(image, "image/jpeg");
     expect(calls[0]?.params.config?.thinkingConfig).toBeUndefined();
+  });
+});
+
+describe("대조 안 AI 호출: 일시적인 오류(429·5xx)면 한 번 다시 부른다 (10/31: #172 이후 재시도가 빠졌다)", () => {
+  const stored = { color: null, brand: null, features: [{ key: "sticker" as const, value: "곰돌이 스티커" }] };
+  const reported = { color: null, brand: null, features: [{ key: "sticker" as const, value: "곰 캐릭터 스티커" }] };
+  /** 처음 failures번은 err를 던지고, 그다음부터 MATCH */
+  function flaky(failures: number, err: Error) {
+    let n = 0;
+    const models = {
+      async generateContent() {
+        n++;
+        if (n <= failures) throw err;
+        return { text: JSON.stringify({ verdict: "MATCH" }) };
+      },
+      async embedContent() {
+        return { embeddings: [] };
+      },
+    } as unknown as GeminiModels;
+    return { models, count: () => n };
+  }
+
+  it("기본·대체 모델이 모두 429여도 잠깐 쉬고 다시 불러 다시 보기 결과를 쓴다", async () => {
+    const f = flaky(2, Object.assign(new Error("429 RESOURCE_EXHAUSTED"), { status: 429 }));
+    const out = await createGeminiClient(f.models, CONFIG).compareFeatures(reported, stored);
+    expect(out.features[0]?.verdict).toBe("MATCH");
+    expect(f.count()).toBe(3);
+  });
+
+  it("일시적이지 않은 오류는 다시 부르지 않고 규칙 결과를 쓴다", async () => {
+    const f = flaky(2, new Error("400 INVALID_ARGUMENT"));
+    const out = await createGeminiClient(f.models, CONFIG).compareFeatures(reported, stored);
+    expect(out.features[0]?.verdict).toBe("CONTRADICT");
+    expect(f.count()).toBe(2);
+  });
+
+  it("retryTransient는 한 번만 다시 부른다", async () => {
+    let n = 0;
+    const always = () => {
+      n++;
+      return Promise.reject(new Error("503 UNAVAILABLE"));
+    };
+    await expect(retryTransient(always, 1)).rejects.toThrow("503");
+    expect(n).toBe(2);
   });
 });
