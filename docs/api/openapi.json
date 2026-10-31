@@ -6413,7 +6413,7 @@
           "습득물"
         ],
         "summary": "두 단계 등록 1: 사진 분석 (F-01, F-02, F-03)",
-        "description": "사진만 먼저 받아 가리기·AI 분석을 하고 확정 전(ANALYZING)으로 저장한다. 응답의 category로 등록 화면에 물건 이름을 보여 준다. 60분 안에 confirm하지 않으면 사진까지 지운다. 확정 전에는 후보·알림에 나오지 않는다. AI가 실패하면 category가 null이고 confirm하면 검토 대기(REVIEW)가 된다. 동의와 캡차(X-Captcha-Token 헤더)가 필요하다.",
+        "description": "사진만 먼저 받아 가리기·AI 분석을 하고 확정 전(ANALYZING)으로 저장한다. 응답의 category로 등록 화면에 물건 이름을 보여 준다. 60분 안에 confirm하지 않으면 사진과 초안을 지운다(기한 만료로 남기지 않음). 확정 전에는 후보·알림에 나오지 않는다. AI가 실패하면 category가 null이고 confirm하면 검토 대기(REVIEW)가 된다. 동의와 캡차(X-Captcha-Token 헤더)가 필요하다.",
         "requestBody": {
           "content": {
             "multipart/form-data": {

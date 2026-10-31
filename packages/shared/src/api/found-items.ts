@@ -73,7 +73,7 @@ export const AnalyzeFoundItemResponse = z.object({
   isValuable: z.boolean(),
   /** 분석 실패 안내 문구. 성공하면 null */
   message: z.string().nullable(),
-  /** 이때까지 확정하지 않으면 사진까지 지운다 */
+  /** 이때까지 확정하지 않으면 사진과 초안을 지운다 */
   confirmBy: z.iso.datetime(),
 });
 export type AnalyzeFoundItemResponse = z.infer<typeof AnalyzeFoundItemResponse>;

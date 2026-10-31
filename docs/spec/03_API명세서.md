@@ -196,7 +196,7 @@
 - `category`: AI가 알아본 종류. AI가 실패하면 `null`이고 `message`에 검토 대기 안내가 온다. 이때도 확정할 수 있고, 확정하면 `REVIEW`가 된다.
 - `isValuable`: 귀중품이면 `true`. 이때 확정은 `HANDED_OVER`만 받으므로 등록 화면은 "그 자리에 둠"을 감추고 "보관처에 맡김"을 미리 고른다. (open-issues #32, QA B11)
 - `confirmToken`: 서버는 HMAC만 저장한다. 이 값을 가진 기기만 확정할 수 있다.
-- `confirmBy`(60분)까지 확정하지 않으면 정기 작업이 기한 만료로 바꾸고 사진까지 지운다.
+- `confirmBy`(60분)까지 확정하지 않으면 정기 작업이 사진과 행을 지운다(기한 만료로 남기지 않음, 개인정보 최소 수집). 정리한 개수만 서버 로그에 남긴다.
 
 **2단계 `POST /found-items/:id/confirm`** · 공개 · JSON
 - 본문: `confirmToken` + 위 표의 위치 필드(`buildingId`, `storageType`, `storagePlaceId`, `floor`, `locationDetail`). 검증 규칙도 같다.
