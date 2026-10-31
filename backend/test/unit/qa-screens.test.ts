@@ -592,3 +592,24 @@ describe("QA 10/31 뒤로 가기", () => {
     expect(html).not.toMatch(/catch \(_\) \{\s*savedDesc = "";/);
   });
 });
+
+describe("QA 10/31 돌발 상황 (사소 묶음 1)", () => {
+  it("올리는 중 '그만할까요?' 창이 열려 있으면 분석이 끝나도 넘어가지 않는다", () => {
+    const html = read("frontend/found/uploading.html");
+    expect(html).toContain("leaveGuard?.isOpen()");
+    expect(html).toContain("leaveGuard.afterStay(goNext)");
+    const guard = read("frontend/leave-guard.js");
+    expect(guard).toContain("isOpen: () => !backdrop.hidden");
+    expect(guard).toContain("afterStay: (fn) => staying.push(fn)");
+  });
+
+  it("분석이 일찍 실패해도 처리되지 않은 promise 오류를 남기지 않는다", () => {
+    expect(read("frontend/found/uploading.html")).toContain("uploadTask.catch(() => {});");
+  });
+
+  it("첫 화면은 버튼이 옆에서 들어오는 동안 가로로 밀리지 않는다 (html까지 막는다)", () => {
+    const html = read("frontend/index.html");
+    expect(html).toContain("html, body { overflow-x: hidden; }");
+    expect(html).toContain("@supports (overflow: clip) { html, body { overflow-x: clip; } }");
+  });
+});
