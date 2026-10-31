@@ -180,11 +180,11 @@ describe("스토리텔링 화면 (QA 10/30 최종)", () => {
     expect(html).not.toContain("오늘 00:00부터");
   });
 
-  it("첫 화면: 문제 한 줄, 체험 배지 없음(심사용 계정으로 심사), 가로로 밀고 들어오는 효과 없음", () => {
+  it("첫 화면: 10/27 디자인(부제목, 양옆에서 밀고 들어오는 버튼), 체험 배지 없음, 가로 넘침은 잘라 둔다 (10/31 되돌림)", () => {
     const html = read("frontend/index.html");
-    expect(html).toContain("146건");
+    expect(html).toContain("분실물을 찍어 올려 찾아주세요");
     expect(html).not.toContain("심사위원 체험 2분");
-    expect(html).not.toMatch(/translateX\(-?115%\)/);
+    expect(html).toMatch(/translateX\(-?115%\)/);
     expect(html).toContain("overflow-x: clip");
   });
 
