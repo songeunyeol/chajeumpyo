@@ -463,6 +463,22 @@ describe("QA 10/31: 화면 문구·기본값", () => {
     expect(home).toContain("맡길 물건·수령 예정");
   });
 
+  it("관리자 홈 맨 위에서 수령 QR 스캔으로 갈 수 있다", () => {
+    const home = read("frontend/admin/home.html");
+    expect(home).toContain('<a class="choice" id="linkScan" href="scan.html">');
+    expect(home.indexOf('id="linkScan"')).toBeLessThan(home.indexOf('id="linkReview"'));
+  });
+
+  it("내 신고: QR 받은 신고는 QR 화면을 바로 열고, 수령 완료 카드는 눌러도 반응이 없다", () => {
+    const home = read("frontend/lost/home.html");
+    expect(home).toContain("item-handover.html?id=");
+    expect(home).toContain("encodeURIComponent(p.foundItemId)}&qr=1");
+    expect(home).toContain('[[done ? "수령 완료" : "종료", "glow-red"]]');
+    expect(home).toContain('card.setAttribute("aria-disabled", "true")');
+    expect(read("frontend/palette.css")).toContain(".card.is-inert { cursor: default;");
+    expect(read("frontend/lost/item-handover.html")).toContain('get("qr") === "1") qrBtn.click()');
+  });
+
   it("확인 모달과 질문 화면에 3번 틀리면 풀리지 않는 잠금 규칙을 처음부터 알린다", () => {
     for (const f of ["frontend/lost/candidates.html", "frontend/lost/question.html"])
       expect(read(f)).toContain("3번 틀리면 다시 확인할 수 없고(기다려도 풀리지 않아요)");

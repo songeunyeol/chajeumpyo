@@ -275,23 +275,42 @@
     if (activeItems.length === 0)
       activeListEl.appendChild(emptyCard(all.length === 0 ? "아직 신고 내역이 없어요." : "진행 중인 분실 신고가 없어요."));
     for (const rep of activeItems) {
-      const a = reportCard(rep, "a", "glow-green", [
-        ["진행 중", "glow-green"],
-        [`후보 ${rep.candidateCount}개`, ""],
-      ]);
-      a.href = "candidates.html";
+      const qr = qrHref(rep);
+      const chips = [["진행 중", "glow-green"], qr ? ["수령 QR 받음", ""] : [`후보 ${rep.candidateCount}개`, ""]];
+      const a = reportCard(rep, "a", "glow-green", chips);
+      // 수령 QR을 받아 둔 신고는 후보를 거치지 않고 QR 화면을 바로 연다
+      a.href = qr || "candidates.html";
       a.addEventListener("click", () => LostApi.store.set(LostApi.KEYS.reportId, rep.id));
       activeListEl.appendChild(withTrash(a, rep));
     }
 
-    // 닫힌 신고는 서버가 후보를 주지 않고, 찾은 물건 상세는 수령 뒤 닫힌다(409 ALREADY_CLAIMED). 그래서 누를 곳이 없다
+    // 끝난 신고: 수령 완료는 누를 곳이 없다(물건 상세는 수령 뒤 닫힌다, 409 ALREADY_CLAIMED).
+    // 아직 찾지 않은 보관처 물건이 있으면 QR 화면을 다시 연다. 그 밖의 종료 신고는 서버가 후보를 주지 않아 누를 곳이 없다
     closedListEl.replaceChildren();
     if (closedItems.length === 0) closedListEl.appendChild(emptyCard("아직 끝난 신고가 없어요."));
     for (const rep of closedItems) {
-      closedListEl.appendChild(
-        withTrash(reportCard(rep, "div", "glow-red", [[rep.status === "RESOLVED" ? "찾음" : "종료", "glow-red"]]), rep),
-      );
+      const done = rep.status === "RESOLVED" || rep.pickup?.status === "COMPLETED";
+      const qr = done ? null : qrHref(rep);
+      let card;
+      if (qr) {
+        card = reportCard(rep, "a", "glow-red", [["종료", "glow-red"], ["수령 QR 보기", ""]]);
+        card.href = qr;
+        card.addEventListener("click", () => LostApi.store.set(LostApi.KEYS.reportId, rep.id));
+      } else {
+        card = reportCard(rep, "div", "glow-red", [[done ? "수령 완료" : "종료", "glow-red"]]);
+        card.classList.add("is-inert");
+        card.setAttribute("aria-disabled", "true");
+      }
+      closedListEl.appendChild(withTrash(card, rep));
     }
+  }
+
+  /** 확인을 통과했고 아직 찾지 않은 보관처 물건이면 QR 화면 주소. 그 자리에 둔 물건·통과 전·수령 완료면 null */
+  function qrHref(rep) {
+    const p = rep.pickup;
+    if (!p || p.status === "COMPLETED" || p.storageType !== "HANDED_OVER") return null;
+    if (rep.status === "OPEN" && p.status !== "QR_ISSUED") return null; // 진행 중이면 QR을 받은 뒤에만 바로 간다
+    return `item-handover.html?id=${encodeURIComponent(p.foundItemId)}&qr=1`;
   }
 
   paintHomeMap([]);
