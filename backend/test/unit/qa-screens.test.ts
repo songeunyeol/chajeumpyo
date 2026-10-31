@@ -188,17 +188,17 @@ describe("스토리텔링 화면 (QA 10/30 최종)", () => {
     expect(html).toContain("overflow-x: clip");
   });
 
-  it("관리자 로그인 시연 문구는 서버 집계(#112)와 맞는다", () => {
+  it("관리자 로그인에는 시연 안내가 없다 (10/31 시연 모드 끔)", () => {
     const html = read("frontend/admin/login.html");
     expect(html).not.toContain("서버 없이 예시 데이터로");
-    expect(html).toContain("서버가 실제 통계 코드로 계산");
+    expect(html).not.toContain("시연에서");
   });
 
   it("체험 수령이 끝나면 수령 전 안내를 숨기고 마무리와 다음 행동을 보여 준다", () => {
     const html = read("frontend/lost/item-handover.html");
     expect(html).toContain('id="pickedUpBox"');
     expect(html).toContain('getElementById("beforePickupNote").hidden = true');
-    expect(html).toContain('href="../admin/login.html"');
+    expect(html).not.toContain('href="../admin/login.html"');
   });
 
   it("관리자 화면에 '시드'라는 말이 보이지 않는다", () => {
