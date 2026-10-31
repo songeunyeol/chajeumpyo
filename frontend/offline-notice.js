@@ -11,7 +11,7 @@
   const queued = Array.isArray(window.OfflineNotice) ? window.OfflineNotice : [];
   if (window.OfflineNotice && !Array.isArray(window.OfflineNotice)) return;
 
-  const disabled = ["/found/uploading.html"].some((p) => location.pathname.endsWith(p));
+  const disabled = ["/found/uploading"].some((p) => location.pathname.endsWith(p));
   let loaded = false; // 이 화면에서 API 응답을 한 번이라도 받았는가
   let blocking = false; // 화면을 덮는 안내가 떠 있는가
   let dirty = false; // 사용자가 입력칸에 무언가 적었는가

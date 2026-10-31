@@ -386,7 +386,7 @@
     }
     return v.password;
   }
-  if (!/\/(signup|code|consent-mail)\.html$/.test(location.pathname)) dropSignupPassword();
+  if (!/\/(signup|code|consent-mail)(\.html)?$/.test(location.pathname)) dropSignupPassword();
 
   // ── 로그인 상태 ───────────────────────────────────────────
   /**
@@ -406,7 +406,7 @@
   /** 체험 계정이면 true (홈의 "체험 모드" 띠, 수령이 바로 완료되는 것 안내) */
   const isDemo = () => session()?.user?.role === "DEMO";
   /** 화면 맨 위에서 부른다: 로그인하지 않았으면 로그인 화면으로 보낸다 */
-  function requireLogin(loginPage = "login.html") {
+  function requireLogin(loginPage = "login") {
     if (isLoggedIn()) return true;
     location.replace(loginPage);
     return false;

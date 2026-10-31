@@ -101,8 +101,8 @@
   // POST /lost-reports: 애니메이션과 함께 바로 보낸다 (AI가 설명을 읽느라 몇 초 걸린다)
   const draft = LostApi.store.get(LostApi.KEYS.reportDraft);
   function guardReportStep() {
-    if (!LostApi.isLoggedIn()) return "login.html";
-    if (!LostApi.store.get(LostApi.KEYS.reportDraft)) return "report.html";
+    if (!LostApi.isLoggedIn()) return "login";
+    if (!LostApi.store.get(LostApi.KEYS.reportDraft)) return "report";
     return null;
   }
   const reportRedirect = guardReportStep();
@@ -120,7 +120,7 @@
     pageTitle.textContent = "올리지 못했어요";
     pageLead.textContent = LostApi.friendlyMessage(err);
     await wait(2600);
-    window.location.href = "report.html";
+    window.location.href = "report";
   }
 
   async function runReportUploadFlow() {
@@ -159,7 +159,7 @@
 
     if (!new URLSearchParams(window.location.search).has("preview")) {
       // 방금 올린 신고의 후보로 바로 간다. replace라 뒤로 가기로 이 화면에 돌아와 다시 보내지 않는다
-      window.location.replace("candidates.html");
+      window.location.replace("candidates");
     } else {
       await wait(1200);
       window.location.reload();

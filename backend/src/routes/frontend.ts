@@ -47,16 +47,34 @@ function isHidden(path: string) {
   return name.startsWith("_") || extname(name).toLowerCase() === ".md" || designCheckPages.has(name.normalize("NFC"));
 }
 
+/**
+ * 주소에 .html을 보이지 않는다. 화면 링크는 /lost/login처럼 .html 없이 쓰고(아래 extensions가 login.html을 찾는다),
+ * 옛 링크·북마크(/lost/login.html, /index.html)는 .html 없는 주소로 넘긴다. 쿼리(?id=)는 그대로 붙인다.
+ * 되돌릴 때 브라우저에 남지 않게 302(임시)로 넘긴다.
+ */
+function cleanHtmlPath(path: string) {
+  if (!path.endsWith(".html")) return null;
+  const clean = path.replace(/(^|\/)index\.html$/, "$1").replace(/\.html$/, "");
+  // //evil.com 이나 /\evil.com 처럼 다른 사이트로 읽히는 주소를 만들지 않는다
+  return `/${clean.replace(/^[/\\]+/, "")}`;
+}
+
 export function createFrontendRouter(dir = env.FRONTEND_DIR ?? defaultDir) {
   const router = Router();
-  router.use((req, _res, next) => {
+  router.use((req, res, next) => {
     if (isHidden(req.path)) return next("router");
+    const clean = req.method === "GET" || req.method === "HEAD" ? cleanHtmlPath(req.path) : null;
+    if (clean) {
+      const q = req.originalUrl.indexOf("?");
+      return res.redirect(302, q < 0 ? clean : clean + req.originalUrl.slice(q));
+    }
     next();
   });
   router.use(
     pageCsp,
     express.static(dir, {
       index: "index.html",
+      extensions: ["html"],
       dotfiles: "ignore",
       setHeaders(res, path) {
         // 파일 이름에 해시가 없어 화면·스크립트는 매번 새로 확인하고(ETag로 304), 이미지는 하루 둔다

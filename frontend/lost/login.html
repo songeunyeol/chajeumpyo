@@ -27,7 +27,7 @@
 </head>
 <body style="overscroll-behavior-y:none">
 <main class="screen" id="loginScreen" style="touch-action:none;user-select:none">
-  <header class="bar"><a class="back" href="../index.html">←</a></header>
+  <header class="bar"><a class="back" href="../">←</a></header>
   <h1>잃어버렸어요</h1>
   <p class="lead">서경대 학교 메일로 로그인해요.</p>
 
@@ -49,7 +49,7 @@
   <div class="dock">
     <button type="button" class="btn" id="loginBtn" style="position:relative;z-index:2;width:100%;cursor:pointer">로그인</button>
     <div class="signup-reveal" id="signupReveal">
-      <a class="btn gray" href="signup.html">회원가입</a>
+      <a class="btn gray" href="signup">회원가입</a>
     </div>
   </div>
 </main>
@@ -57,7 +57,7 @@
 <script src="school-email.js"></script>
 <script>
   // 이미 로그인했으면 홈으로
-  if (LostApi.isLoggedIn()) location.replace("home.html");
+  if (LostApi.isLoggedIn()) location.replace("home");
 
   const loginScreen = document.getElementById("loginScreen");
   const emailInput = document.getElementById("loginEmailId");
@@ -115,7 +115,7 @@
         try {
           sessionStorage.setItem("signupEmail", schoolEmail.email());
         } catch (_) {}
-        window.location.href = "home.html";
+        window.location.href = "home";
       })
       .catch((err) => {
         loginErr.textContent =

@@ -11,7 +11,7 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="code.html">←</a></header>
+  <header class="bar"><a class="back" href="code">←</a></header>
   <h1>세 가지를 확인해요</h1>
   <p class="lead">눌러서 동의해 주세요.</p>
   <div class="check is-toggle is-off" id="mailConsent" role="checkbox" aria-checked="false" tabindex="0"><span class="mark">✓</span><div><b>학교 이메일 <span class="check-tag">(필수)</span></b><p>가입과 물건을 찾아간 사람 기록에만 써요.</p></div></div>
@@ -19,7 +19,7 @@
   <div class="check is-toggle is-off" id="locConsent" role="checkbox" aria-checked="false" tabindex="0"><span class="mark">✓</span><div><b>위치 <span class="check-tag">(선택)</span></b><p>가장 가까운 건물만 남기고, 좌표는 저장하지 않아요.<br>허용하지 않아도 건물을 직접 고를 수 있어요.</p></div></div>
   <p class="note danger" id="consentErr" hidden></p>
   <div class="dock">
-    <a class="btn" id="agreeBtn" href="home.html" aria-disabled="true">동의하고 계속</a>
+    <a class="btn" id="agreeBtn" href="home" aria-disabled="true">동의하고 계속</a>
   </div>
 </main>
 <style>.btn[aria-disabled="true"] { opacity: .45; }</style>
@@ -30,7 +30,7 @@
   LeaveGuard.install({
     title: "가입을 그만할까요?",
     message: "지금까지 적은 내용은 지워져요. 그래도 나갈까요?",
-    leaveTo: "signup.html",
+    leaveTo: "signup",
     onLeave: () => {
       LostApi.store.set(LostApi.KEYS.verification, null);
       LostApi.store.set(LostApi.KEYS.signupPassword, null);
@@ -41,9 +41,9 @@
   // 이메일·외부 AI는 필수, 위치는 선택(처음엔 꺼 둠, 눌러야 동의). 위치 동의 여부를 그대로 보낸다 (QA B14·B15)
   const agreeBtn = document.getElementById("agreeBtn");
   const consentErr = document.getElementById("consentErr");
-  if (!LostApi.store.get(LostApi.KEYS.verification)) location.replace("signup.html");
+  if (!LostApi.store.get(LostApi.KEYS.verification)) location.replace("signup");
   window.addEventListener("pageshow", () => {
-    if (!LostApi.store.get(LostApi.KEYS.verification)) location.replace("signup.html");
+    if (!LostApi.store.get(LostApi.KEYS.verification)) location.replace("signup");
   });
   // 동의는 모두 처음엔 꺼 두고 사용자가 직접 누른다. 필수(이메일·사진 분석)를 켜야 버튼이 켜진다 (QA 10/29)
   const locConsent = document.getElementById("locConsent");
@@ -83,11 +83,11 @@
       if (!password) {
         consentErr.textContent = "가입 시간이 지났어요. 처음부터 다시 해 주세요.";
         consentErr.hidden = false;
-        setTimeout(() => location.replace("signup.html"), 1800);
+        setTimeout(() => location.replace("signup"), 1800);
         return;
       }
       await LostApi.signup({ password, location: !locConsent.classList.contains("is-off") });
-      location.replace("home.html");
+      location.replace("home");
     } catch (err) {
       // INVALID_CODE: 인증이 10분 지났거나 이미 씀 → 가입을 처음부터
       consentErr.textContent =
@@ -95,7 +95,7 @@
       consentErr.hidden = false;
       if (err.code === "INVALID_CODE") {
         LostApi.dropSignupPassword();
-        setTimeout(() => location.replace("signup.html"), 1800);
+        setTimeout(() => location.replace("signup"), 1800);
       }
     } finally {
       busy = false;

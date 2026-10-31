@@ -12,7 +12,7 @@
 <body>
 <main class="screen">
   <header class="bar">
-    <a class="back" href="home.html" aria-label="홈으로 돌아가기">←</a>
+    <a class="back" href="home" aria-label="홈으로 돌아가기">←</a>
     <h2>내 정보</h2>
   </header>
   <h1>내 정보</h1>
@@ -22,7 +22,7 @@
     <p class="meta" id="meMeta">010-0000-0000</p>
   </div>
   <div class="dock">
-    <a class="btn danger" id="logoutBtn" href="login.html">로그아웃</a>
+    <a class="btn danger" id="logoutBtn" href="login">로그아웃</a>
   </div>
 </main>
 <script src="api.js"></script>
@@ -41,7 +41,7 @@
           : `로그인은 ${LostApi.formatKst(LostApi.session()?.expiresAt)}까지 유지돼요.`;
       })
       .catch((err) => {
-        if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+        if (err.code === "UNAUTHORIZED") return location.replace("login");
         document.getElementById("meMeta").textContent = LostApi.friendlyMessage(err);
       });
   }

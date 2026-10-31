@@ -12,7 +12,7 @@
 <body>
 <main class="screen">
   <header class="bar" style="justify-content:space-between">
-    <a class="back" href="signup.html">←</a>
+    <a class="back" href="signup">←</a>
     <span class="loc-chip" id="testCodeChip" style="cursor:default;display:none">테스트 코드: 123456</span>
   </header>
   <h1>코드를 보냈어요</h1>
@@ -45,14 +45,14 @@
   LeaveGuard.install({
     title: "이전 화면으로 갈까요?",
     message: "5분 안에 돌아오면 보낸 코드를 그대로 쓸 수 있어요.",
-    leaveTo: "signup.html",
+    leaveTo: "signup",
   });
 </script>
 <script src="../found/captcha.js"></script>
 <script>
   // 코드는 서버가 메일로 보낸다 (개발 서버 MAIL_MODE=console이면 백엔드 로그). 화면에 정답을 두지 않는다
   const signupEmail = LostApi.store.get(LostApi.KEYS.signupEmail);
-  if (!signupEmail) location.replace("signup.html");
+  if (!signupEmail) location.replace("signup");
   const maskedEmailEl = document.getElementById("maskedEmail");
   const codeTiles = document.getElementById("codeTiles");
   const inputs = Array.from(codeTiles.querySelectorAll("input"));
@@ -122,7 +122,7 @@
   }
   window.addEventListener("pageshow", () => {
     if (!LostApi.store.get(LostApi.KEYS.signupEmail)) {
-      location.replace("signup.html");
+      location.replace("signup");
       return;
     }
     const again = LostApi.recentCode(signupEmail);
@@ -237,7 +237,7 @@
     codeTiles.classList.remove("is-enter", "is-wrong");
     codeTiles.classList.add("is-exit-right");
     setTimeout(() => {
-      window.location.href = "consent-mail.html";
+      window.location.href = "consent-mail";
     }, 700);
   }
 

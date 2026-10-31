@@ -51,7 +51,7 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="consent.html">←</a></header>
+  <header class="bar"><a class="back" href="consent">←</a></header>
   <h1>물건 사진을 올려 주세요</h1>
   <p class="lead">물건이 잘 보이게 찍어 주세요.</p>
 
@@ -128,7 +128,7 @@
 
   <div class="dock">
     <p class="note danger" id="captchaNote" style="margin:0" role="alert" hidden></p>
-    <a class="btn" id="nextBtn" href="uploading.html" aria-disabled="true">이 사진으로</a>
+    <a class="btn" id="nextBtn" href="uploading" aria-disabled="true">이 사진으로</a>
   </div>
 </main>
 <script src="api.js"></script>
@@ -138,8 +138,8 @@
   // 동의 화면을 거치지 않았으면 동의부터 (주소로 바로 들어오거나 앞으로 가기로 온 경우)
   function guardPhoto() {
     try {
-      if (sessionStorage.getItem("foundConsent") !== "granted") return "consent.html";
-      if (sessionStorage.getItem("foundDraft")) return "register.html";
+      if (sessionStorage.getItem("foundConsent") !== "granted") return "consent";
+      if (sessionStorage.getItem("foundDraft")) return "register";
     } catch (_) {}
     return null;
   }

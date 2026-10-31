@@ -199,7 +199,7 @@ describe("스토리텔링 화면 (QA 10/30 최종)", () => {
     const html = read("frontend/lost/item-handover.html");
     expect(html).toContain('id="pickedUpBox"');
     expect(html).toContain('getElementById("beforePickupNote").hidden = true');
-    expect(html).not.toContain('href="../admin/login.html"');
+    expect(html).not.toContain('href="../admin/login"');
   });
 
   it("관리자 화면에 '시드'라는 말이 보이지 않는다", () => {
@@ -376,7 +376,7 @@ describe("실서비스 평가 10/30 오후 (체험 진입·문구·시연 데이
   it("사진 없이 등록 화면에 들어오면 alert 없이 사진 화면으로", () => {
     const html = read("frontend/found/register.html");
     expect(html).not.toContain(".catch((err) => alert(err.message));");
-    expect(html).toContain('"photo.html?need=photo"');
+    expect(html).toContain('"photo?need=photo"');
     expect(read("frontend/found/photo.html")).toContain("사진을 먼저 올려 주세요.");
   });
 
@@ -440,13 +440,13 @@ describe("QA 10/31: 화면 문구·기본값", () => {
 
   it("관리자 홈 맨 위에서 수령 QR 스캔으로 갈 수 있다", () => {
     const home = read("frontend/admin/home.html");
-    expect(home).toContain('<a class="choice" id="linkScan" href="scan.html">');
+    expect(home).toContain('<a class="choice" id="linkScan" href="scan">');
     expect(home.indexOf('id="linkScan"')).toBeLessThan(home.indexOf('id="linkReview"'));
   });
 
   it("내 신고: QR 받은 신고는 QR 화면을 바로 열고, 수령 완료 카드는 눌러도 반응이 없다", () => {
     const home = read("frontend/lost/home.html");
-    expect(home).toContain("item-handover.html?id=");
+    expect(home).toContain("item-handover?id=");
     expect(home).toContain("encodeURIComponent(p.foundItemId)}&qr=1");
     expect(home).toContain('[[done ? "수령 완료" : "종료", "glow-red"]]');
     expect(home).toContain('card.setAttribute("aria-disabled", "true")');
@@ -490,7 +490,7 @@ describe("QA 10/31: 그 자리에 둠은 자세한 위치 필수, 첫 화면 제
 
 describe("심사용 계정으로 심사 (10/31, 체험·시연 진입점 제거)", () => {
   it("첫 화면·로그인·관리자 로그인에 체험·시연 진입점이 없다", () => {
-    expect(read("frontend/index.html")).not.toContain("guide.html");
+    expect(read("frontend/index.html")).not.toContain('href="guide"');
     const login = read("frontend/lost/login.html");
     expect(login).not.toContain("체험해 보기");
     expect(login).not.toContain("demo=1");
@@ -537,7 +537,7 @@ describe("설명 글씨 대비·회원가입 바로 보이기 (10/31 기획 피�
     expect(login).toContain('class="signup-reveal" id="signupReveal"');
     expect(read("frontend/palette.css")).toContain(".signup-reveal.is-open");
     expect(login).not.toContain('class="social"');
-    expect(login).not.toContain("consent-social.html");
+    expect(login).not.toContain("consent-social");
   });
 });
 
@@ -555,8 +555,8 @@ describe("QA 10/31 뒤로 가기", () => {
 
   it("분실 신고 폼은 제출하면 history에서 빠진다 (후보에서 뒤로 가면 빈 폼이 아니다)", () => {
     const report = read("frontend/lost/report.html");
-    expect(report).toContain('leaveGuard.proceed("uploading.html")');
-    expect(report).not.toContain('location.href = "uploading.html"');
+    expect(report).toContain('leaveGuard.proceed("uploading")');
+    expect(report).not.toContain('location.href = "uploading"');
     const guard = read("frontend/leave-guard.js");
     expect(guard).toContain("proceed(url)");
     expect(guard).toContain("history.back()");
@@ -688,7 +688,7 @@ describe("연결 끊김 안내 (QA 10/31: 오프라인이면 화면이 깨져 �
     expect(notice).toContain("다시 시도");
     expect(notice).toContain('addEventListener("online"');
     // 올리는 중 화면은 자체 다시 시도 화면을 쓴다 (#163)
-    expect(notice).toContain('"/found/uploading.html"');
+    expect(notice).toContain('"/found/uploading"');
     expect(read("frontend/sw.js")).toContain('"/offline-notice.js"');
   });
 });
@@ -751,5 +751,30 @@ describe("관리자 확인 창 (QA 15-5: 대면 수령만 브라우저 기본 co
     expect(item.indexOf("VERIFICATION_NOTE_MAX) return A.showError")).toBeLessThan(
       item.indexOf('pickupModal.classList.add("is-open")'),
     );
+  });
+});
+
+describe("주소에 .html을 보이지 않는다 (10/31 은열)", () => {
+  const pages = (readdirSync(resolve(root, "frontend"), { recursive: true }) as string[])
+    .map((f) => f.replaceAll("\\", "/"))
+    .filter((f) => /\.(html|js)$/.test(f) && !f.startsWith("vendor/"));
+
+  it("화면 링크·이동 주소에 .html이 없다", () => {
+    expect(pages).toContain("lost/home.html");
+    const offenders = pages.flatMap((f) =>
+      read(`frontend/${f}`)
+        .split("\n")
+        .filter((line) => /["'`/][A-Za-z0-9_-]+\.html(["'`?#]|\$\{)/.test(line))
+        .map((line) => `${f}: ${line.trim()}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("서비스 워커는 화면을 .html 없는 주소로 저장하고, 옛 .html 주소도 같은 칸으로 찾는다", () => {
+    const sw = read("frontend/sw.js");
+    expect(sw).toContain('const OFFLINE_URL = "/offline";');
+    expect(sw).toContain('"/found/photo",');
+    expect(sw).not.toMatch(/"\/[^"]*\.html"/);
+    expect(sw).toContain('.replace(/\\.html$/, "")');
   });
 });

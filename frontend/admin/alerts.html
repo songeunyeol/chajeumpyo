@@ -11,7 +11,7 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="home.html">←</a><h2>알림</h2></header>
+  <header class="bar"><a class="back" href="home">←</a><h2>알림</h2></header>
   <h1>챙겨야 할 일</h1>
   <p class="lead" id="lead">불러오는 중…</p>
   <div class="chips" id="filter" role="group" aria-label="알림 거르기" style="margin:0 0 12px">
@@ -58,7 +58,7 @@
       const info = AdminApi.NOTIFICATION_KIND[item.type] === "INFO";
       const card = el("a", {
         class: "card",
-        href: item.foundItemId ? `item.html?id=${encodeURIComponent(item.foundItemId)}` : "home.html",
+        href: item.foundItemId ? `item?id=${encodeURIComponent(item.foundItemId)}` : "home",
         style: "display:block",
       },
       el("div", { class: "chips", style: "margin-top:0" },

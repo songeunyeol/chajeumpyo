@@ -226,7 +226,7 @@
   function toLogin() {
     auth.clear();
     const here = location.pathname.split("/").pop() + location.search;
-    location.replace(`login.html?next=${encodeURIComponent(here)}`);
+    location.replace(`login?next=${encodeURIComponent(here)}`);
   }
 
   /** 로그인하지 않았으면 로그인 화면으로 보낸다. 로그인했으면 로그인 정보 */
@@ -825,7 +825,7 @@
       try {
         sessionStorage.removeItem(DEMO_STATE_KEY);
       } catch (_) {}
-      location.href = "login.html";
+      location.href = "login";
     },
     startDemo() {
       const session = startDemo();

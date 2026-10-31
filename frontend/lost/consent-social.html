@@ -11,7 +11,7 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="login.html">←</a></header>
+  <header class="bar"><a class="back" href="login">←</a></header>
   <h1>세 가지를 확인해요</h1>
   <p class="lead">구글, 카카오, 네이버로 가입할 때 물어봐요.</p>
   <div class="check" id="phoneCheck"><span class="mark">✓</span><div><b>전화번호</b><p>가입 뒤 한 번만 확인해요. 화면에는 가운데를 가려 보여요.</p></div></div>
@@ -21,7 +21,7 @@
   <p class="note danger" id="consentErr" hidden></p>
   <div class="dock">
     <div id="captchaBox"></div>
-    <a class="btn" id="agreeBtn" href="home.html" aria-disabled="true">동의하고 계속</a>
+    <a class="btn" id="agreeBtn" href="home" aria-disabled="true">동의하고 계속</a>
   </div>
 </main>
 <style>.btn[aria-disabled="true"] { opacity: .45; }</style>
@@ -103,7 +103,7 @@
       }
       if (!captcha) throw LostApi.captchaUnavailableError();
       await LostApi.demoLogin({ location: !locConsent.classList.contains("is-off") });
-      location.replace("home.html");
+      location.replace("home");
     } catch (err) {
       if (showCaptchaHelp(err)) {
         consentErr.hidden = true;

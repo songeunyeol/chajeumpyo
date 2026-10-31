@@ -11,7 +11,7 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="candidates.html">←</a><h2>확인</h2></header>
+  <header class="bar"><a class="back" href="candidates">←</a><h2>확인</h2></header>
 
   <div class="q-head">
     <span class="chip" id="qStepChip">질문 불러오는 중</span>
@@ -39,7 +39,7 @@
 
   const claim = LostApi.store.get(LostApi.KEYS.claim);
   const cand = LostApi.store.get(LostApi.KEYS.candidate);
-  if (authed && claim?.result !== "BORDERLINE") location.replace("candidates.html");
+  if (authed && claim?.result !== "BORDERLINE") location.replace("candidates");
 
   const questions = Array.isArray(claim?.questions) ? claim.questions : [];
   qChanceChip.textContent = `3번 중 ${cand?.attemptsLeft ?? 3}번 남음`;
@@ -57,21 +57,21 @@
       const next = LostApi.claimScreen(r);
       if (next === "pass") {
         const d = await LostApi.detail();
-        location.href = d.storageType === "HANDED_OVER" ? "item-handover.html" : "item.html";
+        location.href = d.storageType === "HANDED_OVER" ? "item-handover" : "item";
       } else {
-        location.href = `${next}.html`; // fail · lock · counter
+        location.href = next; // fail · lock · counter
       }
       return true;
     } catch (e) {
       const next = LostApi.claimScreen(e);
       if (next) {
-        location.href = `${next}.html`;
+        location.href = next;
         return true;
       }
       qStage.classList.remove("is-switching");
       err.textContent = LostApi.friendlyMessage(e);
       err.hidden = false;
-      if (e.code === "ALREADY_ANSWERED") setTimeout(() => location.replace("candidates.html"), 1500);
+      if (e.code === "ALREADY_ANSWERED") setTimeout(() => location.replace("candidates"), 1500);
       return false;
     }
   }

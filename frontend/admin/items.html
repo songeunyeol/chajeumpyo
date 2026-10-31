@@ -11,7 +11,7 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="home.html">←</a><h2>습득물</h2></header>
+  <header class="bar"><a class="back" href="home">←</a><h2>습득물</h2></header>
   <h1 id="title">전체 습득물</h1>
   <p class="lead" id="lead">불러오는 중…</p>
 
@@ -73,7 +73,7 @@
     const label = AdminApi.itemLabel(item.category, item.subCategory);
     return el(
       "a",
-      { class: "card", href: withDemo(`item.html?id=${encodeURIComponent(item.id)}`), style: "display:block" },
+      { class: "card", href: withDemo(`item?id=${encodeURIComponent(item.id)}`), style: "display:block" },
       el("h3", { text: AdminApi.itemTitle(item) }),
       el("p", { class: "meta", text: [label || "종류 확인 전", AdminApi.placeText(item), AdminApi.formatTime(item.foundAt)].join(" · ") }),
       el("div", { class: "chips" }, chips),
@@ -86,7 +86,7 @@
     else if (status) q.set("status", status);
     if (page > 1) q.set("page", String(page));
     if (demo) q.set("demo", "1");
-    history.replaceState(null, "", `items.html${q.toString() ? `?${q}` : ""}`);
+    history.replaceState(null, "", `items${q.toString() ? `?${q}` : ""}`);
     $("title").textContent = lockedOnly ? "대면 확인" : status ? AdminApi.STATUS[status].label : "전체 습득물";
     AdminApi.showError($("error"));
     let r;

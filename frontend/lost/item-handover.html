@@ -11,7 +11,7 @@
 </head>
 <body>
 <main class="screen" style="overflow:hidden">
-  <header class="bar"><a class="back" href="candidates.html">←</a><h2 id="barTitle">확인 결과</h2></header>
+  <header class="bar"><a class="back" href="candidates">←</a><h2 id="barTitle">확인 결과</h2></header>
   <p class="note" id="pageStatus">확인하고 있어요.</p>
 
   <div class="pass-to-item-viewport" id="passToItemViewport" hidden>
@@ -69,10 +69,10 @@
       <div class="card" id="pickedUpBox" hidden style="text-align:center">
         <p style="margin:0 0 4px;font-weight:700;font-size:18px">찾았어요 🎉</p>
         <p class="note" id="pickedUpNote" style="margin-top:0"></p>
-        <a class="btn" href="home.html" style="margin-top:8px">홈으로</a>
+        <a class="btn" href="home" style="margin-top:8px">홈으로</a>
       </div>
       <div class="dock" id="qrDock">
-        <a class="btn" id="qrBtn" href="home.html">수령 QR 받기</a>
+        <a class="btn" id="qrBtn" href="home">수령 QR 받기</a>
       </div>
     </section>
   </div>
@@ -110,7 +110,7 @@
       passIntro.hidden = true;
       viewportBox.hidden = true;
       const backLink = document.querySelector(".bar .back");
-      if (backLink) backLink.href = "home.html";
+      if (backLink) backLink.href = "home";
       pageStatus.hidden = false;
       pageStatus.classList.add("danger");
       pageStatus.textContent = LostApi.itemBlockedMessage(err);
@@ -142,10 +142,10 @@
     try {
       d = await LostApi.detail();
     } catch (err) {
-      if (err.code === "UNAUTHORIZED") return location.replace("login.html");
+      if (err.code === "UNAUTHORIZED") return location.replace("login");
       return fail(err);
     }
-    if (d.storageType === "IN_PLACE") return location.replace("item.html");
+    if (d.storageType === "IN_PLACE") return location.replace("item");
     document.getElementById("itemTitle").textContent = LostApi.itemLabel(d.category, d.subCategory);
     const place = [LostApi.buildingName(d.building, "건물 모름"), LostApi.floorLabel(d.floor)].filter(Boolean).join(" ");
     document.getElementById("itemBuilding").textContent = d.locationDetail ? `${place} · ${d.locationDetail}` : place;
@@ -269,7 +269,7 @@
 
   qrBtn.addEventListener("click", async (e) => {
     e.preventDefault();
-    if (mode === "home") return location.assign("home.html");
+    if (mode === "home") return location.assign("home");
     qrBtn.style.opacity = "0.6";
     try {
       // 체험 계정도 실제와 같은 QR을 보여 주고, 아래 "교무처 스캔 대신하기"로 끝낸다
