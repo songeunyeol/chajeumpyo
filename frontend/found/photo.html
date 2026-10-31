@@ -18,7 +18,7 @@
   /* 사진 올리기 버튼 하나 → 누르면 좌우로 갈라져 사진 찍기 · 앨범 중 고른다. 흰 상자 없이 버튼만 (10/31 은열) */
   .upload-box.is-picker { cursor: default; background: transparent; border-color: transparent; }
   .upload-box.is-picker:hover { border-color: transparent; }
-  .pick { --split: cubic-bezier(0.34, 1.45, 0.64, 1); --pick-line: #8db8a1; position: relative; display: grid; place-items: center; width: 100%; height: 160px; }
+  .pick { --split: cubic-bezier(0.34, 1.45, 0.64, 1); --pick-line: #8db8a1; position: relative; display: grid; place-items: center; width: 100%; height: 184px; }
   .pick > button { grid-area: 1 / 1; border: 0; background: none; padding: 0; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .pick-main, .pick-opt { display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .pick .pick-face {
@@ -26,15 +26,15 @@
     border: 2px dashed var(--pick-line); border-radius: 26px;
     transition: transform 120ms var(--ease), border-color 160ms var(--ease);
   }
-  .pick-main .pick-face { display: flex; align-items: center; gap: 10px; height: 100px; padding: 0 30px; }
-  .pick-main .pick-face i { width: 2px; height: 28px; border-radius: 1px; background: currentColor; opacity: 0.35; transform: rotate(18deg); }
-  .pick-opt .pick-face { display: grid; place-items: center; width: 108px; height: 108px; }
-  .pick-face svg { width: 34px; height: 34px; }
+  .pick-main .pick-face { display: flex; align-items: center; gap: 10px; height: 120px; padding: 0 36px; }
+  .pick-main .pick-face i { width: 2px; height: 34px; border-radius: 1px; background: currentColor; opacity: 0.35; transform: rotate(18deg); }
+  .pick-opt .pick-face { display: grid; place-items: center; width: 128px; height: 128px; }
+  .pick-face svg { width: 40px; height: 40px; }
   .pick b { font-size: 15px; font-weight: 650; color: var(--ink); }
   .pick-main { transition: opacity 180ms var(--ease), transform 260ms var(--ease); }
   .pick-opt { opacity: 0; pointer-events: none; transform: translateX(var(--from)) scale(0.7); transition: opacity 200ms var(--ease), transform 460ms var(--split); }
-  .pick-camera { --from: -30px; --to: -74px; }
-  .pick-album { --from: 30px; --to: 74px; }
+  .pick-camera { --from: -36px; --to: -84px; }
+  .pick-album { --from: 36px; --to: 84px; }
   .pick.is-open .pick-main { opacity: 0; pointer-events: none; transform: scale(0.85); }
   .pick.is-open .pick-opt { opacity: 1; pointer-events: auto; transform: translateX(var(--to)); }
   .pick.is-open .pick-album { transition-delay: 30ms; }
@@ -44,8 +44,8 @@
   @media (prefers-reduced-motion: reduce) {
     .pick-main, .pick-opt { transition: none; }
   }
-  .reselect-row { display: flex; justify-content: center; margin: -6px 0 4px; }
-  .reselect-row[hidden] { display: none; }
+  /* 다시 선택: 사진을 누르면 사진 위에 뜬다 (10/31 은열, 10/29 이전 방식으로) */
+  .upload-box.has-photo { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -108,17 +108,15 @@
         <circle cx="160" cy="136" r="4" fill="#1e5b3d"/>
       </svg>
     </div>
-
-  </div>
-
-  <div class="reselect-row" id="reselectRow" hidden>
-    <button type="button" class="reselect-btn" id="reselectBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
-        <path d="M3 3v5h5"/>
-      </svg>
-      다시 선택
-    </button>
+    <div class="upload-reselect" id="uploadReselect">
+      <button type="button" class="reselect-btn" id="reselectBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        다시 선택
+      </button>
+    </div>
   </div>
 
   <!-- 사람 확인(Turnstile). 캡차가 켜진 배포에서만 보인다 -->
@@ -159,7 +157,6 @@
   const albumInput = document.getElementById("albumInput");
   const preview = document.getElementById("uploadPreview");
   const reselectBtn = document.getElementById("reselectBtn");
-  const reselectRow = document.getElementById("reselectRow");
   let currentUrl = null;
   /** 줄인 사진을 sessionStorage에 넣었으면 true. 그 전에는 다음으로 넘어가지 않는다 */
   let photoReady = false;
@@ -184,7 +181,7 @@
     preview.src = currentUrl;
     box.classList.remove("is-sample", "show-reselect", "is-picker");
     box.classList.add("has-photo", "is-file");
-    reselectRow.hidden = false;
+    box.tabIndex = 0;
 
     // 휴대폰 사진은 수 MB라 sessionStorage(약 5MB)에 안 들어간다. 긴 변 1600px JPEG로 줄여서 둔다 (F-01)
     const img = new Image();
@@ -246,7 +243,7 @@
     box.classList.remove("has-photo", "is-file", "is-sample", "show-reselect");
     box.classList.add("is-picker");
     setPickOpen(false);
-    reselectRow.hidden = true;
+    box.removeAttribute("tabindex");
     try {
       sessionStorage.removeItem("foundPhoto");
       sessionStorage.removeItem("photoBuilding");
@@ -264,6 +261,18 @@
   pickMain.addEventListener("click", () => {
     setPickOpen(true);
     pickOpts[0].focus({ preventScroll: true });
+  });
+  // 사진이 있으면 사진을 눌러 다시 선택을 띄우고 숨긴다
+  box.addEventListener("click", (e) => {
+    if (box.classList.contains("has-photo") && !e.target.closest("#reselectBtn")) {
+      box.classList.toggle("show-reselect");
+    }
+  });
+  box.addEventListener("keydown", (e) => {
+    if (e.target === box && box.classList.contains("has-photo") && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      box.classList.toggle("show-reselect");
+    }
   });
   // 고르지 않고 빈 곳을 누르거나 Esc를 누르면 다시 하나로 모은다
   box.addEventListener("click", (e) => {
@@ -286,8 +295,9 @@
     });
   }
 
-  // 다시 선택: 사진을 지우고 두 버튼으로 돌아간다
-  reselectBtn.addEventListener("click", () => {
+  // 다시 선택: 사진을 지우고 사진 올리기 버튼으로 돌아간다
+  reselectBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
     resetToUploadBox();
     showCaptchaNote("");
   });
