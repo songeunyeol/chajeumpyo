@@ -68,6 +68,12 @@ const Env = z.object({
   /** AI 호출 한 번의 제한 시간 */
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
   /**
+   * 주인 확인 특징 대조 전체의 제한 시간. 대조 안쪽 AI 호출은 함께 돌고 하나당 CLAIM_AI_CALL_TIMEOUT_MS를 넘으면 그 호출만 버린다.
+   * 그래서 보통 CALL 안쪽에서 끝나고, 이 값은 그래도 멈췄을 때의 바깥 한도다 (10/31 실사진 평가: 차례로 부르면 9초를 넘었다)
+   */
+  CLAIM_AI_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+  CLAIM_AI_CALL_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
+  /**
    * 앞단 프록시 신뢰 설정(express trust proxy). 숫자는 홉 수, true/false, 또는 IP·서브넷 목록.
    * Render는 프록시 한 겹이라 기본 1. 틀리면 req.ip가 프록시 IP가 돼 IP 기준 제한이 모두에게 같이 걸린다.
    */

@@ -36,8 +36,15 @@ export interface AiClient {
   extractLostReport(description: string): Promise<LostReportExtraction>;
   /** 텍스트 임베딩. 길이는 EMBEDDING_DIM */
   embed(text: string): Promise<number[]>;
-  /** 신고 속성을 습득물 비공개 속성과 하나씩 대조 (F-08). 일치·모순·확인 불가 */
-  compareFeatures(reported: ComparableAttributes, stored: ComparableAttributes): Promise<FeatureComparison>;
+  /**
+   * 신고 속성을 습득물 비공개 속성과 하나씩 대조 (F-08). 일치·모순·확인 불가.
+   * callTimeoutMs: 안쪽 AI 호출(다시 보기·설명 대조·브랜드) 하나당 제한 시간. 넘으면 그 호출만 버리고 규칙 결과로 둔다
+   */
+  compareFeatures(
+    reported: ComparableAttributes,
+    stored: ComparableAttributes,
+    options?: { callTimeoutMs?: number },
+  ): Promise<FeatureComparison>;
   /** 확인 질문 답이 저장 값과 같은 뜻인지 (F-09). 실제 구현은 온도 0으로 고정 */
   judgeAnswer(input: { question: string; stored: string; answer: string }): Promise<AnswerVerdict>;
   /**

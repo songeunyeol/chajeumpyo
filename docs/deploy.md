@@ -74,7 +74,7 @@ curl -s -o /dev/null -w "%{http_code}\n" https://chajeumpyo.onrender.com/health 
 | `DATA_GO_KR_SERVICE_KEY` | `<공공데이터 키>` | 공공데이터포털 (LOST112) | 선택 |
 | `TRUST_PROXY` | `1` | 기본 1 (앞단 프록시 한 겹). 아래 참고 | 선택 |
 | `API_DOCS_ENABLED` | `false` | `true`면 production에서도 `/api/docs`를 연다 | 선택 |
-| `ACCESS_TOKEN_TTL_HOURS`, `DEMO_TTL_HOURS`, `FOUND_ITEM_RETENTION_DAYS`, `AI_TIMEOUT_MS` | 기본값 | 바꿀 때만 | 선택 |
+| `ACCESS_TOKEN_TTL_HOURS`, `DEMO_TTL_HOURS`, `FOUND_ITEM_RETENTION_DAYS`, `AI_TIMEOUT_MS`, `CLAIM_AI_TIMEOUT_MS`, `CLAIM_AI_CALL_TIMEOUT_MS` | 기본값 | 바꿀 때만 | 선택 |
 | `FRONTEND_DIR` | (넣지 않음) | 이미지 안 `frontend/`를 그대로 쓴다 | 선택 |
 
 **TRUST_PROXY**: Render는 앞단 프록시를 한 번 거친다. 이 값이 틀리면 `req.ip`가 프록시 IP가 돼 IP 기준 요청 제한과 등록 지문이 모든 사용자에게 같이 걸린다. 기본 `1`을 그대로 두고, `true`는 넣지 않는다(누구나 IP를 속일 수 있어 express-rate-limit이 경고를 낸다).

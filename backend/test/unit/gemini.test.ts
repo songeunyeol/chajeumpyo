@@ -3,6 +3,7 @@ import { ThinkingLevel } from "@google/genai";
 import { describe, expect, it } from "vitest";
 import { boxesToRegions, correctMisreadObject, createGeminiClient, type GeminiModels } from "../../src/ai/gemini";
 import { EMBEDDING_DIM } from "../../src/ai/types";
+import { compareByRules } from "../../src/matching/compare";
 
 const CONFIG = { model: "lite", fallbackModel: "flash", embedModel: "embed" };
 
@@ -210,6 +211,58 @@ describe("Gemini 특징 대조: 규칙이 모순으로 본 것만 AI가 다시 �
       (await createGeminiClient(down.models, CONFIG).compareFeatures(reported("곰 캐릭터 스티커"), stored)).features[0]
         ?.verdict,
     ).toBe("CONTRADICT");
+  });
+});
+
+describe("Gemini 특징 대조: 다시 보기·설명 대조·브랜드를 함께 부른다 (10/31 실사진 평가)", () => {
+  /** 호출마다 ms만큼 늦게 답하는 가짜. reply(텍스트)로 답을 고른다 */
+  function slowModels(ms: number, reply: (text: string) => unknown) {
+    let calls = 0;
+    const models = {
+      async generateContent(params: Call["params"]) {
+        calls++;
+        await new Promise((r) => setTimeout(r, ms));
+        return { text: JSON.stringify(reply(JSON.stringify(params.contents))) };
+      },
+      async embedContent() {
+        return { embeddings: [] };
+      },
+    } as unknown as GeminiModels;
+    return { models, count: () => calls };
+  }
+  // 규칙만으로는 모순(스티커)·모름(케이스)·다른 브랜드가 되게 고른 입력. 세 가지를 모두 AI에 묻게 된다
+  const stored = {
+    color: null,
+    brand: "Heroine Make",
+    features: [{ key: "sticker" as const, value: "곰돌이 스티커" }],
+    description: "보라색 몸통의 아이라이너",
+  };
+  const reported = {
+    color: null,
+    brand: "Isehan",
+    features: [
+      { key: "sticker" as const, value: "곰 캐릭터 스티커" },
+      { key: "case" as const, value: "주름 많은 파우치" },
+    ],
+  };
+
+  it("세 가지를 차례로 기다리지 않는다: 걸린 시간은 가장 느린 호출 하나 정도", async () => {
+    const { models, count } = slowModels(150, () => ({ verdict: "MATCH" }));
+    const t0 = Date.now();
+    const out = await createGeminiClient(models, CONFIG).compareFeatures(reported, stored);
+    const took = Date.now() - t0;
+    expect(count()).toBeGreaterThanOrEqual(3);
+    expect(took).toBeLessThan(400); // 차례로면 450ms 이상
+    expect(out.features.map((f) => f.verdict)).toEqual(["MATCH", "MATCH"]);
+    expect(out.brand).toBe("MATCH");
+  });
+
+  it("호출 하나가 제한 시간을 넘으면 그 호출만 버리고 규칙 결과로 판정한다", async () => {
+    const { models } = slowModels(500, () => ({ verdict: "MATCH" }));
+    const t0 = Date.now();
+    const out = await createGeminiClient(models, CONFIG).compareFeatures(reported, stored, { callTimeoutMs: 50 });
+    expect(Date.now() - t0).toBeLessThan(300);
+    expect(out).toEqual(compareByRules(reported, stored));
   });
 });
 
