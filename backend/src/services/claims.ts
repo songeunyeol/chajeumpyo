@@ -100,6 +100,8 @@ async function isInPersonOnly(foundItemId: string, db: Prisma.TransactionClient 
 }
 
 const NEED_MORE_MESSAGE = "아직 근거가 부족해요. 주인만 알 만한 특징을 더 적어 주세요.";
+const NO_FEATURE_IN_PERSON_MESSAGE =
+  "이 물건은 사진에서 확인할 특징이 없어 온라인으로 확인하기 어려워요. 보관처(교무처)에서 직접 본인 확인을 받아 주세요.";
 
 const IN_PERSON_MESSAGE =
   "확인 실패가 많아 이 물건은 온라인으로 확인할 수 없어요. 보관처에서 직접 본인 확인을 받아 주세요.";
@@ -226,15 +228,10 @@ async function buildQuiz(
   const unmentioned = rest.filter((f) => !mentioned.has(f.key));
   // 그래도 모자라면 신고에 적었던 특징도 묻는다. 모순·부정으로 적은 특징을 보기에서 다시 고르게 (10/30: 모순이면 바로 실패 대신 객관식)
   const again = rest.filter((f) => mentioned.has(f.key));
-  // 흠집·무늬는 주인도 잘 몰라서 잘 아는 특징(색 포함)을 다 쓴 뒤에만 묻는다 (10/31 기획 피드백)
-  const hard = [first, ...unmentioned, ...again].filter((f) => !isMemorable(f));
-  const order: (AiFeature | "color")[] = [
-    ...(isMemorable(first) ? [first] : []),
-    ...unmentioned.filter(isMemorable),
-    "color",
-    ...again.filter(isMemorable),
-    ...hard,
-  ];
+  // 흠집·무늬는 주인도 잘 몰라서 같은 묶음 안에서 잘 아는 특징을 먼저 묻는다 (10/31 기획 피드백).
+  // 색은 흐린 사진에도 보여 맞히기 쉬우므로 예전처럼 적지 않은 특징 뒤에 둔다
+  const easyFirst = (fs: AiFeature[]) => [...fs.filter(isMemorable), ...fs.filter((f) => !isMemorable(f))];
+  const order: (AiFeature | "color")[] = [...easyFirst([first, ...unmentioned]), "color", ...easyFirst(again)];
   const before = await previousQuestions(foundItemId);
   const reuse = (key: string, text: string) => {
     const q = before.get(key);
@@ -375,10 +372,13 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
       const recent = await tx.matchAttempt.count({
         where: { userId: viewer.userId, foundItemId, result: "NEED_MORE", createdAt: { gte: since } },
       });
+      // 특징이 하나도 없는 물건은 더 적어도 온라인으로 통과할 수 없어 대면 확인으로 안내한다 (open-issues #17)
       if (recent >= NEED_MORE_LIMIT.count)
         throw new AppError(
           "RATE_LIMITED",
-          `특징이 부족한 확인은 ${NEED_MORE_LIMIT.windowMinutes / 60}시간에 ${NEED_MORE_LIMIT.count}번까지예요. 잠시 뒤 다시 시도해 주세요.`,
+          storedFeatures.length === 0
+            ? NO_FEATURE_IN_PERSON_MESSAGE
+            : `특징이 부족한 확인은 ${NEED_MORE_LIMIT.windowMinutes / 60}시간에 ${NEED_MORE_LIMIT.count}번까지예요. 잠시 뒤 다시 시도해 주세요.`,
         );
       j = { ...j, result: "NEED_MORE", questionFeature: null };
       quiz = [];
