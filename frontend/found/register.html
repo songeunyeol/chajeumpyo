@@ -490,7 +490,9 @@
     const guideEl = document.getElementById("valuableModalGuide");
     if (near) {
       const name = near.place.name;
-      placeEl.textContent = `지금은 ${name}${subjectJosa(name)} 가까워요!`;
+      // 거리를 실제로 쟀고 보관처가 여러 곳일 때만 "가까워요". 아니면 맡길 곳만 알려 준다 (검증 10/31: 건물을 고르기 전에도 거리를 잰 것처럼 보였다)
+      const measured = near.m !== null && handoverSelect.options.length > 1;
+      placeEl.textContent = measured ? `지금은 ${name}${subjectJosa(name)} 가까워요!` : `귀중품은 ${name}에 맡겨 주세요`;
       // 거리는 10m 단위로. 위치를 모르면 거리 없이 안내만
       const dist = near.m === null ? "" : ` · 약 ${Math.max(10, Math.round(near.m / 10) * 10)}m`;
       guideEl.textContent = `${near.place.guideText}${dist}`;
