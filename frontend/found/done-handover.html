@@ -43,6 +43,9 @@
 </main>
 <script src="../naver-map.js"></script>
 <script>
+  // 등록을 마쳤으면 뒤로 가기는 등록 단계가 아니라 첫 화면으로 (QA 10/31: 완료 화면에서 빠져나갈 수 없었다)
+  history.pushState({ doneGuard: true }, "");
+  window.addEventListener("popstate", () => location.replace("/"));
   function formatKoreanTime(d) {
     const days = ["일", "월", "화", "수", "목", "금", "토"];
     const m = d.getMonth() + 1;

@@ -41,7 +41,12 @@
 
     // 같은 주소를 하나 더 쌓아 둔다. 뒤로 가면 그 칸으로 돌아온 뒤 바로 다시 쌓아서 화면을 나가지 않는다.
     history.pushState({ leaveGuard: true }, "");
+    let proceeding = null; // 다음 단계로 넘어가는 중이면 그 주소
     window.addEventListener("popstate", () => {
+      if (proceeding) {
+        location.replace(proceeding);
+        return;
+      }
       history.pushState({ leaveGuard: true }, "");
       open();
     });
@@ -68,6 +73,22 @@
     backdrop.addEventListener("click", (e) => {
       if (e.target === backdrop) stay.click();
     });
+
+    /**
+     * 확인 창 없이 다음 단계(url)로 넘어간다. 쌓아 둔 칸을 먼저 걷어내고(history.back) 이 화면 칸을 url로 바꾼다.
+     * 그래서 다음 화면에서 뒤로 가면 이 화면(빈 입력 폼)이 아니라 그 전 화면으로 간다 (QA 10/31 뒤로 가기).
+     */
+    return {
+      proceed(url) {
+        if (proceeding) return;
+        proceeding = url;
+        if (history.state?.leaveGuard) {
+          history.back();
+          // popstate가 오지 않는 브라우저를 위해 잠시 뒤에는 그냥 넘어간다
+          setTimeout(() => location.replace(url), 400);
+        } else location.replace(url);
+      },
+    };
   }
 
   window.LeaveGuard = { install };

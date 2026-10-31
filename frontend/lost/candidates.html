@@ -327,17 +327,44 @@
     document.getElementById("claimFailNote").textContent = `실패하면 남은 횟수가 1번 줄어요 (남은 횟수 ${c.attemptsLeft}번)`;
     claimDescNote.hidden = true;
     claimModal.classList.add("is-open");
+    await fillClaimDesc();
+  }
+  // 처음 설명을 불러오기 전에는 확인하기를 막는다. 불러오기 전에 누르면 처음 설명을 ""로 보고
+  // 추가 설명만으로 신고를 덮어써 버렸다 (QA 10/31: 목록 응답이 늦을 때)
+  let descLoading = null;
+  function setConfirmBusy(busy, label = "확인하기") {
+    confirmClaimBtn.disabled = busy;
+    claimExtra.disabled = busy; // 불러온 설명으로 덮어쓰기 전에 적은 글이 사라지지 않게
+    if (busy) confirmClaimBtn.setAttribute("aria-busy", "true");
+    else confirmClaimBtn.removeAttribute("aria-busy");
+    confirmClaimBtn.textContent = label;
+  }
+  /** 처음 설명을 불러와 창에 채운다. 실패하면 false (신고를 고치지 않는다) */
+  async function fillClaimDesc() {
     if (savedDesc === null) {
+      setConfirmBusy(true, "설명 불러오는 중…");
       try {
-        savedDesc = (await LostApi.reports()).find((r) => r.id === reportId)?.description ?? "";
+        descLoading ??= LostApi.reports().then((list) => {
+          const r = list.find((x) => x.id === reportId);
+          if (!r) throw new Error("신고를 찾지 못했어요.");
+          return r.description ?? "";
+        });
+        savedDesc = await descLoading;
       } catch (_) {
-        savedDesc = "";
+        claimDescNote.textContent = "처음 설명을 불러오지 못했어요. 다시 불러오기를 눌러 주세요.";
+        claimDescNote.hidden = false;
+        setConfirmBusy(false, "다시 불러오기");
+        return false;
+      } finally {
+        descLoading = null;
       }
     }
     const { original, extra } = splitDesc(savedDesc);
     showOriginal(original);
     claimExtra.value = extra;
     claimExtra.maxLength = Math.max(0, Math.min(200, LostApi.DESCRIPTION_MAX - original.length - EXTRA_MARK.length));
+    setConfirmBusy(false);
+    return true;
   }
   const closeClaimModal = () => claimModal.classList.remove("is-open");
   document.getElementById("cancelClaimBtn").addEventListener("click", closeClaimModal);
@@ -346,7 +373,13 @@
   });
   confirmClaimBtn.addEventListener("click", async () => {
     if (!claimTarget || confirmClaimBtn.disabled) return;
-    const { original } = splitDesc(savedDesc ?? "");
+    if (savedDesc === null) {
+      // 불러오기에 실패했던 경우: 다시 불러오기만 하고, 성공하면 한 번 더 누르게 한다
+      claimDescNote.hidden = true;
+      await fillClaimDesc();
+      return;
+    }
+    const { original } = splitDesc(savedDesc);
     const extra = claimExtra.value.trim();
     const text = extra ? `${original}${EXTRA_MARK}${extra}` : original;
     if (text !== savedDesc) {
