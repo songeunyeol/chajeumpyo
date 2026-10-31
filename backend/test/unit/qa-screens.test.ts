@@ -855,7 +855,7 @@ describe("검증 10/31 묶음: 숨김·관리자 상태·첫 화면·귀중품 �
     }
     // 목록의 파일이 실제로 있다 (하나라도 없으면 설치가 통째로 실패한다)
     const shell = sw.match(/const SHELL = \[([\s\S]*?)\];/)?.[1] ?? "";
-    const urls = [...shell.matchAll(/^\s*"([^"]+)",?$/gm)].map((m) => m[1]);
+    const urls = [...shell.matchAll(/^\s*"([^"]+)",?$/gm)].map((m) => m[1] ?? "");
     expect(urls.length).toBeGreaterThan(40);
     for (const url of urls) {
       // 화면은 .html 없는 주소로 둔다 (/lost/home → frontend/lost/home.html)
