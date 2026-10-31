@@ -20,6 +20,12 @@ describe("정적 화면", () => {
     expect(home.headers["content-type"]).toContain("text/html");
     expect(home.headers["cache-control"]).toBe("no-cache");
     expect(home.headers["content-security-policy"]).toContain("challenges.cloudflare.com");
+    // 네이버 지도 SDK의 그림·오류 수집은 필요한 지시어에만 연다 (검증 10/31)
+    const csp = home.headers["content-security-policy"] as string;
+    expect(csp).toMatch(/img-src[^;]*https:\/\/static\.naver\.net/);
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/nelo\.navercorp\.com/);
+    expect(csp).not.toMatch(/script-src[^;]*static\.naver\.net/);
+    expect(csp).not.toMatch(/script-src[^;]*nelo\.navercorp\.com/);
 
     const consent = await request(app).get("/found/consent.html");
     expect(consent.status).toBe(200);

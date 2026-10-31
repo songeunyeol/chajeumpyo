@@ -13,6 +13,12 @@ const defaultDir =
 
 /** 네이버 지도 SDK(frontend/naver-map.js)가 불러오는 스크립트·지도 타일 출처. 키가 없으면 그림 지도로 대신한다 */
 const naverMap = ["https://oapi.map.naver.com", "https://*.map.naver.net", "https://*.pstatic.net"];
+/**
+ * 네이버 지도 SDK가 따로 부르는 것: 로고·컨트롤 그림(static.naver.net)과 오류 수집(nelo.navercorp.com).
+ * 막혀도 지도는 그려지지만 등록 화면 콘솔에 CSP 오류가 남았다 (검증 10/31). 필요한 지시어에만 연다
+ */
+const naverMapImages = ["https://static.naver.net"];
+const naverMapLogging = ["https://nelo.navercorp.com"];
 /** 네이버 지도 인증이 막힐 때 frontend/naver-map.js가 대신 까는 위성 사진 타일 */
 const esriTiles = "https://server.arcgisonline.com";
 /**
@@ -25,8 +31,8 @@ const pageCsp = helmet.contentSecurityPolicy({
     "script-src": ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com", ...naverMap],
     "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
     "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net"],
-    "img-src": ["'self'", "data:", "blob:", esriTiles, ...naverMap],
-    "connect-src": ["'self'", ...naverMap],
+    "img-src": ["'self'", "data:", "blob:", esriTiles, ...naverMap, ...naverMapImages],
+    "connect-src": ["'self'", ...naverMap, ...naverMapLogging],
     "frame-src": ["https://challenges.cloudflare.com"],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
