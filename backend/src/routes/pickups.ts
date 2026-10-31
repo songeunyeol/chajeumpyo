@@ -67,14 +67,16 @@ registry.registerPath({
   tags: ["관리자"],
   security,
   summary: "수령 QR 스캔 (F-11, F-14)",
-  description: "자기 보관처 물건만. 원본 사진 링크와 마스킹된 이메일을 준다.",
+  description:
+    "자기 보관처 물건만. 원본 사진 링크와 마스킹된 이메일을 준다. qrToken에는 QR 안의 긴 토큰(pk_…)이나 학생 화면의 8자리 코드(ABCD-EFGH)를 넣는다. 8자리 코드는 관리자별로 10분에 20번까지 틀릴 수 있다.",
   request: { body: json(PickupScanRequest) },
   responses: {
     200: { description: "수령 건", ...json(PickupScanResponse) },
     403: errorResponse("FORBIDDEN: 다른 보관처"),
-    404: errorResponse("NOT_FOUND: 없는 QR"),
+    404: errorResponse("NOT_FOUND: 없는 QR·코드"),
     409: errorResponse("ALREADY_CLAIMED"),
     410: errorResponse("QR_EXPIRED"),
+    429: errorResponse("RATE_LIMITED: 8자리 코드를 너무 많이 틀림"),
   },
 });
 registry.registerPath({

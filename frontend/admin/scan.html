@@ -26,8 +26,9 @@
 
     <form id="manualForm" novalidate style="margin-top:20px">
       <label class="field"><span>코드로 찾기</span>
-        <input id="code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="QR 아래 코드 (pk_…)">
+        <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="학생 화면의 8자리 코드 (예: ABCD-EFGH)">
       </label>
+      <p class="note" style="margin:-4px 0 10px">카메라가 없으면 학생 화면 QR 아래의 8자리 수령 코드를 넣어 주세요. 복사한 긴 코드(pk_…)도 돼요.</p>
       <button type="submit" class="btn white" id="codeBtn" style="width:100%;cursor:pointer">코드 확인</button>
     </form>
     <p class="note danger" id="readError" role="alert" hidden></p>
@@ -47,7 +48,7 @@
       <tr><th>찾는 사람</th><td id="claimant"></td></tr>
       <tr><th>QR 만료</th><td id="expires"></td></tr>
     </table>
-    <p class="note">찾는 사람에게 학교 이메일 앞 두 글자를 물어보면 더 확실해요. 사진 링크는 10분 뒤 닫혀요.</p>
+    <p class="note">학생 화면의 8자리 수령 코드와 같은지 확인해 주세요. 학생증을 함께 보면 더 확실해요. 사진 링크는 10분 뒤 닫혀요.</p>
     <p class="note danger" id="checkError" role="alert" hidden></p>
     <div class="dock">
       <button type="button" class="btn" id="completeBtn" style="width:100%;cursor:pointer">수령 완료</button>
@@ -82,8 +83,9 @@
     QR_EXPIRED: "만료된 QR이에요. 학생에게 앱에서 수령 QR을 다시 받아 달라고 해 주세요.",
     ALREADY_CLAIMED: "이미 내준 물건이에요. 같은 물건을 두 번 내줄 수 없어요.",
     FORBIDDEN: "우리 보관처에 맡겨진 물건이 아니에요. 학생 앱에 나온 보관처로 안내해 주세요.",
-    NOT_FOUND: "없는 QR이에요. 코드를 다시 확인해 주세요.",
+    NOT_FOUND: "없는 QR이나 코드예요. 학생 화면의 8자리 코드를 다시 확인해 주세요.",
     VALIDATION_ERROR: "코드 모양이 맞지 않아요. 다시 확인해 주세요.",
+    RATE_LIMITED: "코드를 너무 많이 틀렸어요. 10분 뒤에 다시 넣거나 QR을 스캔해 주세요.",
   };
   const hint = (err) => SCAN_HINTS[err.code] || AdminApi.errorText(err);
 

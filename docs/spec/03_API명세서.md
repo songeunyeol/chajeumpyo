@@ -451,9 +451,10 @@
 #### `POST /found-items/:id/pickup-qr` · 회원
 `storageType`이 `HANDED_OVER`일 때만. 아니면 `409 INVALID_STORAGE_TYPE`. 이미 수령 완료된 물건이면 `409 ALREADY_CLAIMED`.
 ```json
-{ "method": "CENTER_QR", "pickupId": "p_...", "qrToken": "pk_...", "status": "ISSUED", "expiresAt": "2026-10-14T14:00:00+09:00" }
+{ "method": "CENTER_QR", "pickupId": "p_...", "qrToken": "pk_...", "shortCode": "K7PM-4QZC", "status": "ISSUED", "expiresAt": "2026-10-14T14:00:00+09:00" }
 ```
 - 프론트가 `qrToken`을 QR 이미지로 그린다. 서버에는 해시만 저장한다.
+- `shortCode`는 카메라가 없을 때 관리자가 직접 넣는 8자리 수령 코드다(10/31 검증 #13). 헷갈리는 글자(0·O·1·I·L)를 뺀 31자에서 고르고 `ABCD-EFGH`로 보여 준다. QR과 같이 만들고 같이 만료되며, 서버에는 HMAC만 저장한다(발급 중인 수령 건끼리 겹치지 않게 부분 유니크 인덱스).
 - 같은 계정이 다시 발급받으면 이전 `ISSUED` QR은 `EXPIRED`가 된다.
 - 응답에 `method`가 있다: 일반 계정 `CENTER_QR`(QR 발급), 체험 계정 `DEMO`(바로 완료).
 - **체험 계정**은 QR 없이 바로 완료된다. 프론트는 "시연: 보관처에서 수령 처리됨" 화면을 보여준다.
@@ -500,8 +501,9 @@
 
 #### `POST /admin/pickups/scan` · 관리자
 ```json
-// 요청
+// 요청: QR 안의 긴 토큰이나 학생 화면의 8자리 코드 (대소문자·하이픈·공백 무시)
 { "qrToken": "pk_..." }
+{ "qrToken": "k7pm-4qzc" }
 // 응답 200
 {
   "pickupId": "p_...",
@@ -512,7 +514,8 @@
 ```
 - 만료면 `410 QR_EXPIRED`, 이미 처리됐으면 `409 ALREADY_CLAIMED`.
 - 물건의 보관처가 관리자의 소속 보관처(`user.storage_place_id`)와 다르면 `403 FORBIDDEN`.
-- 없는 QR은 `404`. 같은 사람이 새 QR을 받아 만료된 이전 QR도 `410 QR_EXPIRED`.
+- 없는 QR은 `404`. 같은 사람이 새 QR을 받아 만료된 이전 QR도 `410 QR_EXPIRED`(이전 8자리 코드도 같다).
+- 8자리 코드는 틀리면 관리자별로 센다. 10분에 20번 틀리면 그 관리자의 8자리 코드 입력은 `429 RATE_LIMITED`(긴 토큰은 대입할 수 없어 막지 않는다). 서버 한 대 기준의 메모리 카운터다.
 
 #### `POST /admin/pickups/:id/complete` · 관리자
 상태를 `COMPLETED`, 습득물을 `CLAIMED`로 바꾸고 처리 관리자를 기록한다. `purge_after`를 30일 뒤로 설정한다. 완료 직후 사진(원본·공개본·후보용 블러본)과 비공개 정보·임베딩을 지운다(open-issues #33). 삭제가 실패해도 수령은 완료되고 정기 작업이 다시 지운다.

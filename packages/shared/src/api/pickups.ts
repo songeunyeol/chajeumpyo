@@ -8,6 +8,8 @@ export const PickupQrResponse = z.discriminatedUnion("method", [
     pickupId: z.string(),
     /** 프론트가 QR 이미지로 그린다. 서버에는 해시만 저장한다. */
     qrToken: z.string(),
+    /** 카메라가 없을 때 관리자가 직접 넣는 8자리 코드 (ABCD-EFGH). QR과 같이 만료된다. 서버에는 해시만 저장한다 */
+    shortCode: z.string(),
     status: z.literal("ISSUED"),
     expiresAt: z.iso.datetime(),
   }),
@@ -16,6 +18,7 @@ export const PickupQrResponse = z.discriminatedUnion("method", [
     method: z.literal("DEMO"),
     pickupId: z.string(),
     qrToken: z.string(),
+    shortCode: z.string(),
     status: z.literal("ISSUED"),
     expiresAt: z.iso.datetime(),
   }),
@@ -31,7 +34,10 @@ export const SelfPickupResponse = z.object({
 });
 export type SelfPickupResponse = z.infer<typeof SelfPickupResponse>;
 
-/** POST /admin/pickups/scan */
+/**
+ * POST /admin/pickups/scan.
+ * qrToken에는 QR 안의 긴 토큰(pk_…)이나 학생 화면의 8자리 코드(ABCD-EFGH, 대소문자·하이픈·공백 무시)를 넣는다.
+ */
 export const PickupScanRequest = z.object({ qrToken: z.string().min(1).max(200) });
 export type PickupScanRequest = z.infer<typeof PickupScanRequest>;
 
