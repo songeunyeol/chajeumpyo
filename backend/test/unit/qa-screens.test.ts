@@ -531,15 +531,14 @@ describe("심사용 계정으로 심사 (10/31, 체험·시연 진입점 제거)
 describe("설명 글씨 대비·회원가입 바로 보이기 (10/31 기획 피드백)", () => {
   /** WCAG 상대 휘도 대비 */
   const contrast = (a: string, b: string) => {
-    const lum = (hex: string) => {
-      const [r, g, bl] = [1, 3, 5].map((i) => {
-        const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
-        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-      });
-      return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+    const channel = (hex: string, i: number) => {
+      const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
     };
-    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
-    return (hi + 0.05) / (lo + 0.05);
+    const lum = (hex: string) => 0.2126 * channel(hex, 1) + 0.7152 * channel(hex, 3) + 0.0722 * channel(hex, 5);
+    const x = lum(a);
+    const y = lum(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
   };
 
   it("설명 글씨(--mute)는 종이 배경·흰 카드에서 4.5:1 이상", () => {
