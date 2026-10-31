@@ -77,11 +77,49 @@ export async function purgeClaimedItems(now = new Date()): Promise<number> {
   return purged;
 }
 
-/** 정기 작업: 보관 기한이 지난 미수령 물건을 기한 만료로 바꾸고 지운다 (시드 제외) */
+/**
+ * 정기 작업: 확정 기한(DRAFT_TTL_MINUTES)이 지난 미완성 등록(ANALYZING)은 행까지 지운다 (시드 제외).
+ * 등록을 끝내지 않은 사진 기록은 서비스에 필요 없으니 남기지 않는다(개인정보 최소 수집).
+ * 대신 몇 건이 정리됐는지 개수만 로그로 남겨, 사진만 올리고 나가는 이탈이 많은지 보고 화면을 고치는 근거로 쓴다.
+ * 기한 안에는 건드리지 않아 튕겼다 돌아와도 이어서 등록할 수 있다. 이미 기한 만료(EXPIRED)인 행은 건드리지 않는다.
+ */
+export async function deleteAbandonedDrafts(now = new Date()): Promise<number> {
+  const due = await prisma.foundItem.findMany({
+    where: { status: "ANALYZING", isSeed: false, expiresAt: { lt: now } },
+    select: { id: true, detail: { select: { imageOriginalKey: true, imagePublicKey: true, imageThumbKey: true } } },
+  });
+  let deleted = 0;
+  for (const { id, detail: d } of due) {
+    try {
+      // 같은 순간 확정과 겹치지 않게, 아직 미완성일 때만 지운다. 사진은 행을 지운 뒤에 지운다
+      const removed = await prisma.$transaction(async (tx) => {
+        const still = await tx.foundItem.findFirst({ where: { id, status: "ANALYZING" }, select: { id: true } });
+        if (!still) return false;
+        await tx.notification.deleteMany({ where: { foundItemId: id } });
+        await tx.revealLog.deleteMany({ where: { foundItemId: id } });
+        await tx.matchAttempt.deleteMany({ where: { foundItemId: id } });
+        await tx.pickup.deleteMany({ where: { foundItemId: id } });
+        const r = await tx.foundItem.deleteMany({ where: { id, status: "ANALYZING" } });
+        return r.count === 1;
+      });
+      if (!removed) continue;
+      deleted++;
+      const keys = [d?.imageOriginalKey, d?.imagePublicKey, d?.imageThumbKey].filter((k): k is string => !!k);
+      for (const key of keys) await storage.delete(key);
+    } catch (err) {
+      logger.error({ err }, "미완성 등록 정리 실패 → 다음 정기 작업에서 다시");
+    }
+  }
+  if (deleted > 0) logger.info({ count: deleted }, "미완성 등록 정리");
+  return deleted;
+}
+
+/** 정기 작업: 보관 기한이 지난 미수령 물건을 기한 만료로 바꾸고 지운다 (시드 제외). 미완성 등록은 먼저 행까지 지운다 */
 export async function expireUnclaimedItems(now = new Date()): Promise<number> {
+  await deleteAbandonedDrafts(now);
   const due = await prisma.foundItem.findMany({
     where: {
-      status: { in: ["REGISTERED", "REVEALED", "REVIEW", "ANALYZING"] },
+      status: { in: ["REGISTERED", "REVEALED", "REVIEW"] },
       isSeed: false,
       expiresAt: { lt: now },
     },
@@ -91,7 +129,7 @@ export async function expireUnclaimedItems(now = new Date()): Promise<number> {
   for (const { id } of due) {
     // 같은 순간 수령 처리와 겹치지 않게, 아직 미수령 상태일 때만 만료로 바꾼다
     const changed = await prisma.foundItem.updateMany({
-      where: { id, status: { in: ["REGISTERED", "REVEALED", "REVIEW", "ANALYZING"] } },
+      where: { id, status: { in: ["REGISTERED", "REVEALED", "REVIEW"] } },
       data: { status: "EXPIRED" },
     });
     if (changed.count === 0) continue;
