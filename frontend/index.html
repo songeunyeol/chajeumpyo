@@ -16,7 +16,10 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
-  body { overflow-x: clip; }
+  /* 버튼이 옆에서 들어오는 동안 화면 밖으로 나간 부분 때문에 가로로 밀리지 않게 한다 (QA 10/31: 가로 화면 207px 넘침).
+     body만 막으면 바깥(html)은 여전히 가로로 움직여서 둘 다 막는다. clip을 모르는 브라우저는 hidden */
+  html, body { overflow-x: hidden; }
+  @supports (overflow: clip) { html, body { overflow-x: clip; } }
   body {
     color: var(--ink);
     font-family: Pretendard Variable, Pretendard, sans-serif;
