@@ -648,6 +648,19 @@
     throw new ApiError(404, { error: { code: "NOT_FOUND", message: "시연에서 아직 없는 요청이에요." } });
   }
 
+  // 연결 끊김 안내(/offline-notice.js). 그 파일이 늦게 받아져도 놓치지 않게, 그 전의 알림은 배열에 쌓아 둔다
+  function reportNet(ok, isGet) {
+    if (!window.OfflineNotice) window.OfflineNotice = [];
+    const n = window.OfflineNotice;
+    if (Array.isArray(n)) n.push([ok, isGet]);
+    else n.report(ok, isGet);
+  }
+  if (!document.querySelector('script[src="/offline-notice.js"]')) {
+    const s = document.createElement("script");
+    s.src = "/offline-notice.js";
+    document.head.appendChild(s);
+  }
+
   async function call(path, { method = "GET", body, token = true } = {}) {
     if (auth.get()?.demo && token) return demoCall(path, method, body);
     const headers = {};
@@ -668,10 +681,12 @@
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch (_) {
+      reportNet(false, method === "GET");
       throw new ApiError(0, {
         error: { code: "NETWORK", message: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." },
       });
     }
+    reportNet(true, method === "GET");
     if (res.status === 204) return null;
     const data = await res.json().catch(() => null);
     if (res.status === 401 && token) {
