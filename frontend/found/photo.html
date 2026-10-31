@@ -40,7 +40,8 @@
   .pick.is-open .pick-album { transition-delay: 30ms; }
   @media (hover: hover) { .pick button:hover .pick-face { border-color: var(--green); } }
   .pick button:active .pick-face { transform: scale(0.96); }
-  .pick button:focus-visible .pick-face { outline: 3px solid var(--green); outline-offset: 3px; }
+  /* 선택 표시(초점 테두리)는 어디서도 보이지 않게 한다 (10/31 은열) */
+  .pick button:focus, .pick button:focus-visible, .upload-box:focus, .upload-box:focus-visible { outline: none; }
   @media (prefers-reduced-motion: reduce) {
     .pick-main, .pick-opt { transition: none; }
   }
@@ -181,7 +182,6 @@
     preview.src = currentUrl;
     box.classList.remove("is-sample", "show-reselect", "is-picker");
     box.classList.add("has-photo", "is-file");
-    box.tabIndex = 0;
 
     // 휴대폰 사진은 수 MB라 sessionStorage(약 5MB)에 안 들어간다. 긴 변 1600px JPEG로 줄여서 둔다 (F-01)
     const img = new Image();
@@ -243,7 +243,6 @@
     box.classList.remove("has-photo", "is-file", "is-sample", "show-reselect");
     box.classList.add("is-picker");
     setPickOpen(false);
-    box.removeAttribute("tabindex");
     try {
       sessionStorage.removeItem("foundPhoto");
       sessionStorage.removeItem("photoBuilding");
@@ -258,10 +257,7 @@
     pickMain.tabIndex = open ? -1 : 0;
     for (const b of pickOpts) b.tabIndex = open ? 0 : -1;
   }
-  pickMain.addEventListener("click", () => {
-    setPickOpen(true);
-    pickOpts[0].focus({ preventScroll: true });
-  });
+  pickMain.addEventListener("click", () => setPickOpen(true));
   // 사진이 있으면 사진을 눌러 다시 선택을 띄우고 숨긴다
   box.addEventListener("click", (e) => {
     if (box.classList.contains("has-photo") && !e.target.closest("#reselectBtn")) {
@@ -278,13 +274,11 @@
   box.addEventListener("click", (e) => {
     if (pick.classList.contains("is-open") && !e.target.closest(".pick > button")) {
       setPickOpen(false);
-      pickMain.focus({ preventScroll: true });
     }
   });
   pick.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && pick.classList.contains("is-open")) {
       setPickOpen(false);
-      pickMain.focus();
     }
   });
   document.getElementById("cameraBtn").addEventListener("click", () => cameraInput.click());
@@ -390,7 +384,6 @@
       showCaptchaNote(missing);
       if (!photoReady && !box.classList.contains("has-photo")) {
         setPickOpen(false);
-        pickMain.focus();
       }
       return;
     }
