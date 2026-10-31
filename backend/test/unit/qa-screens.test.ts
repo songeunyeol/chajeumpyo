@@ -463,6 +463,9 @@ describe("QA 10/31: 화면 문구·기본값", () => {
     const scanPage = read("frontend/admin/scan.html");
     expect(scanPage).toContain("학생 화면의 8자리 코드");
     expect(scanPage).toContain("RATE_LIMITED:");
+    // 수령 확인은 이메일 앞 두 글자가 아니라 8자리 수령 코드로 (10/31 검증 #15-9)
+    expect(scanPage).toContain("학생 화면의 8자리 수령 코드와 같은지 확인해 주세요");
+    expect(scanPage).not.toContain("이메일 앞 두 글자");
   });
 
   it("확인 모달과 질문 화면에 3번 틀리면 풀리지 않는 잠금 규칙을 처음부터 알린다", () => {
