@@ -43,7 +43,7 @@ async function register(fields: Record<string, string | number>, image?: Buffer,
   return req;
 }
 
-const inPlace = () => ({ buildingId, storageType: "IN_PLACE" });
+const inPlace = () => ({ buildingId, storageType: "IN_PLACE", locationDetail: "강의실 뒤 책상 위" });
 /** 가짜 AI는 늘 이어폰(귀중품)이라 그 자리에 둠은 거절된다 (QA B11). 보관 방식이 주제가 아닌 테스트는 맡김으로 등록한다 */
 const handedOver = () => ({ buildingId, storageType: "HANDED_OVER", storagePlaceId: placeId });
 const UMBRELLA: FoundItemExtraction = {
@@ -474,6 +474,73 @@ describe("기준 11. AI에는 얼굴·글자를 가린 사본만 보낸다 (QA B
     const original = (await readLocalFile(d.imageOriginalKey as string)) as Buffer;
     const pub = (await readLocalFile(d.imagePublicKey as string)) as Buffer;
     expect(await sharpness(pub)).toBeLessThan((await sharpness(original)) / 2);
+  });
+});
+
+describe("기준 11-2. 로고는 개인정보 위험이 낮은 종류에서만, 얼굴이 없을 때만 살린다 (10/31 A안)", () => {
+  async function solid(color: string) {
+    return sharp({ create: { width: 400, height: 300, channels: 3, background: color } })
+      .jpeg()
+      .toBuffer();
+  }
+
+  /** 1단계(모든 글자 가림)·2단계(로고 사본)에 AI가 받은 사진을 기록하고, 각 단계 결과를 돌려준다 */
+  async function run(opts: { faces: number; first: FoundItemExtraction; second?: FoundItemExtraction }) {
+    const masked = await solid("#6b6b6b");
+    const logo = await solid("#3355aa");
+    setPremasker(async () => ({ image: masked, faces: opts.faces, texts: 3, logoImage: logo, logos: 1 }));
+    const seen: Buffer[] = [];
+    setAiClient({
+      ...mockAiClient,
+      extractFoundItem: async (image) => {
+        seen.push(image);
+        return image === logo ? (opts.second ?? opts.first) : opts.first;
+      },
+    });
+    const res = await register(handedOver(), await noisyJpeg());
+    expect(res.status).toBe(201);
+    const d = await prisma.foundItemDetail.findUniqueOrThrow({ where: { foundItemId: res.body.id } });
+    const stored = await readLocalFile(d.imageOriginalKey as string);
+    return { seen, masked, logo, stored, body: res.body };
+  }
+
+  const HAT: FoundItemExtraction = { ...UMBRELLA, category: "HAT", description: "데님 모자", title: "데님 모자" };
+
+  it("모자이고 얼굴이 없으면 로고 사본으로 한 번 더 분석하고, 그 사본을 저장한다", async () => {
+    const r = await run({ faces: 0, first: HAT, second: { ...HAT, brand: "emis" } });
+    expect(r.seen).toEqual([r.masked, r.logo]);
+    expect(r.stored).toEqual(r.logo);
+  });
+
+  it("학생증·지갑·파우치는 로고 사본을 AI로 보내지 않는다", async () => {
+    for (const first of [
+      SENSITIVE,
+      { ...UMBRELLA, category: "WALLET" as const },
+      { ...UMBRELLA, category: "BAG" as const, subCategory: "POUCH" as const },
+      { ...UMBRELLA, category: "STATIONERY" as const, subCategory: "PENCIL_CASE" as const },
+    ]) {
+      await resetDb();
+      const b = await prisma.building.create({ data: { name: "혜인관", lat: 37.6, lng: 127 } });
+      buildingId = b.id;
+      placeId = (
+        await prisma.storagePlace.create({ data: { name: "혜인관 경비실", buildingId, guideText: "-", org: "GUARD" } })
+      ).id;
+      const r = await run({ faces: 0, first });
+      expect(r.seen).toEqual([r.masked]);
+      expect(r.stored).toEqual(r.masked);
+    }
+  });
+
+  it("얼굴이 하나라도 있으면 모자여도 로고 사본을 쓰지 않는다", async () => {
+    const r = await run({ faces: 1, first: HAT });
+    expect(r.seen).toEqual([r.masked]);
+    expect(r.stored).toEqual(r.masked);
+  });
+
+  it("다시 본 결과가 개인정보가 보인다거나 위험 종류로 바뀌면 1단계 결과와 가린 사본을 쓴다", async () => {
+    const sensitive = await run({ faces: 0, first: HAT, second: { ...HAT, isSensitive: true } });
+    expect(sensitive.stored).toEqual(sensitive.masked);
+    expect(sensitive.body.category).toBe("HAT");
   });
 });
 

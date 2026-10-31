@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>체험 안내 · 찾음표</title>
+<title>서비스 소개 · 찾음표</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="palette.css">
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
@@ -22,83 +22,46 @@
 </head>
 <body>
 <main class="screen">
-  <header class="bar"><a class="back" href="index.html">←</a><h2>체험 안내</h2></header>
-  <h1>찾음표 체험 안내</h1>
-  <p class="lead">사진 한 장으로 등록하고, 주인만 아는 특징으로 찾아가는 캠퍼스 분실물 서비스예요. 가입 없이 바로 해 볼 수 있어요.</p>
+  <header class="bar"><a class="back" href="index.html">←</a><h2>서비스 소개</h2></header>
+  <h1>찾음표 소개</h1>
+  <p class="lead">사진 한 장으로 등록하고, 주인만 아는 특징으로 찾아가는 캠퍼스 분실물 서비스예요.</p>
 
   <p class="section">왜 만들었나</p>
   <div class="guide-card" id="why">
     <p>에브리타임 서경대 게시판에 1년 동안 분실·습득 글이 <b>146건</b> 올라왔어요(팀 직접 집계, 2026-10-30).</p>
     <p>주운 물건을 맡긴 곳은 교무처·편의점·카페·그 자리 등 <b>9곳 이상</b>으로 흩어져 있었어요. 어디에 맡기냐고 묻는 글도 있었어요.</p>
     <p>사진이 붙은 글 중 <b>7건</b>은 이름·신분증이 그대로 보였어요. 주인을 찾으려다 개인정보가 퍼지는 거예요.</p>
-    <p>그래서 찾음표는 <b>서버에서 먼저 가리고</b> → <b>주인만 아는 특징으로 확인</b>하고 → <b>교무처 QR로 돌려주고</b> → 분실이 몰리는 <b>구간을 미리 알려요</b>.</p>
+    <p>그래서 찾음표는 분실물 하나가 더 큰 문제가 되기 전에, 사진 속 개인정보와 사칭을 <b>탐지</b>하고, 신고 설명으로 주인 후보를 <b>예측</b>하고, 교무처 QR로 <b>해결</b>해요. 같은 곳에서 반복되는 분실은 교무처에 따로 알려요.</p>
   </div>
 
-  <p class="section">1. 잃어버린 사람으로 체험하기 (2분)</p>
+  <p class="section">쓰는 순서</p>
   <div class="guide-card">
-    <div class="guide-step"><b>①</b><span>첫 화면 <b>잃어버린 사람</b> → 로그인 화면의 <b>체험해 보기</b>. 가입 없이 체험 계정이 생기고 24시간 뒤 지워져요.</span></div>
-    <div class="guide-step"><b>②</b><span><b>분실 신고</b>: 아래 표에서 물건 하나를 골라 종류·건물을 고르세요. 잃어버린 때는 기본값(직전 2시간) 그대로 둬도 돼요. 신고하면 바로 <b>후보 화면</b>으로 넘어가요.</span></div>
-    <div class="guide-step"><b>③</b><span>기억나는 점에 <b>숨은 특징</b>을 적으면 바로 통과해요. 예: "흰색 에어팟, 케이스에 곰돌이 스티커". 특징 없이 "흰색 무선 이어폰"만 적으면 <b>객관식 확인 질문</b>이 나와요.</span></div>
-    <div class="guide-step"><b>④</b><span>통과하면 선명한 사진, 보관 위치, 수령 QR이 열려요. 체험에서는 QR 아래 <b>교무처 스캔 대신하기</b>를 누르면 수령까지 끝나요. 틀리면 기회가 1번 줄어요. 한 계정은 3번 틀리면 그 물건 확인이 잠기고, 모든 계정을 합쳐 10번 틀리면 교무처 대면 확인으로 넘어가요.</span></div>
-    <a class="btn" href="lost/login.html" style="display:block;text-align:center;margin-top:8px">잃어버린 사람 체험 시작</a>
+    <div class="guide-step"><b>①</b><span><b>주운 사람</b>: 첫 화면 <b>찾은 사람</b> → 동의 두 개 → 사진 한 장. <b>주운 사람은 가입하지 않아요.</b> 보상 없이 선의로 올려 주는 분이라, 가입 한 단계만 늘어도 그냥 두고 가기 쉬워서예요. 귀중품이면 가까운 보관처(교무처)를 추천해요.</span></div>
+    <div class="guide-step"><b>②</b><span><b>잃어버린 사람</b>: 서경대 메일로 로그인 → 분실 신고(종류·시간·건물·기억나는 점) → 바로 후보 화면. 숨은 특징을 적으면 확인하고, 애매하면 객관식으로 한 번 더 물어요. 한 계정은 한 물건에 3번 틀리면 다시 확인할 수 없고(기다려도 풀리지 않아요) 교무처에서 직접 확인해요. 모든 계정을 합쳐 10번 틀리면 그 물건은 교무처 대면 확인으로만 찾아요.</span></div>
+    <div class="guide-step"><b>③</b><span><b>교무처</b>: 확인을 통과한 사람이 보여 주는 수령 QR을 스캔하면 수령이 끝나고 기록이 남아요. 같은 곳에서 반복되는 분실은 통계와 알림으로 알려요.</span></div>
   </div>
 
-  <p class="section">2. 교무처 관리자로 체험하기 (1분)</p>
-  <div class="guide-card">
-    <p>관리자 로그인 화면의 <b>시연으로 둘러보기</b>를 누르면 예시 데이터로 관리자 화면을 볼 수 있어요. 물건 목록·수령 처리는 브라우저 안에서만 움직이고, <b>분실 다발·먼저 손볼 곳</b>은 서버가 시연 데이터(학생 데이터 아님)를 실제 통계와 같은 코드로 계산해 보여 줘요.</p>
-    <p>홈 → <b>분실 다발 통계</b>에서 반복되는 분실 구간의 <b>우선순위·다음 7일 예상·예방 조치</b>와 <b>신고가 반복되는 곳</b>을 볼 수 있어요. 수령 QR 스캔, 검토 대기, 알림도 둘러볼 수 있어요.</p>
-    <a class="btn white" href="admin/login.html" style="display:block;text-align:center;margin-top:8px">관리자 화면 열기</a>
-  </div>
-
-  <p class="section">3. 주운 사람으로 등록해 보기</p>
   <div class="guide-card">
     <div class="ai-read" style="margin-top:0">
-      <p class="ai-read-title">🤖 사진 한 장으로 AI가 하는 일 (등록 없이 보기)</p>
+      <p class="ai-read-title">🤖 사진 한 장으로 AI가 하는 일</p>
       <p class="ai-read-line">① 서버 안의 작은 모델이 얼굴·카드 글자를 <b>먼저 가려요</b> (외부로 원본을 보내지 않아요)<br>
       ② 가린 사진만 Gemini가 보고 <b>종류·색·브랜드·숨은 특징</b>을 정리해요<br>
       ③ 숨은 특징은 비공개로 두고, 공개용은 <b>강하게 흐린 사진</b>만 써요</p>
-      <p class="note" style="margin-top:6px">예시(체험용 무선 이어폰에 저장된 결과): 종류 <b>무선 이어폰</b> · 색 <b>흰색</b> · 숨은 특징 <b>곰돌이 스티커, 케이스 뒷면 긁힘</b> → 후보 화면에는 "무선 이어폰 · 혜인관"과 흐린 사진만 보여요.</p>
       <p class="note" style="margin-top:4px">팀원이 직접 찍은 실제 분실물 사진 35장으로 잰 결과: 큰 종류 34/35장 정답, 개인정보 놓침 0건.</p>
     </div>
-    <p>첫 화면 <b>찾은 사람</b> → 동의 → 사진 찍기. AI가 물건 이름을 보여 주고, 건물을 위치로 추천해요. <b>실제 등록</b>이 되므로 주변 물건으로 해 주세요. 얼굴·카드 글자는 AI로 보내기 전에 서버에서 먼저 가려요.</p>
-    <a class="btn white" href="found/consent.html" style="display:block;text-align:center;margin-top:8px">사진 등록해 보기</a>
-  </div>
-
-  <p class="section">체험용 물건 (숨은 특징)</p>
-  <p class="note">체험 계정에만 보이는 시연용 물건이에요. 후보 목록에는 흐린 사진과 종류·건물만 나오고, 아래 숨은 특징은 주인만 안다고 가정해요.</p>
-  <div class="scroll-x">
-    <table class="guide-table">
-      <thead><tr><th>종류</th><th>건물</th><th>숨은 특징</th></tr></thead>
-      <tbody>
-        <tr><td>무선 이어폰</td><td>혜인관</td><td>곰돌이 스티커, 케이스 뒷면 긁힘</td></tr>
-        <tr><td>지갑</td><td>북악관</td><td>안쪽 J.H 각인, 영화 티켓 한 장</td></tr>
-        <tr><td>우산</td><td>청운관</td><td>회색 줄무늬, 고양이 키링</td></tr>
-        <tr><td>텀블러</td><td>유담관</td><td>펭귄 스티커, 바닥 찌그러짐</td></tr>
-        <tr><td>휴대폰</td><td>청운관</td><td>투명 케이스, 케이스 안 별 스티커</td></tr>
-        <tr><td>열쇠</td><td>유담관</td><td>빨간 하트 키링, 갈색 가죽 키케이스</td></tr>
-        <tr><td>백팩</td><td>한림관</td><td>노란 오리 인형 키링, 앞주머니 별 자수</td></tr>
-        <tr><td>필통</td><td>본관</td><td>딸기 스티커, 초록색 형광펜</td></tr>
-        <tr><td>안경</td><td>문예관</td><td>빨간 안경집, 왼쪽 렌즈 긁힘</td></tr>
-        <tr><td>노트북</td><td>대일관</td><td>우주인 스티커, 키보드 투명 덮개</td></tr>
-        <tr><td>아우터</td><td>상승관</td><td>등에 흰 체크무늬 패치, 주머니에 귤 사탕</td></tr>
-        <tr><td>교과서</td><td>은주관</td><td>이니셜 S.K, 노란 포스트잇</td></tr>
-        <tr><td>보조배터리</td><td>수인관</td><td>무지개 스티커, 짧은 C타입 케이블</td></tr>
-        <tr><td>스마트워치</td><td>생활관</td><td>분홍 실리콘 밴드, 화면 오른쪽 위 금</td></tr>
-      </tbody>
-    </table>
   </div>
 
   <p class="section" style="margin-top:20px">AI가 하는 일</p>
   <div class="guide-card">
     <p><b>사진 → 물건 정보</b>: Gemini가 종류·색·숨은 특징을 정리해요. 그 전에 서버 안의 작은 모델이 얼굴·글자를 먼저 가려요.</p>
-    <p><b>후보 찾기</b>: 종류·장소·시간과 설명의 뜻(임베딩)으로 후보를 최대 3개 골라요.</p>
+    <p><b>주인 후보 예측</b>: AI가 신고 설명을 읽고, 종류·장소·시간과 설명의 뜻(임베딩)으로 주인일 가능성이 높은 습득물을 최대 3개 골라요.</p>
     <p><b>주인 확인</b>: 설명의 특징을 숨은 특징과 규칙으로 대조하고, 규칙이 다르다고 본 것만 AI가 같은 뜻인지 다시 봐요. 애매하면 AI가 만든 보기로 객관식 질문을 내요.</p>
-    <p><b>반복 분실</b>: 같은 건물·시간대·종류로 반복되는 분실을 찾아 우선순위와 예방 조치를 교무처에 제안해요.</p>
+    <p><b>반복 분실(보조)</b>: 같은 건물·시간대·종류로 반복되는 분실을 규칙으로 모아 우선순위와 예방 조치를 교무처에 알려요. 데이터가 적어 학습 모델 대신 설명할 수 있는 규칙을 써요.</p>
   </div>
 
   <p class="section">개인정보</p>
   <div class="guide-card">
-    <p>이름·학번은 받지 않아요. 사진 속 얼굴·카드 글자는 AI로 보내기 전에 가리고, 저장 원본도 가린 사본이에요. 위치 좌표는 건물로 바꾼 뒤 버려요. 수령되면 사진과 숨은 정보는 바로 지워요(체험용 시연 물건은 다른 심사위원도 써야 해서 남겨 둬요).</p>
+    <p>이름·학번은 받지 않아요. 사진 속 얼굴·카드 글자는 AI로 보내기 전에 가리고, 저장 원본도 가린 사본이에요. 위치 좌표는 건물로 바꾼 뒤 버려요. 수령되면 사진과 숨은 정보는 바로 지워요.</p>
   </div>
 
   <p class="note" style="margin:16px 0 24px">코드와 결과보고서: <a href="https://github.com/songeunyeol/chajeumpyo" rel="noopener">github.com/songeunyeol/chajeumpyo</a></p>

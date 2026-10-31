@@ -46,6 +46,8 @@ const Env = z.object({
     .default(24 * 7),
   /** 체험 계정 유효 기간. 지나면 배치로 삭제 */
   DEMO_TTL_HOURS: z.coerce.number().positive().default(24),
+  // 체험 계정·관리자 시연(10/31 심사용 계정으로 바꾸며 운영에서 끔). 비우면 test에서만 켠다
+  DEMO_MODE: z.enum(["on", "off"]).optional(),
 
   /** console: 서버 로그에만 출력(개발), smtp: 실제 발송, memory: 테스트용 */
   MAIL_MODE: z.enum(["console", "smtp", "memory"]).default("console"),
@@ -124,4 +126,5 @@ const splitList = (value: string) =>
     .filter(Boolean);
 
 export const corsOrigins = splitList(env.CORS_ORIGIN);
+export const demoEnabled = env.DEMO_MODE ? env.DEMO_MODE === "on" : env.NODE_ENV === "test";
 export const allowedEmailDomains = splitList(env.ALLOWED_EMAIL_DOMAINS).map((d) => d.toLowerCase());

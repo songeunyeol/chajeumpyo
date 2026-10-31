@@ -45,10 +45,36 @@ type Attempt = Prisma.MatchAttemptGetPayload<object>;
 const Features = z.array(AiFeature).catch([]);
 
 /**
- * 습득자 설명에서 나온 특징(source: "finder")의 "종류|값". 이 특징은 대조에만 쓰고 객관식 질문으로는 내지 않는다.
- * 습득자가 쓴 글이 보기에 그대로 나가 남에게 보이지 않게 (10/30 코드 평가).
+ * 습득자 설명에서 나온 특징 중 객관식 질문으로 내도 되는 종류. 색·모양처럼 이름이 들어가기 어려운 것만 (10/31 QA).
+ * 글자·각인(text), 안에 든 것(contents), 기타(other)는 이름·학번이 섞일 수 있어 계속 대조에만 쓴다.
+ */
+const QUIZ_SAFE_FINDER_KEYS = new Set(["sticker", "scratch", "case", "keyring", "pattern"]);
+
+/** 영문·숫자가 섞인 값(이니셜 "J.H", 학번 등)은 안전한 종류라도 보기로 내지 않는다 */
+function quizSafeFinderValue(value: string): boolean {
+  return !/[A-Za-z0-9]/.test(value);
+}
+
+/**
+ * 습득자 설명에서 나온 특징(source: "finder") 중 객관식으로 내면 안 되는 것의 "종류|값". 이 특징은 대조에만 쓴다.
+ * 습득자가 쓴 이름·이니셜이 보기에 그대로 나가 남에게 보이지 않게 (10/30 코드 평가). 안전한 종류는 질문에 쓴다 (10/31 QA).
  */
 export function finderFeatureIds(raw: unknown): Set<string> {
+  const ids = new Set<string>();
+  if (!Array.isArray(raw)) return ids;
+  for (const f of raw) {
+    if (f && typeof f === "object" && (f as { source?: unknown }).source === "finder") {
+      const { key, value } = f as { key?: unknown; value?: unknown };
+      if (typeof key !== "string" || typeof value !== "string") continue;
+      if (QUIZ_SAFE_FINDER_KEYS.has(key) && quizSafeFinderValue(value)) continue;
+      ids.add(`${key}|${value.trim()}`);
+    }
+  }
+  return ids;
+}
+
+/** 습득자 설명에서 나온 특징 전부의 "종류|값". 바로 통과 비율(75%)의 분모에서 뺀다 (10/31 QA) */
+function allFinderFeatureIds(raw: unknown): Set<string> {
   const ids = new Set<string>();
   if (!Array.isArray(raw)) return ids;
   for (const f of raw) {
@@ -173,7 +199,7 @@ async function previousQuestions(foundItemId: string): Promise<Map<string, QuizQ
 
 /**
  * 경계 판정의 객관식 질문 (F-09, 10/29 은열 의견: 서술형은 맞히기 어렵다).
- * 신고에 적지 않은 숨은 특징부터 묻고, 하나뿐이면 신고에 색을 적지 않았을 때 색을 함께 묻는다. 모두 맞혀야 통과.
+ * 신고에 적지 않은 숨은 특징부터 묻고, 하나뿐이면 신고에 색을 적지 않았을 때 색을 함께 묻고, 그래도 모자라면 적었던 특징을 묻는다. 모두 맞혀야 통과.
  */
 async function buildQuiz(
   foundItemId: string,
@@ -202,6 +228,12 @@ async function buildQuiz(
     const label = COLOR_LABELS[storedColor.data];
     const text = colorQuestionFor(itemName);
     quiz.push(reuse("color", text) ?? makeQuestion(text, "color", label, colorDistractors(storedColor.data)));
+  }
+  // 그래도 모자라면 신고에 적었던 특징도 묻는다. 모순·부정으로 적은 특징을 보기에서 다시 고르게 (10/30: 모순이면 바로 실패 대신 객관식)
+  for (const f of stored.filter((s) => s !== first && isAskable(s) && mentioned.has(s.key))) {
+    if (quiz.length >= maxQuestions) break;
+    const q = reuse(f.key, questionFor(f, itemName)) ?? (await featureQuestion(f, itemName));
+    if (q) quiz.push(q);
   }
   return quiz;
 }
@@ -255,10 +287,14 @@ export async function claim(viewer: Viewer, reportId: string, foundItemId: strin
   const mentionedKeys = comparison.features
     .filter((f) => !(f.verdict === "UNKNOWN" && f.storedKey))
     .map((f) => f.reportedKey);
-  // 질문으로 낼 수 있는 특징: 습득자 설명에서 나온 것은 뺀다
+  // 질문으로 낼 수 있는 특징: 습득자 설명에서 나온 것 중 이름이 섞일 수 있는 것은 뺀다
   const fromFinder = finderFeatureIds(item.detail?.features);
   const askableFeatures = storedFeatures.filter((f) => !fromFinder.has(`${f.key}|${f.value.trim()}`));
-  let j = judge(comparison, askableFeatures, mentionedKeys);
+  // 바로 통과 비율은 사진에서 나온 특징 기준으로 센다. 주인은 습득자가 덧붙인 설명을 알 수 없다 (10/31 QA).
+  // 사진 특징이 하나도 없으면(사진 분석 실패 후 설명으로 등록) 설명 특징으로 센다
+  const allFinder = allFinderFeatureIds(item.detail?.features);
+  const photoFeatures = storedFeatures.filter((f) => !allFinder.has(`${f.key}|${f.value.trim()}`));
+  let j = judge(comparison, askableFeatures, mentionedKeys, photoFeatures.length > 0 ? photoFeatures : storedFeatures);
   const itemName = item.category ? itemLabel(item.category, subCategoryWithin(item.category, item.subCategory)) : null;
   // 보기 만들기(AI)도 트랜잭션 밖에서 한다
   let quiz = j.questionFeature

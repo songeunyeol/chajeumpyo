@@ -6,6 +6,26 @@ import { dropMaskTraces, isMaskTrace } from "../../src/matching/text";
 const stored = { color: "WHITE", brand: "Apple", features: [{ key: "sticker" as const, value: "곰돌이 스티커" }] };
 
 describe("규칙 기반 대조", () => {
+  it("한쪽만 없음·부정 표현이면 낱말이 겹쳐도 일치가 아니다 (10/30 배포 QA)", () => {
+    const lens = { color: null, brand: null, features: [{ key: "scratch" as const, value: "왼쪽 렌즈 긁힘" }] };
+    const verdicts = (values: string[]) =>
+      compareByRules(
+        { color: null, brand: null, features: values.map((value) => ({ key: "scratch" as const, value })) },
+        lens,
+      ).features.map((f) => f.verdict);
+    expect(verdicts(["렌즈 흠집 없음", "렌즈가 깨끗해요", "왼쪽 렌즈 긁힘"])).toEqual([
+      "CONTRADICT",
+      "CONTRADICT",
+      "MATCH",
+    ]);
+    // 둘 다 없음이면 같은 특징
+    const noLid = { color: null, brand: null, features: [{ key: "other" as const, value: "뚜껑 없음" }] };
+    expect(
+      compareByRules({ color: null, brand: null, features: [{ key: "other", value: "뚜껑 없어요" }] }, noLid)
+        .features[0]?.verdict,
+    ).toBe("MATCH");
+  });
+
   it("값이 맞으면 일치, 다르면 모순, 종류만 적으면 확인 불가", () => {
     const r = compareByRules(
       {

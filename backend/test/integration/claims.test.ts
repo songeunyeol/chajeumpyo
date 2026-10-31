@@ -24,6 +24,12 @@ const STORED: AiFeature[] = [
   { key: "scratch", value: "오른쪽 아래 긁힘" },
   { key: "keyring", value: "고양이 키링" },
 ];
+/** 저장 특징을 모두 맞힌 설명 (75% 이상이어야 바로 통과, 10/30) */
+const ALL_RIGHT: AiFeature[] = [
+  { key: "sticker", value: "곰돌이 스티커" },
+  { key: "scratch", value: "오른쪽 아래 긁힘" },
+  { key: "keyring", value: "고양이 키링" },
+];
 
 async function item(over: Parameters<typeof createFoundItem>[0] extends infer T ? Partial<T> : never = {}) {
   return createFoundItem({
@@ -110,10 +116,10 @@ beforeEach(async () => {
 
 afterEach(() => resetAiClient());
 
-describe("기준 1. 값까지 맞는 특징이 있고 모순이 없으면 통과", () => {
+describe("기준 1. 특징의 75% 이상이 값까지 맞고 모순이 없으면 통과 (10/30)", () => {
   it("PASS, 맞은 항목 공개, 시도 기록", async () => {
     const it1 = await item();
-    const r = await newReport({ color: "WHITE", features: [feature("sticker", "곰돌이 스티커")] });
+    const r = await newReport({ color: "WHITE", features: ALL_RIGHT });
     const res = await claim(r, it1.id);
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ result: "PASS", reused: false, foundItemId: it1.id });
@@ -124,10 +130,34 @@ describe("기준 1. 값까지 맞는 특징이 있고 모순이 없으면 통과
     expect(a.descriptionHash).toMatch(/^[0-9a-f]{64}$/);
     expect(JSON.stringify(res.body)).not.toMatch(/score|곰돌이|contradict/i);
   });
+
+  it("3개 중 2개만 맞으면(67%) 바로 통과가 아니라 남은 특징을 객관식으로 묻는다", async () => {
+    const it1 = await item();
+    const r = await newReport({
+      features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "오른쪽 아래 긁힘")],
+    });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    expect(res.body.question).toMatch(/키링/);
+    expect((await choose(res.body.attemptId, await correctChoices(res.body.attemptId))).body.result).toBe("PASS");
+  });
+
+  it("특징이 4개면 3개(75%) 맞으면 바로 통과", async () => {
+    const it1 = await item({ features: [...STORED, { key: "text", value: "J.H 각인" }] });
+    const r = await newReport({ features: ALL_RIGHT });
+    expect((await claim(r, it1.id)).body.result).toBe("PASS");
+  });
+
+  it("없음·부정으로 적은 특징은 일치가 아니다 ('흠집 없음' ↔ '긁힘', 10/30 배포 QA)", async () => {
+    const it1 = await item({ features: [feature("scratch", "왼쪽 렌즈 긁힘"), feature("case", "빨간 안경집")] });
+    const r = await newReport({ features: [feature("scratch", "렌즈 흠집 없음"), feature("case", "빨간 안경집")] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+  });
 });
 
 describe("기준 2. 종류만 적거나 특징을 나열하면 통과하지 못한다", () => {
-  it("'스티커, 흠집, 키링, 케이스'만 나열하면 FAIL", async () => {
+  it("'스티커, 흠집, 키링, 케이스'만 나열하면 통과하지 못하고 객관식으로 묻는다", async () => {
     const it1 = await item();
     const r = await newReport({
       features: [
@@ -137,7 +167,9 @@ describe("기준 2. 종류만 적거나 특징을 나열하면 통과하지 못�
         feature("case", "케이스"),
       ],
     });
-    expect((await claim(r, it1.id)).body.result).toBe("FAIL");
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    expect(res.body.questions).toHaveLength(3);
   });
 
   it("저장되지 않은 종류의 특징만 적으면 통과가 아니라 숨은 특징을 묻는다", async () => {
@@ -160,10 +192,23 @@ describe("기준 3. 색·브랜드는 일치로 세지 않고, 모순일 때만 
     expect(wrong.body).toEqual({ result: "FAIL", attemptsLeft: 2, inPersonOnly: false });
   });
 
-  it("특징이 모순이면 질문 없이 FAIL", async () => {
+  it("맞힌 특징 없이 모순만 있으면 객관식 없이 바로 실패로 센다 (10/31 B안)", async () => {
     const it1 = await item();
     const r = await newReport({ features: [feature("sticker", "토끼 스티커")] });
-    expect((await claim(r, it1.id)).body.result).toBe("FAIL");
+    expect((await claim(r, it1.id)).body).toEqual({
+      attemptId: expect.any(String),
+      reused: false,
+      result: "FAIL",
+      attemptsLeft: 2,
+      inPersonOnly: false,
+    });
+  });
+
+  it("맞힌 특징이 있으면 모순이 있어도 객관식으로 다시 묻는다 (10/31 B안)", async () => {
+    const it1 = await item();
+    const r = await newReport({ features: [feature("sticker", "곰돌이 스티커"), feature("keyring", "강아지 키링")] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
   });
 
   it("특징은 맞는데 색이 모순이면 BORDERLINE", async () => {
@@ -174,7 +219,7 @@ describe("기준 3. 색·브랜드는 일치로 세지 않고, 모순일 때만 
 
   it("이웃 색(회색↔흰색)은 모순이 아니라 PASS", async () => {
     const it1 = await item();
-    const r = await newReport({ color: "GRAY_SILVER", features: [feature("sticker", "곰돌이")] });
+    const r = await newReport({ color: "GRAY_SILVER", features: ALL_RIGHT });
     expect((await claim(r, it1.id)).body.result).toBe("PASS");
   });
 });
@@ -199,10 +244,11 @@ describe("기준 4. 경계 판정은 신고에 적지 않은 특징으로 질문
     expect(res.body.questions[0].options).toContain("오른쪽 아래 긁힘");
   });
 
-  it("적지 않은 특징이 없고 일치도 없으면 FAIL (찍을 기회를 늘리지 않는다)", async () => {
+  it("적지 않은 특징이 없고 일치도 없이 모순만 있으면 바로 실패 (10/31 B안)", async () => {
     const it1 = await item({ features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "오른쪽 아래 긁힘")] });
     const r = await newReport({ features: [feature("sticker", "토끼 스티커"), feature("scratch", "왼쪽 위 긁힘")] });
-    expect((await claim(r, it1.id)).body.result).toBe("FAIL");
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("FAIL");
   });
 
   it("특징이 없는 습득물은 아무도 통과할 수 없다 (open-issues #17 현재 기준)", async () => {
@@ -216,19 +262,19 @@ describe("기준 5. 실패 응답에는 힌트가 없고, 3번 실패하면 잠�
   it("FAIL은 남은 횟수만, 3번째 실패 뒤 409 MATCH_LOCKED와 후보 잠금", async () => {
     const it1 = await item();
     const r = await newReport({ features: [feature("sticker", "토끼")] });
-    const first = await claim(r, it1.id);
-    expect(first.body).toEqual({
-      attemptId: expect.any(String),
-      reused: false,
-      result: "FAIL",
-      attemptsLeft: 2,
-      inPersonOnly: false,
-    });
+    // 맞힌 특징 없이 모순만 있으면 바로 실패(10/31 B안)
+    expect((await claim(r, it1.id)).body).toMatchObject({ result: "FAIL", attemptsLeft: 2, inPersonOnly: false });
 
     const patch = (description: string) =>
       request(app).patch(`/api/v1/lost-reports/${r}`).set("Authorization", `Bearer ${token}`).send({ description });
     await patch("검정 에어팟, 토끼 그림").expect(200);
-    expect((await claim(r, it1.id)).body.attemptsLeft).toBe(1);
+    expect((await claim(r, it1.id)).body).toEqual({
+      attemptId: expect.any(String),
+      reused: false,
+      result: "FAIL",
+      attemptsLeft: 1,
+      inPersonOnly: false,
+    });
     await patch("검정 에어팟, 강아지 그림").expect(200);
     expect((await claim(r, it1.id)).body.attemptsLeft).toBe(0);
     await patch("검정 에어팟, 사자 그림").expect(200);
@@ -245,10 +291,10 @@ describe("기준 5. 실패 응답에는 힌트가 없고, 3번 실패하면 잠�
 describe("기준 6. 설명이 그대로면 이전 결과, 횟수를 쓰지 않는다", () => {
   it("같은 설명으로 다시 누르면 reused, 시도 수 그대로", async () => {
     const it1 = await item();
-    const r = await newReport({ features: [feature("sticker", "토끼")] });
+    const r = await newReport({ color: "WHITE", brand: "애플 Apple", features: [] });
     const a = await claim(r, it1.id);
     const b = await claim(r, it1.id);
-    expect(b.body).toMatchObject({ result: "FAIL", reused: true, attemptId: a.body.attemptId, attemptsLeft: 2 });
+    expect(b.body).toMatchObject({ result: "BORDERLINE", reused: true, attemptId: a.body.attemptId });
     expect(await prisma.matchAttempt.count()).toBe(1);
   });
 
@@ -256,7 +302,7 @@ describe("기준 6. 설명이 그대로면 이전 결과, 횟수를 쓰지 않�
     const it1 = await item();
     const r = await newReport({ features: [feature("sticker", "토끼")] });
     await claim(r, it1.id);
-    nextExtraction = { features: [feature("sticker", "곰돌이")] };
+    nextExtraction = { features: ALL_RIGHT };
     await request(app)
       .patch(`/api/v1/lost-reports/${r}`)
       .set("Authorization", `Bearer ${token}`)
@@ -269,7 +315,7 @@ describe("기준 6. 설명이 그대로면 이전 결과, 횟수를 쓰지 않�
 
   it("이미 통과한 물건은 다른 신고로 와도 PASS를 돌려준다", async () => {
     const it1 = await item();
-    const r1 = await newReport({ features: [feature("sticker", "곰돌이")] });
+    const r1 = await newReport({ features: ALL_RIGHT });
     const pass = await claim(r1, it1.id);
     const r2 = await newReport({ features: [feature("sticker", "토끼")] }, token, "다른 설명으로 다시 신고");
     const again = await claim(r2, it1.id);
@@ -316,7 +362,7 @@ describe("후보가 바뀌어도 보여 준 물건에는 판정할 수 있다 (�
 
   it("보던 물건이 상위 3개에서 밀려나도 403이 아니다", async () => {
     const old = await fartherItem();
-    const r = await newReport({ features: [feature("sticker", "곰돌이 스티커")] });
+    const r = await newReport({ features: ALL_RIGHT });
     expect(await candidateIds(r)).toEqual([old.id]);
 
     // 더 잘 맞는 새 습득물 3개가 들어와 old가 목록에서 빠진다
@@ -447,9 +493,10 @@ describe("기준 9. 답은 한 번만, 내 질문에만", () => {
     const other = await signupUser(app, "other@skuniv.ac.kr");
     expect((await answer(id, "곰돌이", other.accessToken)).status).toBe(404);
     const it2 = await item();
-    const r = await newReport({ features: [feature("sticker", "토끼")] }, token, "실패할 신고 설명입니다");
-    const fail = await claim(r, it2.id);
-    expect((await answer(fail.body.attemptId, "곰돌이")).status).toBe(400);
+    const r = await newReport({ features: ALL_RIGHT }, token, "바로 통과할 신고 설명입니다");
+    const pass = await claim(r, it2.id);
+    expect(pass.body.result).toBe("PASS");
+    expect((await answer(pass.body.attemptId, "곰돌이")).status).toBe(400);
   });
 });
 
@@ -466,7 +513,7 @@ describe("기준 10. 동시 요청과 체험 계정", () => {
     const seed = await item({ isSeed: true });
     const real = await item();
     const demo = await demoLogin(app);
-    const r = await newReport({ features: [feature("sticker", "곰돌이")] }, demo.accessToken);
+    const r = await newReport({ features: ALL_RIGHT }, demo.accessToken);
     expect((await claim(r, seed.id, demo.accessToken)).body.result).toBe("PASS");
     expect((await claim(r, real.id, demo.accessToken)).status).toBe(403);
     expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: seed.id } })).status).toBe("REGISTERED");
@@ -587,7 +634,7 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     const a2 = await claim(r2, it1.id);
     expect(a2.body.result).toBe("FAIL");
     // 특징을 적으면 다시 확인할 수 있다
-    const r3 = await newReport({ features: [feature("sticker", "곰돌이 스티커")] }, token, "곰돌이 스티커 붙은 에어팟");
+    const r3 = await newReport({ features: ALL_RIGHT }, token, "곰돌이 스티커 붙은 에어팟");
     expect((await claim(r3, it1.id)).body.result).toBe("PASS");
   });
 
@@ -666,11 +713,12 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect(res.body.error.code).toBe("MATCH_LOCKED");
   });
 
-  it("습득자 설명에서 나온 특징(source: finder)은 대조에는 쓰지만 객관식 질문으로 내지 않는다", async () => {
+  it("습득자 설명 특징(source: finder)은 대조에 쓰고, 이름이 섞일 수 있는 종류·영문·숫자 값은 객관식으로 내지 않는다", async () => {
     const it1 = await item({
       features: [
         { key: "sticker", value: "곰돌이 스티커" },
-        { key: "keyring", value: "고양이 키링", source: "finder" } as AiFeature,
+        { key: "contents", value: "학생증 김서경", source: "finder" } as AiFeature,
+        { key: "pattern", value: "JH 무늬", source: "finder" } as AiFeature,
       ],
     });
     const r = await newReport({ features: [] });
@@ -678,12 +726,45 @@ describe("기준 11. 경계 판정은 객관식으로 묻고, 모두 맞혀야 �
     expect(res.body.result).toBe("BORDERLINE");
     const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
     const keys = ((a.matchedFields as { quiz: { featureKey: string }[] }).quiz ?? []).map((q) => q.featureKey);
-    expect(keys).not.toContain("keyring");
-    // 스티커 질문의 오답 보기에 "고양이 스티커"가 나올 수 있어, 습득자 특징 낱말("키링")로 본다
-    expect(JSON.stringify(res.body)).not.toContain("키링");
+    expect(keys).not.toContain("contents");
+    expect(keys).not.toContain("pattern");
+    expect(JSON.stringify(res.body)).not.toContain("김서경");
+    expect(JSON.stringify(res.body)).not.toContain("JH");
     // 대조에는 쓴다: 설명에 그 특징을 적으면 통과
-    const r2 = await newReport({ features: [feature("keyring", "고양이 키링")] }, token, "고양이 키링 달린 에어팟");
-    expect((await claim(r2, it1.id)).body.result).toBe("PASS");
+    const r2 = await newReport(
+      { features: [feature("sticker", "곰돌이 스티커"), feature("contents", "학생증 김서경")] },
+      token,
+      "곰돌이 스티커, 안에 학생증",
+    );
+    expect((await claim(r2, it1.id)).body.result).not.toBe("FAIL");
+  });
+
+  it("바로 통과 비율(75%)은 사진 특징 기준이라, 습득자가 덧붙인 설명 특징 때문에 주인이 객관식으로 밀리지 않는다 (10/31 QA)", async () => {
+    const it1 = await item({
+      features: [
+        { key: "sticker", value: "곰돌이 스티커" },
+        { key: "scratch", value: "오른쪽 아래 긁힘" },
+        { key: "case", value: "흰색 이어폰 케이스", source: "finder" } as AiFeature,
+      ],
+    });
+    const r = await newReport(
+      { features: [feature("sticker", "곰돌이 스티커"), feature("scratch", "오른쪽 아래 긁힘")] },
+      token,
+      "곰돌이 스티커, 오른쪽 아래 긁힘",
+    );
+    expect((await claim(r, it1.id)).body.result).toBe("PASS");
+  });
+
+  it("습득자 설명 특징 중 키링·스티커처럼 이름이 들어가기 어려운 종류는 객관식 질문으로 쓸 수 있다 (10/31 QA)", async () => {
+    const it1 = await item({
+      features: [{ key: "keyring", value: "고양이 키링", source: "finder" } as AiFeature],
+    });
+    const r = await newReport({ features: [] });
+    const res = await claim(r, it1.id);
+    expect(res.body.result).toBe("BORDERLINE");
+    const a = await prisma.matchAttempt.findUniqueOrThrow({ where: { id: res.body.attemptId } });
+    const keys = ((a.matchedFields as { quiz: { featureKey: string }[] }).quiz ?? []).map((q) => q.featureKey);
+    expect(keys).toContain("keyring");
   });
 
   it("다시 시도해도(다른 설명·다른 계정) 같은 물건·같은 질문이면 같은 보기 세트, 순서만 섞는다 (교집합 공격 막기, 10/30)", async () => {

@@ -184,6 +184,16 @@ function sameAspect(a: string, b: string): boolean {
   return false;
 }
 
+/**
+ * 없음·부정 표현("흠집 없음", "렌즈가 깨끗해요", "스티커 안 붙어 있어요").
+ * 한쪽만 부정이면 낱말이 겹쳐도 같은 특징이 아니다 (10/30 배포 QA: "렌즈 흠집 없음"이 "왼쪽 렌즈 긁힘"과 일치해 바로 통과했다).
+ */
+const NEGATION = /없|않|아니|깨끗|멀쩡|안\s?(?:붙|달|났|생|보|묻|찍)/;
+
+export function isNegated(value: string): boolean {
+  return NEGATION.test(value);
+}
+
 /** 값에 일반 낱말 말고 실제 내용이 있는지 */
 function hasSpecificValue(feature: AiFeature): boolean {
   return tokens(feature.value).some((w) => !GENERIC_WORDS.has(w));
@@ -271,6 +281,7 @@ function compareFeature(reported: AiFeature, stored: AiFeature[]): FeatureCompar
   const matches = (s: AiFeature) => {
     const storedTokens = new Set(tokens(s.value));
     const hits = content.filter((w) => storedTokens.has(w) || (w.length >= 2 && looselyContains(s.value, w)));
+    if (isNegated(reported.value) !== isNegated(s.value)) return false;
     return hits.length > 0 && (!hasStrong || hits.some((w) => !WEAK_WORDS.has(w)));
   };
   const sameKey = stored.filter((s) => s.key === reported.key);

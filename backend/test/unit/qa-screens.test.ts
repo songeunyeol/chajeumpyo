@@ -176,29 +176,29 @@ describe("스토리텔링 화면 (QA 10/30 최종)", () => {
     expect(html).toContain("<b>146건</b>");
     expect(html).toContain("<b>7건</b>");
     expect(html).toContain("<b>9곳 이상</b>");
-    expect(html.indexOf('id="why"')).toBeLessThan(html.indexOf("1. 잃어버린 사람으로 체험하기"));
+    expect(html.indexOf('id="why"')).toBeLessThan(html.indexOf("쓰는 순서"));
     expect(html).not.toContain("오늘 00:00부터");
   });
 
-  it("첫 화면: 문제 한 줄, 눈에 띄는 체험 안내, 가로로 밀고 들어오는 효과 없음", () => {
+  it("첫 화면: 10/27 디자인(부제목, 양옆에서 밀고 들어오는 버튼), 체험 배지 없음, 가로 넘침은 잘라 둔다 (10/31 되돌림)", () => {
     const html = read("frontend/index.html");
-    expect(html).toContain("146건");
-    expect(html).toContain("심사위원 체험 2분");
-    expect(html).not.toMatch(/translateX\(-?115%\)/);
+    expect(html).toContain("분실물을 찍어 올려 찾아주세요");
+    expect(html).not.toContain("심사위원 체험 2분");
+    expect(html).toMatch(/translateX\(-?115%\)/);
     expect(html).toContain("overflow-x: clip");
   });
 
-  it("관리자 로그인 시연 문구는 서버 집계(#112)와 맞는다", () => {
+  it("관리자 로그인에는 시연 안내가 없다 (10/31 시연 모드 끔)", () => {
     const html = read("frontend/admin/login.html");
     expect(html).not.toContain("서버 없이 예시 데이터로");
-    expect(html).toContain("서버가 실제 통계 코드로 계산");
+    expect(html).not.toContain("시연에서");
   });
 
   it("체험 수령이 끝나면 수령 전 안내를 숨기고 마무리와 다음 행동을 보여 준다", () => {
     const html = read("frontend/lost/item-handover.html");
     expect(html).toContain('id="pickedUpBox"');
     expect(html).toContain('getElementById("beforePickupNote").hidden = true');
-    expect(html).toContain('href="../admin/login.html"');
+    expect(html).not.toContain('href="../admin/login.html"');
   });
 
   it("관리자 화면에 '시드'라는 말이 보이지 않는다", () => {
@@ -340,14 +340,16 @@ describe("귀중품은 막지 않고 보관처를 추천한다 (10/30 정책 변
 describe("습득 등록: 물건 설명(선택)", () => {
   const register = read("frontend/found/register.html");
 
-  it("접힌 선택 칸이고 200자 제한, 개인정보 주의 문구가 있다", () => {
-    expect(register).toContain('<details class="note-box" id="noteBox">');
+  it("펼쳐진 한 줄 선택 칸이고 200자 제한, 개인정보 주의 문구, 상황 예시가 있다 (QA 10/31)", () => {
+    expect(register).toContain('<div class="note-box" id="noteBox">');
+    expect(register).not.toContain('<details class="note-box"');
+    expect(register).toContain("특징이나 주웠을 때 상황");
     expect(register).toMatch(/id="finderNote"[^>]*maxlength="200"/);
     expect(register).toContain("이름·학번·전화번호는 적지 마세요");
   });
 
   it("사진 분석이 실패하면 펼쳐서 글로 분류한다고 알리고, 설명은 note로 보낸다", () => {
-    expect(register).toContain("noteBox.open = true");
+    expect(register).toContain("finderNote.rows = 2");
     expect(register).toContain("AI가 글로 분류해요");
     expect(register).toContain("{ note: finderNote.value.trim().slice(0, 200) }");
   });
@@ -416,5 +418,96 @@ describe("실서비스 평가 10/30 오후 (체험 진입·문구·시연 데이
     expect(html).toContain(".max = AdminApi.seoulDate(0)");
     expect(html).toContain('clearResults("기간을 다시 골라 주세요.")');
     expect(html).toContain("clampedToToday");
+  });
+});
+
+describe("QA 10/31: 화면 문구·기본값", () => {
+  it("체험 안내가 탐지·예측·해결 관점으로 설명하고, 습득자가 가입하지 않는 이유를 말한다", () => {
+    const guide = read("frontend/guide.html");
+    expect(guide).toContain("<b>탐지</b>");
+    expect(guide).toContain("<b>예측</b>");
+    expect(guide).toContain("<b>해결</b>");
+    expect(guide).not.toContain("<b>구간을 미리 알려요</b>");
+    expect(guide).toContain("주운 사람은 가입하지 않아요");
+  });
+
+  it("습득 동의 화면에 가입을 받지 않는 이유가 한 줄 있다", () => {
+    expect(read("frontend/found/consent.html")).toContain("주운 분의 시간을 아끼려고 가입을 받지 않아요");
+  });
+
+  it("분실 신고의 건물 기본 목록은 시드 13곳과 같고 시드에 없는 이름이 없다", () => {
+    const report = read("frontend/lost/report.html");
+    for (const n of [
+      "본관",
+      "유담관",
+      "한림관",
+      "북악관",
+      "문예관",
+      "대일관",
+      "상승관",
+      "청운관",
+      "혜인관",
+      "은주관",
+      "수인관",
+      "생활관",
+      "공연실습소",
+    ])
+      expect(report).toContain(`<option value="${n}">${n}</option>`);
+    expect(report).not.toContain("중앙도서관");
+    expect(report).not.toContain('<option value="학생회관">');
+  });
+
+  it("관리자 홈 알림 카드가 지금 알림 종류를 설명한다", () => {
+    const home = read("frontend/admin/home.html");
+    expect(home).toContain("그 자리 귀중품");
+    expect(home).toContain("맡길 물건·수령 예정");
+  });
+
+  it("확인 모달과 질문 화면에 3번 틀리면 풀리지 않는 잠금 규칙을 처음부터 알린다", () => {
+    for (const f of ["frontend/lost/candidates.html", "frontend/lost/question.html"])
+      expect(read(f)).toContain("3번 틀리면 다시 확인할 수 없고(기다려도 풀리지 않아요)");
+  });
+
+  it("첫 화면에 지도는 다시 넣지 않는다", () => {
+    expect(read("frontend/index.html")).not.toContain("door-map");
+  });
+});
+
+describe("QA 10/31: 그 자리에 둠은 자세한 위치 필수, 첫 화면 제목 가운데", () => {
+  const register = read("frontend/found/register.html");
+
+  it("그 자리에 둠이면 위치 세부 설명이 필수(*)이고 안내·오류 칸이 있다, alert는 쓰지 않는다", () => {
+    expect(register).toContain('id="locDetailReq"');
+    expect(register).toContain(
+      "주인이 바로 찾을 수 있게 어디에 뒀는지 정확히 적어 주세요 (예: 3층 302호 뒤쪽 창가 책상 위)",
+    );
+    expect(register).toContain('id="locDetailErr" role="alert"');
+    expect(register).toMatch(/mode === "inplace" && locationDetail\.value\.trim\(\)\.length < LOC_DETAIL_MIN/);
+    expect(register).toContain("locationDetail.focus()");
+    expect(register).toContain("const LOC_DETAIL_MIN = 4;");
+  });
+
+  it("첫 화면 제목과 부제목은 원래 배치(한 줄, 부제목은 제목 옆)", () => {
+    expect(read("frontend/index.html")).toMatch(/\.title \{[^}]*flex-direction: row;/);
+  });
+});
+
+describe("심사용 계정으로 심사 (10/31, 체험·시연 진입점 제거)", () => {
+  it("첫 화면·로그인·관리자 로그인에 체험·시연 진입점이 없다", () => {
+    expect(read("frontend/index.html")).not.toContain("guide.html");
+    const login = read("frontend/lost/login.html");
+    expect(login).not.toContain("체험해 보기");
+    expect(login).not.toContain("demo=1");
+    const admin = read("frontend/admin/login.html");
+    expect(admin).not.toContain("시연으로 둘러보기");
+    expect(admin).not.toContain("startDemo");
+    expect(read("frontend/lost/item-handover.html")).not.toContain("관리자 화면 시연 보기");
+  });
+
+  it("서비스 소개에는 체험 계정·숨은 특징 정답표·계정 정보가 없다", () => {
+    const guide = read("frontend/guide.html");
+    expect(guide).not.toContain("체험");
+    expect(guide).not.toContain("J.H 각인");
+    expect(guide).not.toMatch(/judge|비밀번호/);
   });
 });

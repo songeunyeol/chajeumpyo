@@ -40,7 +40,11 @@ const placeFieldsDoc = {
   storageType: z.enum(["IN_PLACE", "HANDED_OVER"]),
   storagePlaceId: z.number().int().optional().meta({ description: "HANDED_OVER면 필수" }),
   floor: z.number().int().optional().meta({ description: "습득 층, 지하는 음수" }),
-  locationDetail: z.string().max(200).optional().meta({ description: "자세한 위치. 판정 통과 후에만 보인다" }),
+  locationDetail: z
+    .string()
+    .max(200)
+    .optional()
+    .meta({ description: "자세한 위치. IN_PLACE면 4자 이상 필수, HANDED_OVER면 선택. 판정 통과 후에만 보인다" }),
 };
 
 registry.registerPath({

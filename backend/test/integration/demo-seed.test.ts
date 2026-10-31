@@ -115,7 +115,7 @@ describe("체험 흐름: 숨은 특징을 말하면 통과", () => {
       lostFrom: hoursAgo(12).toISOString(),
       lostTo: new Date().toISOString(),
       buildingId: b.get("혜인관"),
-      description: "흰색 에어팟, 케이스에 곰돌이 스티커가 붙어 있어요",
+      description: "흰색 에어팟, 케이스에 곰돌이 스티커가 붙어 있어요, 케이스 뒷면 긁힘",
     };
     const post = (t: string) =>
       request(app).post("/api/v1/lost-reports").set("Authorization", `Bearer ${t}`).send(report);
@@ -147,7 +147,7 @@ describe("시드와 실제 물건은 서로 섞이지 않는다 (id를 직접 �
     lostFrom: hoursAgo(12).toISOString(),
     lostTo: new Date().toISOString(),
     buildingId,
-    description: "흰색 에어팟, 케이스에 곰돌이 스티커가 붙어 있어요",
+    description: "흰색 에어팟, 케이스에 곰돌이 스티커가 붙어 있어요, 케이스 뒷면 긁힘",
   });
   const claim = (t: string, reportId: string, foundItemId: string) =>
     request(app).post(`/api/v1/lost-reports/${reportId}/claims`).set(bearer(t)).send({ foundItemId });

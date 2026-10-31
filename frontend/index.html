@@ -12,23 +12,9 @@
     --green: #1e5b3d;
     --green-deep: #143828;
     --white: #ffffff;
+    --ease-rubber: cubic-bezier(0.2, 1.4, 0.32, 1);
   }
   * { box-sizing: border-box; }
-  .guide-link {
-    position: fixed;
-    top: max(12px, env(safe-area-inset-top));
-    right: clamp(16px, 5vw, 24px);
-    z-index: 2;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: var(--green);
-    color: var(--white);
-    font-size: 13px;
-    font-weight: 650;
-    text-decoration: none;
-    box-shadow: 0 2px 8px rgba(20, 56, 40, 0.18);
-  }
-  .guide-link:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
   html, body { margin: 0; height: 100%; }
   body { overflow-x: clip; }
   body {
@@ -59,7 +45,7 @@
     color: #9a948c;
   }
   .js .lead { opacity: 0; }
-  .js.is-said .lead { animation: lead-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .js.is-said .lead { animation: lead-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both; }
   h1 {
     margin: 0;
     font-size: clamp(40px, min(13.5vw, 8.5svh), 76px);
@@ -142,8 +128,8 @@
   .door:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
   @media (prefers-reduced-motion: no-preference) {
     .js .door { opacity: 0; pointer-events: none; }
-    .js.is-in .door-find { animation: door-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both; pointer-events: auto; }
-    .js.is-in .door-lost { animation: door-in 360ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both; pointer-events: auto; }
+    .js.is-in .door-find { animation: in-left 820ms var(--ease-rubber) both; pointer-events: auto; }
+    .js.is-in .door-lost { animation: in-right 820ms var(--ease-rubber) 120ms both; pointer-events: auto; }
   }
   @media (prefers-reduced-motion: reduce) {
     .bob { animation: none; }
@@ -158,10 +144,19 @@
     0%, 100% { transform: translateY(5px); }
     50% { transform: translateY(-7px); }
   }
-  /* 버튼은 0.4초 안에 보이게, 가로로 밀고 들어오지 않아 화면 밖으로 넘치지 않는다 */
-  @keyframes door-in {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: none; }
+  @keyframes in-left {
+    0% { opacity: 0; transform: translateX(-115%); }
+    45% { opacity: 1; }
+    64% { opacity: 1; transform: translateX(16px); }
+    84% { transform: translateX(-6px); }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes in-right {
+    0% { opacity: 0; transform: translateX(115%); }
+    45% { opacity: 1; }
+    64% { opacity: 1; transform: translateX(-16px); }
+    84% { transform: translateX(6px); }
+    100% { opacity: 1; transform: none; }
   }
 </style>
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1e5b3d">
@@ -171,13 +166,13 @@
   <main class="page">
     <header class="title">
       <h1><span id="typed"></span><span class="caret" aria-hidden="true"></span></h1>
-      <p class="lead">학교 분실 글 1년 146건, 찍어 올리면 주인에게 돌아가요</p>
-      <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">찾음표. 학교 분실 글 1년 146건, 찍어 올리면 주인에게 돌아가요</span>
+      <p class="lead">분실물을 찍어 올려 찾아주세요</p>
+      <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">찾음표. 분실물을 찍어올려 찾아주세요</span>
     </header>
     <div class="mark-wrap">
       <div class="bob">
         <div class="tilt">
-          <button class="card" id="card" type="button" aria-label="찾음표. 드래그하면 표가 돌아가요.">
+          <button class="card" id="card" type="button" aria-label="찾음표. 드래그하면 표가 돌아갑니다.">
             <svg class="ticket" viewBox="0 0 320 168" aria-hidden="true">
               <path fill="#1e5b3d" d="M40 12H280a16 16 0 0 1 16 16v30a28 28 0 0 0 0 52v30a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16v-30a28 28 0 0 0 0-52V28a16 16 0 0 1 16-16z"/>
               <g fill="#f3efe6">
@@ -219,7 +214,6 @@
         잃어버린 사람
       </a>
     </nav>
-    <a class="guide-link" href="guide.html">심사위원 체험 2분 →</a>
   </main>
   <script>
     document.documentElement.classList.add("js");
@@ -228,9 +222,10 @@
     const title = document.querySelector(".title");
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const showButtons = () => document.documentElement.classList.add("is-in");
-    const showCopy = () => document.documentElement.classList.add("is-said");
-    // 버튼은 글자 효과를 기다리지 않고 바로 보인다(심사위원이 첫 화면에서 기다리지 않게)
-    requestAnimationFrame(showButtons);
+    const showCopy = () => {
+      document.documentElement.classList.add("is-said");
+      setTimeout(showButtons, reduce ? 0 : 380);
+    };
     if (reduce) {
       typed.textContent = "찾음표";
       title.classList.add("is-done");
@@ -240,13 +235,13 @@
       const tick = () => {
         typed.textContent = steps[i];
         i += 1;
-        if (i < steps.length) setTimeout(tick, 35);
+        if (i < steps.length) setTimeout(tick, 120);
         else {
           title.classList.add("is-done");
-          setTimeout(showCopy, 40);
+          setTimeout(showCopy, 180);
         }
       };
-      setTimeout(tick, 40);
+      setTimeout(tick, 280);
     }
 
     const card = document.getElementById("card");
@@ -272,7 +267,6 @@
     const release = () => { dragging = false; };
     card.addEventListener("pointerup", release);
     card.addEventListener("pointercancel", release);
-
     const frame = () => {
       if (!dragging && !reduce) {
         ry += vel;

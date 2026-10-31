@@ -64,6 +64,31 @@ export function publicPrivacy(
   return { sensitive: ex.isSensitive, regions: ex.sensitiveRegions };
 }
 
+/**
+ * 로고(큰 글자)를 살린 사본으로 AI 분석을 한 번 더 해도 되는 종류 (10/31 A안).
+ * 1단계(모든 글자를 가린 사진)에서 이 종류로 나오고, 얼굴이 없고, 카드가 아닐 때만 2단계를 한다.
+ * 이름·번호·이니셜이 크게 적힐 수 있는 종류(지갑·카드·휴대폰·태블릿·노트북·이어폰·책·필기구·파우치·열쇠·현금 등)는 넣지 않는다.
+ * 세부 종류를 따지는 종류는 그 세부 종류일 때만 된다.
+ */
+const LOGO_SAFE: Partial<Record<Category, readonly string[] | "all">> = {
+  HAT: "all",
+  CLOTHING: "all",
+  BAG: ["BACKPACK", "SHOULDER_BAG", "ECO_BAG", "SHOPPING_BAG"],
+  UMBRELLA: "all",
+  TUMBLER: "all",
+  GLASSES: "all",
+  ACCESSORY: ["JEWELRY", "HAIR_ACCESSORY"],
+  CHARGER: ["CABLE_CHARGER", "POWER_BANK", "MOUSE", "KEYBOARD"],
+  ETC: ["COSMETICS", "DOLL_KEYRING"],
+};
+
+export function isLogoSafe(category: Category | null | undefined, sub: string | null | undefined): boolean {
+  if (!category) return false;
+  const rule = LOGO_SAFE[category];
+  if (!rule) return false;
+  return rule === "all" || (!!sub && rule.includes(sub));
+}
+
 export function uploaderFingerprint(ip: string, userAgent: string): string {
   return hmac(`uploader:${ip}:${userAgent}`);
 }
@@ -158,7 +183,26 @@ async function processPhoto(image: Buffer): Promise<ProcessedPhoto> {
   if (masked && (masked.faces || masked.texts)) {
     logger.info({ faces: masked.faces, texts: masked.texts }, "AI 전송 전 가림");
   }
-  const analysis = masked ? await analyze(masked.image) : null;
+  let analysis = masked ? await analyze(masked.image) : null;
+  let base = masked?.image ?? original;
+  // 2단계(A안): 개인정보 위험이 낮은 종류이고 얼굴이 없으면, 큰 글자(로고)만 살린 사본으로 다시 분석해 상표·특징을 보강한다.
+  // 작은 글자는 그 사본에서도 가려져 있다. 다시 본 결과가 위험 종류로 바뀌거나 개인정보가 보인다고 하면 1단계 결과를 쓴다.
+  const first = analysis?.extraction;
+  if (
+    masked?.logoImage &&
+    masked.faces === 0 &&
+    first?.hasObject &&
+    !CARD_CATEGORIES.includes(first.category) &&
+    isLogoSafe(first.category, first.subCategory)
+  ) {
+    const second = await analyze(masked.logoImage);
+    const ex2 = second?.extraction;
+    if (ex2?.hasObject && !ex2.isSensitive && isLogoSafe(ex2.category, ex2.subCategory)) {
+      analysis = second;
+      base = masked.logoImage;
+      logger.info({ logos: masked.logos, category: ex2.category }, "로고를 살린 사본으로 다시 분석");
+    }
+  }
   if (analysis && !analysis.extraction.hasObject) {
     throw new AppError("NO_OBJECT_DETECTED", "사진에서 물건을 찾지 못했어요. 물건이 잘 보이게 다시 찍어 주세요.");
   }
@@ -172,11 +216,8 @@ async function processPhoto(image: Buffer): Promise<ProcessedPhoto> {
     public: `found/${id}/public.jpg`,
     thumb: `found/${id}/thumb.jpg`,
   };
-  const [publicImage, thumbImage] = await Promise.all([
-    makePublicImage(masked?.image ?? original, privacy),
-    makeThumbImage(masked?.image ?? original),
-  ]);
-  await storage.put(keys.original, masked?.image ?? original, "image/jpeg");
+  const [publicImage, thumbImage] = await Promise.all([makePublicImage(base, privacy), makeThumbImage(base)]);
+  await storage.put(keys.original, base, "image/jpeg");
   await storage.put(keys.public, publicImage, "image/jpeg");
   await storage.put(keys.thumb, thumbImage, "image/jpeg");
   return { id, keys, analysis, sensitive, premasked: !!masked };
@@ -362,7 +403,7 @@ const NOTE_DROPPED_KEYS = new Set<AiFeature["key"]>(["text"]);
 
 /**
  * 사진 특징 뒤에 설명 특징을 붙인다. 같은 값은 한 번만.
- * 설명 특징(source: "finder")은 주인 확인 대조에만 쓰고 객관식 질문으로는 내지 않는다(claims.ts finderFeatureIds).
+ * 설명 특징(source: "finder")은 주인 확인 대조에 쓰고, 객관식 질문에는 안전한 종류만 낸다(claims.ts finderFeatureIds).
  */
 function mergeFeatures(stored: AiFeature[], fromNote: AiFeature[]): AiFeature[] {
   const seen = new Set(stored.map((f) => f.value.replace(/\s/g, "")));

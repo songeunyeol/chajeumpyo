@@ -11,7 +11,7 @@ import {
 } from "@chajeumpyo/shared";
 import { z } from "zod";
 import { ai } from "../ai";
-import { env } from "../config/env";
+import { demoEnabled, env } from "../config/env";
 import type { Prisma } from "../generated/prisma/client";
 import { retryOnce, withTimeout } from "../lib/async";
 import { AppError } from "../lib/errors";
@@ -33,10 +33,12 @@ type Admin = { userId: string; storagePlaceId: number | null };
  * - 종합서비스센터(CENTER) 관리자, 보관처가 없는 관리자: 전체 (보관처 없는 물건·검토 대기 포함)
  */
 export async function adminScope(admin: Admin): Promise<Prisma.FoundItemWhereInput> {
-  if (admin.storagePlaceId === null) return {};
+  // 체험·시연이 꺼져 있으면 체험용 시드 물건은 관리자 목록에도 보이지 않는다
+  const seed: Prisma.FoundItemWhereInput = demoEnabled ? {} : { isSeed: false };
+  if (admin.storagePlaceId === null) return seed;
   const place = await prisma.storagePlace.findUnique({ where: { id: admin.storagePlaceId }, select: { org: true } });
-  if (place?.org === "CENTER") return {};
-  return { storagePlaceId: admin.storagePlaceId };
+  if (place?.org === "CENTER") return seed;
+  return { ...seed, storagePlaceId: admin.storagePlaceId };
 }
 
 const summarySelect = {

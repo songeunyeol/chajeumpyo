@@ -23,7 +23,12 @@ function extractAs(category: FoundItemExtraction["category"]) {
 
 async function register() {
   let req = request(app).post("/api/v1/found-items").set("User-Agent", `ua-${Math.random()}`);
-  for (const [k, v] of Object.entries({ ...finderConsentFields(), buildingId: A, storageType: "IN_PLACE" }))
+  for (const [k, v] of Object.entries({
+    ...finderConsentFields(),
+    buildingId: A,
+    storageType: "IN_PLACE",
+    locationDetail: "강의실 뒤 책상 위",
+  }))
     req = req.field(k, String(v));
   return req.attach("image", await noisyJpeg(), "p.jpg");
 }

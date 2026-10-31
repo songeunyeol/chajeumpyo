@@ -17,6 +17,7 @@
     "openapi": "tsx --env-file-if-exists=../.env src/openapi/export.ts",
     "postinstall": "prisma generate",
     "admin:create": "tsx --env-file-if-exists=../.env scripts/create-admin.ts",
+    "user:create": "tsx --env-file-if-exists=../.env scripts/create-user.ts",
     "eval:categories": "tsx --env-file-if-exists=../.env scripts/eval-categories.ts",
     "eval:claims": "tsx --env-file-if-exists=../.env scripts/eval-claims.ts",
     "eval:ranking": "tsx --env-file-if-exists=../.env scripts/eval-ranking.ts",

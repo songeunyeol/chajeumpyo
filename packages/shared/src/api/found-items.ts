@@ -9,6 +9,9 @@ export const MAX_IMAGE_MB = 10;
 /** 자세한 위치 설명 최대 길이 */
 export const LOCATION_DETAIL_MAX = 200;
 
+/** 그 자리에 둔 물건의 자세한 위치 최소 길이. 주인이 이 설명을 보고 찾아간다 (QA 10/31) */
+export const LOCATION_DETAIL_MIN = 4;
+
 /** 주운 곳과 보관 방식. 한 번에 등록(POST /found-items)과 두 단계 등록의 확정(confirm)이 같이 쓴다 */
 const FoundPlaceFields = z.object({
   /** 주운 건물. 그 자리에 두면 필수, 보관처에 맡기면 모를 때 비운다 */
@@ -39,6 +42,13 @@ function checkPlace(v: z.infer<typeof FoundPlaceFields>, ctx: z.RefinementCtx) {
   }
   if (v.storageType === "IN_PLACE" && v.buildingId === undefined) {
     ctx.addIssue({ code: "custom", path: ["buildingId"], message: "물건을 둔 건물을 골라 주세요." });
+  }
+  if (v.storageType === "IN_PLACE" && (v.locationDetail?.length ?? 0) < LOCATION_DETAIL_MIN) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["locationDetail"],
+      message: `그 자리에 두면 어디에 뒀는지 ${LOCATION_DETAIL_MIN}자 이상 적어 주세요.`,
+    });
   }
 }
 
