@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -722,5 +722,34 @@ describe("그 자리에 둠에서 빠진 칸은 글로 알려 준다 (10/31 팀 
   it("빠진 칸을 한 번에 알리고 첫 칸을 화면 가운데로 옮긴다", () => {
     expect(register).toContain("focusField(noBuilding ? foundBuildingSelect : locationDetail);");
     expect(register).toContain('el.scrollIntoView({ block: "center"');
+  });
+});
+
+describe("관리자 확인 창 (QA 15-5: 대면 수령만 브라우저 기본 confirm이 떴다)", () => {
+  const adminPages = readdirSync(resolve(root, "frontend/admin"))
+    .filter((f) => f.endsWith(".html") || f.endsWith(".js"))
+    .map((f) => `frontend/admin/${f}`);
+
+  it("관리자 화면에는 confirm(/alert(/prompt( 이 없다", () => {
+    expect(adminPages).toContain("frontend/admin/item.html");
+    expect(adminPages).toContain("frontend/admin/admin.js");
+    for (const page of adminPages) {
+      expect(read(page), page).not.toMatch(/\b(confirm|alert|prompt)\(/);
+    }
+  });
+
+  it("대면 수령은 화면 안 확인 창으로 묻고, 뒤로 가기는 창만 닫는다", () => {
+    const item = read("frontend/admin/item.html");
+    expect(item).toMatch(/class="modal-backdrop" id="pickupModal" role="dialog" aria-modal="true"/);
+    expect(item).toContain("이 물건을 내줄까요?");
+    expect(item).toContain("신분 확인을 마쳤다면 내줘요. 내주면 사진과 비공개 정보가 바로 지워지고 되돌릴 수 없어요.");
+    expect(item).toMatch(/class="btn white" id="pickupCancel" data-modal-cancel>취소</);
+    expect(item).toMatch(/class="btn" id="pickupConfirm">내주기</);
+    expect(item).toMatch(/id="closeCancel" data-modal-cancel/);
+    expect(item).toContain('src="../modal-back.js"');
+    // 메모 검사는 창을 띄우기 전에 그대로 한다
+    expect(item.indexOf("VERIFICATION_NOTE_MAX) return A.showError")).toBeLessThan(
+      item.indexOf('pickupModal.classList.add("is-open")'),
+    );
   });
 });
