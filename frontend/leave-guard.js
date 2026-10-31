@@ -2,10 +2,11 @@
 // 같은 화면을 history에 하나 더 쌓아 두고(pushState), 브라우저 뒤로 가기(popstate)나 화면 위 ← 를 누르면 창을 연다.
 // "나가기"를 고르면 onLeave를 부르고 leaveTo로 옮긴다(history에 남기지 않게 replace). 창은 누르기 전에는 숨긴다.
 // install은 { isOpen, afterStay(fn) }를 돌려준다. 창이 열린 동안 화면이 스스로 다음으로 넘어가지 않게 미룰 때 쓴다 (QA 10/31).
-(function () {
+(() => {
   function install({ title, message, leaveTo, leaveLabel = "나가기", stayLabel = "계속하기", onLeave }) {
     const backdrop = document.createElement("div");
     backdrop.className = "modal-backdrop";
+    backdrop.dataset.modalBack = "off"; // 이 창은 아래에서 history를 직접 다룬다 (modal-back.js 제외)
     backdrop.setAttribute("role", "dialog");
     backdrop.setAttribute("aria-modal", "true");
     const card = document.createElement("div");
@@ -87,11 +88,16 @@
       proceed(url) {
         if (proceeding) return;
         proceeding = url;
-        if (history.state?.leaveGuard) {
-          history.back();
-          // popstate가 오지 않는 브라우저를 위해 잠시 뒤에는 그냥 넘어간다
-          setTimeout(() => location.replace(url), 400);
-        } else location.replace(url);
+        const go = () => {
+          if (history.state?.leaveGuard) {
+            history.back();
+            // popstate가 오지 않는 브라우저를 위해 잠시 뒤에는 그냥 넘어간다
+            setTimeout(() => location.replace(url), 400);
+          } else location.replace(url);
+        };
+        // 방금 닫은 확인 창(modal-back.js)의 history 칸을 먼저 걷어낸 뒤에 넘어간다
+        if (window.ModalBack) window.ModalBack.settled().then(go);
+        else go();
       },
       isOpen: () => !backdrop.hidden,
       /** "계속하기"로 창을 닫으면 fn을 부른다. "나가기"를 고르면 부르지 않는다 */

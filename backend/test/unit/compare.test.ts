@@ -205,3 +205,59 @@ describe("실제 사진 35장 평가 (10/30)", () => {
     expect(compareBrand("Nike", "MICHAEL KORS")).toBe("CONTRADICT");
   });
 });
+
+describe("10/31 실사용 영상: 진짜 주인이 잠긴 아이라이너", () => {
+  const eyeliner = {
+    color: "PURPLE",
+    brand: "Heroine Make",
+    features: [
+      { key: "pattern" as const, value: "레이스 문양 프린팅" },
+      { key: "text" as const, value: "Heroine Make 문구" },
+    ],
+    description: "보라색 몸통에 갈색 뚜껑이 있는 키스미 히로인메이크 아이라이너(화장품)입니다.",
+  };
+
+  it("제조사 한글 이름(키스미)은 설명에 있으면 같은 브랜드, 표기만 다르면 모순이 아니다", () => {
+    expect(compareBrand("키스미", "Heroine Make", eyeliner.description)).toBe("MATCH");
+    expect(compareBrand("키스미", "Heroine Make")).toBe("UNKNOWN");
+    expect(compareBrand("키스미", "KISS ME")).toBe("MATCH");
+    // 같은 표기끼리 다르면 그대로 모순
+    expect(compareBrand("Canmake", "Heroine Make", eyeliner.description)).toBe("CONTRADICT");
+  });
+
+  it("특징 목록에 없어도 설명에 적힌 부분 색은 맞힌 것으로 본다", () => {
+    const r = compareByRules(
+      {
+        color: "PINK_MAGENTA",
+        brand: null,
+        features: [
+          { key: "case", value: "갈색 뚜껑" },
+          { key: "other", value: "갈색뚜껑임" },
+        ],
+      },
+      eyeliner,
+    );
+    expect(r.features.map((f) => [f.verdict, f.storedKey])).toEqual([
+      ["MATCH", "description"],
+      ["MATCH", "description"],
+    ]);
+    // 연보라 ↔ 분홍은 이웃 색이라 모순이 아니다
+    expect(r.color).toBe("UNKNOWN");
+  });
+
+  it("물건 이름 한 낱말이나 다른 색 뚜껑은 설명으로 맞히지 못한다", () => {
+    const r = compareByRules(
+      {
+        color: null,
+        brand: null,
+        features: [
+          { key: "other", value: "아이라이너" },
+          { key: "case", value: "검정 뚜껑" },
+          { key: "other", value: "길쭉함" },
+        ],
+      },
+      eyeliner,
+    );
+    expect(r.features.map((f) => f.verdict === "MATCH")).toEqual([false, false, false]);
+  });
+});
