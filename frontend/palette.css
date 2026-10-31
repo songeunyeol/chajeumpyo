@@ -819,6 +819,8 @@ h1 {
   color: inherit;
 }
 .card + .card { margin-top: 10px; }
+/* 누를 곳이 없는 카드(수령 완료 등): 눌러도 반응 없음 */
+.card.is-inert { cursor: default; user-select: none; -webkit-tap-highlight-color: transparent; }
 .card h3 { margin: 0 0 4px; font-size: 17px; letter-spacing: -0.04em; }
 .meta { margin: 0; color: var(--mute); font-size: 13px; line-height: 1.4; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
