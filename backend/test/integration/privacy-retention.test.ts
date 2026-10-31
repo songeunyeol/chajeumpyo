@@ -183,12 +183,13 @@ describe("기준 6. 보관 기한이 지난 미수령 물건은 기한 만료로
     }
   });
 
-  it("기한 만료된 물건은 후보에서 빠지고 공개 화면은 404", async () => {
+  it("기한 만료된 물건은 후보에서 빠지고 공개 화면은 410 보관 끝남 (10/31 검증)", async () => {
     const { item } = await itemWithFiles("IN_PLACE", { expiresAt: hoursAgo(1), status: "REGISTERED" });
     await expireUnclaimedItems();
     const res = await request(app).get(`/api/v1/found-items/${item.id}/detail`).set(as(user.accessToken));
-    expect(res.status).toBe(404);
-    expect(res.body.error.message).toContain("지워졌어요");
+    expect(res.status).toBe(410);
+    expect(res.body.error.code).toBe("ITEM_CLOSED");
+    expect(res.body.error.message).toContain("보관이 끝난");
   });
 });
 

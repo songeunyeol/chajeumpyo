@@ -440,6 +440,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1049,6 +1050,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1121,6 +1123,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1901,6 +1904,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -1983,6 +1987,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2055,6 +2060,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2147,6 +2153,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2302,6 +2309,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2384,6 +2392,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2456,6 +2465,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -2528,6 +2538,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3148,6 +3159,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3230,6 +3242,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3302,6 +3315,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3374,6 +3388,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -3795,6 +3810,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4221,6 +4237,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4293,6 +4310,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4409,6 +4427,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4491,6 +4510,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4632,6 +4652,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4912,6 +4933,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -4994,6 +5016,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5169,6 +5192,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5431,6 +5455,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5513,6 +5538,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5641,6 +5667,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -5835,6 +5862,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6148,6 +6176,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6433,6 +6462,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6515,6 +6545,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6587,6 +6618,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6631,7 +6663,7 @@
             }
           },
           "409": {
-            "description": "MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만",
+            "description": "MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만 · ALREADY_CLAIMED: 이미 수령된 물건",
             "content": {
               "application/json": {
                 "schema": {
@@ -6659,6 +6691,79 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "ITEM_CLOSED: 보던 물건을 관리자가 정리했거나 보관 기한이 지남",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6741,6 +6846,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -6823,6 +6929,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7000,6 +7107,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7082,6 +7190,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7126,7 +7235,7 @@
             }
           },
           "409": {
-            "description": "ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감",
+            "description": "ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감 · ALREADY_CLAIMED: 이미 수령됨",
             "content": {
               "application/json": {
                 "schema": {
@@ -7154,6 +7263,79 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "ITEM_CLOSED: 질문을 받은 뒤 관리자가 정리했거나 보관 기한이 지남",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7545,6 +7727,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7617,6 +7800,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7689,6 +7873,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -7761,6 +7946,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8222,6 +8408,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8294,6 +8481,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8366,6 +8554,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8838,6 +9027,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8910,6 +9100,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -8982,6 +9173,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -9054,6 +9246,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -9375,6 +9568,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -9447,6 +9641,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -9519,6 +9714,79 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "ITEM_CLOSED: 관리자가 정리했거나 보관 기한이 지난 물건",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -9998,6 +10266,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -10070,6 +10339,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -10234,6 +10504,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -10465,6 +10736,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -10899,6 +11171,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -11348,6 +11621,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -11430,6 +11704,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -11594,6 +11869,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -11704,6 +11980,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -11776,6 +12053,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -11951,6 +12229,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -12082,6 +12361,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -12328,6 +12608,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -12400,6 +12681,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -12472,6 +12754,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -12642,6 +12925,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -12714,6 +12998,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -12873,6 +13158,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -12945,6 +13231,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -13219,6 +13506,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -13291,6 +13579,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -13363,6 +13652,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -13435,6 +13725,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -13604,6 +13895,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -13676,6 +13968,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -13748,6 +14041,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
@@ -13820,6 +14114,7 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
                             "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
