@@ -69,6 +69,17 @@ const GENERIC_WORDS = new Set(
     "문양",
     "프린팅",
     "인쇄",
+    // 로고·상표의 형식만 나타내는 말 (10/31 검증 1: 사칭 "나이키 로고"가 저장 "MK 로고 모노그램 무늬"와 "로고"만 겹쳐 일치로 나왔다)
+    "로고",
+    "마크",
+    "logo",
+    "brand",
+    "브랜드",
+    "상표",
+    "모노그램",
+    "monogram",
+    "엠블럼",
+    "심볼",
   ].map(compact),
 );
 
@@ -116,6 +127,10 @@ const SYNONYMS: Record<string, string> = {
   퍼플: "보라",
   주황색: "주황",
   오렌지: "주황",
+  베이지색: "베이지",
+  아이보리색: "아이보리",
+  크림색: "크림",
+  미색: "크림",
   액정: "화면",
   좌측: "왼쪽",
   우측: "오른쪽",
@@ -138,6 +153,9 @@ const WEAK_WORDS = new Set([
   "보라",
   "주황",
   "투명",
+  "베이지",
+  "아이보리",
+  "크림",
   "위",
   "아래",
   "앞",
@@ -362,7 +380,18 @@ function compareFeature(
     : sameKey;
   // 다른 측면이면 모름. 저장 특징 종류는 남겨, AI가 같은 뜻인지 다시 볼 수 있게 한다("모눈 칸" ↔ "격자 무늬")
   if (rivals.length === 0) return { reportedKey: reported.key, verdict: "UNKNOWN", storedKey: sameKey[0]?.key ?? null };
+  // 흰색·베이지·아이보리·크림은 사진과 기억에서 서로 바뀌어 보인다. 뚜껑 같은 부분 색도 이웃 색으로 보고 모순으로 세지 않는다 (10/31 검증 1: 텀블러)
+  if (rivals.every((s) => lightColorsOnBoth(reported.value, s.value)))
+    return { reportedKey: reported.key, verdict: "UNKNOWN", storedKey: rivals[0]?.key ?? null };
   return { reportedKey: reported.key, verdict: "CONTRADICT", storedKey: rivals[0]?.key ?? null };
+}
+
+const LIGHT_COLORS = new Set(["흰색", "베이지", "아이보리", "크림"]);
+
+/** 두 값 모두 밝은 색(흰색·베이지·아이보리·크림)을 말하는지 */
+function lightColorsOnBoth(a: string, b: string): boolean {
+  const light = (t: string) => tokens(t).some((w) => LIGHT_COLORS.has(w)) || /하얘|하얗/.test(t);
+  return light(a) && light(b);
 }
 
 /** 습득물 설명에서 맞힌 특징의 storedKey. 저장 특징 종류가 아니라서 바로 통과 비율에는 들어가지 않는다 */

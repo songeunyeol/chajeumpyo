@@ -12,6 +12,9 @@ const Description = z
   .min(DESCRIPTION_MIN, `설명은 ${DESCRIPTION_MIN}자 이상 적어 주세요.`)
   .max(DESCRIPTION_MAX, `설명은 ${DESCRIPTION_MAX}자 이하로 적어 주세요.`);
 
+/** 잃어버린 시작 시각은 지금부터 이 기간 안이어야 한다 (1년) */
+export const LOST_FROM_MAX_AGE_MS = 365 * 24 * 3600_000;
+
 /** POST /lost-reports */
 export const CreateLostReportRequest = z
   .object({
@@ -25,6 +28,10 @@ export const CreateLostReportRequest = z
   .superRefine((v, ctx) => {
     const from = Date.parse(v.lostFrom);
     const to = Date.parse(v.lostTo);
+    // 0년 같은 값은 DB에 넣지 못해 500이 났다(10/31 퍼징). 보관 기한(30일)보다 넉넉히 1년까지만 받는다
+    if (from < Date.now() - LOST_FROM_MAX_AGE_MS) {
+      ctx.addIssue({ code: "custom", path: ["lostFrom"], message: "1년 안에 잃어버린 물건만 신고할 수 있어요." });
+    }
     if (from > to) ctx.addIssue({ code: "custom", path: ["lostTo"], message: "끝 시각이 시작 시각보다 빨라요." });
     // 기기 시계 차이를 감안해 5분까지는 허용
     if (to > Date.now() + 5 * 60_000) {

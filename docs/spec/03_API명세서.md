@@ -45,11 +45,22 @@
 | 409 | `ALREADY_CONFIRMED` | 두 단계 등록에서 이미 확정한 물건을 다시 확정 |
 | 409 | `NOT_IN_PERSON_ITEM` | 대면 확인으로 넘어간 보관 중 물건이 아니라 대면 확인 수령을 할 수 없음 |
 | 410 | `QR_EXPIRED` | 수령 QR 만료 |
+| 410 | `ITEM_CLOSED` | 관리자가 보관을 끝냈거나(잘못 등록·폐기) 보관 기한이 지난 물건. 보던 물건의 확인 요청·확인 질문 답·상세 열람에서. 문구 "보관이 끝난 물건이에요. 교무처에 문의해 주세요." (10/31 검증) |
 | 413 | `IMAGE_TOO_LARGE` | 사진 용량 초과 |
+| 413 | `PAYLOAD_TOO_LARGE` | JSON 본문이 100kb를 넘음 |
 | 422 | `NO_OBJECT_DETECTED` | 사진에서 물건을 찾지 못함 |
 | 429 | `RATE_LIMITED` | 등록·요청 과다 |
 | 500 | `INTERNAL_ERROR` | 서버 오류 |
 | 502 | `AI_UNAVAILABLE` | AI 호출 실패로 저장하지 못함 (분실 신고 추출 실패 등). 습득물 등록은 실패해도 `201 REVIEW`로 응답한다 |
+
+**모든 경로에 공통으로 생길 수 있는 응답** (경로별 표에는 따로 적지 않는다. `docs/api/openapi.json`에는 자동으로 들어간다, 10/31 API 퍼징)
+
+- 로그인이 필요한 경로: `401 UNAUTHORIZED`. 관리자 경로(`/admin/*`)는 관리자 계정이 아니면 `403 FORBIDDEN`
+- 경로 값(UUID 등)·쿼리·본문을 받는 경로: 형식이 틀리면 `400 VALIDATION_ERROR`
+- JSON 본문은 100kb까지. 넘으면 `413 PAYLOAD_TOO_LARGE`
+- 요청 제한이 걸린 경로(인증 코드·인증 확인·로그인·관리자 로그인, 분실 신고 작성·수정, 일치 확인·답 제출, 습득물 등록·확정): `429 RATE_LIMITED`
+- 모든 경로: `500 INTERNAL_ERROR`
+- 인증 경로(`/auth/email/code`, `/auth/email/verify`, `/auth/login`, `/admin/auth/login`)의 `email`은 학교 메일(`ALLOWED_EMAIL_DOMAINS`, 지금은 `skuniv.ac.kr`)만 받는다
 
 ---
 
@@ -167,7 +178,7 @@
 - `IN_PLACE`인데 `storagePlaceId`를 보내거나 `buildingId`가 없으면 `400 VALIDATION_ERROR`.
 - 주운 건물을 모르면(`building: null`) 매칭의 위치 점수는 "모름"(0.5)이고 후보 근거에 `SAME_BUILDING`이 붙지 않는다. 응답·후보·상세의 `building`은 `null`일 수 있다.
 - 사진은 JPG·PNG·WEBP·HEIC, 10MB 이하. 아니면 `400` / `413 IMAGE_TOO_LARGE`. 서버는 회전을 적용하고 위치(GPS)를 포함한 EXIF를 모두 지운 뒤 긴 변 1600px로 저장한다. 사진은 세 가지로 저장한다: 원본(관리자만), 공개본(판정 통과 후, 1024px, 개인정보 영역만 블러. 민감한데 영역을 모르면 전체 블러), 후보용 블러본(판정 전 후보 카드, 320px, 항상 강한 블러).
-- 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안)
+- 같은 기기·IP(지문 해시)로 10분에 5건까지. 넘으면 `429 RATE_LIMITED`. (초안) 기기는 IP·User-Agent에 프론트가 보내는 `X-Device-Id`(localStorage에 둔 무작위 값, 영숫자·`-` 8~64자)를 더해 구분한다. 헤더가 없거나 모양이 이상하면 IP·User-Agent만 쓴다. 같은 와이파이·같은 기종 휴대폰이 한 기기로 묶이지 않게 하려는 것이다 (10/31).
 - AI 분석은 호출마다 제한 시간(기본 8초)이 있고 실패하면 한 번 재시도한다. AI 실패로 민감 여부를 모르면 공개본은 블러 처리한다.
 - 동의 필드: `consentVersion`, `consentExternalAi`(`"true"` 필수), `consentLocation`(`"true"`/`"false"`). 물건에 버전과 위치 동의 여부를 남긴다.
 - **고가품은 보관처에만** (QA B11, open-issues #32): AI가 고가품(`VALUABLE_CATEGORIES`, 지갑·카드·휴대폰·이어폰 등)으로 본 물건을 `IN_PLACE`로 보내면 `400 VALUABLE_HAND_OVER_REQUIRED` ("귀중품은 보관처(센터·경비실)에 맡겨 주세요.", `details[0].path = "storageType"`). 한 번에 등록은 AI 분석 뒤에야 종류를 알기 때문에, 분석 직후 **사진을 저장하기 전에** 거절한다(물건 행·사진 파일이 남지 않고 등록 횟수에도 세지 않는다). 같은 사진을 `HANDED_OVER`로 다시 보내면 된다. 이 거절은 요청 형식이 아니라 서버 AI 결과에 따라 갈리므로 `VALIDATION_ERROR`와 따로 둬서 화면이 "보관처 고르기"로 바로 이어지게 한다.
@@ -216,7 +227,7 @@
 - 이메일은 앞뒤 공백을 지우고 소문자로 바꿔 처리한다.
 - 학교 도메인이 아니면 `400 INVALID_EMAIL_DOMAIN`. 도메인은 소문자로 바꾼 뒤 `@` 뒤 전체가 정확히 같아야 한다.
 - **이미 가입된 이메일도 `204`**. 가입 여부를 드러내지 않기 위해 코드 대신 로그인 안내 메일을 보낸다.
-- 같은 이메일은 1분에 한 번·하루 10번, 같은 IP는 10분에 10번·하루 50번, 서비스 전체 하루 상한(`MAIL_DAILY_LIMIT`). 넘으면 `429 RATE_LIMITED`.
+- 같은 이메일은 1분에 한 번·하루 10번, 같은 IP는 10분에 60번(`SIGNUP_IP_LIMIT_PER_10MIN`)·하루 300번(`EMAIL_CODE_IP_LIMIT_PER_DAY`), 서비스 전체 하루 상한(`MAIL_DAILY_LIMIT`). 학교 와이파이 하나로 여러 명이 가입해도 같이 막히지 않게 IP 한도는 넉넉히 둔다(10/31). 넘으면 `429 RATE_LIMITED`.
 - 코드는 6자리 숫자, 5분 유효, 한 번만 확인할 수 있다. 새 코드를 받으면 이전 코드는 무효. 5번 틀리면 코드를 버리고 다시 받아야 한다.
 
 #### `POST /auth/email/verify` · 공개
@@ -238,7 +249,7 @@
 { "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
 ```
 - 비밀번호는 8~64자. (초안)
-- 같은 IP에서 10분에 10번까지. 넘으면 `429 RATE_LIMITED`.
+- 같은 IP에서 10분에 60번까지(`SIGNUP_IP_LIMIT_PER_10MIN`). 넘으면 `429 RATE_LIMITED`.
 
 #### `POST /auth/login` · 공개
 ```json
@@ -248,6 +259,7 @@
 { "accessToken": "...", "expiresAt": "...", "user": { "id": "u_...", "email": "student@skuniv.ac.kr", "role": "USER" } }
 ```
 - 분실자(`USER`) 계정만. 틀린 비밀번호와 없는 이메일은 같은 `401 UNAUTHORIZED` 메시지로 응답한다.
+- 요청 제한: 같은 IP는 10분에 `IP_RATE_LIMIT_PER_10MIN`번(기본 200), 같은 이메일은 10분에 `LOGIN_FAIL_LIMIT_PER_10MIN`번(기본 10) 틀리면 맞는 비밀번호도 `429 RATE_LIMITED`. 성공한 로그인은 세지 않는다. 이메일은 앞뒤 공백·대소문자를 무시하고 센다. 관리자 로그인(`/admin/auth/login`)도 같다 (10/31).
 - 토큰 유효 기간은 7일(초안, open-issues #14). 로그아웃은 프론트가 토큰을 지운다. 만료되면 다시 로그인한다.
 
 #### `POST /auth/demo` · 공개
@@ -305,7 +317,7 @@
 - 후보는 서버가 점수로 고른 **최대 5개**이고, **`foundAt` 최신순**으로 내려준다. 배열 순서는 점수와 관계없다.
 - 체험 계정은 시드 습득물만, 일반 계정은 시드가 아닌 습득물만 후보로 받는다. (초안)
 - 설명 추출에 실패하거나 응답 형식(4장)이 틀리면 저장하지 않고 `502 AI_UNAVAILABLE`.
-- 설명은 5~500자. `lostFrom` ≤ `lostTo`이고 미래 시각은 안 된다. (초안)
+- 설명은 5~500자. `lostFrom` ≤ `lostTo`이고 미래 시각은 안 된다. `lostFrom`은 지금부터 1년 안이어야 한다(0년 같은 값은 AI를 부르기 전에 `400`). (초안)
 - 후보 점수 = 0.4×속성(종류·색·브랜드) + 0.3×장소 + 0.2×시간 + 0.1×설명 유사도. 값은 `backend/src/matching/policy.ts`에 모여 있다. (초안, 회의)
 
 #### `GET /lost-reports` · 회원
@@ -334,7 +346,7 @@
 ### 일치 판정
 
 #### `POST /lost-reports/:id/claims` · 회원
-- 계정·물건별 잠금과 별개로 같은 IP는 10분에 20번까지. 넘으면 `429 RATE_LIMITED`.
+- 계정·물건별 잠금과 별개로 한 계정은 10분에 30번, 같은 IP는 10분에 `IP_RATE_LIMIT_PER_10MIN`번(기본 200)까지. 넘으면 `429 RATE_LIMITED`. IP 한도를 넉넉히 둔 건 학교 와이파이처럼 공인 IP 하나 뒤의 여러 명이 같이 막히지 않게 하려는 것이다 (10/31).
 ```json
 // 요청
 { "foundItemId": "6a1f..." }
@@ -394,7 +406,7 @@
 - 체험 계정이 시드가 아닌 습득물에 시도하면 `403 FORBIDDEN`.
 
 #### `POST /claims/:attemptId/answer` · 회원
-- 같은 IP는 10분에 20번까지. 넘으면 `429 RATE_LIMITED`.
+- 한 계정은 10분에 30번, 같은 IP는 10분에 `IP_RATE_LIMIT_PER_10MIN`번(기본 200)까지. 넘으면 `429 RATE_LIMITED`.
 ```json
 // 요청
 { "answer": "곰돌이" }
@@ -440,9 +452,10 @@
 #### `POST /found-items/:id/pickup-qr` · 회원
 `storageType`이 `HANDED_OVER`일 때만. 아니면 `409 INVALID_STORAGE_TYPE`. 이미 수령 완료된 물건이면 `409 ALREADY_CLAIMED`.
 ```json
-{ "method": "CENTER_QR", "pickupId": "p_...", "qrToken": "pk_...", "status": "ISSUED", "expiresAt": "2026-10-14T14:00:00+09:00" }
+{ "method": "CENTER_QR", "pickupId": "p_...", "qrToken": "pk_...", "shortCode": "K7PM-4QZC", "status": "ISSUED", "expiresAt": "2026-10-14T14:00:00+09:00" }
 ```
 - 프론트가 `qrToken`을 QR 이미지로 그린다. 서버에는 해시만 저장한다.
+- `shortCode`는 카메라가 없을 때 관리자가 직접 넣는 8자리 수령 코드다(10/31 검증 #13). 헷갈리는 글자(0·O·1·I·L)를 뺀 31자에서 고르고 `ABCD-EFGH`로 보여 준다. QR과 같이 만들고 같이 만료되며, 서버에는 HMAC만 저장한다(발급 중인 수령 건끼리 겹치지 않게 부분 유니크 인덱스).
 - 같은 계정이 다시 발급받으면 이전 `ISSUED` QR은 `EXPIRED`가 된다.
 - 응답에 `method`가 있다: 일반 계정 `CENTER_QR`(QR 발급), 체험 계정 `DEMO`(바로 완료).
 - **체험 계정**은 QR 없이 바로 완료된다. 프론트는 "시연: 보관처에서 수령 처리됨" 화면을 보여준다.
@@ -489,8 +502,9 @@
 
 #### `POST /admin/pickups/scan` · 관리자
 ```json
-// 요청
+// 요청: QR 안의 긴 토큰이나 학생 화면의 8자리 코드 (대소문자·하이픈·공백 무시)
 { "qrToken": "pk_..." }
+{ "qrToken": "k7pm-4qzc" }
 // 응답 200
 {
   "pickupId": "p_...",
@@ -501,7 +515,8 @@
 ```
 - 만료면 `410 QR_EXPIRED`, 이미 처리됐으면 `409 ALREADY_CLAIMED`.
 - 물건의 보관처가 관리자의 소속 보관처(`user.storage_place_id`)와 다르면 `403 FORBIDDEN`.
-- 없는 QR은 `404`. 같은 사람이 새 QR을 받아 만료된 이전 QR도 `410 QR_EXPIRED`.
+- 없는 QR은 `404`. 같은 사람이 새 QR을 받아 만료된 이전 QR도 `410 QR_EXPIRED`(이전 8자리 코드도 같다).
+- 8자리 코드는 틀리면 관리자별로 센다. 10분에 20번 틀리면 그 관리자의 8자리 코드 입력은 `429 RATE_LIMITED`(긴 토큰은 대입할 수 없어 막지 않는다). 서버 한 대 기준의 메모리 카운터다.
 
 #### `POST /admin/pickups/:id/complete` · 관리자
 상태를 `COMPLETED`, 습득물을 `CLAIMED`로 바꾸고 처리 관리자를 기록한다. `purge_after`를 30일 뒤로 설정한다. 완료 직후 사진(원본·공개본·후보용 블러본)과 비공개 정보·임베딩을 지운다(open-issues #33). 삭제가 실패해도 수령은 완료되고 정기 작업이 다시 지운다.

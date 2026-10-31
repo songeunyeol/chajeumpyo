@@ -12,7 +12,7 @@
  * 화면 주소에는 .html이 없다(/found/photo). 서버가 .html 주소를 .html 없는 주소로 넘기므로,
  * 화면은 .html 없는 주소로 저장하고 찾는다. 옛 주소(/found/photo.html)로 와도 같은 칸을 찾는다.
  */
-const VERSION = "v66";
+const VERSION = "v67";
 const CACHE = `chajeumpyo-shell-${VERSION}`;
 const OFFLINE_URL = "/offline";
 
@@ -40,9 +40,37 @@ const SHELL = [
   "/found/photo",
   "/found/uploading",
   "/found/register",
-  "/found/board",
   "/found/done-handover",
   "/found/done-inplace",
+  // 잃어버린 사람·관리자 화면도 껍데기(화면·스크립트)만 둔다. 없으면 오프라인에서 화면만 뜨고 스크립트가 없어
+  // 인터넷 연결 안내조차 못 띄웠다 (검증 10/31). 개발용 화면(board, consent-social)은 넣지 않는다.
+  "/vendor/qrcode.min.js",
+  "/lost/api.js",
+  "/lost/school-email.js",
+  "/lost/login",
+  "/lost/signup",
+  "/lost/code",
+  "/lost/consent-mail",
+  "/lost/home",
+  "/lost/me",
+  "/lost/alerts",
+  "/lost/report",
+  "/lost/uploading",
+  "/lost/candidates",
+  "/lost/question",
+  "/lost/counter",
+  "/lost/fail",
+  "/lost/lock",
+  "/lost/item",
+  "/lost/item-handover",
+  "/admin/admin.js",
+  "/admin/login",
+  "/admin/home",
+  "/admin/items",
+  "/admin/item",
+  "/admin/alerts",
+  "/admin/stats",
+  "/admin/scan",
 ];
 const SHELL_SET = new Set(SHELL);
 

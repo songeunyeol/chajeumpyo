@@ -18,7 +18,74 @@
         "bearerFormat": "JWT"
       }
     },
-    "schemas": {},
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "VALIDATION_ERROR",
+                  "INVALID_EMAIL_DOMAIN",
+                  "INVALID_CODE",
+                  "CAPTCHA_FAILED",
+                  "UNAUTHORIZED",
+                  "FORBIDDEN",
+                  "NOT_FOUND",
+                  "MATCH_LOCKED",
+                  "IN_PERSON_REQUIRED",
+                  "ALREADY_CLAIMED",
+                  "ALREADY_ANSWERED",
+                  "INVALID_STORAGE_TYPE",
+                  "NOT_IN_PERSON_ITEM",
+                  "ALREADY_CONFIRMED",
+                  "NOT_CLOSABLE",
+                  "QR_EXPIRED",
+                  "ITEM_CLOSED",
+                  "IMAGE_TOO_LARGE",
+                  "PAYLOAD_TOO_LARGE",
+                  "NO_OBJECT_DETECTED",
+                  "RATE_LIMITED",
+                  "INTERNAL_ERROR",
+                  "AI_UNAVAILABLE"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "message"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    },
     "parameters": {}
   },
   "paths": {
@@ -325,6 +392,26 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "FORBIDDEN",
             "content": {
@@ -354,7 +441,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -392,6 +481,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -903,6 +1002,26 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "FORBIDDEN: 관리 범위 밖",
             "content": {
@@ -932,7 +1051,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -1003,7 +1124,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -1041,6 +1164,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1772,7 +1905,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -1814,6 +1949,16 @@
               }
             }
           },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "FORBIDDEN",
             "content": {
@@ -1843,7 +1988,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -1914,7 +2061,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -1956,6 +2105,26 @@
               }
             }
           },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "502": {
             "description": "AI_UNAVAILABLE: 임베딩 실패, 저장 안 함",
             "content": {
@@ -1985,7 +2154,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -2139,7 +2310,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -2181,6 +2354,16 @@
               }
             }
           },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "FORBIDDEN: 관리 범위 밖",
             "content": {
@@ -2210,7 +2393,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -2281,7 +2466,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -2352,7 +2539,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -2390,6 +2579,26 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -2951,7 +3160,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -2993,6 +3204,16 @@
               }
             }
           },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "FORBIDDEN: 관리 범위 밖",
             "content": {
@@ -3022,7 +3243,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -3093,7 +3316,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -3164,7 +3389,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -3202,6 +3429,26 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -3564,7 +3811,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -3602,6 +3851,36 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: 관리자 계정이 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -3959,7 +4238,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -4030,7 +4311,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -4071,6 +4354,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4089,7 +4382,10 @@
                 "type": "object",
                 "properties": {
                   "email": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^[^@\\s]+@(skuniv\\.ac\\.kr)$",
+                    "description": "학교 메일만 받는다 (skuniv.ac.kr). 앞뒤 공백은 지우고 소문자로 바꿔 비교한다"
                   }
                 },
                 "required": [
@@ -4132,7 +4428,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -4174,6 +4472,16 @@
               }
             }
           },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "429": {
             "description": "RATE_LIMITED",
             "content": {
@@ -4203,7 +4511,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -4244,6 +4554,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4262,7 +4582,10 @@
                 "type": "object",
                 "properties": {
                   "email": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^[^@\\s]+@(skuniv\\.ac\\.kr)$",
+                    "description": "학교 메일만 받는다 (skuniv.ac.kr). 앞뒤 공백은 지우고 소문자로 바꿔 비교한다"
                   },
                   "code": {
                     "type": "string",
@@ -4330,7 +4653,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -4368,6 +4693,99 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -4517,7 +4935,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -4559,6 +4979,16 @@
               }
             }
           },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "429": {
             "description": "RATE_LIMITED",
             "content": {
@@ -4588,7 +5018,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -4629,6 +5061,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4646,7 +5088,10 @@
                 "type": "object",
                 "properties": {
                   "email": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^[^@\\s]+@(skuniv\\.ac\\.kr)$",
+                    "description": "학교 메일만 받는다 (skuniv.ac.kr). 앞뒤 공백은 지우고 소문자로 바꿔 비교한다"
                   },
                   "password": {
                     "type": "string",
@@ -4710,6 +5155,16 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UNAUTHORIZED",
             "content": {
@@ -4739,7 +5194,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -4777,6 +5234,99 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -4908,7 +5458,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -4950,6 +5502,16 @@
               }
             }
           },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "429": {
             "description": "RATE_LIMITED",
             "content": {
@@ -4979,7 +5541,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -5017,6 +5581,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -5096,7 +5670,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -5137,6 +5713,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -5154,7 +5740,10 @@
                 "type": "object",
                 "properties": {
                   "email": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^[^@\\s]+@(skuniv\\.ac\\.kr)$",
+                    "description": "학교 메일만 받는다 (skuniv.ac.kr). 앞뒤 공백은 지우고 소문자로 바꿔 비교한다"
                   },
                   "password": {
                     "type": "string",
@@ -5237,6 +5826,16 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UNAUTHORIZED",
             "content": {
@@ -5266,7 +5865,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -5304,6 +5905,99 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -5356,6 +6050,16 @@
                   "required": [
                     "buildings"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -5476,7 +6180,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -5514,6 +6220,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -5750,7 +6466,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -5792,6 +6510,16 @@
               }
             }
           },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "FORBIDDEN: 후보가 아닌 물건",
             "content": {
@@ -5821,7 +6549,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -5892,7 +6622,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -5935,7 +6667,7 @@
             }
           },
           "409": {
-            "description": "MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만",
+            "description": "MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만 · ALREADY_CLAIMED: 이미 수령된 물건",
             "content": {
               "application/json": {
                 "schema": {
@@ -5963,7 +6695,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -6001,6 +6735,89 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "ITEM_CLOSED: 보던 물건을 관리자가 정리했거나 보관 기한이 지남",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -6034,7 +6851,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -6076,6 +6895,16 @@
               }
             }
           },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "502": {
             "description": "AI_UNAVAILABLE",
             "content": {
@@ -6105,7 +6934,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -6281,7 +7112,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -6323,6 +7156,16 @@
               }
             }
           },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "NOT_FOUND",
             "content": {
@@ -6352,7 +7195,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -6395,7 +7240,7 @@
             }
           },
           "409": {
-            "description": "ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감",
+            "description": "ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감 · ALREADY_CLAIMED: 이미 수령됨",
             "content": {
               "application/json": {
                 "schema": {
@@ -6423,7 +7268,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -6461,6 +7308,172 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "ITEM_CLOSED: 질문을 받은 뒤 관리자가 정리했거나 보관 기한이 지남",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -6509,6 +7522,16 @@
                   "required": [
                     "captcha"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -6711,7 +7734,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -6782,7 +7807,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -6853,7 +7880,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -6924,7 +7953,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -6962,6 +7993,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -7374,7 +8415,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -7445,7 +8488,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -7516,7 +8561,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -7554,6 +8601,99 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -7895,7 +9035,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -7966,7 +9108,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -8037,7 +9181,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -8108,7 +9254,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -8146,6 +9294,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -8379,6 +9537,16 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UNAUTHORIZED",
             "content": {
@@ -8408,7 +9576,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -8479,7 +9649,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -8550,7 +9722,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -8588,6 +9762,89 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "ITEM_CLOSED: 관리자가 정리했거나 보관 기한이 지난 물건",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -9018,7 +10275,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -9089,7 +10348,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -9131,6 +10392,99 @@
               }
             }
           },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "502": {
             "description": "AI_UNAVAILABLE: 저장하지 않음",
             "content": {
@@ -9160,7 +10514,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -9390,7 +10746,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -9428,6 +10786,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -9764,6 +11132,26 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "NOT_FOUND: 없거나 남의 신고",
             "content": {
@@ -9793,7 +11181,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -9831,6 +11221,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -10231,7 +11631,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -10269,6 +11671,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -10302,7 +11714,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -10344,6 +11758,99 @@
               }
             }
           },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "502": {
             "description": "AI_UNAVAILABLE: 수정하지 않음",
             "content": {
@@ -10373,7 +11880,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -10443,6 +11952,16 @@
           "204": {
             "description": "지움"
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UNAUTHORIZED",
             "content": {
@@ -10472,7 +11991,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -10543,7 +12064,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -10581,6 +12104,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -10707,7 +12240,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -10745,6 +12280,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -10778,6 +12323,26 @@
           "204": {
             "description": "읽음"
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "NOT_FOUND: 없거나 남의 알림",
             "content": {
@@ -10807,7 +12372,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -10848,6 +12415,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -10866,6 +12443,26 @@
         "responses": {
           "204": {
             "description": "모두 읽음"
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -10915,6 +12512,9 @@
                         "qrToken": {
                           "type": "string"
                         },
+                        "shortCode": {
+                          "type": "string"
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -10930,6 +12530,7 @@
                         "method",
                         "pickupId",
                         "qrToken",
+                        "shortCode",
                         "status",
                         "expiresAt"
                       ]
@@ -10949,6 +12550,9 @@
                         "qrToken": {
                           "type": "string"
                         },
+                        "shortCode": {
+                          "type": "string"
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -10964,11 +12568,32 @@
                         "method",
                         "pickupId",
                         "qrToken",
+                        "shortCode",
                         "status",
                         "expiresAt"
                       ]
                     }
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -11002,7 +12627,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -11073,7 +12700,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -11144,7 +12773,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -11182,6 +12813,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -11254,6 +12895,26 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "FORBIDDEN: 통과하지 않음",
             "content": {
@@ -11283,7 +12944,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -11354,7 +13017,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -11392,6 +13057,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -11453,6 +13128,26 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "FORBIDDEN: 체험 계정 아님, 통과하지 않음",
             "content": {
@@ -11482,7 +13177,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -11553,7 +13250,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -11594,6 +13293,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -11609,7 +13318,7 @@
           }
         ],
         "summary": "수령 QR 스캔 (F-11, F-14)",
-        "description": "자기 보관처 물건만. 원본 사진 링크와 마스킹된 이메일을 준다.",
+        "description": "자기 보관처 물건만. 원본 사진 링크와 마스킹된 이메일을 준다. qrToken에는 QR 안의 긴 토큰(pk_…)이나 학생 화면의 8자리 코드(ABCD-EFGH)를 넣는다. 8자리 코드는 관리자별로 10분에 20번까지 틀릴 수 있다.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -11767,6 +13476,26 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "FORBIDDEN: 다른 보관처",
             "content": {
@@ -11796,7 +13525,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -11839,7 +13570,7 @@
             }
           },
           "404": {
-            "description": "NOT_FOUND: 없는 QR",
+            "description": "NOT_FOUND: 없는 QR·코드",
             "content": {
               "application/json": {
                 "schema": {
@@ -11867,7 +13598,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -11938,7 +13671,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -12009,7 +13744,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -12047,6 +13784,99 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: 본문 100kb 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: 8자리 코드를 너무 많이 틀림",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_ERROR",
+                            "INVALID_EMAIL_DOMAIN",
+                            "INVALID_CODE",
+                            "CAPTCHA_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "MATCH_LOCKED",
+                            "IN_PERSON_REQUIRED",
+                            "ALREADY_CLAIMED",
+                            "ALREADY_ANSWERED",
+                            "INVALID_STORAGE_TYPE",
+                            "NOT_IN_PERSON_ITEM",
+                            "ALREADY_CONFIRMED",
+                            "NOT_CLOSABLE",
+                            "QR_EXPIRED",
+                            "ITEM_CLOSED",
+                            "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
+                            "NO_OBJECT_DETECTED",
+                            "RATE_LIMITED",
+                            "INTERNAL_ERROR",
+                            "AI_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "message"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -12108,6 +13938,26 @@
               }
             }
           },
+          "400": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "FORBIDDEN: 다른 보관처",
             "content": {
@@ -12137,7 +13987,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -12208,7 +14060,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -12279,7 +14133,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -12350,7 +14206,9 @@
                             "ALREADY_CONFIRMED",
                             "NOT_CLOSABLE",
                             "QR_EXPIRED",
+                            "ITEM_CLOSED",
                             "IMAGE_TOO_LARGE",
+                            "PAYLOAD_TOO_LARGE",
                             "NO_OBJECT_DETECTED",
                             "RATE_LIMITED",
                             "INTERNAL_ERROR",
@@ -12388,6 +14246,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }

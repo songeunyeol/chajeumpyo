@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import {
-  CATEGORY_LABELS,
   type CreateLostReportRequest,
   LostReportExtraction,
   type LostReportListResponse,
@@ -19,7 +18,7 @@ import { prisma } from "../lib/prisma";
 import { findCandidates, publicCandidates, recordExposure } from "../matching/candidates";
 import { clearLostReportEmbedding, setLostReportEmbedding } from "../repositories/embedding";
 import { isValidEmbedding } from "./found-items";
-import { newCandidateMessage } from "./notifications";
+import { newCandidateMessage, notificationItemLabel } from "./notifications";
 
 type Viewer = { userId: string; role: Role };
 
@@ -131,7 +130,7 @@ async function addDemoExampleAlert(report: { id: string; userId: string }, found
     if (exists) return;
     const item = await prisma.foundItem.findUnique({
       where: { id: foundItemId },
-      select: { category: true, isSeed: true, building: { select: { name: true } } },
+      select: { category: true, subCategory: true, isSeed: true, building: { select: { name: true } } },
     });
     if (!item?.isSeed || !item.category) return;
     await prisma.notification.create({
@@ -140,7 +139,9 @@ async function addDemoExampleAlert(report: { id: string; userId: string }, found
         type: "NEW_CANDIDATE",
         foundItemId,
         lostReportId: report.id,
-        message: DEMO_ALERT_PREFIX + newCandidateMessage(item.building?.name ?? null, CATEGORY_LABELS[item.category]),
+        message:
+          DEMO_ALERT_PREFIX +
+          newCandidateMessage(item.building?.name ?? null, notificationItemLabel({ ...item, category: item.category })),
       },
     });
   } catch (err) {

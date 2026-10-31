@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import {
   CATEGORY_LABELS,
   Category,
@@ -148,6 +149,32 @@ const QUIZ_RESPONSE_SCHEMA = {
   },
   required: ["correct", "distractors"],
 } as const;
+
+/** 잠깐 몰리거나(429) 서버가 잠시 안 될 때(5xx)·연결이 끊겼을 때만 다시 부를 만하다 */
+const TRANSIENT =
+  /\b(?:429|500|502|503|504)\b|RESOURCE_EXHAUSTED|UNAVAILABLE|ECONNRESET|ETIMEDOUT|fetch failed|socket hang up/i;
+
+export function isTransientError(err: unknown): boolean {
+  const e = err as { status?: unknown; code?: unknown; message?: unknown } | null;
+  return TRANSIENT.test(`${e?.status ?? ""} ${e?.code ?? ""} ${e?.message ?? String(err)}`);
+}
+
+/**
+ * 일시적인 오류면 0.5~1초 쉬고 한 번만 다시 부른다 (10/31: #172 이후 대조 안 AI 호출을 다시 부르지 않아,
+ * Gemini 429 한 번에 다시 보기가 빠져 진짜 주인의 모순이 그대로 남았다). 전체 기다림은 부르는 쪽의 제한 시간이 막는다.
+ */
+export async function retryTransient<T>(
+  f: () => Promise<T>,
+  delayMs = 500 + Math.floor(Math.random() * 500),
+): Promise<T> {
+  try {
+    return await f();
+  } catch (err) {
+    if (!isTransientError(err)) throw err;
+    await sleep(delayMs);
+    return f();
+  }
+}
 
 /** 태그를 닫거나 새로 여는 걸 막기 위해 꺾쇠를 지운다 */
 const asData = (text: string) => text.replace(/[<>]/g, "");
@@ -307,11 +334,14 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
     async compareFeatures(reported, stored, options) {
       const result = compareByRules(reported, stored);
       const callTimeoutMs = options?.callTimeoutMs;
-      /** AI가 MATCH라고 했을 때만 true. 실패·시간 초과·다른 답은 false */
-      const saysMatch = async (input: { question: string; stored: string; answer: string }, label: string) => {
+      /** AI가 MATCH라고 했을 때만 true, 다르다고 답하면 false. 실패·시간 초과는 null(모름) */
+      const saysMatch = async (
+        input: { question: string; stored: string; answer: string },
+        label: string,
+      ): Promise<boolean | null> => {
         let timer: NodeJS.Timeout | undefined;
         try {
-          const call = judgeAnswer(input);
+          const call = retryTransient(() => judgeAnswer(input));
           const verdict = callTimeoutMs
             ? await Promise.race([
                 call,
@@ -323,7 +353,7 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
           return verdict === "MATCH";
         } catch (err) {
           logger.warn({ err }, `${label} 실패 → 규칙 결과 그대로`);
-          return false;
+          return null;
         } finally {
           clearTimeout(timer);
         }
@@ -381,7 +411,7 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
               },
               "브랜드 다시 보기",
             )
-          : Promise.resolve(false);
+          : Promise.resolve(null);
 
       const [rechecked, described, sameBrand] = await Promise.all([recheck, byDescription, brandCheck]);
       // 다시 보기에서 같은 대상이면 그 특징으로, 아니면 설명에 적혀 있을 때 설명 일치로 본다
@@ -391,7 +421,16 @@ export function createGeminiClient(models: GeminiModels, config: GeminiConfig): 
           return { ...f, verdict: "MATCH" as const, storedKey: DESCRIPTION_KEY };
         return f;
       });
-      return { ...result, features, brand: sameBrand ? ("MATCH" as const) : result.brand };
+      return {
+        ...result,
+        features,
+        brand: sameBrand === true ? ("MATCH" as const) : result.brand,
+        ...(sameBrand === true
+          ? { brandCheck: "SAME" as const }
+          : sameBrand === false
+            ? { brandCheck: "DIFFERENT" as const }
+            : {}),
+      };
     },
 
     judgeAnswer,

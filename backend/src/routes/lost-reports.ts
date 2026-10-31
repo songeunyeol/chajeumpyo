@@ -7,6 +7,7 @@ import {
   UpdateLostReportRequest,
 } from "@chajeumpyo/shared";
 import { Router } from "express";
+import { env } from "../config/env";
 import { getAuth, requireMember } from "../middlewares/auth";
 import { accountRateLimit, ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
@@ -29,6 +30,7 @@ registry.registerPath({
     201: { description: "신고됨", ...json(LostReportWithCandidates) },
     400: errorResponse("VALIDATION_ERROR"),
     401: errorResponse("UNAUTHORIZED"),
+    429: errorResponse("RATE_LIMITED"),
     502: errorResponse("AI_UNAVAILABLE: 저장하지 않음"),
   },
 });
@@ -65,6 +67,7 @@ registry.registerPath({
     200: { description: "수정됨", ...json(LostReportWithCandidates) },
     400: errorResponse("VALIDATION_ERROR"),
     404: errorResponse("NOT_FOUND"),
+    429: errorResponse("RATE_LIMITED"),
     502: errorResponse("AI_UNAVAILABLE: 수정하지 않음"),
   },
 });
@@ -95,7 +98,7 @@ export function createLostReportsRouter() {
   // 신고·수정마다 AI 추출과 임베딩을 부른다. 비용 남용과 조건을 바꿔 가며 후보를 훑는 것을 막는다 (10/30 코드 평가)
   const reportIpLimit = ipRateLimit({
     windowMinutes: 10,
-    limit: 30,
+    limit: env.IP_RATE_LIMIT_PER_10MIN,
     message: "신고 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
   const reportAccountLimit = accountRateLimit({

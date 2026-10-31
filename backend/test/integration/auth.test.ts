@@ -122,9 +122,22 @@ describe("기준 3. 재발송 대기·하루 상한, 가입 여부를 드러내�
     expect(sentMails).toHaveLength(0);
   });
 
-  it("같은 IP는 10분에 10번까지 (다른 이메일이어도)", async () => {
-    for (let i = 0; i < 10; i++) await sendCode(`s${i}@skuniv.ac.kr`).expect(204);
-    expect((await sendCode("s10@skuniv.ac.kr")).status).toBe(429);
+  it("같은 IP(학교 와이파이)에서 여러 명이 받아도 막히지 않고, 10분에 60번을 넘으면 429 (10/31 검증: 10이면 11번째 사람부터 막혔다)", async () => {
+    for (let i = 0; i < 60; i++) await sendCode(`s${i}@skuniv.ac.kr`).expect(204);
+    expect((await sendCode("s60@skuniv.ac.kr")).status).toBe(429);
+  });
+
+  it("본선 현장처럼 한 와이파이에서 12명이 연달아 가입해도 막히지 않는다", async () => {
+    for (let i = 0; i < 12; i++) await signupUser(app, `crowd${i}@skuniv.ac.kr`);
+    expect(await prisma.user.count({ where: { email: { startsWith: "crowd" } } })).toBe(12);
+  });
+
+  it("같은 이메일은 IP 한도와 상관없이 1분에 한 번만 받는다 (메일 폭탄 방지)", async () => {
+    await sendCode(EMAIL).expect(204);
+    const again = await sendCode(EMAIL);
+    expect(again.status).toBe(429);
+    expect(again.body.error.message).toContain("1분에 한 번");
+    expect(sentMails).toHaveLength(1);
   });
 });
 
@@ -284,8 +297,8 @@ describe("기준 7. 가입용 토큰은 한 번만, 위조·만료 토큰 거부
     expect(res.body.error.code).toBe("INVALID_CODE");
   });
 
-  it("가입 요청은 같은 IP에서 10분에 10번까지", async () => {
-    for (let i = 0; i < 10; i++) {
+  it("가입 요청은 같은 IP에서 10분에 60번까지 (학교 와이파이 하나로 여러 명이 가입해도 막히지 않게, 10/31)", async () => {
+    for (let i = 0; i < 60; i++) {
       await request(app)
         .post(api("/auth/signup"))
         .send({ verificationToken: "x", password: "password123", consent: memberConsent() });
@@ -340,6 +353,29 @@ describe("기준 8. 로그인과 역할 분리", () => {
     expect(
       (await request(app).post(api("/admin/auth/login")).send({ email: EMAIL, password: "password123" })).status,
     ).toBe(401);
+  });
+
+  it("같은 이메일로 10분에 10번 틀리면 맞는 비밀번호도 429, 다른 이메일은 그대로 (10/31: IP 한도를 올린 대신)", async () => {
+    await signupUser(app, EMAIL, "password123");
+    await signupUser(app, "friend@skuniv.ac.kr", "password123");
+    const login = (email: string, password: string) => request(app).post(api("/auth/login")).send({ email, password });
+    for (let i = 0; i < 10; i++) expect((await login(EMAIL, "wrongpass1")).status).toBe(401);
+    const locked = await login(EMAIL, "password123");
+    expect(locked.status).toBe(429);
+    expect(locked.body.error.code).toBe("RATE_LIMITED");
+    // 대소문자·공백만 바꿔도 같은 이메일로 센다
+    expect((await login(` ${EMAIL.toUpperCase()} `, "password123")).status).toBe(429);
+    // 같은 네트워크의 다른 사람은 막히지 않는다
+    expect((await login("friend@skuniv.ac.kr", "password123")).status).toBe(200);
+  });
+
+  it("성공한 로그인은 세지 않는다: 같은 IP에서 여러 명이 20번 넘게 로그인해도 막히지 않는다", async () => {
+    await signupUser(app, EMAIL, "password123");
+    for (let i = 0; i < 30; i++) {
+      expect((await request(app).post(api("/auth/login")).send({ email: EMAIL, password: "password123" })).status).toBe(
+        200,
+      );
+    }
   });
 });
 

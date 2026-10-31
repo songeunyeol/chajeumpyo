@@ -1,5 +1,4 @@
 import {
-  CATEGORY_LABELS,
   type Category,
   type FoundItemDetailResponse,
   type Role,
@@ -11,7 +10,7 @@ import { AppError } from "../lib/errors";
 import { withJosa } from "../lib/josa";
 import { prisma } from "../lib/prisma";
 import { storage } from "../storage";
-import { adminsInChargeOf, notifyUsers } from "./notifications";
+import { adminsInChargeOf, notificationItemLabel, notifyUsers } from "./notifications";
 
 /** 고가품은 앱 확인을 통과해도 보관처에서 대면으로 돌려준다 (QA W3, 위협 모델 T11) */
 export const VALUABLE_PICKUP_NOTICE =
@@ -54,9 +53,10 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
   if (!item?.detail || !item.category || !item.storageType) throw new AppError("NOT_FOUND", "물건을 찾을 수 없어요.");
   // 수령·기한 만료로 사진과 비공개 정보를 지운 물건 (#33)
   const publicKey = item.detail.imagePublicKey;
-  if (item.dataPurgedAt || !publicKey) {
+  if (item.dataPurgedAt || !publicKey || item.closedAt || item.status === "EXPIRED") {
     if (item.status === "CLAIMED") throw new AppError("ALREADY_CLAIMED", "이미 수령된 물건이에요.");
-    throw new AppError("NOT_FOUND", "보관 기간이 지나 정보가 지워졌어요. 보관처에 문의해 주세요.");
+    // 관리자가 정리했거나 기한이 지난 물건 (10/31 검증: "볼 수 없어요" 대신 보관이 끝났다고 알린다)
+    throw new AppError("ITEM_CLOSED", "보관이 끝난 물건이에요. 교무처에 문의해 주세요.");
   }
 
   const passed = await prisma.matchAttempt.findFirst({
@@ -82,7 +82,7 @@ export async function revealFoundItem(viewer: Viewer, foundItemId: string): Prom
         select: { userId: true },
       });
       if (others.length > 0) {
-        const label = CATEGORY_LABELS[item.category as Category];
+        const label = notificationItemLabel({ category: item.category as Category, subCategory: item.subCategory });
         await notifyUsers(
           await adminsInChargeOf(item.storagePlaceId, tx),
           {

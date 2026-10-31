@@ -13,6 +13,12 @@ const defaultDir =
 
 /** 네이버 지도 SDK(frontend/naver-map.js)가 불러오는 스크립트·지도 타일 출처. 키가 없으면 그림 지도로 대신한다 */
 const naverMap = ["https://oapi.map.naver.com", "https://*.map.naver.net", "https://*.pstatic.net"];
+/**
+ * 네이버 지도 SDK가 따로 부르는 것: 로고·컨트롤 그림(static.naver.net)과 오류 수집(nelo.navercorp.com).
+ * 막혀도 지도는 그려지지만 등록 화면 콘솔에 CSP 오류가 남았다 (검증 10/31). 필요한 지시어에만 연다
+ */
+const naverMapImages = ["https://static.naver.net"];
+const naverMapLogging = ["https://nelo.navercorp.com"];
 /** 네이버 지도 인증이 막힐 때 frontend/naver-map.js가 대신 까는 위성 사진 타일 */
 const esriTiles = "https://server.arcgisonline.com";
 /**
@@ -25,8 +31,8 @@ const pageCsp = helmet.contentSecurityPolicy({
     "script-src": ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com", ...naverMap],
     "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
     "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net"],
-    "img-src": ["'self'", "data:", "blob:", esriTiles, ...naverMap],
-    "connect-src": ["'self'", ...naverMap],
+    "img-src": ["'self'", "data:", "blob:", esriTiles, ...naverMap, ...naverMapImages],
+    "connect-src": ["'self'", ...naverMap, ...naverMapLogging],
     "frame-src": ["https://challenges.cloudflare.com"],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
@@ -38,12 +44,26 @@ const pageCsp = helmet.contentSecurityPolicy({
 /** 디자인 확인용 화면. 사용자 화면이 아니라 배포에서 내려주지 않는다 */
 const designCheckPages = new Set(["팔레트.html", "한눈에.html"]);
 
+/**
+ * 화면 목록(board)·간편 로그인 시안처럼 개발할 때만 보는 화면. 링크는 없지만 주소로 열리면 미완성 흔적으로 보여
+ * 운영(production)에서는 내려주지 않는다 (검증 10/31). 개발 서버에서는 그대로 연다
+ */
+const devOnlyPages = new Set(["/lost/board", "/found/board", "/lost/consent-social"]);
+
 /** 개발용 파일(_tester.html 같은 _로 시작하는 파일), 작업 메모(.md), 디자인 확인 화면은 배포에서 내려주지 않는다 */
 function isHidden(path: string) {
-  let name = basename(path);
+  let decoded = path;
   try {
-    name = decodeURIComponent(name);
+    decoded = decodeURIComponent(path);
   } catch {}
+  const name = basename(decoded);
+  // .html이 있든 없든(/lost/board, /lost/board.html) 같은 화면으로 본다
+  const page = decoded
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/\.html$/, "")
+    .replace(/\/+$/, "");
+  if (env.NODE_ENV === "production" && devOnlyPages.has(page)) return true;
   return name.startsWith("_") || extname(name).toLowerCase() === ".md" || designCheckPages.has(name.normalize("NFC"));
 }
 

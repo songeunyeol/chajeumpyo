@@ -73,6 +73,11 @@ export const FeatureComparison = z.object({
   ),
   color: FeatureVerdict,
   brand: FeatureVerdict,
+  /**
+   * 브랜드가 다를 때 AI에게 같은 브랜드(제조사↔제품 라인·한글 읽기·별칭)인지 다시 물은 결과.
+   * DIFFERENT는 AI가 관계없다고 답했을 때만. 묻지 않았거나 실패하면 없음 (10/31 검증 1)
+   */
+  brandCheck: z.enum(["SAME", "DIFFERENT"]).optional(),
 });
 export type FeatureComparison = z.infer<typeof FeatureComparison>;
 

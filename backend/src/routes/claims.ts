@@ -7,8 +7,9 @@ import {
   LostReportIdParams,
 } from "@chajeumpyo/shared";
 import { Router } from "express";
+import { env } from "../config/env";
 import { getAuth, requireMember } from "../middlewares/auth";
-import { ipRateLimit } from "../middlewares/rate-limit";
+import { accountRateLimit, ipRateLimit } from "../middlewares/rate-limit";
 import { validate } from "../middlewares/validate";
 import { errorResponse, registry } from "../openapi/registry";
 import * as service from "../services/claims";
@@ -35,7 +36,10 @@ registry.registerPath({
     400: errorResponse("VALIDATION_ERROR: 닫힌 신고 등"),
     403: errorResponse("FORBIDDEN: 후보가 아닌 물건"),
     404: errorResponse("NOT_FOUND: 없거나 남의 신고"),
-    409: errorResponse("MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만"),
+    409: errorResponse(
+      "MATCH_LOCKED: 이 계정 3회 실패 · IN_PERSON_REQUIRED: 모든 계정 실패 10회로 대면 확인만 · ALREADY_CLAIMED: 이미 수령된 물건",
+    ),
+    410: errorResponse("ITEM_CLOSED: 보던 물건을 관리자가 정리했거나 보관 기한이 지남"),
     429: errorResponse("RATE_LIMITED: 근거 부족 확인이 1시간에 3번을 넘음 (특징 없는 물건은 교무처 대면 확인 안내)"),
     502: errorResponse("AI_UNAVAILABLE"),
   },
@@ -53,9 +57,16 @@ registry.registerPath({
     200: { description: "답 판정", ...json(AnswerResponse) },
     400: errorResponse("VALIDATION_ERROR: 질문이 없는 시도, 보기 수가 질문 수와 다름"),
     404: errorResponse("NOT_FOUND"),
-    409: errorResponse("ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감"),
+    409: errorResponse(
+      "ALREADY_ANSWERED · IN_PERSON_REQUIRED: 물건이 대면 확인으로 넘어감 · ALREADY_CLAIMED: 이미 수령됨",
+    ),
+    410: errorResponse("ITEM_CLOSED: 질문을 받은 뒤 관리자가 정리했거나 보관 기한이 지남"),
+    429: errorResponse("RATE_LIMITED"),
   },
 });
+
+/** 한 계정의 10분 판정·답변 요청 한도 */
+export const CLAIM_ACCOUNT_LIMIT = 30;
 
 export function createClaimsRouter() {
   const router = Router();
@@ -64,15 +75,26 @@ export function createClaimsRouter() {
     return { userId: a.userId, role: a.role };
   };
 
-  // 계정·물건별 잠금(3회, 10회)과 별개로, 한 네트워크에서 계정을 바꿔 가며 몰아치는 시도를 막는다 (위협 모델 T2)
+  // 계정·물건별 잠금(3회, 10회)과 별개로, 한 계정이 몰아치는 요청(AI 비용 남용)은 계정 한도로 막는다.
+  // IP 한도는 학교 와이파이처럼 한 공인 IP 뒤에 여러 명이 있어도 같이 막히지 않게 넉넉히 둔다 (위협 모델 T2, 10/31 검증 #2)
   const claimLimit = ipRateLimit({
     windowMinutes: 10,
-    limit: 20,
-    message: "확인 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
+    limit: env.IP_RATE_LIMIT_PER_10MIN,
+    message: "이 네트워크에서 확인 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
   const answerLimit = ipRateLimit({
     windowMinutes: 10,
-    limit: 20,
+    limit: env.IP_RATE_LIMIT_PER_10MIN,
+    message: "이 네트워크에서 답변 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
+  });
+  const claimAccountLimit = accountRateLimit({
+    windowMinutes: 10,
+    limit: CLAIM_ACCOUNT_LIMIT,
+    message: "확인 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
+  });
+  const answerAccountLimit = accountRateLimit({
+    windowMinutes: 10,
+    limit: CLAIM_ACCOUNT_LIMIT,
     message: "답변 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.",
   });
 
@@ -80,6 +102,7 @@ export function createClaimsRouter() {
     "/lost-reports/:id/claims",
     claimLimit,
     requireMember(),
+    claimAccountLimit,
     validate("params", LostReportIdParams),
     validate("body", ClaimRequest),
     async (_req, res) => {
@@ -92,6 +115,7 @@ export function createClaimsRouter() {
     "/claims/:attemptId/answer",
     answerLimit,
     requireMember(),
+    answerAccountLimit,
     validate("params", AttemptIdParams),
     validate("body", AnswerRequest),
     async (_req, res) => {

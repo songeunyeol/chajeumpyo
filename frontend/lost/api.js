@@ -193,6 +193,17 @@
     ["스마트워치", "SMARTWATCH"],
     ["애플워치", "SMARTWATCH"],
     ["워치", "SMARTWATCH"],
+    // 지갑 합성어는 "학생증"·"카드"·"반지"보다 먼저 (카드지갑이 기타 카드로 가던 것, 10/31 퍼징)
+    ["카드지갑", "WALLET", "CARD_WALLET"],
+    ["카드케이스", "WALLET", "CARD_WALLET"],
+    ["명함지갑", "WALLET", "CARD_WALLET"],
+    ["학생증지갑", "WALLET", "CARD_WALLET"],
+    ["학생증케이스", "WALLET", "CARD_WALLET"],
+    ["반지갑", "WALLET", "BIFOLD_WALLET"],
+    ["장지갑", "WALLET", "LONG_WALLET"],
+    ["동전지갑", "WALLET"],
+    // "펜"보다 먼저 (펜던트는 필기구가 아니다)
+    ["펜던트", "ACCESSORY", "JEWELRY"],
     ["학생증", "ID_CARD"],
     ["신분증", "ID_CARD"],
     ["면허증", "DRIVER_LICENSE"],
@@ -955,7 +966,7 @@
     detail: (foundItemId = store.get(KEYS.foundItemId)) => call(`/found-items/${foundItemId}/detail`),
     /**
      * POST /found-items/:id/pickup-qr (보관처에 맡긴 물건)
-     * → CENTER_QR | DEMO { pickupId, qrToken, status: "ISSUED", expiresAt } (체험 QR은 demoPickup으로 끝낸다)
+     * → CENTER_QR | DEMO { pickupId, qrToken, shortCode("ABCD-EFGH"), status: "ISSUED", expiresAt } (체험 QR은 demoPickup으로 끝낸다)
      * 다시 부르면 이전 QR은 못 쓴다. 오류: 409 INVALID_STORAGE_TYPE, 409 ALREADY_CLAIMED
      */
     async pickupQr(foundItemId = store.get(KEYS.foundItemId)) {
