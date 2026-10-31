@@ -762,8 +762,15 @@
     if (node) node.style.display = on ? "" : "none";
   }
 
-  /** 상태 칩 */
-  function statusChip(status) {
+  /** 상태 이름. 관리자가 보관을 끝낸 물건은 DB 상태가 EXPIRED여도 "보관 종료 (잘못 등록)"으로 적는다 */
+  function statusText(item) {
+    if (item?.closedAt) return `보관 종료 (${CLOSED_REASON_LABELS[item.closedReason] || "끝냄"})`;
+    return STATUS[item?.status]?.label || item?.status || "";
+  }
+
+  /** 상태 칩. item을 함께 주면 보관 종료를 구분해 보여 준다 */
+  function statusChip(status, item) {
+    if (item?.closedAt) return el("span", { class: "chip", style: MUTE_CHIP, text: statusText(item) });
     const s = STATUS[status] || { label: status, chip: "chip" };
     // 끝난 상태는 팔레트의 종이색·흐린 글자로 (새 색 없이)
     return el("span", { class: s.chip, style: s.mute ? MUTE_CHIP : null, text: s.label });
@@ -807,6 +814,7 @@
     itemTitle,
     placeText,
     statusChip,
+    statusText,
     show,
     errorText,
     showError,
