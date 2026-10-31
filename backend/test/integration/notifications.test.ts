@@ -75,6 +75,27 @@ describe("기준 1. 새 습득물이 내 신고의 후보가 되면 알림", () 
   });
 });
 
+describe("알림 문구는 세부 종류 이름을 쓴다 (검증 10/31: 화장품이 '기타가 새로 등록됐어요'로 보였다)", () => {
+  it("기타·화장품은 '화장품이 새로 등록됐어요'", async () => {
+    await report("ETC", user.accessToken, { description: "화장품 아이라이너 잃어버렸어요" });
+    const item = await createFoundItem({
+      buildingId: A,
+      category: "ETC",
+      subCategory: "COSMETICS",
+      foundAt: new Date(),
+    });
+    expect(await alerts.alertNewCandidate(item.id)).toBe(1);
+    expect((await prisma.notification.findFirstOrThrow()).message).toBe("혜인관에서 화장품이 새로 등록됐어요.");
+  });
+
+  it("세부 종류가 없으면 큰 종류 이름 그대로", async () => {
+    await report("EARPHONE");
+    const item = await createFoundItem({ buildingId: A, category: "EARPHONE", foundAt: new Date() });
+    expect(await alerts.alertNewCandidate(item.id)).toBe(1);
+    expect((await prisma.notification.findFirstOrThrow()).message).toBe("혜인관에서 무선 이어폰이 새로 등록됐어요.");
+  });
+});
+
 describe("기준 2. 연관 종류·2순위 종류도 알리고, 관련 없는 종류는 알리지 않는다", () => {
   it("충전기 신고(연관)·노트북 신고(2순위의 연관)는 알림, 우산 신고는 없음", async () => {
     // 같은 사람에게는 물건 하나에 알림 하나라 신고마다 다른 계정을 쓴다

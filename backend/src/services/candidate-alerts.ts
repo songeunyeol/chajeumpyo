@@ -1,8 +1,8 @@
-import { CATEGORY_LABELS, type Category, relatedCategories } from "@chajeumpyo/shared";
+import { type Category, relatedCategories } from "@chajeumpyo/shared";
 import { logger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
 import { findCandidates, recordExposure } from "../matching/candidates";
-import { newCandidateMessage } from "./notifications";
+import { newCandidateMessage, notificationItemLabel } from "./notifications";
 
 /**
  * 습득물이 등록됨(REGISTERED)이 되면, 이 물건이 후보로 들어가는 열린 신고의 주인에게 알린다 (F-13).
@@ -45,7 +45,10 @@ export async function alertNewCandidate(foundItemId: string): Promise<number> {
     ).map((n) => n.userId),
   );
 
-  const message = newCandidateMessage(item.building?.name ?? null, CATEGORY_LABELS[item.category]);
+  const message = newCandidateMessage(
+    item.building?.name ?? null,
+    notificationItemLabel({ ...item, category: item.category }),
+  );
   let sent = 0;
   for (const report of reports) {
     const candidates = await findCandidates(report, report.user.role);
