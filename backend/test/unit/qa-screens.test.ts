@@ -634,3 +634,16 @@ describe("HEIC 사진 (QA 10/31: 크롬·안드로이드에서 '사진을 읽지
     expect(vendor.toString("utf8")).not.toMatch(/new Function\(|\beval\(|WebAssembly/);
   });
 });
+
+describe("알림 점 (QA 10/31: 안 읽은 알림이 있어도 점이 안 뜸)", () => {
+  it("잃어버린 사람 홈은 .is-on 클래스로 점을 켜고, 안 읽은 개수를 읽어 준다", () => {
+    const home = read("frontend/lost/home.html");
+    const css = read("frontend/palette.css");
+    expect(css).toMatch(/\.bell-dot\s*\{[^}]*display:\s*none/);
+    expect(css).toMatch(/\.bell-dot\.is-on\s*\{[^}]*display:\s*block/);
+    expect(home).toContain('bellDot.classList.toggle("is-on", unread)');
+    expect(home).not.toContain("bellDot.style.display");
+    expect(home).toMatch(/안 읽은 알림 \$\{r\.unreadCount\}개/);
+    expect(home).toContain('addEventListener("pageshow"');
+  });
+});
