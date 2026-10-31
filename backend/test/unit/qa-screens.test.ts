@@ -463,6 +463,22 @@ describe("QA 10/31: 화면 문구·기본값", () => {
     expect(home).toContain("맡길 물건·수령 예정");
   });
 
+  it("관리자 홈 맨 위에서 수령 QR 스캔으로 갈 수 있다", () => {
+    const home = read("frontend/admin/home.html");
+    expect(home).toContain('<a class="choice" id="linkScan" href="scan.html">');
+    expect(home.indexOf('id="linkScan"')).toBeLessThan(home.indexOf('id="linkReview"'));
+  });
+
+  it("내 신고: QR 받은 신고는 QR 화면을 바로 열고, 수령 완료 카드는 눌러도 반응이 없다", () => {
+    const home = read("frontend/lost/home.html");
+    expect(home).toContain("item-handover.html?id=");
+    expect(home).toContain("encodeURIComponent(p.foundItemId)}&qr=1");
+    expect(home).toContain('[[done ? "수령 완료" : "종료", "glow-red"]]');
+    expect(home).toContain('card.setAttribute("aria-disabled", "true")');
+    expect(read("frontend/palette.css")).toContain(".card.is-inert { cursor: default;");
+    expect(read("frontend/lost/item-handover.html")).toContain('get("qr") === "1") qrBtn.click()');
+  });
+
   it("확인 모달과 질문 화면에 3번 틀리면 풀리지 않는 잠금 규칙을 처음부터 알린다", () => {
     for (const f of ["frontend/lost/candidates.html", "frontend/lost/question.html"])
       expect(read(f)).toContain("3번 틀리면 다시 확인할 수 없고(기다려도 풀리지 않아요)");
@@ -487,8 +503,11 @@ describe("QA 10/31: 그 자리에 둠은 자세한 위치 필수, 첫 화면 제
     expect(register).toContain("const LOC_DETAIL_MIN = 4;");
   });
 
-  it("첫 화면 제목과 부제목은 원래 배치(한 줄, 부제목은 제목 옆)", () => {
-    expect(read("frontend/index.html")).toMatch(/\.title \{[^}]*flex-direction: row;/);
+  it("첫 화면 부제목은 제목 아래, 화면을 누르면 첫 효과를 건너뛴다 (10/31 은열)", () => {
+    const html = read("frontend/index.html");
+    expect(html).toMatch(/\.title \{[^}]*flex-direction: column;/);
+    expect(html).toContain('addEventListener("pointerdown", skip, { once: true })');
+    expect(html).toContain(".js.is-skip .lead");
   });
 });
 
@@ -509,5 +528,37 @@ describe("심사용 계정으로 심사 (10/31, 체험·시연 진입점 제거)
     expect(guide).not.toContain("체험");
     expect(guide).not.toContain("J.H 각인");
     expect(guide).not.toMatch(/judge|비밀번호/);
+  });
+});
+
+describe("설명 글씨 대비·회원가입 바로 보이기 (10/31 기획 피드백)", () => {
+  /** WCAG 상대 휘도 대비 */
+  const contrast = (a: string, b: string) => {
+    const channel = (hex: string, i: number) => {
+      const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    };
+    const lum = (hex: string) => 0.2126 * channel(hex, 1) + 0.7152 * channel(hex, 3) + 0.0722 * channel(hex, 5);
+    const x = lum(a);
+    const y = lum(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+
+  it("설명 글씨(--mute)는 종이 배경·흰 카드에서 4.5:1 이상", () => {
+    const css = read("frontend/palette.css");
+    const mute = css.match(/--mute: (#[0-9a-f]{6});/i)?.[1] ?? "";
+    const paper = css.match(/--paper: (#[0-9a-f]{6});/i)?.[1] ?? "";
+    expect(contrast(mute, paper)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(mute, "#ffffff")).toBeGreaterThanOrEqual(4.5);
+    const placeholder = css.match(/--placeholder: (#[0-9a-f]{6});/i)?.[1] ?? "";
+    expect(contrast(placeholder, "#ffffff")).toBeGreaterThanOrEqual(4.5);
+    expect(read("frontend/index.html")).not.toContain("#9a948c");
+  });
+
+  it("로그인 화면에 회원가입이 끌어 올리지 않아도 늘 보인다", () => {
+    const login = read("frontend/lost/login.html");
+    expect(login).toContain('id="signupLink" href="signup.html"');
+    expect(login).not.toContain("signup-reveal");
+    expect(login).not.toContain("touch-action:none");
   });
 });

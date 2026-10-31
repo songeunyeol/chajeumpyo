@@ -275,3 +275,48 @@ describe("기준 10. 수령 후 30일이 지나면 시도·열람 기록을 지�
     expect(await prisma.pickup.count({ where: { foundItemId: recent.id } })).toBe(1);
   });
 });
+
+describe("내 신고 목록의 수령 상태 (GET /lost-reports pickup)", () => {
+  type Row = {
+    id: string;
+    status: string;
+    pickup: { foundItemId: string; storageType: string; status: string } | null;
+  };
+  const list = async () =>
+    (await request(app).get("/api/v1/lost-reports").set(as(user.accessToken))).body.reports as Row[];
+  const of = async (reportId: string) => (await list()).find((r) => r.id === reportId)?.pickup;
+
+  it("통과 전 null → 통과 PASSED → QR 받으면 QR_ISSUED → 수령하면 COMPLETED(신고 RESOLVED)", async () => {
+    const { item, attempt } = await passedItem("HANDED_OVER");
+    const failed = await createAttempt(user.user.id, item.id, { result: "FAIL" });
+    expect(await of(failed.lostReportId)).toBeNull();
+    expect(await of(attempt.lostReportId)).toEqual({
+      foundItemId: item.id,
+      storageType: "HANDED_OVER",
+      status: "PASSED",
+    });
+
+    const { body } = await qr(item.id);
+    expect((await of(attempt.lostReportId))?.status).toBe("QR_ISSUED");
+
+    expect((await complete(body.pickupId)).status).toBe(200);
+    expect((await list()).find((r) => r.id === attempt.lostReportId)).toMatchObject({
+      status: "RESOLVED",
+      pickup: { status: "COMPLETED" },
+    });
+  });
+
+  it("QR이 만료됐으면 다시 PASSED, 그 자리에 둔 물건은 storageType으로 구분", async () => {
+    const { item, attempt } = await passedItem("HANDED_OVER");
+    await qr(item.id);
+    await prisma.pickup.updateMany({ where: { foundItemId: item.id }, data: { qrExpiresAt: hoursAgo(1) } });
+    expect((await of(attempt.lostReportId))?.status).toBe("PASSED");
+
+    const { item: inPlace, attempt: inPlaceAttempt } = await passedItem("IN_PLACE");
+    expect(await of(inPlaceAttempt.lostReportId)).toEqual({
+      foundItemId: inPlace.id,
+      storageType: "IN_PLACE",
+      status: "PASSED",
+    });
+  });
+});

@@ -21,6 +21,16 @@ export function isAskable(feature: AiFeature): boolean {
   return feature.key in TEMPLATES;
 }
 
+/**
+ * 오래 써도 주인이 잘 모르는 특징 (10/31 기획 피드백: 흠집 위치·무늬는 진짜 주인도 틀렸다).
+ * 색·스티커·키링·케이스·각인처럼 확실히 아는 특징이 없을 때만 묻는다.
+ */
+const HARD_TO_REMEMBER = new Set(["scratch", "pattern"]);
+
+export function isMemorable(feature: AiFeature): boolean {
+  return !HARD_TO_REMEMBER.has(feature.key);
+}
+
 /** itemName: 물건 이름(예: "안경·선글라스"). 가운뎃점 앞만 쓴다("이 안경에 ..."). 없으면 "이 물건" */
 export function questionFor(feature: AiFeature, itemName?: string | null): string {
   const tail = TEMPLATES[feature.key];

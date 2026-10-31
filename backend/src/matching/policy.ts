@@ -9,6 +9,12 @@ export const MAX_FAILED_ATTEMPTS = 3;
 /** 습득물 하나당 모든 계정 실패 합계 한도. 닿으면 온라인 확인을 막고 대면 확인으로 (#29, open-issues #31) */
 export const MAX_ITEM_FAILED_ATTEMPTS = 10;
 
+/**
+ * 근거 부족(맞힌 특징도 모순도 없음)은 실패로 세지 않고 특징을 더 적게 한다 (10/31 기획 피드백: 특징을 더 적을수록 횟수만 줄었다).
+ * 대신 아무 특징이나 넣어 보며 숨은 특징을 알아내지 못하게 계정·물건마다 이 시간 안에 이 횟수까지만 받는다.
+ */
+export const NEED_MORE_LIMIT = { count: 3, windowMinutes: 60 } as const;
+
 /** 설명만으로 바로 통과하려면 습득물 특징 중 이 비율 이상이 맞아야 한다(모순 0). 못 미치면 객관식으로 확인한다 (10/30 은열 확정) */
 export const PASS_MATCH_RATIO = 0.75;
 

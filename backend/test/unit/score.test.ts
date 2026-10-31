@@ -72,3 +72,56 @@ describe("지갑 ↔ 파우치 연관 (10/30)", () => {
     expect(CATEGORY_SCORE.exact).toBeGreaterThan(CATEGORY_SCORE.related);
   });
 });
+
+describe("연관 종류라도 세부 종류끼리 관계없으면 뺀다 (기획 피드백 10/31)", () => {
+  const charger = (subCategory: string | null) => ({ category: "CHARGER" as const, categoryAlt: null, subCategory });
+
+  it("무선 이어폰 신고에 마우스·키보드·카메라 등은 후보가 아니다", () => {
+    for (const sub of ["MOUSE", "KEYBOARD", "CAMERA", "GAME_CONSOLE", "USB_MEMORY"]) {
+      expect(categoryScore("EARPHONE", charger(sub), "WIRELESS_EARBUDS")).toBe(0);
+    }
+  });
+
+  it("이어폰 신고에 케이블·보조배터리는 그대로 연관 종류", () => {
+    for (const sub of ["CABLE_CHARGER", "POWER_BANK"]) {
+      expect(categoryScore("EARPHONE", charger(sub), "WIRELESS_EARBUDS")).toBe(CATEGORY_SCORE.related);
+    }
+  });
+
+  it("한쪽 세부 종류를 모르면 지금처럼 연관 종류", () => {
+    expect(categoryScore("EARPHONE", charger("MOUSE"), null)).toBe(CATEGORY_SCORE.related);
+    expect(categoryScore("EARPHONE", charger(null), "WIRELESS_EARBUDS")).toBe(CATEGORY_SCORE.related);
+  });
+
+  it("대칭: 마우스 신고에 이어폰·휴대폰은 뺀다", () => {
+    expect(
+      categoryScore("CHARGER", { category: "EARPHONE", categoryAlt: null, subCategory: "HEADPHONE" }, "MOUSE"),
+    ).toBe(0);
+    expect(categoryScore("CHARGER", { category: "PHONE", categoryAlt: null }, "MOUSE")).toBe(0);
+    expect(categoryScore("CHARGER", { category: "PHONE", categoryAlt: null }, "POWER_BANK")).toBe(
+      CATEGORY_SCORE.related,
+    );
+  });
+
+  it("휴대폰은 세부 종류가 없어도 정해진 것으로 보고 마우스를 뺀다", () => {
+    expect(categoryScore("PHONE", charger("MOUSE"))).toBe(0);
+    expect(categoryScore("PHONE", charger("CABLE_CHARGER"))).toBe(CATEGORY_SCORE.related);
+  });
+
+  it("가방·모자 신고에 신발은 뺀다, 다른 옷은 그대로", () => {
+    const clothing = (subCategory: string) => ({ category: "CLOTHING" as const, categoryAlt: null, subCategory });
+    expect(categoryScore("HAT", clothing("SHOES"))).toBe(0);
+    expect(categoryScore("HAT", clothing("OUTER"))).toBe(CATEGORY_SCORE.related);
+    expect(categoryScore("BAG", clothing("SHOES"), "BACKPACK")).toBe(0);
+  });
+
+  it("2순위 종류로 묶이면 세부 종류는 보지 않는다 (세부 종류는 1순위 종류의 것)", () => {
+    expect(
+      categoryScore(
+        "EARPHONE",
+        { category: "CHARGER", categoryAlt: "EARPHONE", subCategory: "MOUSE" },
+        "WIRELESS_EARBUDS",
+      ),
+    ).toBe(CATEGORY_SCORE.alt);
+  });
+});

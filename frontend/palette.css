@@ -5,7 +5,10 @@
   --green: #1e5b3d;
   --green-deep: #143828;
   --white: #ffffff;
-  --mute: #9a948c;
+  /* 설명 글씨. 종이 배경(#f3efe6) 대비 5.0:1, 흰 카드 5.8:1 (WCAG AA 4.5:1 이상, 10/31 기획 피드백: 흐려서 안 읽힘) */
+  --mute: #6b655d;
+  /* 입력칸 안내 글씨는 적은 값과 헷갈리지 않게 한 단계 옅게. 흰 입력칸 대비 4.6:1 */
+  --placeholder: #7a746c;
   --line: #e4ddd2;
   --soft: #e5f0ea;
   --warn: #f3ead6;
@@ -132,7 +135,7 @@ h1 {
 }
 .field textarea { min-height: 96px; resize: vertical; }
 .field textarea.compact { min-height: 76px; padding: 14px 16px; line-height: 1.45; }
-.field input::placeholder, .field textarea::placeholder { color: var(--mute); }
+.field input::placeholder, .field textarea::placeholder { color: var(--placeholder); }
 /* 학교 메일: 아이디 칸 + 고정 "@skuniv.ac.kr" (한 칸처럼 보이게) */
 .email-fixed { display: flex; align-items: center; border-radius: 14px; background: var(--white); }
 .email-fixed:focus-within { outline: 2px solid var(--green, #1e5b3d); outline-offset: 0; }
@@ -760,24 +763,6 @@ h1 {
   box-shadow: inset 0 0 0 2px var(--danger);
   outline: none;
 }
-.signup-reveal {
-  --reveal-p: 0;
-  position: relative;
-  z-index: 1;
-  height: 52px;
-  opacity: var(--reveal-p);
-  margin-top: calc((1 - var(--reveal-p)) * -62px);
-  pointer-events: none;
-  transition: opacity 240ms var(--ease), margin-top 300ms var(--ease);
-  will-change: opacity, margin-top;
-}
-.signup-reveal.is-dragging {
-  transition: none;
-}
-.signup-reveal.is-open {
-  --reveal-p: 1;
-  pointer-events: auto;
-}
 .sublinks {
   margin: 4px 0 0;
   text-align: center;
@@ -834,6 +819,8 @@ h1 {
   color: inherit;
 }
 .card + .card { margin-top: 10px; }
+/* 누를 곳이 없는 카드(수령 완료 등): 눌러도 반응 없음 */
+.card.is-inert { cursor: default; user-select: none; -webkit-tap-highlight-color: transparent; }
 .card h3 { margin: 0 0 4px; font-size: 17px; letter-spacing: -0.04em; }
 .meta { margin: 0; color: var(--mute); font-size: 13px; line-height: 1.4; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }

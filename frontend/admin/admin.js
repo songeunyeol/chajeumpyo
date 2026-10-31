@@ -2,7 +2,7 @@
 // API 주소는 found/api.js와 같은 규칙: 개발 주소에서만 ?api=... 로 한 번 주면 기억하고, 없으면
 // 개발(정적 서버 5500 포트)은 이 호스트의 4000 포트, 배포는 같은 주소의 /api/v1.
 // 로그인 토큰은 sessionStorage에만 둔다(탭을 닫으면 사라진다).
-(function () {
+(() => {
   // ?api= 주소 바꾸기는 개발(포트가 붙은 주소, localhost, 사설 IP)에서만 받는다. 배포 주소에서는 무시한다
   const devHost =
     location.port !== "" || /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
@@ -150,7 +150,7 @@
   const STATUS_ORDER = ["REVIEW", "REGISTERED", "REVEALED", "CLAIMED", "EXPIRED", "ANALYZING"];
 
   const STORAGE_LABELS = { IN_PLACE: "그 자리에 둠", HANDED_OVER: "보관처에 맡김" };
-  const MATCH_RESULT_LABELS = { PASS: "통과", BORDERLINE: "애매함", FAIL: "실패" };
+  const MATCH_RESULT_LABELS = { PASS: "통과", BORDERLINE: "애매함", FAIL: "실패", NEED_MORE: "근거 부족(기회 안 씀)" };
   const PICKUP_METHOD_LABELS = {
     CENTER_QR: "수령 QR",
     SELF_REPORT: "직접 찾음",
@@ -438,7 +438,10 @@
 
   function startDemo() {
     if (!sessionStorage.getItem(DEMO_STATE_KEY)) {
-      sessionStorage.setItem(DEMO_STATE_KEY, JSON.stringify({ items: demoItems(), notifications: demoNotifications() }));
+      sessionStorage.setItem(
+        DEMO_STATE_KEY,
+        JSON.stringify({ items: demoItems(), notifications: demoNotifications() }),
+      );
     }
     if (!auth.get()?.demo) {
       auth.set({
@@ -509,13 +512,15 @@
       const item = state.items.find((row) => row.id === itemId);
       if (!item) throw new ApiError(404, { error: { code: "NOT_FOUND", message: "물건을 찾을 수 없어요." } });
       if (!item.claimLockedAt || !["REGISTERED", "REVEALED"].includes(item.status)) {
-        throw new ApiError(409, { error: { code: "NOT_IN_PERSON_ITEM", message: "대면 확인으로 수령할 물건이 아니에요." } });
+        throw new ApiError(409, {
+          error: { code: "NOT_IN_PERSON_ITEM", message: "대면 확인으로 수령할 물건이 아니에요." },
+        });
       }
       if (item.status === "CLAIMED") {
         throw new ApiError(409, { error: { code: "ALREADY_CLAIMED", message: "이미 돌려준 물건이에요." } });
       }
       const completedAt = new Date().toISOString();
-      const nextItems = state.items.map((row) => (
+      const nextItems = state.items.map((row) =>
         row.id === itemId
           ? {
               ...row,
@@ -538,8 +543,8 @@
                 },
               ],
             }
-          : row
-      ));
+          : row,
+      );
       saveDemoState({ ...state, items: nextItems });
       return { pickupId: `pk_person_${Date.now()}`, method: "IN_PERSON", status: "COMPLETED", completedAt };
     }
@@ -562,9 +567,12 @@
 
     if (url.pathname === "/admin/pickups/scan" && method === "POST") {
       const token = String(body?.qrToken || "");
-      if (token === "pk_expired") throw new ApiError(410, { error: { code: "QR_EXPIRED", message: "만료된 QR이에요." } });
-      if (token === "pk_claimed") throw new ApiError(409, { error: { code: "ALREADY_CLAIMED", message: "이미 돌려준 물건이에요." } });
-      if (token === "pk_other") throw new ApiError(403, { error: { code: "FORBIDDEN", message: "다른 보관처 물건이에요." } });
+      if (token === "pk_expired")
+        throw new ApiError(410, { error: { code: "QR_EXPIRED", message: "만료된 QR이에요." } });
+      if (token === "pk_claimed")
+        throw new ApiError(409, { error: { code: "ALREADY_CLAIMED", message: "이미 돌려준 물건이에요." } });
+      if (token === "pk_other")
+        throw new ApiError(403, { error: { code: "FORBIDDEN", message: "다른 보관처 물건이에요." } });
       if (token !== "pk_demo") throw new ApiError(404, { error: { code: "NOT_FOUND", message: "없는 QR이에요." } });
       const item = state.items.find((row) => row.id === "fi-revealed");
       if (!item || item.status === "CLAIMED") {
@@ -590,11 +598,18 @@
         throw new ApiError(409, { error: { code: "ALREADY_CLAIMED", message: "이미 돌려준 물건이에요." } });
       }
       const completedAt = new Date().toISOString();
-      const nextItems = state.items.map((row) => (
+      const nextItems = state.items.map((row) =>
         row.id === "fi-revealed"
-          ? { ...row, status: "CLAIMED", originalImageUrl: null, publicImageUrl: null, thumbnailUrl: null, hiddenTrait: null }
-          : row
-      ));
+          ? {
+              ...row,
+              status: "CLAIMED",
+              originalImageUrl: null,
+              publicImageUrl: null,
+              thumbnailUrl: null,
+              hiddenTrait: null,
+            }
+          : row,
+      );
       saveDemoState({ ...state, items: nextItems });
       return { pickupId: "pk_demo", status: "COMPLETED", completedAt };
     }
@@ -623,9 +638,9 @@
       const now = new Date().toISOString();
       saveDemoState({
         ...state,
-        notifications: state.notifications.map((item) => (
-          item.id === decodeURIComponent(noteId) ? { ...item, readAt: item.readAt || now } : item
-        )),
+        notifications: state.notifications.map((item) =>
+          item.id === decodeURIComponent(noteId) ? { ...item, readAt: item.readAt || now } : item,
+        ),
       });
       return null;
     }
@@ -653,7 +668,9 @@
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch (_) {
-      throw new ApiError(0, { error: { code: "NETWORK", message: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." } });
+      throw new ApiError(0, {
+        error: { code: "NETWORK", message: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." },
+      });
     }
     if (res.status === 204) return null;
     const data = await res.json().catch(() => null);
@@ -790,7 +807,9 @@
     },
     logout() {
       auth.clear();
-      try { sessionStorage.removeItem(DEMO_STATE_KEY); } catch (_) {}
+      try {
+        sessionStorage.removeItem(DEMO_STATE_KEY);
+      } catch (_) {}
       location.href = "login.html";
     },
     startDemo() {
@@ -817,8 +836,7 @@
       }),
 
     scanPickup: (qrToken) => call("/admin/pickups/scan", { method: "POST", body: { qrToken } }),
-    completePickup: (pickupId) =>
-      call(`/admin/pickups/${encodeURIComponent(pickupId)}/complete`, { method: "POST" }),
+    completePickup: (pickupId) => call(`/admin/pickups/${encodeURIComponent(pickupId)}/complete`, { method: "POST" }),
 
     /** GET /admin/stats/hotspots?from=&to= (한국 날짜) */
     hotspots: ({ from, to } = {}) => {

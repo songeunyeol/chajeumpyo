@@ -193,15 +193,30 @@ describe("① confirm: 위치를 받아 등록을 끝낸다", () => {
     expect(await prisma.notification.count()).toBeLessThanOrEqual(1);
   });
 
-  it("확정하지 않은 초안은 기한 뒤 정기 작업이 사진까지 지운다", async () => {
+  it("확정하지 않은 초안은 기한 뒤 정기 작업이 사진과 행까지 지운다 (기한 만료로 남기지 않는다)", async () => {
     const d = await draft();
     const row = await prisma.foundItem.findUniqueOrThrow({ where: { id: d.id }, include: { detail: true } });
     await expireUnclaimedItems(new Date(Date.now() + 61 * 60_000));
-    const after = await prisma.foundItem.findUniqueOrThrow({ where: { id: d.id }, include: { detail: true } });
+    expect(await prisma.foundItem.findUnique({ where: { id: d.id } })).toBeNull();
+    expect(await prisma.foundItemDetail.findUnique({ where: { foundItemId: d.id } })).toBeNull();
+    expect(await readLocalFile(row.detail?.imageOriginalKey as string)).toBeNull();
+  });
+
+  it("기한 안의 초안은 그대로 두어 이어서 확정할 수 있다", async () => {
+    const d = await draft();
+    await expireUnclaimedItems(new Date(Date.now() + 30 * 60_000));
+    expect((await prisma.foundItem.findUniqueOrThrow({ where: { id: d.id } })).status).toBe("ANALYZING");
+    await confirm(d.id, { confirmToken: d.confirmToken, ...kept() }).expect(201);
+  });
+
+  it("확정한 물건은 보관 기한이 지나면 지우지 않고 기한 만료로 바꾼다", async () => {
+    const d = await draft();
+    await confirm(d.id, { confirmToken: d.confirmToken, ...kept() }).expect(201);
+    await prisma.foundItem.update({ where: { id: d.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    await expireUnclaimedItems();
+    const after = await prisma.foundItem.findUniqueOrThrow({ where: { id: d.id } });
     expect(after.status).toBe("EXPIRED");
     expect(after.dataPurgedAt).not.toBeNull();
-    expect(after.detail?.imagePublicKey).toBeNull();
-    expect(await readLocalFile(row.detail?.imageOriginalKey as string)).toBeNull();
   });
 });
 
