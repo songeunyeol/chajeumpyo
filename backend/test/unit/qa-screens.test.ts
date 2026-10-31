@@ -468,9 +468,9 @@ describe("QA 10/31: 화면 문구·기본값", () => {
       expect(read(f)).toContain("3번 틀리면 다시 확인할 수 없고(기다려도 풀리지 않아요)");
   });
 
-  it("첫 화면 부제목은 제목 아래 줄에 놓인다", () => {
+  it("첫 화면 제목·부제목은 원래 배치(가로 한 줄)로 되돌렸다 (10/31 사용자 결정), 지도 없음", () => {
     const index = read("frontend/index.html");
-    expect(index).toMatch(/\.title \{[^}]*flex-direction: column/);
+    expect(index).toMatch(/\.title \{[^}]*flex-direction: row/);
     expect(index).not.toContain("door-map");
   });
 });
@@ -489,8 +489,8 @@ describe("QA 10/31: 그 자리에 둠은 자세한 위치 필수, 첫 화면 제
     expect(register).toContain("const LOC_DETAIL_MIN = 4;");
   });
 
-  it("첫 화면 제목과 부제목은 가운데 정렬", () => {
-    expect(read("frontend/index.html")).toMatch(/\.title \{[^}]*align-items: center; text-align: center;/);
+  it("첫 화면 제목은 가운데 정렬을 되돌렸다 (10/31 사용자 결정)", () => {
+    expect(read("frontend/index.html")).not.toMatch(/\.title \{[^}]*text-align: center;/);
   });
 });
 
