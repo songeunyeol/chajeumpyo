@@ -23,4 +23,9 @@ describe("nearestBuilding (프론트가 브라우저 안에서 쓰는 공용 함
   it("건물이 없으면 null", () => {
     expect(nearestBuilding([], { lat: 37.6, lng: 127.0 })).toBeNull();
   });
+
+  it("비정상 좌표나 빈 배열 입력 시 null", () => {
+    expect(nearestBuilding([A, B], { lat: Number.NaN, lng: 127.0 })).toBeNull();
+    expect(nearestBuilding(null as any, { lat: 37.6, lng: 127.0 })).toBeNull();
+  });
 });

@@ -10,6 +10,16 @@ export type LatLng = { lat: number; lng: number };
 
 /** 두 좌표 사이 거리(미터, 하버사인) */
 export function distanceM(a: LatLng, b: LatLng): number {
+  if (
+    !a ||
+    !b ||
+    !Number.isFinite(a.lat) ||
+    !Number.isFinite(a.lng) ||
+    !Number.isFinite(b.lat) ||
+    !Number.isFinite(b.lng)
+  ) {
+    return Number.POSITIVE_INFINITY;
+  }
   const rad = (d: number) => (d * Math.PI) / 180;
   const dLat = rad(b.lat - a.lat);
   const dLng = rad(b.lng - a.lng);
@@ -23,9 +33,20 @@ export function nearestBuilding<B extends LatLng>(
   point: LatLng,
   maxDistanceM = NEAREST_MAX_DISTANCE_M,
 ): { building: B; distanceM: number } | null {
+  if (
+    !Array.isArray(buildings) ||
+    buildings.length === 0 ||
+    !point ||
+    !Number.isFinite(point.lat) ||
+    !Number.isFinite(point.lng)
+  ) {
+    return null;
+  }
   let best: { building: B; distanceM: number } | null = null;
   for (const b of buildings) {
+    if (!b || !Number.isFinite(b.lat) || !Number.isFinite(b.lng)) continue;
     const d = distanceM(point, b);
+    if (!Number.isFinite(d)) continue;
     if (!best || d < best.distanceM) best = { building: b, distanceM: d };
   }
   if (!best || best.distanceM > maxDistanceM) return null;
